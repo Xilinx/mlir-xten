@@ -1,6 +1,6 @@
 include ../../config.make
 
-export BUILD_DIR := $(realpath ../../build$(BUILD)/pytorch_mlir/dialect)
+BUILD_DIR = $(abspath ../../build$(BUILD)/pytorch_mlir/dialect)
 
 CXX = clang++-8
 SRCDIR = csrc
@@ -13,9 +13,9 @@ PYTHON_PROOT=/usr
 PYBIND11_INCLUDE_CONFIG-container=/opt/conda/include/python3.6m
 PYBIND11_INCLUDE_CONFIG=/opt/conda/include/python3.6m
 PYBIND11_INCLUDE = ${PYBIND11_INCLUDE_CONFIG${BUILD}}
-LLVM_BUILD=../../build$(BUILD)/peano
+LLVM_BUILD=$(abspath ../../build$(BUILD)/peano)
 LLVM_BIN=${LLVM_BUILD}/bin
-LLVM_PROJECT=../../peano/llvm-project
+LLVM_PROJECT=$(realpath ../../peano/llvm-project)
 LLVM_INCLUDE=${LLVM_PROJECT}/llvm/include
 MLIR_INCLUDE=$(LLVM_PROJECT)/llvm/projects/mlir/include
 
@@ -68,9 +68,6 @@ clean:
 ###################
 # table gen rules
 ###################
-
-debug:
-	echo $(SRCDIR)
 
 $(BUILD_DIR)/include/ATenOps.h.inc: $(INCDIR)/aten.td
 	mkdir -p $(BUILD_DIR)/include && \
