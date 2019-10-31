@@ -92,5 +92,7 @@ ATenDialect::ATenDialect(mlir::MLIRContext *ctx) : mlir::Dialect("aten", ctx) {
 #define GET_OP_CLASSES
 #include "ATenOps.cpp.inc"
 
+#include "ATenOpInterfaces.cpp.inc"
+
 }
 }

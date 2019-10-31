@@ -11,7 +11,7 @@ PYTHON_PROOT=/usr
 # Conda stuffs this in a non-standard place.
 # A proper configuration tool would be nice for this.
 PYBIND11_INCLUDE_CONFIG-container=/opt/conda/include/python3.6m
-PYBIND11_INCLUDE_CONFIG=/opt/conda/include/python3.6m
+PYBIND11_INCLUDE_CONFIG=/usr/local/include/python3.6
 PYBIND11_INCLUDE = ${PYBIND11_INCLUDE_CONFIG${BUILD}}
 LLVM_BUILD=$(abspath ../../build$(BUILD)/peano)
 LLVM_BIN=${LLVM_BUILD}/bin
@@ -23,22 +23,25 @@ ATEN_DIALECT_SRC_FILES = $(SRCDIR)/ATenDialect.cpp
 ATEN_DIALECT_INC_FILES = $(INCDIR)/ATenDialect.h
 ATEN_DIALECT_OBJ_FILES = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(ATEN_DIALECT_SRC_FILES))
 
-ATEN_PASS_SRC_FILES = $(SRCDIR)/ATenLoweringPass.cpp $(SRCDIR)/ATenToStd.cpp
-ATEN_PASS_INC_FILES = $(INCDIR)/ATenLoweringPass.h
+ATEN_PASS_SRC_FILES = $(SRCDIR)/ATenLoweringPass.cpp $(SRCDIR)/ATenToStd.cpp $(SRCDIR)/ForwardPathReport.cpp
+ATEN_PASS_INC_FILES = $(INCDIR)/ATenLoweringPass.h $(INCDIR)/ForwardPathReport.h
 ATEN_PASS_OBJ_FILES = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(ATEN_PASS_SRC_FILES))
 
 ATEN_TBGEN_FILES = $(BUILD_DIR)/include/ATenOps.h.inc \
 				   $(BUILD_DIR)/include/ATenOps.cpp.inc \
+					$(BUILD_DIR)/include/ATenOpInterfaces.h.inc \
+				   $(BUILD_DIR)/include/ATenOpInterfaces.cpp.inc \
 				   $(BUILD_DIR)/include/ATenToStd.cpp.inc
 
 LLVM_CXX_FLAGS = $(shell ${LLVM_BIN}/llvm-config --cppflags)
 LLVM_LIBS = $(shell ${LLVM_BIN}/llvm-config --libs)
 LLVM_LIBDIR = $(shell ${LLVM_BIN}/llvm-config --libdir)
-LLVM_LD_FLAGS = $(shell ${LLVM_BIN}/llvm-config --ldflags) -Wl,-rpath=$(LLVM_LIBDIR) 
+LLVM_LD_FLAGS = $(shell ${LLVM_BIN}/llvm-config --ldflags) -Wl,-rpath=$(LLVM_LIBDIR)
 
 MLIR_CXX_FLAGS = -I${LLVM_INCLUDE} \
+					  -I../include \
                  -I$(MLIR_INCLUDE) \
-		 -I$(LLVM_BUILD)/projects/mlir/include
+					  -I$(LLVM_BUILD)/projects/mlir/include
 
 MLIR_LD_FLAGS =
 
@@ -76,6 +79,14 @@ $(BUILD_DIR)/include/ATenOps.h.inc: $(INCDIR)/aten.td
 $(BUILD_DIR)/include/ATenOps.cpp.inc: $(INCDIR)/aten.td
 	mkdir -p $(BUILD_DIR)/include && \
 	${LLVM_BIN}/mlir-tblgen -I$(MLIR_INCLUDE) $< --gen-op-defs > $@
+
+$(BUILD_DIR)/include/ATenOpInterfaces.h.inc: $(INCDIR)/aten.td
+	mkdir -p $(BUILD_DIR)/include && \
+	${LLVM_BIN}/mlir-tblgen -I$(MLIR_INCLUDE) $< --gen-op-interface-decls > $@
+
+$(BUILD_DIR)/include/ATenOpInterfaces.cpp.inc: $(INCDIR)/aten.td
+	mkdir -p $(BUILD_DIR)/include && \
+	${LLVM_BIN}/mlir-tblgen -I$(MLIR_INCLUDE) $< --gen-op-interface-defs > $@
 
 $(BUILD_DIR)/include/ATenToStd.cpp.inc: $(INCDIR)/ATenToStd.td
 	mkdir -p $(BUILD_DIR)/include && \
