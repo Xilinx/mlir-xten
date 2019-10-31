@@ -1,3 +1,4 @@
+// (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
 
 #ifndef ATEN_LOWERING_H_
 #define ATEN_LOWERING_H_

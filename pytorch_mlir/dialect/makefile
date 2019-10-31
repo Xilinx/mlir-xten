@@ -1,3 +1,4 @@
+# (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
 include ../../config.make
 
 BUILD_DIR = $(abspath ../../build$(BUILD)/pytorch_mlir/dialect)
