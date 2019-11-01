@@ -54,7 +54,7 @@ LD_FLAGS = -std=c++14 -O0 -g $(LLVM_LD_FLAGS) $(MLIR_LD_FLAGS) -L$(PYTHON_PROOT)
 # rules
 ###################
 
-TARGETS = $(addprefix $(BUILD_DIR)/,test.exe pybind.so pybind_aten.so)
+TARGETS = $(addprefix $(BUILD_DIR)/,test.exe) # pybind.so pybind_aten.so)
 
 build: $(TARGETS)
 
@@ -64,7 +64,8 @@ export PYTHONPATH = ${TEST_BUILD_PATH}:${TEST_SRC_PATH}/../..
 export PATH := ${PATH}:$(realpath ${LLVM_BIN})
 
 test: build
-	${LLVM_BIN}/llvm-lit -v -s ../mlir_export/test
+	${LLVM_BIN}/llvm-lit -v -s test --path=$(TEST_BUILD_PATH)
+	${LLVM_BIN}/llvm-lit -v -s ../mlir_export/test --path=$(TEST_BUILD_PATH)
 
 clean:
 	rm -rf $(BUILD_DIR) $(TARGETS)
