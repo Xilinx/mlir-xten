@@ -114,6 +114,32 @@ def aten_ThresholdOp: aten_Op<"threshold", [NoSideEffect]>,
 
 }
 
+def aten_ReLUUnderOp: aten_Op<"relu_", [NoSideEffect, StatisticsOpInterface]>,
+                      Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$x
+  );
+
+  let summary = "In-Place ReLU operator";
+  let description = [{
+    In-Place ReLU operator
+  }];
+  let extraClassDeclaration = [{
+      std::map<std::string, unsigned>  updateStatistics() {
+            std::map<std::string, unsigned>  toReturn;
+            Type resultTy = getResult()->getType();
+            TensorType tensorResultTy = resultTy.cast<TensorType>();
+
+            unsigned op_volume = getTensorVolume(tensorResultTy);
+            toReturn["activation_in"] = op_volume;
+            toReturn["activation_out"] = op_volume;
+            toReturn[">"] = op_volume;
+
+            return(toReturn);
+        }
+	}];
+}
+
 def aten_ReLUOp: aten_Op<"relu", [NoSideEffect, StatisticsOpInterface]>,
                         Results<(outs AnyTensor)> {
   let arguments = (
@@ -125,7 +151,7 @@ def aten_ReLUOp: aten_Op<"relu", [NoSideEffect, StatisticsOpInterface]>,
     ReLU operator
   }];
   let extraClassDeclaration = [{
-    	std::map<std::string, unsigned>  updateStatistics() {
+      std::map<std::string, unsigned>  updateStatistics() {
             std::map<std::string, unsigned>  toReturn;
             Type resultTy = getResult()->getType();
             TensorType tensorResultTy = resultTy.cast<TensorType>();
@@ -391,6 +417,50 @@ def aten_MaxPool2dWithIndiciesOp: aten_Op<"max_pool2d_with_indices", [NoSideEffe
   let summary = "MaxPool2dWithIndicies operator";
   let description = [{
     MaxPool2dWithIndicies operator
+  }];
+
+}
+
+def aten_AdaptiveAvgPool2dOp: aten_Op<"adaptive_avg_pool2d", [NoSideEffect]>,
+                                     Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1
+  );
+
+  let summary = "AdaptiveAvgPool2d operator";
+  let description = [{
+    AdaptiveAvgPool2d operator
+  }];
+
+}
+
+def aten_FlattenOp: aten_Op<"flatten", [NoSideEffect]>,
+                           Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2
+  );
+
+  let summary = "Flatten operator";
+  let description = [{
+    Flatten operator
+  }];
+
+}
+
+def aten_DropoutOp: aten_Op<"dropout", [NoSideEffect]>,
+                           Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2
+  );
+
+  let summary = "Dropout operator";
+  let description = [{
+    Dropout operator
   }];
 
 }
