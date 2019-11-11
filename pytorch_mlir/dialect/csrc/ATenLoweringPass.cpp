@@ -54,6 +54,17 @@ Value *MemRefTypeCast(PatternRewriter &builder, Value *val) {
   return typeCast(builder, val, memRefType);
 }
 
+std::string getNextFuncName(ModuleOp module, std::string prefix)
+{
+  char idx = '0';
+  auto fn = module.lookupSymbol<FuncOp>(prefix+idx);
+  while (fn) {
+    idx++;
+    fn = module.lookupSymbol<FuncOp>(prefix+idx);
+  }
+  return prefix+idx;
+}
+
 /// Lower an aten.add to an affine loop nest.
 ///
 /// This class inherit from `ConversionPattern` and override `rewrite`,
@@ -164,9 +175,8 @@ public:
 
   FuncOp getConvolution2dForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
   {
-    auto convFunc = module.lookupSymbol<FuncOp>("conv2d_forward");
-    if (convFunc)
-      return convFunc;
+    std::string fnName = getNextFuncName(module, "conv2d_forward_");
+    auto convFunc = module.lookupSymbol<FuncOp>(fnName);
 
     Builder builder(module);
 
@@ -176,7 +186,7 @@ public:
                                                operands[2]->getType(),
                                                i32Ty, i32Ty, i32Ty},
                                               {retTy});
-    convFunc = FuncOp::create(builder.getUnknownLoc(), "conv2d_forward", convFuncTy);
+    convFunc = FuncOp::create(builder.getUnknownLoc(), fnName, convFuncTy);
     module.push_back(convFunc);
     return convFunc;
   }
@@ -246,9 +256,8 @@ public:
 
   FuncOp getBatchNorm2dForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
   {
-    auto batchnormFunc = module.lookupSymbol<FuncOp>("batch_norm_forward");
-    if (batchnormFunc)
-      return batchnormFunc;
+    std::string fnName = getNextFuncName(module, "batch_norm_forward_");
+    auto batchnormFunc = module.lookupSymbol<FuncOp>(fnName);
 
     Builder builder(module);
 
@@ -261,7 +270,7 @@ public:
                                                     operands[4]->getType(),
                                                     boolTy, f32Ty, f32Ty, boolTy},
                                                    {retTy});
-    batchnormFunc = FuncOp::create(builder.getUnknownLoc(), "batch_norm_forward", batchnormFuncTy);
+    batchnormFunc = FuncOp::create(builder.getUnknownLoc(), fnName, batchnormFuncTy);
     module.push_back(batchnormFunc);
     return batchnormFunc;
   }
@@ -320,9 +329,8 @@ public:
 
   FuncOp getMaxPool2dForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
   {
-    auto maxpoolFunc = module.lookupSymbol<FuncOp>("maxpool_forward");
-    if (maxpoolFunc)
-      return maxpoolFunc;
+    std::string fnName = getNextFuncName(module, "maxpool_forward_");
+    auto maxpoolFunc = module.lookupSymbol<FuncOp>(fnName);
 
     Builder builder(module);
 
@@ -330,7 +338,7 @@ public:
     auto maxpoolFuncTy = builder.getFunctionType({operands[0]->getType(),
                                                   i32Ty, i32Ty, i32Ty},
                                                  {retTy});
-    maxpoolFunc = FuncOp::create(builder.getUnknownLoc(), "maxpool_forward", maxpoolFuncTy);
+    maxpoolFunc = FuncOp::create(builder.getUnknownLoc(), fnName, maxpoolFuncTy);
     module.push_back(maxpoolFunc);
     return maxpoolFunc;
   }
@@ -377,9 +385,8 @@ public:
 
   FuncOp getAddForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
   {
-    auto addFunc = module.lookupSymbol<FuncOp>("add_forward");
-    if (addFunc)
-      return addFunc;
+    std::string fnName = getNextFuncName(module, "add_forward_");
+    auto addFunc = module.lookupSymbol<FuncOp>(fnName);
 
     Builder builder(module);
 
@@ -387,7 +394,7 @@ public:
                                               operands[1]->getType(),
                                               operands[2]->getType()},
                                               {retTy});
-    addFunc = FuncOp::create(builder.getUnknownLoc(), "add_forward", addFuncTy);
+    addFunc = FuncOp::create(builder.getUnknownLoc(), fnName, addFuncTy);
     module.push_back(addFunc);
     return addFunc;
   }
@@ -442,9 +449,8 @@ public:
 
   FuncOp getAddmmForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
   {
-    auto addmmFunc = module.lookupSymbol<FuncOp>("addmm_forward");
-    if (addmmFunc)
-      return addmmFunc;
+    std::string fnName = getNextFuncName(module, "addmm_forward_");
+    auto addmmFunc = module.lookupSymbol<FuncOp>(fnName);
 
     Builder builder(module);
 
@@ -454,7 +460,7 @@ public:
                                               operands[2]->getType(),
                                               i32Ty, i32Ty},
                                               {retTy});
-    addmmFunc = FuncOp::create(builder.getUnknownLoc(), "addmm_forward", addmmFuncTy);
+    addmmFunc = FuncOp::create(builder.getUnknownLoc(), fnName, addmmFuncTy);
     module.push_back(addmmFunc);
     return addmmFunc;
   }
@@ -495,15 +501,14 @@ public:
 
   FuncOp getReLUForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
   {
-    auto reluFunc = module.lookupSymbol<FuncOp>("relu_forward");
-    if (reluFunc)
-      return reluFunc;
+    std::string fnName = getNextFuncName(module, "relu_forward_");
+    auto reluFunc = module.lookupSymbol<FuncOp>(fnName);
 
     Builder builder(module);
 
     auto reluFuncTy = builder.getFunctionType({operands[0]->getType()},
                                               {retTy});
-    reluFunc = FuncOp::create(builder.getUnknownLoc(), "relu_forward", reluFuncTy);
+    reluFunc = FuncOp::create(builder.getUnknownLoc(), fnName, reluFuncTy);
     module.push_back(reluFunc);
     return reluFunc;
   }
@@ -544,15 +549,14 @@ public:
 
   FuncOp getTransposeForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
   {
-    auto transposeFunc = module.lookupSymbol<FuncOp>("transpose_forward");
-    if (transposeFunc)
-      return transposeFunc;
+    std::string fnName = getNextFuncName(module, "transpose_forward_");
+    auto transposeFunc = module.lookupSymbol<FuncOp>(fnName);
 
     Builder builder(module);
 
     auto transposeFuncTy = builder.getFunctionType({operands[0]->getType()},
                                               {retTy});
-    transposeFunc = FuncOp::create(builder.getUnknownLoc(), "transpose_forward", transposeFuncTy);
+    transposeFunc = FuncOp::create(builder.getUnknownLoc(), fnName, transposeFuncTy);
     module.push_back(transposeFunc);
     return transposeFunc;
   }
