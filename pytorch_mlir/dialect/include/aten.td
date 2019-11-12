@@ -224,6 +224,63 @@ def aten_BatchNormOp: aten_Op<"batch_norm", [NoSideEffect, StatisticsOpInterface
   }];
 }
 
+def aten_NativeBatchNormOp: aten_Op<"native_batch_norm", [NoSideEffect, StatisticsOpInterface]>,
+                        Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2,
+        AnyType:$arg3,
+        AnyType:$arg4,
+        AnyType:$arg5,
+        AnyType:$arg6,
+        AnyType:$arg7
+  );
+
+  let summary = "BatchNorm operator";
+  let description = [{
+    BatchNorm operator
+  }];
+  let extraClassDeclaration = [{
+     std::map<std::string, unsigned>  updateStatistics() {
+            std::map<std::string, unsigned>  toReturn;
+            Type resultTy = getResult()->getType();
+            TensorType tensorResultTy = resultTy.cast<TensorType>();
+
+            unsigned op_volume = getTensorVolume(tensorResultTy);
+            toReturn["activation_in"] = op_volume;
+            toReturn["activation_out"] = op_volume;
+
+            // There are 2x as many parameters are there are planes ...
+            unsigned ifm_depth = tensorResultTy.getShape()[1];
+            toReturn["parameters_in"] = ifm_depth * 2;
+
+            // Now for the arithmetic.  Assume variance is calculated as sum of squares
+
+            toReturn["+"] = op_volume;   // Add up for mean
+            toReturn["*"] = op_volume;   // Square for variance
+            toReturn["+"] += op_volume;  // Add up squares for variance
+
+            toReturn["*"] += ifm_depth;   // Calc channel means
+            toReturn["-"] += ifm_depth;   // Calc channel vars
+            toReturn["*"] += ifm_depth;   // Calc channel vars
+
+            toReturn["sqrt"] = ifm_depth;  // Convert to SD
+            toReturn["/"] += ifm_depth;    // Get the reciprocal
+
+            toReturn["+"] += op_volume;   // Subtract mean off each pixel
+            toReturn["*"] += op_volume;   // Multiply by 1/SD for each pixel
+
+            toReturn["+"] += op_volume;   // Bias
+            toReturn["*"] += op_volume;   // Scale
+
+
+            return(toReturn);
+        }
+
+  }];
+}
+
 def aten_ConvolutionOp: aten_Op<"_convolution", [NoSideEffect, StatisticsOpInterface]>,
                         Results<(outs AnyTensor)> {
   let arguments = (
