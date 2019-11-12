@@ -90,6 +90,43 @@ def aten_AddOp: aten_Op<"add", [NoSideEffect, StatisticsOpInterface]>,
   }];
 }
 
+def aten_AddUnderOp: aten_Op<"add_", [NoSideEffect, StatisticsOpInterface]>,
+                        Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$a,
+        AnyScalarOrTensor:$b,
+        AnyScalar:$c
+  );
+
+  let summary = "In-place add operator";
+  let description = [{
+    In-place add operator
+  }];
+  let extraClassDeclaration = [{
+    /// Return the statistics.
+    std::map<std::string, unsigned>  updateStatistics() {
+            std::map<std::string, unsigned>  toReturn;
+
+            Type resultTy = getResult()->getType();
+            unsigned ofm_volume = getTensorVolume(resultTy);
+            toReturn["+"] = ofm_volume;
+            toReturn["activation_out"] = ofm_volume;
+
+            TensorType tensorResultTy = resultTy.cast<TensorType>();
+				unsigned num_output_neurons = tensorResultTy.getShape()[1];
+
+            // Find the size of the A and B operands
+            Type aType = getOperand(0)->getType();
+            unsigned a_volume = getTensorVolume(aType);
+
+            Type bType = getOperand(1)->getType();
+            unsigned b_volume = getTensorVolume(bType);
+
+            toReturn["activation_in"] = a_volume + b_volume;
+            return(toReturn);
+    }
+  }];
+}
 def aten_ConstantOp: aten_Op<"constant", [NoSideEffect]>,
                         Results<(outs AnyType)> {
   let summary = "Constant operator";
