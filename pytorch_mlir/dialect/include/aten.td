@@ -460,7 +460,7 @@ def aten_MaxPool2dOp: aten_Op<"max_pool2d", [NoSideEffect, StatisticsOpInterface
   }];
 }
 
-def aten_MaxPool2dWithIndiciesOp: aten_Op<"max_pool2d_with_indices", [NoSideEffect]>,
+def aten_MaxPool2dWithIndicesOp: aten_Op<"max_pool2d_with_indices", [NoSideEffect]>,
                         Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyType:$arg0,
@@ -471,9 +471,9 @@ def aten_MaxPool2dWithIndiciesOp: aten_Op<"max_pool2d_with_indices", [NoSideEffe
         AnyType:$arg5
   );
 
-  let summary = "MaxPool2dWithIndicies operator";
+  let summary = "MaxPool2dWithIndices operator";
   let description = [{
-    MaxPool2dWithIndicies operator
+    MaxPool2dWithIndices operator
   }];
 
 }
