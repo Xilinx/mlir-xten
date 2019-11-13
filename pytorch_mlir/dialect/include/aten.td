@@ -127,6 +127,7 @@ def aten_AddUnderOp: aten_Op<"add_", [NoSideEffect, StatisticsOpInterface]>,
     }
   }];
 }
+
 def aten_ConstantOp: aten_Op<"constant", [NoSideEffect]>,
                         Results<(outs AnyType)> {
   let summary = "Constant operator";
@@ -204,7 +205,7 @@ def aten_ReLUOp: aten_Op<"relu", [NoSideEffect, StatisticsOpInterface]>,
 }
 
 def aten_BatchNormOp: aten_Op<"batch_norm", [NoSideEffect, StatisticsOpInterface]>,
-                        Results<(outs AnyTensor)> {
+                        Results<(outs AnyTensor:$output, AnyTensor:$save_mean, AnyTensor:$save_invstd)> {
   let arguments = (
     ins AnyType:$arg0,
         AnyType:$arg1,
@@ -224,7 +225,7 @@ def aten_BatchNormOp: aten_Op<"batch_norm", [NoSideEffect, StatisticsOpInterface
   let extraClassDeclaration = [{
      std::map<std::string, unsigned>  updateStatistics() {
             std::map<std::string, unsigned>  toReturn;
-            Type resultTy = getResult()->getType();
+            Type resultTy = getResult(0)->getType();
             TensorType tensorResultTy = resultTy.cast<TensorType>();
 
             unsigned op_volume = getTensorVolume(tensorResultTy);
@@ -262,7 +263,7 @@ def aten_BatchNormOp: aten_Op<"batch_norm", [NoSideEffect, StatisticsOpInterface
 }
 
 def aten_NativeBatchNormOp: aten_Op<"native_batch_norm", [NoSideEffect, StatisticsOpInterface]>,
-                        Results<(outs AnyTensor)> {
+                        Results<(outs AnyTensor:$output, AnyTensor:$save_mean, AnyTensor:$save_invstd)> {
   let arguments = (
     ins AnyType:$arg0,
         AnyType:$arg1,
@@ -281,7 +282,7 @@ def aten_NativeBatchNormOp: aten_Op<"native_batch_norm", [NoSideEffect, Statisti
   let extraClassDeclaration = [{
      std::map<std::string, unsigned>  updateStatistics() {
             std::map<std::string, unsigned>  toReturn;
-            Type resultTy = getResult()->getType();
+            Type resultTy = getResult(0)->getType();
             TensorType tensorResultTy = resultTy.cast<TensorType>();
 
             unsigned op_volume = getTensorVolume(tensorResultTy);
@@ -555,6 +556,62 @@ def aten_DropoutOp: aten_Op<"dropout", [NoSideEffect]>,
   let summary = "Dropout operator";
   let description = [{
     Dropout operator
+  }];
+}
+
+def aten_ViewOp: aten_Op<"view", [NoSideEffect]>,
+                        Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$x,
+        AnyType:$size
+  );
+
+  let summary = "View operator";
+  let description = [{
+    View operator
+  }];
+
+}
+
+def aten_MeanOp: aten_Op<"mean", [NoSideEffect]>,
+                        Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$x,
+        AnyType:$dim,
+        AnyType:$keepdim
+  );
+
+  let summary = "mean operator";
+  let description = [{
+    mean operator
+  }];
+
+}
+
+def aten_AsStridedOp: aten_Op<"as_strided", [NoSideEffect]>,
+                        Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$x,
+        AnyType:$size,
+        AnyType:$stride
+  );
+
+  let summary = "as_strided operator";
+  let description = [{
+    as_strided operator
+  }];
+}
+
+def aten_MMOp: aten_Op<"mm", [NoSideEffect, SameOperandsAndResultElementType]>,
+                        Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$x,
+        AnyTensor:$y
+  );
+
+  let summary = "matrix multiply operator";
+  let description = [{
+    matrix multiply operator
   }];
 
 }
