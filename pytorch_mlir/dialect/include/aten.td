@@ -452,6 +452,80 @@ def aten_MMOp: aten_Op<"mm", [NoSideEffect, SameOperandsAndResultElementType]>,
   }];
 }
 
+def aten_MulOp: aten_Op<"mul", [NoSideEffect, StatisticsOpInterface]>,
+                Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$a,
+        AnyScalarOrTensor:$b
+  );
+
+  let summary = "mul operator";
+  let description = [{
+    mul operator
+  }];
+  let extraClassDeclaration = [{
+    /// Return the statistics.
+    std::map<std::string, unsigned>  updateStatistics() {
+      std::map<std::string, unsigned> toReturn;
+
+      Type resultTy = getResult()->getType();
+      unsigned ofm_volume = getTensorVolume(resultTy);
+      toReturn["+"] = ofm_volume;
+      toReturn["activation_out"] = ofm_volume;
+
+      TensorType tensorResultTy = resultTy.cast<TensorType>();
+      unsigned num_output_neurons = tensorResultTy.getShape()[1];
+
+      // Find the size of the A and B operands
+      Type aType = getOperand(0)->getType();
+      unsigned a_volume = getTensorVolume(aType);
+
+      Type bType = getOperand(1)->getType();
+      unsigned b_volume = getTensorVolume(bType);
+
+      toReturn["activation_in"] = a_volume + b_volume;
+      return(toReturn);
+    }
+  }];
+}
+
+def aten_MulUnderOp: aten_Op<"mul_", [NoSideEffect, StatisticsOpInterface]>,
+                     Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$a,
+        AnyScalarOrTensor:$b
+  );
+
+  let summary = "In-place mul operator";
+  let description = [{
+    In-place mul operator
+  }];
+  let extraClassDeclaration = [{
+    /// Return the statistics.
+    std::map<std::string, unsigned>  updateStatistics() {
+      std::map<std::string, unsigned> toReturn;
+
+      Type resultTy = getResult()->getType();
+      unsigned ofm_volume = getTensorVolume(resultTy);
+      toReturn["+"] = ofm_volume;
+      toReturn["activation_out"] = ofm_volume;
+
+      TensorType tensorResultTy = resultTy.cast<TensorType>();
+      unsigned num_output_neurons = tensorResultTy.getShape()[1];
+
+      // Find the size of the A and B operands
+      Type aType = getOperand(0)->getType();
+      unsigned a_volume = getTensorVolume(aType);
+
+      Type bType = getOperand(1)->getType();
+      unsigned b_volume = getTensorVolume(bType);
+
+      toReturn["activation_in"] = a_volume + b_volume;
+      return(toReturn);
+    }
+  }];
+}
+
 def aten_NativeBatchNormOp: aten_Op<"native_batch_norm", [NoSideEffect, StatisticsOpInterface]>,
                             Results<(outs AnyTensor:$output, AnyTensor:$save_mean, AnyTensor:$save_invstd)> {
   let arguments = (
