@@ -27,10 +27,16 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include <algorithm>
+#include <sstream>
 
 using namespace mlir;
+//using namespace edsc;
+using call = edsc::intrinsics::ValueBuilder<mlir::CallOp>;
+using constInt = edsc::intrinsics::constant_int;
+using constFloat = edsc::intrinsics::constant_float;
 
 namespace {
+
 /// Utility function for type casting: this is making the type checker happy,
 /// while delaying the actual work involved to convert the type. Most of the
 /// time both side of the cast (producer and consumer) will be lowered to a
@@ -54,15 +60,67 @@ Value *MemRefTypeCast(PatternRewriter &builder, Value *val) {
   return typeCast(builder, val, memRefType);
 }
 
-std::string getNextFuncName(ModuleOp module, std::string prefix)
-{
-  char idx = '0';
-  auto fn = module.lookupSymbol<FuncOp>(prefix+idx);
-  while (fn) {
-    idx++;
-    fn = module.lookupSymbol<FuncOp>(prefix+idx);
+std::string getMangledType(const Type ty) {
+  std::stringstream ret;
+
+  if (const MemRefType mrt = ty.dyn_cast<const MemRefType>()) {
+    ret << "M";
+    auto shape = mrt.getShape();
+    const Type elem = mrt.getElementType();
+    for (auto s : shape)
+      ret << s << "x";
+    ret << getMangledType(elem);
   }
-  return prefix+idx;
+  else if (FloatType ft = ty.dyn_cast<FloatType>()) {
+    ret << "F" << ft.getWidth();
+  }
+  else if (const IntegerType it = ty.dyn_cast<const IntegerType>()) {
+    ret << "I" << it.getWidth();
+  }
+  else if (const xilinx::aten::ATenListType alt = ty.dyn_cast<const xilinx::aten::ATenListType>()) {
+
+  }
+  else {
+    assert(0 && "unhandled type in getMangledType");
+  }
+  return ret.str();
+}
+
+std::string getMangledFuncName(ModuleOp module, std::string prefix, FunctionType fnTy) {
+  std::string sep = "_";
+
+  auto resultTy = fnTy.getResults();
+  auto operTy = fnTy.getInputs();
+
+  std::string ret = prefix;
+  for (const Type t : resultTy)
+    ret = ret + sep + getMangledType(t);
+  for (const Type t : operTy)
+    ret = ret + sep + getMangledType(t);
+
+  return ret;
+}
+
+FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value *> &operands, Type &retTy)
+{
+  Builder builder(module);
+
+  SmallVector<Type, 8> tys;
+  for (auto o : operands)
+    tys.push_back(o->getType());
+
+  auto fnTy = builder.getFunctionType(tys, {retTy});
+
+  std::string fnName = getMangledFuncName(module, "aten_"+prefix, fnTy);
+
+  auto fn = module.lookupSymbol<FuncOp>(fnName);
+
+  if (!fn) {
+    fn = FuncOp::create(builder.getUnknownLoc(), fnName, fnTy);
+    module.push_back(fn);
+  }
+
+  return fn;
 }
 
 /// Lower an aten.add to an affine loop nest.
@@ -94,6 +152,7 @@ public:
     Value *rhs = MemRefTypeCast(rewriter, operands[1]);
 
     using namespace edsc;
+
     ScopedContext scope(rewriter, loc);
     ValueHandle zero = intrinsics::constant_index(0);
     ValueHandle one = intrinsics::constant_index(1);
@@ -124,11 +183,11 @@ public:
   }
 };
 
-/// Lower conv2d
-class ConvolutionOpConversion : public ConversionPattern {
+/// Lower Add
+class AddOpConversion : public ConversionPattern {
 public:
-  explicit ConvolutionOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::ConvolutionOp::getOperationName(), 1, context) {}
+  explicit AddOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::AddOp::getOperationName(), 1, context) {}
 
   PatternMatchResult
   matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
@@ -139,58 +198,75 @@ public:
     Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
                                                 tensorResultTy.getElementType(),
                                                 {}, 0);
-    FuncOp convFunc = getConvolution2dForward(op->getParentOfType<ModuleOp>(),
-                                              operands,
-                                              memRefResultTy);
-
-    using namespace edsc;
-    using call = intrinsics::ValueBuilder<mlir::CallOp>;
-    using constInt = intrinsics::constant_int;
 
     auto loc = op->getLoc();
-    ScopedContext scope(rewriter, loc);
+    edsc::ScopedContext scope(rewriter, loc);
 
-    ValueHandle xVal(operands[0]);
-    ValueHandle wVal(operands[1]);
-    ValueHandle bVal(operands[2]);
+    edsc::ValueHandle xVal(operands[0]);
+    edsc::ValueHandle yVal(operands[1]);
 
-    auto unpack = [](auto &op, auto &v) -> void {
-      auto co = cast<xilinx::aten::ConstantOp>(op->getDefiningOp());
-      DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
-      for (auto i : a.getIntValues())
-        v.push_back(i.getSExtValue());
-    };
+    auto co = cast<xilinx::aten::ConstantOp>(operands[2]->getDefiningOp());
+    auto ia = co.getAttrOfType<IntegerAttr>("value");
+    APInt iaVal = ia.getValue();
 
-    std::vector<uint64_t> pad, kernel, stride;
-    unpack(operands[3], pad);
-    unpack(operands[4], kernel);
-    unpack(operands[5], stride);
+    ArrayRef<Value*> callops{xVal, yVal, constInt(iaVal.getSExtValue(), 32)};
 
-    auto new_call = call(memRefResultTy, rewriter.getSymbolRefAttr(convFunc),
-                         {xVal, wVal, bVal,
-                          constInt(pad[0],32),
-                          constInt(kernel[0],32),
-                          constInt(stride[0],32)});
+    FuncOp addFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                              "add", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(addFunc),
+                         callops);
+
     rewriter.replaceOp(op, {new_call});
     return matchSuccess();
   }
+};
 
-  FuncOp getConvolution2dForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
+/// Lower Addmm
+class AddmmOpConversion : public ConversionPattern {
+public:
+  explicit AddmmOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::AddmmOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
   {
-    std::string fnName = getNextFuncName(module, "conv2d_forward_");
-    auto convFunc = module.lookupSymbol<FuncOp>(fnName);
+    Type resultTy = op->getResult(0)->getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
 
-    Builder builder(module);
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
 
-    auto i32Ty = mlir::IntegerType::get(32, module.getContext());
-    auto convFuncTy = builder.getFunctionType({operands[0]->getType(),
-                                               operands[1]->getType(),
-                                               operands[2]->getType(),
-                                               i32Ty, i32Ty, i32Ty},
-                                              {retTy});
-    convFunc = FuncOp::create(builder.getUnknownLoc(), fnName, convFuncTy);
-    module.push_back(convFunc);
-    return convFunc;
+    edsc::ValueHandle aVal(operands[0]);
+    edsc::ValueHandle bVal(operands[1]);
+    edsc::ValueHandle cVal(operands[2]);
+
+    auto co0 = cast<xilinx::aten::ConstantOp>(operands[3]->getDefiningOp());
+    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    APInt iaVal0 = ia0.getValue();
+
+    auto co1 = cast<xilinx::aten::ConstantOp>(operands[4]->getDefiningOp());
+    auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
+    APInt iaVal1 = ia1.getValue();
+
+    ArrayRef<Value*> callops{aVal, bVal, cVal,
+                             constInt(iaVal0.getSExtValue(), 32),
+                             constInt(iaVal1.getSExtValue(), 32)};
+
+    FuncOp addmmFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                 "addmm", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(addmmFunc),
+                         callops);
+
+    rewriter.replaceOp(op, {new_call});
+    return matchSuccess();
   }
 };
 
@@ -209,23 +285,15 @@ public:
     Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
                                                 tensorResultTy.getElementType(),
                                                 {}, 0);
-    FuncOp batchnormFunc = getBatchNorm2dForward(op->getParentOfType<ModuleOp>(),
-                                                 operands,
-                                                 memRefResultTy);
-
-    using namespace edsc;
-    using call = intrinsics::ValueBuilder<mlir::CallOp>;
-    using constInt = intrinsics::constant_int;
-    using constFloat = intrinsics::constant_float;
 
     auto loc = op->getLoc();
-    ScopedContext scope(rewriter, loc);
+    edsc::ScopedContext scope(rewriter, loc);
 
-    ValueHandle aVal(operands[0]);
-    ValueHandle bVal(operands[1]);
-    ValueHandle cVal(operands[2]);
-    ValueHandle dVal(operands[3]);
-    ValueHandle eVal(operands[4]);
+    edsc::ValueHandle aVal(operands[0]);
+    edsc::ValueHandle bVal(operands[1]);
+    edsc::ValueHandle cVal(operands[2]);
+    edsc::ValueHandle dVal(operands[3]);
+    edsc::ValueHandle eVal(operands[4]);
 
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[5]->getDefiningOp());
     auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
@@ -245,36 +313,74 @@ public:
 
     auto f32Ty = FloatType::getF32(op->getContext());
 
-    auto new_call = call(memRefResultTy, rewriter.getSymbolRefAttr(batchnormFunc),
-                         {aVal, bVal, cVal, dVal, eVal,
-                          constInt(iaVal0.getZExtValue(), 1),
-                          constFloat(faVal0, f32Ty),
-                          constFloat(faVal1, f32Ty),
-                          constInt(iaVal1.getZExtValue(), 1)
-                          });
+    ArrayRef<Value*> callops{aVal, bVal, cVal, dVal, eVal,
+                             constInt(iaVal0.getZExtValue(), 1),
+                             constFloat(faVal0, f32Ty),
+                             constFloat(faVal1, f32Ty),
+                             constInt(iaVal1.getZExtValue(), 1)};
+
+    FuncOp batchnormFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                     "batch_norm", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(batchnormFunc),
+                         callops);
+
     rewriter.replaceOp(op, {new_call});
     return matchSuccess();
   }
+};
 
-  FuncOp getBatchNorm2dForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
+/// Lower conv2d
+class ConvolutionOpConversion : public ConversionPattern {
+public:
+  explicit ConvolutionOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::ConvolutionOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
   {
-    std::string fnName = getNextFuncName(module, "batch_norm_forward_");
-    auto batchnormFunc = module.lookupSymbol<FuncOp>(fnName);
+    Type resultTy = op->getResult(0)->getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
 
-    Builder builder(module);
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
 
-    auto boolTy = mlir::IntegerType::get(1, module.getContext());
-    auto f32Ty = FloatType::getF32(module.getContext());
-    auto batchnormFuncTy = builder.getFunctionType({operands[0]->getType(),
-                                                    operands[1]->getType(),
-                                                    operands[2]->getType(),
-                                                    operands[3]->getType(),
-                                                    operands[4]->getType(),
-                                                    boolTy, f32Ty, f32Ty, boolTy},
-                                                   {retTy});
-    batchnormFunc = FuncOp::create(builder.getUnknownLoc(), fnName, batchnormFuncTy);
-    module.push_back(batchnormFunc);
-    return batchnormFunc;
+    edsc::ValueHandle xVal(operands[0]);
+    edsc::ValueHandle wVal(operands[1]);
+    edsc::ValueHandle bVal(operands[2]);
+
+    auto unpack = [](auto &op, auto &v) -> void {
+      auto co = cast<xilinx::aten::ConstantOp>(op->getDefiningOp());
+      DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+      for (auto i : a.getIntValues())
+        v.push_back(i.getSExtValue());
+    };
+
+    std::vector<uint64_t> pad, kernel, stride;
+    unpack(operands[3], pad);
+    unpack(operands[4], kernel);
+    unpack(operands[5], stride);
+
+    auto padCI = constInt(pad[0],32);
+    auto kernelCI = constInt(kernel[0], 32);
+    auto strideCI = constInt(stride[0], 32);
+
+    ArrayRef<Value*> callops{xVal, wVal, bVal, padCI, kernelCI, strideCI};
+
+    FuncOp convFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                "conv2d", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(convFunc),
+                         callops);
+
+    rewriter.replaceOp(op, {new_call});
+    return matchSuccess();
   }
 };
 
@@ -293,19 +399,11 @@ public:
     Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
                                                 tensorResultTy.getElementType(),
                                                 {}, 0);
-    FuncOp maxpoolFunc = getMaxPool2dForward(op->getParentOfType<ModuleOp>(),
-                                             operands,
-                                             memRefResultTy);
-
-    using namespace edsc;
-    using call = intrinsics::ValueBuilder<mlir::CallOp>;
-    using constInt = intrinsics::constant_int;
-    using constFloat = intrinsics::constant_float;
 
     auto loc = op->getLoc();
-    ScopedContext scope(rewriter, loc);
+    edsc::ScopedContext scope(rewriter, loc);
 
-    ValueHandle xVal(operands[0]);
+    edsc::ValueHandle xVal(operands[0]);
 
     auto unpack = [](auto &op, auto &v) -> void {
       auto co = cast<xilinx::aten::ConstantOp>(op->getDefiningOp());
@@ -319,152 +417,20 @@ public:
     unpack(operands[2], kernel);
     unpack(operands[3], stride);
 
-    auto new_call = call(memRefResultTy, rewriter.getSymbolRefAttr(maxpoolFunc),
-                         {xVal,
-                          constInt(pad[0],32),
-                          constInt(kernel[0],32),
-                          constInt(stride[0],32)
-                          });
+    ArrayRef<Value*> callops{xVal,
+                             constInt(pad[0],32),
+                             constInt(kernel[0],32),
+                             constInt(stride[0],32)};
+
+    FuncOp maxpoolFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                   "max_pool2d", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(maxpoolFunc),
+                         callops);
+
     rewriter.replaceOp(op, {new_call});
     return matchSuccess();
-  }
-
-  FuncOp getMaxPool2dForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
-  {
-    std::string fnName = getNextFuncName(module, "maxpool_forward_");
-    auto maxpoolFunc = module.lookupSymbol<FuncOp>(fnName);
-
-    Builder builder(module);
-
-    auto i32Ty = mlir::IntegerType::get(32, module.getContext());
-    auto maxpoolFuncTy = builder.getFunctionType({operands[0]->getType(),
-                                                  i32Ty, i32Ty, i32Ty},
-                                                 {retTy});
-    maxpoolFunc = FuncOp::create(builder.getUnknownLoc(), fnName, maxpoolFuncTy);
-    module.push_back(maxpoolFunc);
-    return maxpoolFunc;
-  }
-};
-
-/// Lower Add
-class AddOpConversion : public ConversionPattern {
-public:
-  explicit AddOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::AddOp::getOperationName(), 1, context) {}
-
-  PatternMatchResult
-  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
-                  ConversionPatternRewriter &rewriter) const override
-  {
-    Type resultTy = op->getResult(0)->getType();
-    TensorType tensorResultTy = resultTy.cast<TensorType>();
-    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
-                                                tensorResultTy.getElementType(),
-                                                {}, 0);
-    FuncOp addFunc = getAddForward(op->getParentOfType<ModuleOp>(),
-                                     operands,
-                                     memRefResultTy);
-
-    using namespace edsc;
-    using call = intrinsics::ValueBuilder<mlir::CallOp>;
-    using constInt = intrinsics::constant_int;
-
-    auto loc = op->getLoc();
-    ScopedContext scope(rewriter, loc);
-
-    ValueHandle xVal(operands[0]);
-    ValueHandle yVal(operands[1]);
-
-    auto co = cast<xilinx::aten::ConstantOp>(operands[2]->getDefiningOp());
-    auto ia = co.getAttrOfType<IntegerAttr>("value");
-    APInt iaVal = ia.getValue();
-
-    auto new_call = call(memRefResultTy, rewriter.getSymbolRefAttr(addFunc),
-                         {xVal, yVal, constInt(iaVal.getSExtValue(), 32)});
-    rewriter.replaceOp(op, {new_call});
-    return matchSuccess();
-  }
-
-  FuncOp getAddForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
-  {
-    std::string fnName = getNextFuncName(module, "add_forward_");
-    auto addFunc = module.lookupSymbol<FuncOp>(fnName);
-
-    Builder builder(module);
-
-    auto addFuncTy = builder.getFunctionType({operands[0]->getType(),
-                                              operands[1]->getType(),
-                                              operands[2]->getType()},
-                                              {retTy});
-    addFunc = FuncOp::create(builder.getUnknownLoc(), fnName, addFuncTy);
-    module.push_back(addFunc);
-    return addFunc;
-  }
-};
-
-/// Lower Addmm
-class AddmmOpConversion : public ConversionPattern {
-public:
-  explicit AddmmOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::AddmmOp::getOperationName(), 1, context) {}
-
-  PatternMatchResult
-  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
-                  ConversionPatternRewriter &rewriter) const override
-  {
-    Type resultTy = op->getResult(0)->getType();
-    TensorType tensorResultTy = resultTy.cast<TensorType>();
-    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
-                                                tensorResultTy.getElementType(),
-                                                {}, 0);
-    FuncOp addmmFunc = getAddmmForward(op->getParentOfType<ModuleOp>(),
-                                     operands,
-                                     memRefResultTy);
-
-    using namespace edsc;
-    using call = intrinsics::ValueBuilder<mlir::CallOp>;
-    using constInt = intrinsics::constant_int;
-
-    auto loc = op->getLoc();
-    ScopedContext scope(rewriter, loc);
-
-    ValueHandle aVal(operands[0]);
-    ValueHandle bVal(operands[1]);
-    ValueHandle cVal(operands[2]);
-
-    auto co0 = cast<xilinx::aten::ConstantOp>(operands[3]->getDefiningOp());
-    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
-    APInt iaVal0 = ia0.getValue();
-
-    auto co1 = cast<xilinx::aten::ConstantOp>(operands[4]->getDefiningOp());
-    auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
-    APInt iaVal1 = ia1.getValue();
-
-    auto new_call = call(memRefResultTy, rewriter.getSymbolRefAttr(addmmFunc),
-                         {aVal, bVal, cVal,
-                          constInt(iaVal0.getSExtValue(), 32),
-                          constInt(iaVal1.getSExtValue(), 32),
-                          });
-    rewriter.replaceOp(op, {new_call});
-    return matchSuccess();
-  }
-
-  FuncOp getAddmmForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
-  {
-    std::string fnName = getNextFuncName(module, "addmm_forward_");
-    auto addmmFunc = module.lookupSymbol<FuncOp>(fnName);
-
-    Builder builder(module);
-
-    auto i32Ty = mlir::IntegerType::get(32, module.getContext());
-    auto addmmFuncTy = builder.getFunctionType({operands[0]->getType(),
-                                              operands[1]->getType(),
-                                              operands[2]->getType(),
-                                              i32Ty, i32Ty},
-                                              {retTy});
-    addmmFunc = FuncOp::create(builder.getUnknownLoc(), fnName, addmmFuncTy);
-    module.push_back(addmmFunc);
-    return addmmFunc;
   }
 };
 
@@ -483,36 +449,23 @@ public:
     Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
                                                 tensorResultTy.getElementType(),
                                                 {}, 0);
-    FuncOp reluFunc = getReLUForward(op->getParentOfType<ModuleOp>(),
-                                     operands,
-                                     memRefResultTy);
-
-    using namespace edsc;
-    using call = intrinsics::ValueBuilder<mlir::CallOp>;
 
     auto loc = op->getLoc();
-    ScopedContext scope(rewriter, loc);
+    edsc::ScopedContext scope(rewriter, loc);
 
-    ValueHandle xVal(operands[0]);
+    edsc::ValueHandle xVal(operands[0]);
 
-    auto new_call = call(memRefResultTy, rewriter.getSymbolRefAttr(reluFunc),
-                         {xVal});
+    ArrayRef<Value*> callops{xVal};
+
+    FuncOp reluFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                "relu", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(reluFunc),
+                         callops);
+
     rewriter.replaceOp(op, {new_call});
     return matchSuccess();
-  }
-
-  FuncOp getReLUForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
-  {
-    std::string fnName = getNextFuncName(module, "relu_forward_");
-    auto reluFunc = module.lookupSymbol<FuncOp>(fnName);
-
-    Builder builder(module);
-
-    auto reluFuncTy = builder.getFunctionType({operands[0]->getType()},
-                                              {retTy});
-    reluFunc = FuncOp::create(builder.getUnknownLoc(), fnName, reluFuncTy);
-    module.push_back(reluFunc);
-    return reluFunc;
   }
 };
 
@@ -531,36 +484,23 @@ public:
     Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
                                                 tensorResultTy.getElementType(),
                                                 {}, 0);
-    FuncOp transposeFunc = getTransposeForward(op->getParentOfType<ModuleOp>(),
-                                     operands,
-                                     memRefResultTy);
-
-    using namespace edsc;
-    using call = intrinsics::ValueBuilder<mlir::CallOp>;
 
     auto loc = op->getLoc();
-    ScopedContext scope(rewriter, loc);
+    edsc::ScopedContext scope(rewriter, loc);
 
-    ValueHandle xVal(operands[0]);
+    edsc::ValueHandle xVal(operands[0]);
 
-    auto new_call = call(memRefResultTy, rewriter.getSymbolRefAttr(transposeFunc),
-                         {xVal});
+    ArrayRef<Value*> callops{xVal};
+
+    FuncOp transposeFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                     "t", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(transposeFunc),
+                         callops);
+
     rewriter.replaceOp(op, {new_call});
     return matchSuccess();
-  }
-
-  FuncOp getTransposeForward(ModuleOp module, ArrayRef<Value *> &operands, Type &retTy) const
-  {
-    std::string fnName = getNextFuncName(module, "transpose_forward_");
-    auto transposeFunc = module.lookupSymbol<FuncOp>(fnName);
-
-    Builder builder(module);
-
-    auto transposeFuncTy = builder.getFunctionType({operands[0]->getType()},
-                                              {retTy});
-    transposeFunc = FuncOp::create(builder.getUnknownLoc(), fnName, transposeFuncTy);
-    module.push_back(transposeFunc);
-    return transposeFunc;
   }
 };
 
