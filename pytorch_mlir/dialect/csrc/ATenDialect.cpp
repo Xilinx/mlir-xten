@@ -1,5 +1,6 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
 #include "ATenDialect.h"
+#include "mlir/IR/DialectImplementation.h"
 
 using namespace mlir;
 
@@ -45,40 +46,38 @@ mlir::Type ATenListType::getElementType() {
   return getImpl()->getElementType();
 }
 
-mlir::Type ATenDialect::parseType(llvm::StringRef tyData,
-                                  mlir::Location loc) const {
+mlir::Type ATenDialect::parseType(DialectAsmParser &parser) const {
+  Location loc = parser.getEncodedSourceLoc(parser.getNameLoc());
 
-  llvm::StringRef tyDataOrig(tyData.str());
+  // All types start with an identifier that we switch on.
+  StringRef typeNameSpelling;
+  if (failed(parser.parseKeyword(&typeNameSpelling)))
+    return nullptr;
 
-  if (tyData.startswith("list<")) {
-    // extract the element type T from 'aten.list<T>'
-    tyData = tyData.drop_front(StringRef("list<").size()).drop_back(1);
-
-    // int
-    if (tyData.startswith("i")) {
-      unsigned int width = atoi(tyData.drop_front(1).str().c_str());
-      return ATenListType::get(mlir::IntegerType::get(width, getContext()));
-    }
-
-    // float
-    if (tyData.startswith("f")) {
-      //int width = atoi(tyData.drop_front(1).str().c_str());
-    }
+  if (typeNameSpelling == "list") {
+    if(failed(parser.parseLess()))
+      return nullptr;
+    Type t;
+    if(failed(parser.parseType(t)))
+      return nullptr;
+    if(failed(parser.parseGreater()))
+      return nullptr;
+    return ATenListType::get(t);
   }
 
-  emitError(loc, "Invalid ATen type '" + tyDataOrig + "'");
+  parser.emitError(parser.getCurrentLocation(), "Invalid ATen type '" + typeNameSpelling + "'");
   return nullptr;
 }
 
 /// Print a ATenListType
-void ATenDialect::printType(mlir::Type type, raw_ostream &os) const {
+void ATenDialect::printType(mlir::Type type, DialectAsmPrinter &os) const {
   auto ty = type.dyn_cast<ATenListType>();
   if (!ty) {
     os << "unknown aten type";
     return;
   }
   os << "list<";
-  os << ty.getElementType();
+  os.getStream() << ty.getElementType();
   os << ">";
 }
 

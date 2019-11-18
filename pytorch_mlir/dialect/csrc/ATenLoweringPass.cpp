@@ -85,23 +85,25 @@ public:
     using namespace edsc;
     ScopedContext scope(rewriter, loc);
     ValueHandle zero = intrinsics::constant_index(0);
+    ValueHandle one = intrinsics::constant_index(1);
     MemRefView vRes(result), vLHS(lhs), vRHS(rhs);
     IndexedValue iRes(result), iLHS(lhs), iRHS(rhs);
     IndexHandle i, j, k, M(vRes.ub(0));
+    ValueHandle *pi = &i;
     if (vRes.rank() == 1) {
-      LoopNestBuilder({&i}, {zero}, {M},
-                      {1})([&] { iRes(i) = iLHS(i) + iRHS(i); });
+      LoopNestBuilder({pi}, {zero}, {M},
+                      {one})([&] { iRes(i) = iLHS(i) + iRHS(i); });
     } else if (vRes.rank() == 2) {
       IndexHandle N(vRes.ub(1));
       LoopNestBuilder({&i, &j}, {zero, zero}, {M, N},
-                      {1, 1})([&] { iRes(i, j) = iLHS(i, j) + iRHS(i, j); });
+                      {one, one})([&] { iRes(i, j) = iLHS(i, j) + iRHS(i, j); });
     } else {
         assert(vRes.rank() == 3 && "only ranks <= 3 are supported right now");
         IndexHandle N(vRes.ub(1));
         IndexHandle O(vRes.ub(2));
-        
+
       LoopNestBuilder({&i, &j, &k}, {zero, zero, zero}, {M, N, O},
-                      {1, 1, 1})([&] { iRes(i, j, k) = iLHS(i, j, k) + iRHS(i, j, k); });
+                      {one, one, one})([&] { iRes(i, j, k) = iLHS(i, j, k) + iRHS(i, j, k); });
     }
 
     // Return the newly allocated buffer, with a type.cast to preserve the
@@ -637,7 +639,7 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
     //convertToLLVM(getModule());
   }
 
-}; 
+};
 
 }// namespace
 

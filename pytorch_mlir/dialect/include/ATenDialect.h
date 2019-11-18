@@ -59,13 +59,12 @@ public:
   /// Parse a type registered to this dialect. Overridding this method is
   /// required for dialects that have custom types.
   /// Technically this is only needed to be able to round-trip to textual IR.
-  mlir::Type parseType(llvm::StringRef tyData,
-                       mlir::Location loc) const override;
+  mlir::Type parseType(DialectAsmParser &parser) const override;
 
   /// Print a type registered to this dialect. Overridding this method is
   /// only required for dialects that have custom types.
   /// Technically this is only needed to be able to round-trip to textual IR.
-  void printType(mlir::Type type, llvm::raw_ostream &os) const override;
+  void printType(mlir::Type type, DialectAsmPrinter &os) const override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

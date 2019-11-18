@@ -35,7 +35,9 @@ ATEN_TBGEN_FILES = $(BUILD_DIR)/include/ATenOps.h.inc \
 				   $(BUILD_DIR)/include/ATenToStd.cpp.inc
 
 LLVM_CXX_FLAGS = $(shell ${LLVM_BIN}/llvm-config --cppflags)
-LLVM_LIBS = $(shell ${LLVM_BIN}/llvm-config --libs)
+LLVM_LIBS = -lLLVM-10git
+#$(shell ${LLVM_BIN}/llvm-config --libs)
+LLVM_SYSTEM_LIBS = $(shell ${LLVM_BIN}/llvm-config --system-libs)
 LLVM_LIBDIR = $(shell ${LLVM_BIN}/llvm-config --libdir)
 LLVM_LD_FLAGS = $(shell ${LLVM_BIN}/llvm-config --ldflags) -Wl,-rpath=$(LLVM_LIBDIR)
 
@@ -119,7 +121,7 @@ $(BUILD_DIR)/pybind.so: $(MLIR_PYBIND_DIR)/pybind.cpp makefile
 		-I$(PYBIND11_INCLUDE) \
 		-o $@ $< \
 		$(LLVM_LD_FLAGS) \
-		-lLLVM -Wl,-rpath=$(BUILD_DIR)
+		 -Wl,-rpath=$(BUILD_DIR)
 
 $(BUILD_DIR)/pybind_aten.so: $(SRCDIR)/pybind_aten.cpp $(MLIR_PYBIND_DIR)/pybind.cpp $(BUILD_DIR)/libaten.a makefile
 	$(CXX) -std=c++14 -O3 -shared -fPIC -fpermissive \
@@ -129,12 +131,13 @@ $(BUILD_DIR)/pybind_aten.so: $(SRCDIR)/pybind_aten.cpp $(MLIR_PYBIND_DIR)/pybind
 		-I$(PYBIND11_INCLUDE) \
 		-o $@ $< \
 		$(LLVM_LD_FLAGS) \
+		$(LLVM_LIBS) \
 		$(BUILD_DIR)/libaten.a \
-		-lLLVM -Wl,-rpath=$(BUILD_DIR)
+		-Wl,-rpath=$(BUILD_DIR)
 
 ###################
 # test.exe
 ###################
 
 $(BUILD_DIR)/test.exe: $(OBJDIR)/test.o $(BUILD_DIR)/libaten.a makefile
-	$(CXX) $< $(BUILD_DIR)/libaten.a  $(LD_FLAGS) -o $@ -lLLVM  -lpthread -lxml2 -lcurses -L$(BUILD_DIR)
+	$(CXX) $< $(BUILD_DIR)/libaten.a  $(LD_FLAGS) -o $@ $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) -lcurses -L$(BUILD_DIR)
