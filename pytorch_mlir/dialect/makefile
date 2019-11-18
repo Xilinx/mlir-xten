@@ -66,8 +66,7 @@ export PYTHONPATH = ${TEST_BUILD_PATH}:${TEST_SRC_PATH}/../..
 export PATH := ${PATH}:$(realpath ${LLVM_BIN})
 
 test: build
-	${LLVM_BIN}/llvm-lit -v -s test --path=$(TEST_BUILD_PATH)
-	${LLVM_BIN}/llvm-lit -v -s ../mlir_export/test --path=$(TEST_BUILD_PATH)
+	${LLVM_BIN}/llvm-lit -v -s ./test --path=$(TEST_BUILD_PATH)
 
 clean:
 	rm -rf $(BUILD_DIR) $(TARGETS)
