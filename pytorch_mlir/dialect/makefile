@@ -56,7 +56,7 @@ LD_FLAGS = -std=c++14 -O0 -g $(LLVM_LD_FLAGS) $(MLIR_LD_FLAGS) -L$(PYTHON_PROOT)
 # rules
 ###################
 
-TARGETS = $(addprefix $(BUILD_DIR)/,test.exe) # pybind.so pybind_aten.so)
+TARGETS = $(addprefix $(BUILD_DIR)/,test.exe pybind.so pybind_aten.so)
 
 build: $(TARGETS)
 
@@ -120,7 +120,7 @@ $(BUILD_DIR)/pybind.so: $(MLIR_PYBIND_DIR)/pybind.cpp makefile
 		-I$(PYBIND11_INCLUDE) \
 		-o $@ $< \
 		$(LLVM_LD_FLAGS) \
-		 -Wl,-rpath=$(BUILD_DIR)
+		-lLLVM-10git -Wl,-rpath=$(BUILD_DIR)
 
 $(BUILD_DIR)/pybind_aten.so: $(SRCDIR)/pybind_aten.cpp $(MLIR_PYBIND_DIR)/pybind.cpp $(BUILD_DIR)/libaten.a makefile
 	$(CXX) -std=c++14 -O3 -shared -fPIC -fpermissive \
@@ -132,7 +132,7 @@ $(BUILD_DIR)/pybind_aten.so: $(SRCDIR)/pybind_aten.cpp $(MLIR_PYBIND_DIR)/pybind
 		$(LLVM_LD_FLAGS) \
 		$(LLVM_LIBS) \
 		$(BUILD_DIR)/libaten.a \
-		-Wl,-rpath=$(BUILD_DIR)
+		-lLLVM-10git -Wl,-rpath=$(BUILD_DIR)
 
 ###################
 # test.exe
