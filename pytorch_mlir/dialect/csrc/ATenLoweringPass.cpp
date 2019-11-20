@@ -81,7 +81,9 @@ std::string getMangledType(const Type ty) {
 
   }
   else {
-    assert(0 && "unhandled type in getMangledType");
+    Type t = ty;
+    t.dump();
+    ;//assert(0 && "unhandled type in getMangledType");
   }
   return ret.str();
 }
@@ -111,7 +113,7 @@ FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value *> &operand
 
   auto fnTy = builder.getFunctionType(tys, {retTy});
 
-  std::string fnName = getMangledFuncName(module, "aten_"+prefix, fnTy);
+  std::string fnName = getMangledFuncName(module, prefix+"_AtenAcapOp", fnTy);
 
   auto fn = module.lookupSymbol<FuncOp>(fnName);
 
@@ -369,7 +371,7 @@ public:
     auto padCI = constInt(pad[0],32);
     auto kernelCI = constInt(kernel[0], 32);
     auto strideCI = constInt(stride[0], 32);
-
+ 
     ArrayRef<Value*> callops{xVal, wVal, bVal, padCI, kernelCI, strideCI};
 
     FuncOp convFunc = getATenFn(op->getParentOfType<ModuleOp>(),
@@ -504,6 +506,51 @@ public:
   }
 };
 
+/// Lower view
+class ViewOpConversion : public ConversionPattern {
+public:
+  explicit ViewOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::ViewOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    Type resultTy = op->getResult(0)->getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    edsc::ValueHandle xVal(operands[0]);
+
+    // construct the shape argument
+    std::vector<constInt> shape;
+    auto co = cast<xilinx::aten::ConstantOp>(operands[1]->getDefiningOp());
+    DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+    for (auto i : a.getIntValues())
+      shape.push_back(constInt(i.getSExtValue(),32));
+
+    // pad out the shape with -1 to make it 4d
+    while (shape.size() < 4)
+      shape.push_back(constInt(-1,32));
+
+    ArrayRef<Value*> callops{xVal, shape[0], shape[1], shape[2], shape[3]};
+
+    FuncOp viewFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                "view", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(viewFunc),
+                         callops);
+
+    rewriter.replaceOp(op, {new_call});
+    return matchSuccess();
+  }
+};
 /// This is the main class registering our individual converter classes with
 /// the DialectConversion framework in MLIR.
 class ATenTypeConverter : public TypeConverter {
@@ -544,7 +591,7 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
     atenPatterns.insert<AddOpConversion, ConvolutionOpConversion,
                         ReLUOpConversion, TransposeOpConversion,
                         BatchNormOpConversion, MaxPoolOpConversion,
-                        AddmmOpConversion>(
+                        AddmmOpConversion, ViewOpConversion>(
         &getContext());
 
     mlir::populateFuncOpTypeConversionPattern(atenPatterns,
