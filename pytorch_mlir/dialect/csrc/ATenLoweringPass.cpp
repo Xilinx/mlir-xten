@@ -214,7 +214,7 @@ public:
     ArrayRef<Value*> callops{xVal, yVal, constInt(iaVal.getSExtValue(), 32)};
 
     FuncOp addFunc = getATenFn(op->getParentOfType<ModuleOp>(),
-                              "add", callops, memRefResultTy);
+                               "add", callops, memRefResultTy);
 
     auto new_call = call(memRefResultTy,
                          rewriter.getSymbolRefAttr(addFunc),
@@ -436,6 +436,41 @@ public:
   }
 };
 
+/// Lower Mul
+class MulOpConversion : public ConversionPattern {
+public:
+  explicit MulOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::MulOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    Type resultTy = op->getResult(0)->getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    edsc::ValueHandle xVal(operands[0]);
+    edsc::ValueHandle yVal(operands[1]);
+
+    ArrayRef<Value*> callops{xVal, yVal};
+
+    FuncOp mulFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                               "mul", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(mulFunc),
+                         callops);
+
+    rewriter.replaceOp(op, {new_call});
+    return matchSuccess();
+  }
+};
 /// Lower ReLU
 class ReLUOpConversion : public ConversionPattern {
 public:
@@ -591,7 +626,8 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
     atenPatterns.insert<AddOpConversion, ConvolutionOpConversion,
                         ReLUOpConversion, TransposeOpConversion,
                         BatchNormOpConversion, MaxPoolOpConversion,
-                        AddmmOpConversion, ViewOpConversion>(
+                        AddmmOpConversion, ViewOpConversion,
+                        MulOpConversion>(
         &getContext());
 
     mlir::populateFuncOpTypeConversionPattern(atenPatterns,
