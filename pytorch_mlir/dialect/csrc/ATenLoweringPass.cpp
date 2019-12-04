@@ -415,17 +415,75 @@ public:
     };
 
     std::vector<uint64_t> pad, kernel, stride;
-    unpack(operands[1], pad);
-    unpack(operands[2], kernel);
-    unpack(operands[3], stride);
+    unpack(operands[1], kernel);
+    unpack(operands[2], stride);
+    unpack(operands[3], pad);
 
     ArrayRef<Value*> callops{xVal,
-                             constInt(pad[0],32),
                              constInt(kernel[0],32),
-                             constInt(stride[0],32)};
+                             constInt(stride[0],32),
+                             constInt(pad[0],32)};
 
     FuncOp maxpoolFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                    "max_pool2d", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(maxpoolFunc),
+                         callops);
+
+    rewriter.replaceOp(op, {new_call});
+    return matchSuccess();
+  }
+};
+
+/// Lower maxpool2d
+class MaxPool2dWithIndicesOpConversion : public ConversionPattern {
+public:
+  explicit MaxPool2dWithIndicesOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::MaxPool2dWithIndicesOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    Type resultTy = op->getResult(0)->getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    edsc::ValueHandle xVal(operands[0]);
+
+    auto unpack = [](auto &op, auto &v) -> void {
+      auto co = cast<xilinx::aten::ConstantOp>(op->getDefiningOp());
+      DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+      for (auto i : a.getIntValues())
+        v.push_back(i.getSExtValue());
+    };
+
+    std::vector<uint64_t> pad, kernel, stride, dilation;
+    unpack(operands[1], kernel);
+    unpack(operands[2], stride);
+    unpack(operands[3], pad);
+    unpack(operands[4], dilation);
+
+    //ceil_mode
+    auto co = cast<xilinx::aten::ConstantOp>(operands[5]->getDefiningOp());
+    auto ia = co.getAttrOfType<IntegerAttr>("value");
+    APInt iaVal = ia.getValue();
+
+    ArrayRef<Value*> callops{xVal,
+                             constInt(kernel[0],32),
+                             constInt(stride[0],32),
+                             constInt(pad[0],32),
+                             constInt(dilation[0],32),
+                             constInt(iaVal.getZExtValue(), 1)};
+
+    FuncOp maxpoolFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                   "max_pool2d_with_indices", callops, memRefResultTy);
 
     auto new_call = call(memRefResultTy,
                          rewriter.getSymbolRefAttr(maxpoolFunc),
@@ -501,6 +559,62 @@ public:
 
     auto new_call = call(memRefResultTy,
                          rewriter.getSymbolRefAttr(mulFunc),
+                         callops);
+
+    rewriter.replaceOp(op, {new_call});
+    return matchSuccess();
+  }
+};
+
+/// Lower batchnorm
+class NativeBatchNormOpConversion : public ConversionPattern {
+public:
+  explicit NativeBatchNormOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::NativeBatchNormOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    Type resultTy = op->getResult(0)->getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    edsc::ValueHandle aVal(operands[0]);
+    edsc::ValueHandle bVal(operands[1]);
+    edsc::ValueHandle cVal(operands[2]);
+    edsc::ValueHandle dVal(operands[3]);
+    edsc::ValueHandle eVal(operands[4]);
+
+    auto co0 = cast<xilinx::aten::ConstantOp>(operands[5]->getDefiningOp());
+    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    APInt iaVal0 = ia0.getValue();
+
+    auto co1 = cast<xilinx::aten::ConstantOp>(operands[6]->getDefiningOp());
+    auto fa0 = co1.getAttrOfType<FloatAttr>("value");
+    APFloat faVal0 = fa0.getValue();
+
+    auto co2 = cast<xilinx::aten::ConstantOp>(operands[7]->getDefiningOp());
+    auto fa1 = co2.getAttrOfType<FloatAttr>("value");
+    APFloat faVal1 = fa1.getValue();
+
+    auto f32Ty = FloatType::getF32(op->getContext());
+
+    ArrayRef<Value*> callops{aVal, bVal, cVal, dVal, eVal,
+                             constInt(iaVal0.getZExtValue(), 1),
+                             constFloat(faVal0, f32Ty),
+                             constFloat(faVal1, f32Ty)};
+
+    FuncOp batchnormFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                     "native_batch_norm", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(batchnormFunc),
                          callops);
 
     rewriter.replaceOp(op, {new_call});
@@ -662,7 +776,8 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
     // c++ patterns
     atenPatterns.insert<AddOpConversion, ConvolutionOpConversion,
                         ReLUOpConversion, TransposeOpConversion,
-                        BatchNormOpConversion, MaxPoolOpConversion,
+                        BatchNormOpConversion, NativeBatchNormOpConversion,
+                        MaxPoolOpConversion, MaxPool2dWithIndicesOpConversion,
                         AddmmOpConversion, ViewOpConversion,
                         MulOpConversion, MMOpConversion>(
         &getContext());
