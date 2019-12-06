@@ -272,6 +272,74 @@ public:
   }
 };
 
+/// Lower AsStrided
+class AsStridedOpConversion : public ConversionPattern {
+public:
+  explicit AsStridedOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::AsStridedOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    Type resultTy = op->getResult(0)->getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    edsc::ValueHandle xVal(operands[0]);
+
+    // construct the shape argument
+    std::vector<constInt> shape;
+    auto co0 = cast<xilinx::aten::ConstantOp>(operands[1]->getDefiningOp());
+    DenseElementsAttr a0 = co0.template getAttrOfType<DenseElementsAttr>("value");
+    for (auto i : a0.getIntValues())
+      shape.push_back(constInt(i.getSExtValue(),32));
+
+    // pad out the shape with -1 to make it 4d
+    while (shape.size() < 4)
+      shape.push_back(constInt(-1,32));
+
+    // construct the stride argument
+    std::vector<constInt> stride;
+    auto co1 = cast<xilinx::aten::ConstantOp>(operands[2]->getDefiningOp());
+    DenseElementsAttr a1 = co1.template getAttrOfType<DenseElementsAttr>("value");
+    for (auto i : a1.getIntValues())
+      stride.push_back(constInt(i.getSExtValue(),32));
+
+    // pad out the stride with -1 to make it 4d
+    while (stride.size() < 4)
+      stride.push_back(constInt(-1,32));
+
+    APInt offset(32,0);
+    if (operands.size() > 3) {
+      auto co2 = cast<xilinx::aten::ConstantOp>(operands[3]->getDefiningOp());
+      auto ia2 = co2.getAttrOfType<IntegerAttr>("value");
+      offset = ia2.getValue();
+    }
+
+    ArrayRef<Value*> callops{xVal,
+                             shape[0], shape[1], shape[2], shape[3],
+                             stride[0], stride[1], stride[2], stride[3],
+                             constInt(offset.getSExtValue(), 32)};
+;
+
+    FuncOp asstridedFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                     "as_strided", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(asstridedFunc),
+                         callops);
+
+    rewriter.replaceOp(op, {new_call});
+    return matchSuccess();
+  }
+};
+
 /// Lower batchnorm
 class BatchNormOpConversion : public ConversionPattern {
 public:
@@ -779,7 +847,8 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
                         BatchNormOpConversion, NativeBatchNormOpConversion,
                         MaxPoolOpConversion, MaxPool2dWithIndicesOpConversion,
                         AddmmOpConversion, ViewOpConversion,
-                        MulOpConversion, MMOpConversion>(
+                        MulOpConversion, MMOpConversion,
+                        AsStridedOpConversion>(
         &getContext());
 
     mlir::populateFuncOpTypeConversionPattern(atenPatterns,
