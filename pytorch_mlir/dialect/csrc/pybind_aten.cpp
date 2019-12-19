@@ -20,7 +20,7 @@ namespace xilinx {
 namespace aten {
 
 void init(void) {
-    mlir::registerDialect<xilinx::aten::ATenDialect>();
+  mlir::registerDialect<xilinx::aten::ATenDialect>();
 }
 
 mlir_type_t make_list_type(mlir_type_t elemType)
@@ -34,8 +34,7 @@ mlir_type_t make_list_type(mlir_type_t elemType)
 
 namespace {
   
-mlir::OwningModuleRef loadAndProcessModule(mlir::MLIRContext &context,
-                                           std::string mlir) {
+mlir::OwningModuleRef LoadModule(mlir::MLIRContext &context, std::string mlir) {
 
   mlir::OwningModuleRef module;
 
@@ -44,7 +43,7 @@ mlir::OwningModuleRef loadAndProcessModule(mlir::MLIRContext &context,
   llvm::SourceMgr sourceMgr;
   sourceMgr.AddNewSourceBuffer(std::move(membuf), llvm::SMLoc());
   module = mlir::parseSourceFile(sourceMgr, &context);
-  
+
   if (!module) {
     llvm::errs() << "Error can't parse mlir module\n";
     return nullptr;
@@ -67,7 +66,7 @@ PYBIND11_MODULE(pybind_aten, m) {
   m.def("init", &xilinx::aten::init, "register dialect");
   m.def("fwd_path_report_pass", [](std::string mlir) -> std::string {
     mlir::MLIRContext context;
-    auto module = loadAndProcessModule(context, mlir);
+    auto module = LoadModule(context, mlir);
     mlir::PassManager pm(module->getContext());
 
     // our pass
