@@ -286,6 +286,8 @@ def aten_ConvolutionOp: aten_Op<"_convolution", [NoSideEffect, StatisticsOpInter
   let extraClassDeclaration = [{
     std::map<std::string, unsigned>  updateStatistics() {
 
+      // XXX why dont I see stride in here?
+
       std::map<std::string, unsigned> toReturn;
       // For convolution, we need the OFM volume.
       // Then the number of forward MACs per pixel are kernel_width * kernel_height * ifm_depth / groups
