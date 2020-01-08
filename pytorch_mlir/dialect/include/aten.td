@@ -331,6 +331,26 @@ def aten_ConvolutionOp: aten_Op<"_convolution", [NoSideEffect, StatisticsOpInter
 	}];
 }
 
+def aten_ConvolutionBackwardOp: aten_Op<"_convolution_backward", [NoSideEffect]>,
+                                Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2,
+        AnyType:$arg3,
+        AnyType:$arg4,
+        AnyType:$arg5,
+        AnyType:$arg6,
+        AnyType:$arg7,
+        AnyType:$arg8
+  );
+
+  let summary = "ConvolutionBackward operator";
+  let description = [{
+    ConvolutionBackward operator
+  }];
+}
+
 def aten_DropoutOp: aten_Op<"dropout", [NoSideEffect]>,
                     Results<(outs AnyTensor)> {
   let arguments = (
@@ -356,6 +376,35 @@ def aten_FlattenOp: aten_Op<"flatten", [NoSideEffect]>,
   let summary = "Flatten operator";
   let description = [{
     Flatten operator
+  }];
+}
+
+def aten_LogSoftmaxOp: aten_Op<"_log_softmax", [NoSideEffect]>,
+                       Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2
+  );
+
+  let summary = "LogSoftmax operator";
+  let description = [{
+    LogSoftmax operator
+  }];
+}
+
+def aten_LogSoftmaxBackwardOp: aten_Op<"_log_softmax_backward_data", [NoSideEffect]>,
+                               Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2,
+        AnyType:$arg3
+  );
+
+  let summary = "LogSoftmaxBackward operator";
+  let description = [{
+    LogSoftmaxBackward operator
   }];
 }
 
@@ -424,6 +473,25 @@ def aten_MaxPool2dWithIndicesOp: aten_Op<"max_pool2d_with_indices", [NoSideEffec
   let summary = "MaxPool2dWithIndices operator";
   let description = [{
     MaxPool2dWithIndices operator
+  }];
+}
+
+def aten_MaxPool2dWithIndicesBackwardOp: aten_Op<"max_pool2d_with_indices_backward", [NoSideEffect]>,
+                                         Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2,
+        AnyType:$arg3,
+        AnyType:$arg4,
+        AnyType:$arg5,
+        AnyType:$arg6,
+        AnyType:$arg7
+  );
+
+  let summary = "MaxPool2dWithIndicesBackward operator";
+  let description = [{
+    MaxPool2dWithIndicesBackward operator
   }];
 }
 
@@ -585,6 +653,54 @@ def aten_NativeBatchNormOp: aten_Op<"native_batch_norm", [NoSideEffect, Statisti
   }];
 }
 
+def aten_NllLossBackwardOp: aten_Op<"nll_loss_backward", [NoSideEffect]>,
+                           Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2,
+        AnyType:$arg3,
+        AnyType:$arg4,
+        AnyType:$arg5,
+        AnyType:$arg6
+  );
+
+  let summary = "NllLossBackward operator";
+  let description = [{
+    NllLossBackward operator
+  }];
+}
+
+def aten_NllLossForwardOp: aten_Op<"nll_loss_forward", [NoSideEffect]>,
+                           Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2,
+        AnyType:$arg3,
+        AnyType:$arg4
+  );
+
+  let summary = "NllLossForward operator";
+  let description = [{
+    NllLossForward operator
+  }];
+}
+
+def aten_SumOp: aten_Op<"sum", [NoSideEffect]>,
+                 Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$x,
+        AnyType:$dim,
+        AnyType:$keepdim
+  );
+
+  let summary = "sum operator";
+  let description = [{
+    sum operator
+  }];
+}
+
 def aten_ReLUOp: aten_Op<"relu", [NoSideEffect, StatisticsOpInterface]>,
                  Results<(outs AnyTensor)> {
   let arguments = (
@@ -635,6 +751,21 @@ def aten_ReLUUnderOp: aten_Op<"relu_", [NoSideEffect, StatisticsOpInterface]>,
       return(toReturn);
     }
 	}];
+}
+
+def aten_ThresholdBackwardOp: aten_Op<"threshold_backward", [NoSideEffect]>,
+                              Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$arg0,
+        AnyTensor:$arg1,
+        AnyType:$arg2
+  );
+
+  let summary = "ThresholdBackward operator";
+  let description = [{
+    ThresholdBackward operator
+  }];
+
 }
 
 def aten_TransposeOp: aten_Op<"t", [NoSideEffect, SameOperandsAndResultElementType]>,
