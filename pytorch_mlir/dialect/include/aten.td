@@ -672,7 +672,7 @@ def aten_NllLossBackwardOp: aten_Op<"nll_loss_backward", [NoSideEffect]>,
 }
 
 def aten_NllLossForwardOp: aten_Op<"nll_loss_forward", [NoSideEffect]>,
-                           Results<(outs AnyTensor)> {
+                           Results<(outs AnyType)> {
   let arguments = (
     ins AnyType:$arg0,
         AnyType:$arg1,
