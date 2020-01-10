@@ -31,6 +31,7 @@
 
 using namespace mlir;
 //using namespace edsc;
+using callOperation = edsc::intrinsics::OperationBuilder<mlir::CallOp>;
 using call = edsc::intrinsics::ValueBuilder<mlir::CallOp>;
 using constInt = edsc::intrinsics::constant_int;
 using constFloat = edsc::intrinsics::constant_float;
@@ -103,7 +104,7 @@ std::string getMangledFuncName(ModuleOp module, std::string prefix, FunctionType
   return ret;
 }
 
-FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value *> &operands, Type &retTy)
+FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value *> &operands, ArrayRef<Type> &retTys)
 {
   Builder builder(module);
 
@@ -111,7 +112,7 @@ FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value *> &operand
   for (auto o : operands)
     tys.push_back(o->getType());
 
-  auto fnTy = builder.getFunctionType(tys, {retTy});
+  auto fnTy = builder.getFunctionType(tys, retTys);
 
   std::string fnName = getMangledFuncName(module, prefix+"_AtenAcapOp", fnTy);
 
@@ -123,6 +124,12 @@ FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value *> &operand
   }
 
   return fn;
+}
+
+FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value *> &operands, Type &retTy)
+{
+  ArrayRef<Type> retTys{retTy};
+  return getATenFn(module, prefix, operands, retTys);
 }
 
 /// Lower an aten.add to an affine loop nest.
@@ -212,7 +219,7 @@ public:
     APInt iaVal = ia.getValue();
 
     ArrayRef<Value*> callops{xVal, yVal, constInt(iaVal.getSExtValue(), 32)};
-
+    ArrayRef<Type> retTys{memRefResultTy};
     FuncOp addFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                "add", callops, memRefResultTy);
 
@@ -520,6 +527,12 @@ public:
                                                 tensorResultTy.getElementType(),
                                                 {}, 0);
 
+    Type idxTy = op->getResult(1)->getType();
+    TensorType tensorIdxTy = idxTy.cast<TensorType>();
+    Type memRefIdxTy = mlir::MemRefType::get(tensorIdxTy.getShape(),
+                                             tensorIdxTy.getElementType(),
+                                             {}, 0);
+
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
@@ -550,14 +563,16 @@ public:
                              constInt(dilation[0],32),
                              constInt(iaVal.getZExtValue(), 1)};
 
-    FuncOp maxpoolFunc = getATenFn(op->getParentOfType<ModuleOp>(),
-                                   "max_pool2d_with_indices", callops, memRefResultTy);
+    ArrayRef<mlir::Type> retTys{memRefResultTy, memRefIdxTy};
 
-    auto new_call = call(memRefResultTy,
+    FuncOp maxpoolFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                   "max_pool2d_with_indices", callops, retTys);
+
+    auto new_call = callOperation(retTys,
                          rewriter.getSymbolRefAttr(maxpoolFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, new_call.getOperation()->getResults());
     return matchSuccess();
   }
 };

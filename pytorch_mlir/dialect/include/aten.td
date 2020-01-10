@@ -332,7 +332,7 @@ def aten_ConvolutionOp: aten_Op<"_convolution", [NoSideEffect, StatisticsOpInter
 }
 
 def aten_ConvolutionBackwardOp: aten_Op<"_convolution_backward", [NoSideEffect]>,
-                                Results<(outs AnyTensor)> {
+                                Results<(outs AnyTensor:$dx, AnyTensor:$dw, AnyTensor:$db)> {
   let arguments = (
     ins AnyType:$arg0,
         AnyType:$arg1,
@@ -460,7 +460,7 @@ def aten_MaxPool2dOp: aten_Op<"max_pool2d", [NoSideEffect, StatisticsOpInterface
 }
 
 def aten_MaxPool2dWithIndicesOp: aten_Op<"max_pool2d_with_indices", [NoSideEffect]>,
-                                 Results<(outs AnyTensor)> {
+                                 Results<(outs AnyTensor, AnyTensor)> {
   let arguments = (
     ins AnyType:$arg0,
         AnyType:$arg1,
