@@ -452,14 +452,14 @@ def aten_MaxPool2dOp: aten_Op<"max_pool2d", [NoSideEffect, StatisticsOpInterface
       unpack(k, kernel);
 
       unsigned aperture = kernel[0] * kernel[1];
-      toReturn["=="] = ofm_volume * aperture;
+      toReturn[">"] = ofm_volume * aperture;
 
       return(toReturn);
     }
   }];
 }
 
-def aten_MaxPool2dWithIndicesOp: aten_Op<"max_pool2d_with_indices", [NoSideEffect]>,
+def aten_MaxPool2dWithIndicesOp: aten_Op<"max_pool2d_with_indices", [NoSideEffect, StatisticsOpInterface]>,
                                  Results<(outs AnyTensor, AnyTensor)> {
   let arguments = (
     ins AnyType:$arg0,
@@ -473,6 +473,40 @@ def aten_MaxPool2dWithIndicesOp: aten_Op<"max_pool2d_with_indices", [NoSideEffec
   let summary = "MaxPool2dWithIndices operator";
   let description = [{
     MaxPool2dWithIndices operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, unsigned>  updateStatistics() {
+
+      auto unpack = [](auto &op, auto &v) -> void {
+                      auto co = cast<xilinx::aten::ConstantOp>(op->getDefiningOp());
+                      DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+                      for (auto i : a.getIntValues())
+                        v.push_back(i.getSExtValue());
+                    };
+
+      std::map<std::string, unsigned>  toReturn;
+      Type resultTy = getResult(0)->getType();
+      TensorType tensorResultTy = resultTy.cast<TensorType>();
+
+      unsigned ofm_volume = getTensorVolume(tensorResultTy);
+      toReturn["activation_out"] = ofm_volume;
+
+      Type ifmType = getOperand(0)->getType();
+      TensorType txTy = ifmType.cast<TensorType>();
+      unsigned ifm_volume = getTensorVolume(txTy);
+      toReturn["activation_in"] = ifm_volume;
+
+      // To find the number of compares, we need the filter extent
+
+      std::vector<uint64_t> kernel;
+      mlir::Value *k = getOperand(1);
+      unpack(k, kernel);
+
+      unsigned aperture = kernel[0] * kernel[1];
+      toReturn[">"] = ofm_volume * aperture;
+
+      return(toReturn);
+    }
   }];
 }
 
