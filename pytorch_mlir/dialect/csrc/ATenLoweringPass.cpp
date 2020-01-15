@@ -461,6 +461,51 @@ public:
   }
 };
 
+/// Lower LogSoftmax
+class LogSoftmaxOpConversion : public ConversionPattern {
+public:
+  explicit LogSoftmaxOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::LogSoftmaxOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    Type resultTy = op->getResult(0)->getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    edsc::ValueHandle aVal(operands[0]);
+
+    auto co0 = cast<xilinx::aten::ConstantOp>(operands[1]->getDefiningOp());
+    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    APInt iaVal0 = ia0.getValue();
+
+    auto co1 = cast<xilinx::aten::ConstantOp>(operands[2]->getDefiningOp());
+    auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
+    APInt iaVal1 = ia1.getValue();
+
+    ArrayRef<Value*> callops{aVal,
+                             constInt(iaVal0.getSExtValue(), 32),
+                             constInt(iaVal1.getZExtValue(), 1)};
+
+    FuncOp logsoftmaxFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                      "log_softmax", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(logsoftmaxFunc),
+                         callops);
+
+    rewriter.replaceOp(op, {new_call});
+    return matchSuccess();
+  }
+};
+
 /// Lower maxpool2d
 class MaxPoolOpConversion : public ConversionPattern {
 public:
@@ -820,6 +865,7 @@ public:
     return matchSuccess();
   }
 };
+
 /// This is the main class registering our individual converter classes with
 /// the DialectConversion framework in MLIR.
 class ATenTypeConverter : public TypeConverter {
@@ -863,7 +909,7 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
                         MaxPoolOpConversion, MaxPool2dWithIndicesOpConversion,
                         AddmmOpConversion, ViewOpConversion,
                         MulOpConversion, MMOpConversion,
-                        AsStridedOpConversion>(
+                        AsStridedOpConversion, LogSoftmaxOpConversion>(
         &getContext());
 
     mlir::populateFuncOpTypeConversionPattern(atenPatterns,
