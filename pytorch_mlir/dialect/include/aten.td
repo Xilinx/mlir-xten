@@ -22,7 +22,7 @@ def StatisticsOpInterface : OpInterface<"StatisticsOpInterface"> {
   let methods = [
     InterfaceMethod<
       "Return statistics about the compute requirements of an op",
-      "std::map<std::string, unsigned>", "updateStatistics"
+      "std::map<std::string, uint64_t>", "updateStatistics"
     >,
   ];
 }
@@ -66,7 +66,7 @@ def aten_AddOp: aten_Op<"add", [NoSideEffect, StatisticsOpInterface]>,
     Add operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, unsigned> updateStatistics();
+    std::map<std::string, uint64_t> updateStatistics();
   }];
 }
 
@@ -83,7 +83,7 @@ def aten_AddUnderOp: aten_Op<"add_", [NoSideEffect, StatisticsOpInterface]>,
     In-place add operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, unsigned> updateStatistics();
+    std::map<std::string, uint64_t> updateStatistics();
   }];
 }
 
@@ -102,7 +102,7 @@ def aten_AddmmOp: aten_Op<"addmm", [NoSideEffect, StatisticsOpInterface]>,
     Addmm operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, unsigned> updateStatistics();
+    std::map<std::string, uint64_t> updateStatistics();
   }];
 }
 
@@ -144,7 +144,7 @@ def aten_BatchNormOp: aten_Op<"batch_norm", [NoSideEffect, StatisticsOpInterface
     BatchNorm operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, unsigned> updateStatistics();
+    std::map<std::string, uint64_t> updateStatistics();
   }];
 }
 
@@ -179,7 +179,7 @@ def aten_ConvolutionOp: aten_Op<"_convolution", [NoSideEffect, StatisticsOpInter
     Convolution operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, unsigned> updateStatistics();
+    std::map<std::string, uint64_t> updateStatistics();
 	}];
 }
 
@@ -276,7 +276,7 @@ def aten_MaxPool2dOp: aten_Op<"max_pool2d", [NoSideEffect, StatisticsOpInterface
     MaxPool2d operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, unsigned> updateStatistics();
+    std::map<std::string, uint64_t> updateStatistics();
   }];
 }
 
@@ -296,7 +296,7 @@ def aten_MaxPool2dWithIndicesOp: aten_Op<"max_pool2d_with_indices", [NoSideEffec
     MaxPool2dWithIndices operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, unsigned> updateStatistics();
+    std::map<std::string, uint64_t> updateStatistics();
   }];
 }
 
@@ -358,7 +358,7 @@ def aten_MulOp: aten_Op<"mul", [NoSideEffect, StatisticsOpInterface]>,
     mul operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, unsigned> updateStatistics();
+    std::map<std::string, uint64_t> updateStatistics();
   }];
 }
 
@@ -374,7 +374,7 @@ def aten_MulUnderOp: aten_Op<"mul_", [NoSideEffect, StatisticsOpInterface]>,
     In-place mul operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, unsigned> updateStatistics();
+    std::map<std::string, uint64_t> updateStatistics();
   }];
 }
 
@@ -396,7 +396,7 @@ def aten_NativeBatchNormOp: aten_Op<"native_batch_norm", [NoSideEffect, Statisti
     BatchNorm operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, unsigned> updateStatistics();
+    std::map<std::string, uint64_t> updateStatistics();
   }];
 }
 
@@ -459,7 +459,7 @@ def aten_ReLUOp: aten_Op<"relu", [NoSideEffect, StatisticsOpInterface]>,
     ReLU operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, unsigned> updateStatistics();
+    std::map<std::string, uint64_t> updateStatistics();
 	}];
 }
 
@@ -474,23 +474,8 @@ def aten_ReLUUnderOp: aten_Op<"relu_", [NoSideEffect, StatisticsOpInterface]>,
     In-Place ReLU operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, unsigned> updateStatistics();
+    std::map<std::string, uint64_t> updateStatistics();
 	}];
-}
-
-def aten_ThresholdBackwardOp: aten_Op<"threshold_backward", [NoSideEffect]>,
-                              Results<(outs AnyTensor)> {
-  let arguments = (
-    ins AnyTensor:$arg0,
-        AnyTensor:$arg1,
-        AnyType:$arg2
-  );
-
-  let summary = "ThresholdBackward operator";
-  let description = [{
-    ThresholdBackward operator
-  }];
-
 }
 
 def aten_TransposeOp: aten_Op<"t", [NoSideEffect, SameOperandsAndResultElementType]>,
@@ -517,6 +502,21 @@ def aten_ThresholdOp: aten_Op<"threshold", [NoSideEffect]>,
   let summary = "Threshold operator";
   let description = [{
     Threshold operator
+  }];
+
+}
+
+def aten_ThresholdBackwardOp: aten_Op<"threshold_backward", [NoSideEffect]>,
+                              Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$arg0,
+        AnyTensor:$arg1,
+        AnyType:$arg2
+  );
+
+  let summary = "ThresholdBackward operator";
+  let description = [{
+    ThresholdBackward operator
   }];
 
 }
