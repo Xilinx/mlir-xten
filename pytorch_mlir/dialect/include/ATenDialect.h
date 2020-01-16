@@ -21,31 +21,6 @@
 
 using namespace mlir;
 
-
-static unsigned getTensorVolume(TensorType ty) {
-        unsigned volume = 1;
-        for (auto &d : ty.getShape())
-            volume *= d;
-        return(volume);
-    }
-
-static unsigned getTensorVolume(MemRefType ty) {
-        unsigned volume = 1;
-        for (auto &d : ty.getShape())
-            volume *= d;
-        return(volume);
-    }
-
-static unsigned getTensorVolume(Type ty) {
-  if(auto t = ty.cast<TensorType>()) {
-    return getTensorVolume(t);
-  } else if(auto t = ty.cast<MemRefType>()) {
-    return getTensorVolume(t);
-  } else {
-    return 0;
-  }
-}
-
 namespace xilinx {
 namespace aten {
 

@@ -94,5 +94,6 @@ ATenDialect::ATenDialect(mlir::MLIRContext *ctx) : mlir::Dialect("aten", ctx) {
 
 #include "ATenOpInterfaces.cpp.inc"
 
-}
-}
+
+} // namespace aten
+} // namespace xilinx

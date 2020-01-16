@@ -20,7 +20,7 @@ LLVM_PROJECT=$(realpath ../../peano/llvm-project)
 LLVM_INCLUDE=${LLVM_PROJECT}/llvm/include
 MLIR_INCLUDE=$(LLVM_PROJECT)/llvm/projects/mlir/include
 
-ATEN_DIALECT_SRC_FILES = $(SRCDIR)/ATenDialect.cpp
+ATEN_DIALECT_SRC_FILES = $(SRCDIR)/ATenDialect.cpp $(SRCDIR)/ATenDialectOpStats.cpp 
 ATEN_DIALECT_INC_FILES = $(INCDIR)/ATenDialect.h
 ATEN_DIALECT_OBJ_FILES = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(ATEN_DIALECT_SRC_FILES))
 
