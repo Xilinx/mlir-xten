@@ -1,4 +1,5 @@
 #include "ATenDialect.h"
+#include <iostream>
 
 namespace {
 
@@ -197,6 +198,48 @@ std::map<std::string, uint64_t> ConvolutionOp::updateStatistics() {
   return toReturn;
 }
 
+// _convolution
+std::map<std::string, uint64_t> ConvolutionBackwardOp::updateStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+  TensorType dx_out_resultTy = getResult(0)->getType().cast<TensorType>();
+  uint64_t dx_out_volume = getTensorVolume(dx_out_resultTy);
+
+  TensorType weightTy = getOperand(2)->getType().cast<TensorType>();
+  uint64_t weight_volume = getTensorVolume(weightTy);
+  uint64_t loss_in_depth = weightTy.getShape()[0];
+  uint64_t kernel_width = weightTy.getShape()[2];
+  uint64_t kernel_height = weightTy.getShape()[3];
+
+  uint64_t groups = 1; // todo: get this in the same way as the forward path
+  uint64_t MACs_per_loss = (loss_in_depth/groups) * kernel_height * kernel_width;
+
+  uint64_t total_MACs = dx_out_volume * MACs_per_loss;
+
+  TensorType ifmTy = getOperand(1)->getType().cast<TensorType>();
+  uint64_t ifm_volume = getTensorVolume(ifmTy);
+  auto ifm_shape = ifmTy.getShape();
+
+  uint64_t ifm_bwh = ifm_shape[0]*ifm_shape[2]*ifm_shape[3];  // Batch * height * width: the depth is in the weight shape already
+  total_MACs += ifm_bwh * weight_volume;
+
+  TensorType dx_inTy = getOperand(0)->getType().cast<TensorType>();
+  uint64_t dx_in_volume = getTensorVolume(dx_inTy);
+  toReturn["+"] = dx_in_volume;
+
+  // Reads: Conv_backward reads 3 tensors: the loss in, the activation in and the transposed weights
+  toReturn["reads"] = dx_in_volume + ifm_volume + weight_volume;
+
+  // Writes: Conv_backward writes 3 tensors: the loss out, gradients for the weights, and gradients for the biases
+  TensorType biasTy = getResult(2)->getType().cast<TensorType>();
+  uint64_t bias_volume = getTensorVolume(biasTy);
+  toReturn["writes"] = dx_out_volume + weight_volume + bias_volume; 
+
+  toReturn["MAC"] = total_MACs;
+  return toReturn;
+}
+
+
 // max_pool2d
 std::map<std::string, uint64_t> MaxPool2dOp::updateStatistics() {
 
@@ -243,6 +286,34 @@ std::map<std::string, uint64_t> MaxPool2dWithIndicesOp::updateStatistics() {
   toReturn[">"] = ofm_volume * (aperture-1);
 
   return toReturn;
+}
+
+// This is the maxpool backward op
+// todo: complete the I/O portion
+std::map<std::string, uint64_t> MaxPool2dWithIndicesBackwardOp::updateStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+  return toReturn;
+}
+
+
+// mm - Matrix Multiply used as backward path of FC layers
+std::map<std::string, uint64_t> MMOp::updateStatistics() {
+  std::map<std::string, uint64_t> toReturn;
+
+  Type resultTy = getResult()->getType();
+  TensorType tensorResultTy = resultTy.cast<TensorType>();
+  uint64_t ofm_volume = getTensorVolume(tensorResultTy);
+
+  // Use the weight tensor to find the number of input neurons
+  Type wType = getOperand(1)->getType();
+  TensorType wTy = wType.cast<TensorType>();
+  uint64_t num_input_neurons = wTy.getShape()[0];
+  uint64_t total_MACs = ofm_volume * num_input_neurons;
+
+  toReturn["MAC"] = total_MACs;
+
+  return(toReturn);
 }
 
 // mul
@@ -357,6 +428,15 @@ std::map<std::string, uint64_t> ReLUUnderOp::updateStatistics() {
 
   return toReturn;
 }
+
+// This is the relu backward op
+// todo: complete the I/O portion
+std::map<std::string, uint64_t> ThresholdBackwardOp::updateStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+  return toReturn;
+}
+
 
 } // namespace aten
 } // namespace xilinx

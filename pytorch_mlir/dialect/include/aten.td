@@ -183,7 +183,7 @@ def aten_ConvolutionOp: aten_Op<"_convolution", [NoSideEffect, StatisticsOpInter
 	}];
 }
 
-def aten_ConvolutionBackwardOp: aten_Op<"_convolution_backward", [NoSideEffect]>,
+def aten_ConvolutionBackwardOp: aten_Op<"_convolution_backward", [NoSideEffect, StatisticsOpInterface]>,
                                 Results<(outs AnyTensor:$dx, AnyTensor:$dw, AnyTensor:$db)> {
   let arguments = (
     ins AnyType:$arg0,
@@ -201,6 +201,9 @@ def aten_ConvolutionBackwardOp: aten_Op<"_convolution_backward", [NoSideEffect]>
   let description = [{
     ConvolutionBackward operator
   }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> updateStatistics();
+	}];
 }
 
 def aten_DropoutOp: aten_Op<"dropout", [NoSideEffect]>,
@@ -300,7 +303,7 @@ def aten_MaxPool2dWithIndicesOp: aten_Op<"max_pool2d_with_indices", [NoSideEffec
   }];
 }
 
-def aten_MaxPool2dWithIndicesBackwardOp: aten_Op<"max_pool2d_with_indices_backward", [NoSideEffect]>,
+def aten_MaxPool2dWithIndicesBackwardOp: aten_Op<"max_pool2d_with_indices_backward", [NoSideEffect, StatisticsOpInterface]>,
                                          Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyType:$arg0,
@@ -317,6 +320,10 @@ def aten_MaxPool2dWithIndicesBackwardOp: aten_Op<"max_pool2d_with_indices_backwa
   let description = [{
     MaxPool2dWithIndicesBackward operator
   }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> updateStatistics();
+  }];
+
 }
 
 def aten_MeanOp: aten_Op<"mean", [NoSideEffect]>,
@@ -333,7 +340,7 @@ def aten_MeanOp: aten_Op<"mean", [NoSideEffect]>,
   }];
 }
 
-def aten_MMOp: aten_Op<"mm", [NoSideEffect, SameOperandsAndResultElementType]>,
+def aten_MMOp: aten_Op<"mm", [NoSideEffect, SameOperandsAndResultElementType, StatisticsOpInterface]>,
                Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyTensor:$x,
@@ -343,6 +350,9 @@ def aten_MMOp: aten_Op<"mm", [NoSideEffect, SameOperandsAndResultElementType]>,
   let summary = "matrix multiply operator";
   let description = [{
     matrix multiply operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> updateStatistics();
   }];
 }
 
@@ -506,7 +516,7 @@ def aten_ThresholdOp: aten_Op<"threshold", [NoSideEffect]>,
 
 }
 
-def aten_ThresholdBackwardOp: aten_Op<"threshold_backward", [NoSideEffect]>,
+def aten_ThresholdBackwardOp: aten_Op<"threshold_backward", [NoSideEffect, StatisticsOpInterface]>,
                               Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyTensor:$arg0,
@@ -518,7 +528,9 @@ def aten_ThresholdBackwardOp: aten_Op<"threshold_backward", [NoSideEffect]>,
   let description = [{
     ThresholdBackward operator
   }];
-
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> updateStatistics();
+  }];
 }
 
 def aten_TypeCastOp : aten_Op<"type_cast", [NoSideEffect]>,
