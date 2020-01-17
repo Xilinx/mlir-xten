@@ -461,6 +461,70 @@ public:
   }
 };
 
+/// Lower conv2d backward
+class ConvolutionBackwardOpConversion : public ConversionPattern {
+public:
+  explicit ConvolutionBackwardOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::ConvolutionBackwardOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    TensorType result0Ty = op->getResult(0)->getType().cast<TensorType>();
+    Type memRefResult0Ty = mlir::MemRefType::get(result0Ty.getShape(),
+                                                 result0Ty.getElementType(),
+                                                 {}, 0);
+                                                
+    TensorType result1Ty = op->getResult(1)->getType().cast<TensorType>();
+    Type memRefResult1Ty = mlir::MemRefType::get(result1Ty.getShape(),
+                                                 result1Ty.getElementType(),
+                                                 {}, 0);
+                                                
+    TensorType result2Ty = op->getResult(2)->getType().cast<TensorType>();
+    Type memRefResult2Ty = mlir::MemRefType::get(result2Ty.getShape(),
+                                                 result2Ty.getElementType(),
+                                                 {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    edsc::ValueHandle arg0(operands[0]); // grad_output
+    edsc::ValueHandle arg1(operands[1]); // input
+    edsc::ValueHandle arg2(operands[2]); // weight
+
+    auto unpack = [](auto &op, auto &v) -> void {
+      auto co = cast<xilinx::aten::ConstantOp>(op->getDefiningOp());
+      DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+      for (auto i : a.getIntValues())
+        v.push_back(i.getSExtValue());
+    };
+
+    std::vector<uint64_t> pad, kernel, stride;
+    unpack(operands[3], pad);
+    unpack(operands[4], kernel);
+    unpack(operands[5], stride);
+
+    auto padCI = constInt(pad[0],32);
+    auto kernelCI = constInt(kernel[0], 32);
+    auto strideCI = constInt(stride[0], 32);
+ 
+    ArrayRef<Value*> callops{arg0, arg1, arg2, padCI, kernelCI, strideCI};
+
+    ArrayRef<mlir::Type> retTys{memRefResult0Ty, memRefResult1Ty, memRefResult2Ty};
+
+    FuncOp convFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                "conv2d_backward", callops, retTys);
+
+    auto new_call = callOperation(retTys,
+                                  rewriter.getSymbolRefAttr(convFunc),
+                                  callops);
+
+    rewriter.replaceOp(op, new_call.getOperation()->getResults());
+    return matchSuccess();
+  }
+};
+
 /// Lower LogSoftmax
 class LogSoftmaxOpConversion : public ConversionPattern {
 public:
@@ -471,10 +535,9 @@ public:
   matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
                   ConversionPatternRewriter &rewriter) const override
   {
-    Type resultTy = op->getResult(0)->getType();
-    TensorType tensorResultTy = resultTy.cast<TensorType>();
-    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
-                                                tensorResultTy.getElementType(),
+    TensorType resultTy = op->getResult(0)->getType().cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(resultTy.getShape(),
+                                                resultTy.getElementType(),
                                                 {}, 0);
 
     auto loc = op->getLoc();
@@ -616,6 +679,66 @@ public:
     auto new_call = callOperation(retTys,
                          rewriter.getSymbolRefAttr(maxpoolFunc),
                          callops);
+
+    rewriter.replaceOp(op, new_call.getOperation()->getResults());
+    return matchSuccess();
+  }
+};
+
+
+/// Lower max_pool2d_with_indicies_backward
+class MaxPool2dWithIndicesBackwardOpConversion : public ConversionPattern {
+public:
+  explicit MaxPool2dWithIndicesBackwardOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::MaxPool2dWithIndicesBackwardOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    TensorType resultTy = op->getResult(0)->getType().cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(resultTy.getShape(),
+                                                resultTy.getElementType(),
+                                                {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    edsc::ValueHandle xVal(operands[0]);
+
+    auto unpack = [](auto &op, auto &v) -> void {
+      auto co = cast<xilinx::aten::ConstantOp>(op->getDefiningOp());
+      DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+      for (auto i : a.getIntValues())
+        v.push_back(i.getSExtValue());
+    };
+
+    std::vector<uint64_t> pad, kernel, stride, dilation;
+    unpack(operands[2], kernel);
+    unpack(operands[3], stride);
+    unpack(operands[4], pad);
+    unpack(operands[5], dilation);
+
+    //ceil_mode
+    auto co = cast<xilinx::aten::ConstantOp>(operands[6]->getDefiningOp());
+    auto ia = co.getAttrOfType<IntegerAttr>("value");
+    APInt iaVal = ia.getValue();
+
+    ArrayRef<Value*> callops{operands[0], operands[1],
+                             constInt(kernel[0],32),
+                             constInt(stride[0],32),
+                             constInt(pad[0],32),
+                             constInt(dilation[0],32),
+                             constInt(iaVal.getZExtValue(), 1),
+                             operands[7]};
+
+    FuncOp maxpoolbackFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                       "max_pool2d_with_indices_backward",
+                                       callops, memRefResultTy);
+
+    auto new_call = callOperation(memRefResultTy,
+                                  rewriter.getSymbolRefAttr(maxpoolbackFunc),
+                                  callops);
 
     rewriter.replaceOp(op, new_call.getOperation()->getResults());
     return matchSuccess();
@@ -785,6 +908,42 @@ public:
   }
 };
 
+/// Lower ThresholdBackward
+class ThresholdBackwardOpConversion : public ConversionPattern {
+public:
+  explicit ThresholdBackwardOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::ThresholdBackwardOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    Type resultTy = op->getResult(0)->getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    edsc::ValueHandle arg0(operands[0]);
+    edsc::ValueHandle arg1(operands[1]);
+    edsc::ValueHandle arg2(operands[2]);
+
+    ArrayRef<Value*> callops{arg0, arg1, arg2};
+
+    FuncOp reluFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                "threshold_backward", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(reluFunc),
+                         callops);
+
+    rewriter.replaceOp(op, {new_call});
+    return matchSuccess();
+  }
+};
 /// Lower transpose
 class TransposeOpConversion : public ConversionPattern {
 public:
@@ -909,7 +1068,9 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
                         MaxPoolOpConversion, MaxPool2dWithIndicesOpConversion,
                         AddmmOpConversion, ViewOpConversion,
                         MulOpConversion, MMOpConversion,
-                        AsStridedOpConversion, LogSoftmaxOpConversion>(
+                        AsStridedOpConversion, LogSoftmaxOpConversion,
+                        ThresholdBackwardOpConversion, MaxPool2dWithIndicesBackwardOpConversion,
+                        ConvolutionBackwardOpConversion>(
         &getContext());
 
     mlir::populateFuncOpTypeConversionPattern(atenPatterns,

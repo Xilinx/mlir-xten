@@ -204,7 +204,7 @@ std::map<std::string, uint64_t> ConvolutionOp::updateStatistics() {
   return toReturn;
 }
 
-// _convolution
+// _convolution_backward
 std::map<std::string, uint64_t> ConvolutionBackwardOp::updateStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
@@ -295,8 +295,7 @@ std::map<std::string, uint64_t> MaxPool2dWithIndicesOp::updateStatistics() {
   return toReturn;
 }
 
-// This is the maxpool backward op
-// todo: complete the I/O portion
+// max_pool2d_with_indicies_backward
 std::map<std::string, uint64_t> MaxPool2dWithIndicesBackwardOp::updateStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
@@ -316,18 +315,17 @@ std::map<std::string, uint64_t> MaxPool2dWithIndicesBackwardOp::updateStatistics
 }
 
 
-// mm - Matrix Multiply used as backward path of FC layers
+// mm
 std::map<std::string, uint64_t> MMOp::updateStatistics() {
+
   std::map<std::string, uint64_t> toReturn;
 
-  Type resultTy = getResult()->getType();
-  TensorType tensorResultTy = resultTy.cast<TensorType>();
-  uint64_t ofm_volume = getTensorVolume(tensorResultTy);
+  TensorType resultTy = getResult()->getType().cast<TensorType>();
+  uint64_t ofm_volume = getTensorVolume(resultTy);
 
   // Use the weight tensor to find the number of input neurons
-  Type wType = getOperand(1)->getType();
-  TensorType wTy = wType.cast<TensorType>();
-  uint64_t num_input_neurons = wTy.getShape()[0];
+  TensorType weightTy = getOperand(1)->getType().cast<TensorType>();
+  uint64_t num_input_neurons = weightTy.getShape()[0];
   uint64_t total_MACs = ofm_volume * num_input_neurons;
   toReturn["MAC"] = total_MACs;
 
@@ -457,8 +455,7 @@ std::map<std::string, uint64_t> ReLUUnderOp::updateStatistics() {
   return toReturn;
 }
 
-// This is the relu backward op
-// todo: complete the I/O portion
+// threshold_backward
 std::map<std::string, uint64_t> ThresholdBackwardOp::updateStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
