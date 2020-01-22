@@ -62,6 +62,10 @@ std::map<std::string, uint64_t> AddOp::updateStatistics() {
   uint64_t b_volume = getTensorVolume(bType);
 
   toReturn["activation_in"] = a_volume + b_volume;
+
+  toReturn["reads"] = a_volume + b_volume;
+  toReturn["writes"] = ofm_volume;
+
   return toReturn;
 
 }
@@ -85,6 +89,10 @@ std::map<std::string, uint64_t> AddUnderOp::updateStatistics() {
   uint64_t b_volume = getTensorVolume(bType);
 
   toReturn["activation_in"] = a_volume + b_volume;
+
+  toReturn["reads"] = a_volume + b_volume;
+  toReturn["writes"] = ofm_volume;
+
   return toReturn;
 }
 
@@ -157,6 +165,9 @@ std::map<std::string, uint64_t> BatchNormOp::updateStatistics() {
   toReturn["+"] += op_volume;   // Bias
   toReturn["*"] += op_volume;   // Scale
 
+  toReturn["reads"] = toReturn["parameters_in"] + toReturn["activation_in"];
+  toReturn["writes"] = toReturn["activation_out"];
+
   return toReturn;
 }
 
@@ -198,8 +209,8 @@ std::map<std::string, uint64_t> ConvolutionOp::updateStatistics() {
   toReturn["activation_out"] = ofm_volume;
   toReturn["parameters_in"] = weight_volume + bias_volume;
 
-  toReturn["reads"] = ifm_volume + weight_volume + bias_volume;
-  toReturn["writes"] = ofm_volume;
+  toReturn["reads"] = toReturn["parameters_in"] + toReturn["activation_in"];
+  toReturn["writes"] = toReturn["activation_out"];
 
   return toReturn;
 }
@@ -245,6 +256,59 @@ std::map<std::string, uint64_t> ConvolutionBackwardOp::updateStatistics() {
   return toReturn;
 }
 
+// div
+std::map<std::string, uint64_t> DivOp::updateStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+
+  TensorType resultTy = getResult()->getType().cast<TensorType>();
+  TensorType aType = getOperand(0)->getType().cast<TensorType>();
+  TensorType bType = getOperand(1)->getType().cast<TensorType>();
+
+  uint64_t ofm_volume = getTensorVolume(resultTy);
+  toReturn["/"] = ofm_volume;
+  toReturn["activation_out"] = ofm_volume;
+
+  uint64_t num_output_neurons = resultTy.getShape()[1];
+
+  // Find the size of the A and B operands
+  uint64_t a_volume = getTensorVolume(aType);
+  uint64_t b_volume = getTensorVolume(bType);
+
+  toReturn["activation_in"] = a_volume + b_volume;
+
+  toReturn["reads"] = toReturn["activation_in"];
+  toReturn["writes"] = toReturn["activation_out"];
+
+  return toReturn;
+}
+
+// div_
+std::map<std::string, uint64_t> DivUnderOp::updateStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+
+  TensorType resultTy = getResult()->getType().cast<TensorType>();
+  TensorType aType = getOperand(0)->getType().cast<TensorType>();
+  TensorType bType = getOperand(1)->getType().cast<TensorType>();
+
+  uint64_t ofm_volume = getTensorVolume(resultTy);
+  toReturn["/"] = ofm_volume;
+  toReturn["activation_out"] = ofm_volume;
+
+  uint64_t num_output_neurons = resultTy.getShape()[1];
+
+  // Find the size of the A and B operands
+  uint64_t a_volume = getTensorVolume(aType);
+  uint64_t b_volume = getTensorVolume(bType);
+
+  toReturn["activation_in"] = a_volume + b_volume;
+  
+  toReturn["reads"] = toReturn["activation_in"];
+  toReturn["writes"] = toReturn["activation_out"];
+
+  return toReturn;
+}
 
 // max_pool2d
 std::map<std::string, uint64_t> MaxPool2dOp::updateStatistics() {
@@ -267,6 +331,9 @@ std::map<std::string, uint64_t> MaxPool2dOp::updateStatistics() {
   uint64_t aperture = kernel_size[0] * kernel_size[1];
   toReturn[">"] = ofm_volume * (aperture-1);
 
+  toReturn["reads"] = toReturn["parameters_in"] + toReturn["activation_in"];
+  toReturn["writes"] = toReturn["activation_out"];
+
   return toReturn;
 }
 
@@ -279,7 +346,6 @@ std::map<std::string, uint64_t> MaxPool2dWithIndicesOp::updateStatistics() {
   uint64_t indices_volume = getTensorVolume(getResult(1)->getType().cast<TensorType>());
   toReturn["writes"] = ofm_volume + indices_volume;
   toReturn["activation_out"] = ofm_volume;
-
 
   uint64_t ifm_volume = getTensorVolume(getOperand(0)->getType().cast<TensorType>());
   toReturn["reads"] = ifm_volume;
@@ -310,7 +376,6 @@ std::map<std::string, uint64_t> MaxPool2dWithIndicesBackwardOp::updateStatistics
   uint64_t indices_volume  = getTensorVolume(getOperand(7)->getType().cast<TensorType>()); 
   toReturn["reads"] = loss_in_volume + act_in_volume + indices_volume;
 
-
   return toReturn;
 }
 
@@ -334,7 +399,7 @@ std::map<std::string, uint64_t> MMOp::updateStatistics() {
   toReturn["reads"] = loss_in_volume + weight_volume;
   toReturn["writes"] = ofm_volume;
 
-  return(toReturn);
+  return toReturn;
 }
 
 // mul
@@ -357,6 +422,10 @@ std::map<std::string, uint64_t> MulOp::updateStatistics() {
   uint64_t b_volume = getTensorVolume(bType);
 
   toReturn["activation_in"] = a_volume + b_volume;
+
+  toReturn["reads"] = toReturn["activation_in"];
+  toReturn["writes"] = toReturn["activation_out"];
+
   return toReturn;
 }
 
@@ -380,6 +449,10 @@ std::map<std::string, uint64_t> MulUnderOp::updateStatistics() {
   uint64_t b_volume = getTensorVolume(bType);
 
   toReturn["activation_in"] = a_volume + b_volume;
+  
+  toReturn["reads"] = toReturn["activation_in"];
+  toReturn["writes"] = toReturn["activation_out"];
+
   return toReturn;
 }
 
@@ -417,6 +490,9 @@ std::map<std::string, uint64_t> NativeBatchNormOp::updateStatistics() {
   toReturn["+"] += op_volume;   // Bias
   toReturn["*"] += op_volume;   // Scale
 
+  toReturn["reads"] = toReturn["activation_in"] + toReturn["parameters_in"];
+  toReturn["writes"] = toReturn["activation_out"];
+
   return toReturn;
 }
 
@@ -451,6 +527,59 @@ std::map<std::string, uint64_t> ReLUUnderOp::updateStatistics() {
   toReturn["writes"] = op_volume;
 
   toReturn[">"] = op_volume;
+
+  return toReturn;
+}
+
+// sub
+std::map<std::string, uint64_t> SubOp::updateStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+
+  TensorType resultTy = getResult()->getType().cast<TensorType>();
+  TensorType aType = getOperand(0)->getType().cast<TensorType>();
+  TensorType bType = getOperand(1)->getType().cast<TensorType>();
+
+  uint64_t ofm_volume = getTensorVolume(resultTy);
+
+  toReturn["-"] = ofm_volume;
+  toReturn["activation_out"] = ofm_volume;
+
+  // Find the size of the A and B operands
+  uint64_t a_volume = getTensorVolume(aType);
+  uint64_t b_volume = getTensorVolume(bType);
+
+  toReturn["activation_in"] = a_volume + b_volume;
+
+  toReturn["reads"] = a_volume + b_volume;
+  toReturn["writes"] = ofm_volume;
+
+  return toReturn;
+
+}
+
+// sub_
+std::map<std::string, uint64_t> SubUnderOp::updateStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+
+  TensorType resultTy = getResult()->getType().cast<TensorType>();
+  TensorType aType = getOperand(0)->getType().cast<TensorType>();
+  TensorType bType = getOperand(1)->getType().cast<TensorType>();
+
+  uint64_t ofm_volume = getTensorVolume(resultTy);
+
+  toReturn["-"] = ofm_volume;
+  toReturn["activation_out"] = ofm_volume;
+
+  // Find the size of the A and B operands
+  uint64_t a_volume = getTensorVolume(aType);
+  uint64_t b_volume = getTensorVolume(bType);
+
+  toReturn["activation_in"] = a_volume + b_volume;
+
+  toReturn["reads"] = a_volume + b_volume;
+  toReturn["writes"] = ofm_volume;
 
   return toReturn;
 }
