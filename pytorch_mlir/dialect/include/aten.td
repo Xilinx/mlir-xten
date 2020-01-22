@@ -206,6 +206,38 @@ def aten_ConvolutionBackwardOp: aten_Op<"_convolution_backward", [NoSideEffect, 
 	}];
 }
 
+def aten_DivOp: aten_Op<"div", [NoSideEffect, StatisticsOpInterface]>,
+                Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$a,
+        AnyScalarOrTensor:$b
+  );
+
+  let summary = "div operator";
+  let description = [{
+    div operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> updateStatistics();
+  }];
+}
+
+def aten_DivUnderOp: aten_Op<"div_", [NoSideEffect, StatisticsOpInterface]>,
+                     Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$a,
+        AnyScalarOrTensor:$b
+  );
+
+  let summary = "In-place div operator";
+  let description = [{
+    In-place div operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> updateStatistics();
+  }];
+}
+
 def aten_DropoutOp: aten_Op<"dropout", [NoSideEffect]>,
                     Results<(outs AnyTensor)> {
   let arguments = (
@@ -441,6 +473,40 @@ def aten_NllLossForwardOp: aten_Op<"nll_loss_forward", [NoSideEffect]>,
   let summary = "NllLossForward operator";
   let description = [{
     NllLossForward operator
+  }];
+}
+
+def aten_SubOp: aten_Op<"sub", [NoSideEffect, StatisticsOpInterface]>,
+                Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$a,
+        AnyScalarOrTensor:$b,
+        AnyScalar:$c
+  );
+
+  let summary = "sub operator";
+  let description = [{
+    sub operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> updateStatistics();
+  }];
+}
+
+def aten_SubUnderOp: aten_Op<"sub_", [NoSideEffect, StatisticsOpInterface]>,
+                     Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$a,
+        AnyScalarOrTensor:$b,
+        AnyScalar:$c
+  );
+
+  let summary = "In-place sub operator";
+  let description = [{
+    In-place sub operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> updateStatistics();
   }];
 }
 
