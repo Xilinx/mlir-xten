@@ -1099,6 +1099,7 @@ public:
     return matchSuccess();
   }
 };
+
 /// Lower transpose
 class TransposeOpConversion : public ConversionPattern {
 public:

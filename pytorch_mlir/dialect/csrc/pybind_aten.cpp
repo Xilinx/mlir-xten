@@ -10,7 +10,7 @@
 #include "mlir-c/Core.h"
 
 #include "ATenDialect.h"
-#include "ForwardPathReport.h"
+#include "ATenOpReport.h"
 
 #include "pybind11/pybind11.h"
 #include "pybind11/pytypes.h"
@@ -57,26 +57,26 @@ mlir::OwningModuleRef LoadModule(mlir::MLIRContext &context, std::string mlir) {
   return module;
 }
 
-}
+} // namespace
 
 PYBIND11_MODULE(pybind_aten, m) {
   m.doc() = "Python bindings for Xilinx ATen MLIR Dialect";
   m.def("version", []() { return "0.1"; });
   m.def("make_list_type", &xilinx::aten::make_list_type, "make ATenListType");
   m.def("init", &xilinx::aten::init, "register dialect");
-  m.def("fwd_path_report_pass", [](std::string mlir) -> std::string {
+  m.def("op_report_pass", [](std::string mlir) -> std::string {
     mlir::MLIRContext context;
     auto module = LoadModule(context, mlir);
     mlir::PassManager pm(module->getContext());
 
     // our pass
     std::string report;
-    pm.addPass(xilinx::reports::createForwardPathReportPass(true/*useJSON*/, report));
+    pm.addPass(xilinx::reports::createATenOpReportPass(report));
 
     if (failed(pm.run(*module))) {
-      llvm::errs() << "ForwardPathReportPass failed";
+      llvm::errs() << "ATenOpReportPass failed";
       return "<error>";
     }
     return report;
-  }, "run ForwardPathReportPass");
+  }, "run ATenOpReportPass");
 }

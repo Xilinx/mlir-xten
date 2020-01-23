@@ -22,7 +22,7 @@ def StatisticsOpInterface : OpInterface<"StatisticsOpInterface"> {
   let methods = [
     InterfaceMethod<
       "Return statistics about the compute requirements of an op",
-      "std::map<std::string, uint64_t>", "updateStatistics"
+      "std::map<std::string, uint64_t>", "getStatistics"
     >,
   ];
 }
@@ -66,7 +66,7 @@ def aten_AddOp: aten_Op<"add", [NoSideEffect, StatisticsOpInterface]>,
     Add operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -83,7 +83,7 @@ def aten_AddUnderOp: aten_Op<"add_", [NoSideEffect, StatisticsOpInterface]>,
     In-place add operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -102,7 +102,7 @@ def aten_AddmmOp: aten_Op<"addmm", [NoSideEffect, StatisticsOpInterface]>,
     Addmm operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -144,7 +144,7 @@ def aten_BatchNormOp: aten_Op<"batch_norm", [NoSideEffect, StatisticsOpInterface
     BatchNorm operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -179,7 +179,7 @@ def aten_ConvolutionOp: aten_Op<"_convolution", [NoSideEffect, StatisticsOpInter
     Convolution operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
 	}];
 }
 
@@ -202,7 +202,7 @@ def aten_ConvolutionBackwardOp: aten_Op<"_convolution_backward", [NoSideEffect, 
     ConvolutionBackward operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
 	}];
 }
 
@@ -218,7 +218,7 @@ def aten_DivOp: aten_Op<"div", [NoSideEffect, StatisticsOpInterface]>,
     div operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -234,7 +234,7 @@ def aten_DivUnderOp: aten_Op<"div_", [NoSideEffect, StatisticsOpInterface]>,
     In-place div operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -311,7 +311,7 @@ def aten_MaxPool2dOp: aten_Op<"max_pool2d", [NoSideEffect, StatisticsOpInterface
     MaxPool2d operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -331,7 +331,7 @@ def aten_MaxPool2dWithIndicesOp: aten_Op<"max_pool2d_with_indices", [NoSideEffec
     MaxPool2dWithIndices operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -353,7 +353,7 @@ def aten_MaxPool2dWithIndicesBackwardOp: aten_Op<"max_pool2d_with_indices_backwa
     MaxPool2dWithIndicesBackward operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 
 }
@@ -384,7 +384,7 @@ def aten_MMOp: aten_Op<"mm", [NoSideEffect, SameOperandsAndResultElementType, St
     matrix multiply operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -400,7 +400,7 @@ def aten_MulOp: aten_Op<"mul", [NoSideEffect, StatisticsOpInterface]>,
     mul operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -416,7 +416,7 @@ def aten_MulUnderOp: aten_Op<"mul_", [NoSideEffect, StatisticsOpInterface]>,
     In-place mul operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -438,7 +438,7 @@ def aten_NativeBatchNormOp: aten_Op<"native_batch_norm", [NoSideEffect, Statisti
     BatchNorm operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -489,7 +489,7 @@ def aten_SubOp: aten_Op<"sub", [NoSideEffect, StatisticsOpInterface]>,
     sub operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -506,7 +506,7 @@ def aten_SubUnderOp: aten_Op<"sub_", [NoSideEffect, StatisticsOpInterface]>,
     In-place sub operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -535,7 +535,7 @@ def aten_ReLUOp: aten_Op<"relu", [NoSideEffect, StatisticsOpInterface]>,
     ReLU operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
 	}];
 }
 
@@ -550,7 +550,7 @@ def aten_ReLUUnderOp: aten_Op<"relu_", [NoSideEffect, StatisticsOpInterface]>,
     In-Place ReLU operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
 	}];
 }
 
@@ -595,7 +595,7 @@ def aten_ThresholdBackwardOp: aten_Op<"threshold_backward", [NoSideEffect, Stati
     ThresholdBackward operator
   }];
   let extraClassDeclaration = [{
-    std::map<std::string, uint64_t> updateStatistics();
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 

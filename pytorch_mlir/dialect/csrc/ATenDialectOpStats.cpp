@@ -1,6 +1,9 @@
 #include "ATenDialect.h"
 #include <iostream>
 
+// This file contains the StatisticsOpInterface implementations
+// for ATDialect operations
+
 namespace {
 
 uint64_t getTensorVolume(TensorType ty) {
@@ -44,7 +47,7 @@ namespace xilinx {
 namespace aten {
 
 // add
-std::map<std::string, uint64_t> AddOp::updateStatistics() {
+std::map<std::string, uint64_t> AddOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -71,7 +74,7 @@ std::map<std::string, uint64_t> AddOp::updateStatistics() {
 }
 
 // add_
-std::map<std::string, uint64_t> AddUnderOp::updateStatistics() {
+std::map<std::string, uint64_t> AddUnderOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -97,7 +100,7 @@ std::map<std::string, uint64_t> AddUnderOp::updateStatistics() {
 }
 
 // addmm
-std::map<std::string, uint64_t> AddmmOp::updateStatistics() {
+std::map<std::string, uint64_t> AddmmOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -132,7 +135,7 @@ std::map<std::string, uint64_t> AddmmOp::updateStatistics() {
 }
 
 // batch_norm
-std::map<std::string, uint64_t> BatchNormOp::updateStatistics() {
+std::map<std::string, uint64_t> BatchNormOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -172,7 +175,7 @@ std::map<std::string, uint64_t> BatchNormOp::updateStatistics() {
 }
 
 // _convolution
-std::map<std::string, uint64_t> ConvolutionOp::updateStatistics() {
+std::map<std::string, uint64_t> ConvolutionOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -216,7 +219,7 @@ std::map<std::string, uint64_t> ConvolutionOp::updateStatistics() {
 }
 
 // _convolution_backward
-std::map<std::string, uint64_t> ConvolutionBackwardOp::updateStatistics() {
+std::map<std::string, uint64_t> ConvolutionBackwardOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
   TensorType dx_out_resultTy = getResult(0)->getType().cast<TensorType>();
@@ -257,7 +260,7 @@ std::map<std::string, uint64_t> ConvolutionBackwardOp::updateStatistics() {
 }
 
 // div
-std::map<std::string, uint64_t> DivOp::updateStatistics() {
+std::map<std::string, uint64_t> DivOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -284,7 +287,7 @@ std::map<std::string, uint64_t> DivOp::updateStatistics() {
 }
 
 // div_
-std::map<std::string, uint64_t> DivUnderOp::updateStatistics() {
+std::map<std::string, uint64_t> DivUnderOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -311,7 +314,7 @@ std::map<std::string, uint64_t> DivUnderOp::updateStatistics() {
 }
 
 // max_pool2d
-std::map<std::string, uint64_t> MaxPool2dOp::updateStatistics() {
+std::map<std::string, uint64_t> MaxPool2dOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -338,7 +341,7 @@ std::map<std::string, uint64_t> MaxPool2dOp::updateStatistics() {
 }
 
 // max_pool2d_with_indices
-std::map<std::string, uint64_t> MaxPool2dWithIndicesOp::updateStatistics() {
+std::map<std::string, uint64_t> MaxPool2dWithIndicesOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -362,7 +365,7 @@ std::map<std::string, uint64_t> MaxPool2dWithIndicesOp::updateStatistics() {
 }
 
 // max_pool2d_with_indicies_backward
-std::map<std::string, uint64_t> MaxPool2dWithIndicesBackwardOp::updateStatistics() {
+std::map<std::string, uint64_t> MaxPool2dWithIndicesBackwardOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -381,7 +384,7 @@ std::map<std::string, uint64_t> MaxPool2dWithIndicesBackwardOp::updateStatistics
 
 
 // mm
-std::map<std::string, uint64_t> MMOp::updateStatistics() {
+std::map<std::string, uint64_t> MMOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -403,7 +406,7 @@ std::map<std::string, uint64_t> MMOp::updateStatistics() {
 }
 
 // mul
-std::map<std::string, uint64_t> MulOp::updateStatistics() {
+std::map<std::string, uint64_t> MulOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -430,7 +433,7 @@ std::map<std::string, uint64_t> MulOp::updateStatistics() {
 }
 
 // mul_
-std::map<std::string, uint64_t> MulUnderOp::updateStatistics() {
+std::map<std::string, uint64_t> MulUnderOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -457,7 +460,7 @@ std::map<std::string, uint64_t> MulUnderOp::updateStatistics() {
 }
 
 // native_batch_norm
-std::map<std::string, uint64_t> NativeBatchNormOp::updateStatistics() {
+std::map<std::string, uint64_t> NativeBatchNormOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -497,7 +500,7 @@ std::map<std::string, uint64_t> NativeBatchNormOp::updateStatistics() {
 }
 
 // relu
-std::map<std::string, uint64_t> ReLUOp::updateStatistics() {
+std::map<std::string, uint64_t> ReLUOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -514,7 +517,7 @@ std::map<std::string, uint64_t> ReLUOp::updateStatistics() {
 }
 
 // relu_
-std::map<std::string, uint64_t> ReLUUnderOp::updateStatistics() {
+std::map<std::string, uint64_t> ReLUUnderOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -532,7 +535,7 @@ std::map<std::string, uint64_t> ReLUUnderOp::updateStatistics() {
 }
 
 // sub
-std::map<std::string, uint64_t> SubOp::updateStatistics() {
+std::map<std::string, uint64_t> SubOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -559,7 +562,7 @@ std::map<std::string, uint64_t> SubOp::updateStatistics() {
 }
 
 // sub_
-std::map<std::string, uint64_t> SubUnderOp::updateStatistics() {
+std::map<std::string, uint64_t> SubUnderOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
@@ -585,7 +588,7 @@ std::map<std::string, uint64_t> SubUnderOp::updateStatistics() {
 }
 
 // threshold_backward
-std::map<std::string, uint64_t> ThresholdBackwardOp::updateStatistics() {
+std::map<std::string, uint64_t> ThresholdBackwardOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
   uint64_t loss_in_volume = getTensorVolume(getOperand(0)->getType().cast<TensorType>());

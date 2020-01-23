@@ -25,8 +25,8 @@ ATEN_DIALECT_INC_FILES = $(INCDIR)/ATenDialect.h
 ATEN_DIALECT_OBJ_FILES = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(ATEN_DIALECT_SRC_FILES))
 
 ATEN_PASS_SRC_FILES = $(SRCDIR)/ATenLoweringPass.cpp $(SRCDIR)/ATenToStd.cpp \
-					  $(SRCDIR)/ForwardPathReport.cpp $(SRCDIR)/LivenessReport.cpp
-ATEN_PASS_INC_FILES = $(INCDIR)/ATenLoweringPass.h $(INCDIR)/ForwardPathReport.h $(INCDIR)/LivenessReport.h
+					  $(SRCDIR)/ATenOpReport.cpp $(SRCDIR)/LivenessReport.cpp
+ATEN_PASS_INC_FILES = $(INCDIR)/ATenLoweringPass.h $(INCDIR)/ATenOpReport.h $(INCDIR)/LivenessReport.h
 ATEN_PASS_OBJ_FILES = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(ATEN_PASS_SRC_FILES))
 
 ATEN_TBGEN_FILES = $(BUILD_DIR)/include/ATenOps.h.inc \
