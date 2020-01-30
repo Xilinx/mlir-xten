@@ -525,6 +525,41 @@ public:
   }
 };
 
+/// Lower Div
+class DivOpConversion : public ConversionPattern {
+public:
+  explicit DivOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::DivOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    Type resultTy = op->getResult(0)->getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    edsc::ValueHandle xVal(operands[0]);
+    edsc::ValueHandle yVal(operands[1]);
+
+    ArrayRef<Value*> callops{xVal, yVal};
+
+    FuncOp divFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                               "div", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(divFunc),
+                         callops);
+
+    rewriter.replaceOp(op, {new_call});
+    return matchSuccess();
+  }
+};
 /// Lower LogSoftmax
 class LogSoftmaxOpConversion : public ConversionPattern {
 public:
@@ -1228,7 +1263,7 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
                         ThresholdBackwardOpConversion, MaxPool2dWithIndicesBackwardOpConversion,
                         ConvolutionBackwardOpConversion, NllLossForwardOpConversion,
                         NllLossBackwardOpConversion, LogSoftmaxOpConversion,
-                        LogSoftmaxBackwardOpConversion>(
+                        LogSoftmaxBackwardOpConversion, DivOpConversion>(
         &getContext());
 
     mlir::populateFuncOpTypeConversionPattern(atenPatterns,
