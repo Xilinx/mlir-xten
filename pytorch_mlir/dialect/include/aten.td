@@ -442,8 +442,42 @@ def aten_NativeBatchNormOp: aten_Op<"native_batch_norm", [NoSideEffect, Statisti
   }];
 }
 
+def aten_NllLoss2dBackwardOp: aten_Op<"nll_loss2d_backward", [NoSideEffect]>,
+                              Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2,
+        AnyType:$arg3,
+        AnyType:$arg4,
+        AnyType:$arg5,
+        AnyType:$arg6
+  );
+
+  let summary = "NllLoss2dBackward operator";
+  let description = [{
+    NllLoss2dBackward operator
+  }];
+}
+
+def aten_NllLoss2dForwardOp: aten_Op<"nll_loss2d_forward", [NoSideEffect]>,
+                             Results<(outs AnyTensor, AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2,
+        AnyType:$arg3,
+        AnyType:$arg4
+  );
+
+  let summary = "NllLoss2dForward operator";
+  let description = [{
+    NllLoss2dForward operator
+  }];
+}
+
 def aten_NllLossBackwardOp: aten_Op<"nll_loss_backward", [NoSideEffect]>,
-                           Results<(outs AnyTensor)> {
+                            Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyType:$arg0,
         AnyType:$arg1,

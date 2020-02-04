@@ -951,6 +951,113 @@ public:
 };
 
 /// lower NLL Loss backward
+class NllLoss2dBackwardOpConversion : public ConversionPattern {
+public:
+  explicit NllLoss2dBackwardOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::NllLoss2dBackwardOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    TensorType resultTy = op->getResult(0)->getType().cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(resultTy.getShape(),
+                                                resultTy.getElementType(),
+                                                {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    edsc::ValueHandle arg0(operands[0]);
+    edsc::ValueHandle arg1(operands[1]);
+    edsc::ValueHandle arg2(operands[2]);
+    edsc::ValueHandle arg3(operands[3]);
+    edsc::ValueHandle arg6(operands[6]);
+
+    // reduction
+    auto co0 = cast<xilinx::aten::ConstantOp>(operands[4]->getDefiningOp());
+    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    APInt arg4 = ia0.getValue();
+
+    // ignore_index
+    auto co1 = cast<xilinx::aten::ConstantOp>(operands[5]->getDefiningOp());
+    auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
+    APInt arg5 = ia1.getValue();
+
+    ArrayRef<Value*> callops{arg0, arg1, arg2, arg3,
+                             constInt(arg4.getZExtValue(), 32),
+                             constInt(arg5.getZExtValue(), 32),
+                             arg6};
+
+    FuncOp nllLoss2dFwdFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                        "nll_loss2d_backward",
+                                         callops, memRefResultTy);
+
+    auto new_call = callOperation(memRefResultTy,
+                                  rewriter.getSymbolRefAttr(nllLoss2dFwdFunc),
+                                  callops);
+
+    rewriter.replaceOp(op, new_call.getOperation()->getResults());
+    return matchSuccess();
+  }
+};
+
+/// lower NLL Loss forward
+class NllLoss2dForwardOpConversion : public ConversionPattern {
+public:
+  explicit NllLoss2dForwardOpConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::NllLoss2dForwardOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    TensorType result0Ty = op->getResult(0)->getType().cast<TensorType>();
+    Type memRefResult0Ty = mlir::MemRefType::get(result0Ty.getShape(),
+                                                 result0Ty.getElementType(),
+                                                 {}, 0);
+    TensorType result1Ty = op->getResult(0)->getType().cast<TensorType>();
+    Type memRefResult1Ty = mlir::MemRefType::get(result1Ty.getShape(),
+                                                 result1Ty.getElementType(),
+                                                 {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    edsc::ValueHandle arg0(operands[0]);
+    edsc::ValueHandle arg1(operands[1]);
+    edsc::ValueHandle arg2(operands[2]);
+
+    // reduction
+    auto co0 = cast<xilinx::aten::ConstantOp>(operands[3]->getDefiningOp());
+    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    APInt arg3 = ia0.getValue();
+
+    // ignore_index
+    auto co1 = cast<xilinx::aten::ConstantOp>(operands[4]->getDefiningOp());
+    auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
+    APInt arg4 = ia1.getValue();
+
+    ArrayRef<Value*> callops{arg0, arg1, arg2,
+                             constInt(arg3.getZExtValue(), 32),
+                             constInt(arg4.getZExtValue(), 32)};
+
+    ArrayRef<Type> retTy{memRefResult0Ty,memRefResult1Ty};
+
+    FuncOp nllLoss2dFwdFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                        "nll_loss2d_forward",
+                                         callops, retTy);
+
+    auto new_call = callOperation(retTy,
+                                  rewriter.getSymbolRefAttr(nllLoss2dFwdFunc),
+                                  callops);
+
+    rewriter.replaceOp(op, new_call.getOperation()->getResults());
+    return matchSuccess();
+  }
+};
+
+/// lower NLL Loss backward
 class NllLossBackwardOpConversion : public ConversionPattern {
 public:
   explicit NllLossBackwardOpConversion(MLIRContext *context)
@@ -1262,7 +1369,8 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
                         AsStridedOpConversion, LogSoftmaxOpConversion,
                         ThresholdBackwardOpConversion, MaxPool2dWithIndicesBackwardOpConversion,
                         ConvolutionBackwardOpConversion, NllLossForwardOpConversion,
-                        NllLossBackwardOpConversion, LogSoftmaxOpConversion,
+                        NllLossBackwardOpConversion, NllLoss2dForwardOpConversion,
+                        NllLoss2dBackwardOpConversion, LogSoftmaxOpConversion,
                         LogSoftmaxBackwardOpConversion, DivOpConversion>(
         &getContext());
 
