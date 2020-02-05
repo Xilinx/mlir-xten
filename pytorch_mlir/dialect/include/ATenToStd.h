@@ -7,7 +7,9 @@
 
 namespace xilinx {
 namespace aten {
-    class ATenDialect;
+
+class ATenDialect;
+
 }
 }
 

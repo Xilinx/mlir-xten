@@ -114,11 +114,11 @@ public:
 } // namespace
 
 namespace xilinx {
-namespace reports {
+namespace aten {
 
 std::unique_ptr<mlir::Pass> createATenOpReportPass(std::string &o) {
   return std::make_unique<ATenOpReportPass>(o);
 }
 
-} // namespace reports
+} // namespace aten
 } // namespace xilinx

@@ -601,6 +601,5 @@ std::map<std::string, uint64_t> ThresholdBackwardOp::getStatistics() {
   return toReturn;
 }
 
-
 } // namespace aten
 } // namespace xilinx

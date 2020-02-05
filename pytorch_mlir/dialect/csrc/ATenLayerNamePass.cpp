@@ -76,11 +76,11 @@ public:
 } // namespace
 
 namespace xilinx {
-namespace reports {
+namespace aten {
 
 std::unique_ptr<mlir::Pass> createATenLayerNamePass() {
   return std::make_unique<ATenLayerNamePass>();
 }
 
-} // namespace reports
+} // namespace aten
 } // namespace xilinx

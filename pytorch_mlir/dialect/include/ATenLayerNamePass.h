@@ -8,9 +8,9 @@ class Pass;
 } // namespace mlir
 
 namespace xilinx {
-namespace reports {
+namespace aten {
 
 std::unique_ptr<mlir::Pass> createATenLayerNamePass();
 
-} // namespace reports
+} // namespace aten
 } // namespace xilinx

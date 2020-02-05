@@ -1416,9 +1416,11 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
 
 
 namespace xilinx {
-  namespace aten {
-    std::unique_ptr<mlir::Pass> createATenLoweringPass() {
-      return std::make_unique<ATenLoweringPass>();
-    }
-  }
-} // namespace
+namespace aten {
+
+std::unique_ptr<mlir::Pass> createATenLoweringPass() {
+  return std::make_unique<ATenLoweringPass>();
+}
+
+} // namespace aten
+} // namespace xilinx

@@ -11,9 +11,11 @@ class DialectConversion;
 } // namespace mlir
 
 namespace xilinx {
-  namespace aten {
-    std::unique_ptr<mlir::Pass> createATenLoweringPass();
-  }
-} // namespace xilinx::aten
+namespace aten {
+
+std::unique_ptr<mlir::Pass> createATenLoweringPass();
+
+} // namespace aten
+} // namespace xilinx
 
 #endif // ATEN_LOWERING_H_
