@@ -17,18 +17,6 @@ using namespace mlir;
 
 namespace {
 
-// Some helper functions
-std::string getLayerName(std::string layer_type, std::map<std::string, uint64_t>  &layerIDmap, unsigned currentLayer) {
-
-  unsigned ID = 0;
-  if (layerIDmap.count(layer_type) == 0)
-    layerIDmap[layer_type] = 0;
-  else
-    ID = ++layerIDmap[layer_type];
-
-  return("L" + std::to_string(currentLayer) + "-" + layer_type + "-" + std::to_string(ID));
-}
-
 std::string getAsString(std::map<std::string, uint64_t> &m, std::string &e) {
   return m.count(e) ? std::to_string(m[e]) : " ";
 }
@@ -76,15 +64,15 @@ public:
 
     llvm::json::Object top;
     // Walk all the operations and a row for each one to the table.
-    for (auto function : getModule().getOps<FuncOp>()) {
-      function.walk([&](Operation *op) {
-        if (auto stats = mlir::dyn_cast<xilinx::aten::StatisticsOpInterface>(op)) {
-          std::string layerName = opToName[op];
-          std::map<std::string, uint64_t> u = stats.getStatistics();
-          insertJSON(top, layerName, u);
-        }
-      });
-    }
+    auto graph = getModule().lookupSymbol<mlir::FuncOp>("graph");
+    graph.walk([&](Operation *op) {
+      if (auto stats = mlir::dyn_cast<xilinx::aten::StatisticsOpInterface>(op)) {
+        std::string layerName = opToName[op];
+        std::map<std::string, uint64_t> u = stats.getStatistics();
+        insertJSON(top, layerName, u);
+      }
+    });
+
     llvm::json::Value topv(std::move(top));
     std::string ret;
     llvm::raw_string_ostream ss(ret);
@@ -108,18 +96,16 @@ public:
       return;
     }
 
-    // Construct a name for each op.  This should be pulled into a seperate pass
-    std::map<std::string, uint64_t> layerIDmap;
     unsigned currentLayer = 0;
     opToName.clear();
-
-    for (auto function : module.getOps<FuncOp>()) {
-      function.walk([&](Operation *op) {
-          auto name = op->getName().getStringRef();
-          std::string layerName = getLayerName(name, layerIDmap, currentLayer++);
-          opToName[op] = layerName;
-      });
-    }
+    graph.walk([&](Operation *op) {
+      auto attr = op->getAttrOfType<StringAttr>("acdc_layer_name");
+      if (attr)
+        opToName[op] = attr.getValue().str();
+      else
+        opToName[op] = "unknown-layer-" + std::to_string(currentLayer);
+      currentLayer++;
+    });
 
     output = emitJSONReport();
   }
