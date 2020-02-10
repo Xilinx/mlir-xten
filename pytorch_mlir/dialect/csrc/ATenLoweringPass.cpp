@@ -84,7 +84,7 @@ std::string getMangledType(const Type ty) {
   else {
     Type t = ty;
     t.dump();
-    ;//assert(0 && "unhandled type in getMangledType");
+    assert(0 && "unhandled type in getMangledType");
   }
   return ret.str();
 }

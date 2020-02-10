@@ -56,10 +56,10 @@ public:
       if (type.equals("constant")) return;
 
       unsigned ID = 0;
-      if (layerIDmap.count(std::string(type)) == 0)
-        layerIDmap[std::string(type)] = 0;
+      if (layerIDmap.count(type.str()) == 0)
+        layerIDmap[type.str()] = 0;
       else
-        ID = ++layerIDmap[std::string(type)];
+        ID = ++layerIDmap[type.str()];
 
       std::string layerName = "L" + std::to_string(currentLayer++) + \
                               "-" + type.str() + "-" + std::to_string(ID);

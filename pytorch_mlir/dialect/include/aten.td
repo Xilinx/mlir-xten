@@ -266,6 +266,35 @@ def aten_FlattenOp: aten_Op<"flatten", [NoSideEffect]>,
   }];
 }
 
+def aten_ExpandOp: aten_Op<"expand", [NoSideEffect]>,
+                       Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2
+  );
+
+  let summary = "expand operator";
+  let description = [{
+    expand operator
+  }];
+}
+
+def aten_GatherOp: aten_Op<"gather", [NoSideEffect]>,
+                       Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2,
+        AnyType:$arg3
+  );
+
+  let summary = "gather operator";
+  let description = [{
+    gather operator
+  }];
+}
+
 def aten_LogSoftmaxOp: aten_Op<"_log_softmax", [NoSideEffect]>,
                        Results<(outs AnyTensor)> {
   let arguments = (
@@ -361,9 +390,7 @@ def aten_MaxPool2dWithIndicesBackwardOp: aten_Op<"max_pool2d_with_indices_backwa
 def aten_MeanOp: aten_Op<"mean", [NoSideEffect]>,
                  Results<(outs AnyTensor)> {
   let arguments = (
-    ins AnyTensor:$x,
-        AnyType:$dim,
-        AnyType:$keepdim
+    ins AnyTensor:$x
   );
 
   let summary = "mean operator";
@@ -439,6 +466,38 @@ def aten_NativeBatchNormOp: aten_Op<"native_batch_norm", [NoSideEffect, Statisti
   }];
   let extraClassDeclaration = [{
     std::map<std::string, uint64_t> getStatistics();
+  }];
+}
+
+def aten_NativeBatchNormBackwardOp: aten_Op<"native_batch_norm_backward", [NoSideEffect]>,
+                            Results<(outs AnyTensor:$dx, AnyTensor:$dw, AnyTensor:$db)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2,
+        AnyType:$arg3,
+        AnyType:$arg4,
+        AnyType:$arg5,
+        AnyType:$arg6,
+        AnyType:$arg7,
+        AnyType:$arg8
+  );
+
+  let summary = "BatchNormBackward operator";
+  let description = [{
+    BatchNormBackward operator
+  }];
+}
+
+def aten_NegOp: aten_Op<"neg", [NoSideEffect, SameOperandsAndResultElementType]>,
+               Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$x
+  );
+
+  let summary = "neg operator";
+  let description = [{
+    neg operator
   }];
 }
 
@@ -558,6 +617,18 @@ def aten_SumOp: aten_Op<"sum", [NoSideEffect]>,
   }];
 }
 
+def aten_SqueezeOp: aten_Op<"squeeze", [NoSideEffect]>,
+                 Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$x,
+        AnyType:$dim
+  );
+
+  let summary = "Squeeze operator";
+  let description = [{
+    Squeeze operator
+  }];
+}
 def aten_ReLUOp: aten_Op<"relu", [NoSideEffect, StatisticsOpInterface]>,
                  Results<(outs AnyTensor)> {
   let arguments = (
@@ -639,6 +710,19 @@ def aten_TypeCastOp : aten_Op<"type_cast", [NoSideEffect]>,
   let arguments = (
     ins AnyType:$x
   );
+}
+
+def aten_UnsqueezeOp: aten_Op<"unsqueeze", [NoSideEffect]>,
+                 Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$x,
+        AnyType:$dim
+  );
+
+  let summary = "Unsqueeze operator";
+  let description = [{
+    Unsqueeze operator
+  }];
 }
 
 def aten_ViewOp: aten_Op<"view", [NoSideEffect]>,
