@@ -37,13 +37,13 @@ public:
         "activation_in",
         "activation_out",
         "parameters_in",
-        "MAC",
-        "==",
-        ">",
-        "*",
-        "+",
-        "/",
-        "sqrt",
+        "ops:MAC",
+        "ops:==",
+        "ops:>",
+        "ops:*",
+        "ops:+",
+        "ops:/",
+        "ops:sqrt",
       })
   {
   }

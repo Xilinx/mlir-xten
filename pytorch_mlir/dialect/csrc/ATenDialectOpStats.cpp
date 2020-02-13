@@ -1,34 +1,34 @@
 #include "ATenDialect.h"
+
+#include "mlir/IR/StandardTypes.h"
+#include "mlir/IR/Types.h"
+
 #include <iostream>
 
 // This file contains the StatisticsOpInterface implementations
 // for ATDialect operations
 
+using namespace mlir;
+
 namespace {
 
-uint64_t getTensorVolume(TensorType ty) {
+uint64_t getTensorVolume(const ShapedType ty) {
+
+  if (!ty.hasRank())
+    return 1;
+
   uint64_t volume = 1;
   for (auto &d : ty.getShape())
     volume *= d;
   return volume;
 }
 
-uint64_t getTensorVolume(MemRefType ty) {
-  uint64_t volume = 1;
-  for (auto &d : ty.getShape())
-    volume *= d;
-  return volume;
-}
-
-uint64_t getTensorVolume(Type ty) {
-  if (auto t = ty.cast<TensorType>()) {
-    return getTensorVolume(t);
-  }
-  else if (auto t = ty.cast<MemRefType>()) {
+uint64_t getTensorVolume(const Type ty) {
+  if (auto t = ty.dyn_cast<ShapedType>()) {
     return getTensorVolume(t);
   }
   else {
-    return 0;
+    return 1;
   }
 }
 
@@ -53,7 +53,7 @@ std::map<std::string, uint64_t> AddOp::getStatistics() {
 
   TensorType resultTy = getResult()->getType().cast<TensorType>();
   TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  TensorType bType = getOperand(1)->getType().cast<TensorType>();
+  Type bType = getOperand(1)->getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
 
@@ -81,7 +81,7 @@ std::map<std::string, uint64_t> AddUnderOp::getStatistics() {
 
   TensorType resultTy = getResult()->getType().cast<TensorType>();
   TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  TensorType bType = getOperand(1)->getType().cast<TensorType>();
+  Type bType = getOperand(1)->getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
 
@@ -271,7 +271,7 @@ std::map<std::string, uint64_t> DivOp::getStatistics() {
 
   TensorType resultTy = getResult()->getType().cast<TensorType>();
   TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  TensorType bType = getOperand(1)->getType().cast<TensorType>();
+  Type bType = getOperand(1)->getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
   toReturn["ops:/"] = ofm_volume;
@@ -299,7 +299,7 @@ std::map<std::string, uint64_t> DivUnderOp::getStatistics() {
 
   TensorType resultTy = getResult()->getType().cast<TensorType>();
   TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  TensorType bType = getOperand(1)->getType().cast<TensorType>();
+  Type bType = getOperand(1)->getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
   toReturn["ops:/"] = ofm_volume;
@@ -338,7 +338,7 @@ std::map<std::string, uint64_t> MaxPool2dOp::getStatistics() {
   std::vector<uint64_t> kernel_size = unpackListConstant(getOperand(1));
 
   uint64_t aperture = kernel_size[0] * kernel_size[1];
-  toReturn["op:>"] = ofm_volume * (aperture-1);
+  toReturn["ops:>"] = ofm_volume * (aperture-1);
 
   toReturn["reads"] = ifm_volume;
   toReturn["writes"] = ofm_volume;
@@ -367,7 +367,7 @@ std::map<std::string, uint64_t> MaxPool2dWithIndicesOp::getStatistics() {
   std::vector<uint64_t> kernel_size = unpackListConstant(getOperand(1));
 
   uint64_t aperture = kernel_size[0] * kernel_size[1];
-  toReturn["op:>"] = ofm_volume * (aperture-1);
+  toReturn["ops:>"] = ofm_volume * (aperture-1);
 
   return toReturn;
 }
@@ -420,7 +420,7 @@ std::map<std::string, uint64_t> MulOp::getStatistics() {
 
   TensorType resultTy = getResult()->getType().cast<TensorType>();
   TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  TensorType bType = getOperand(1)->getType().cast<TensorType>();
+  Type bType = getOperand(1)->getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
   toReturn["ops:+"] = ofm_volume;
@@ -446,7 +446,7 @@ std::map<std::string, uint64_t> MulUnderOp::getStatistics() {
 
   TensorType resultTy = getResult()->getType().cast<TensorType>();
   TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  TensorType bType = getOperand(1)->getType().cast<TensorType>();
+  Type bType = getOperand(1)->getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
   toReturn["ops:+"] = ofm_volume;
@@ -520,7 +520,7 @@ std::map<std::string, uint64_t> ReLUOp::getStatistics() {
   toReturn["result:0:activation_out"] = out_volume;
   toReturn["reads"]  = in_volume;
   toReturn["writes"] = out_volume;
-  toReturn["op:>"] = out_volume;
+  toReturn["ops:>"] = out_volume;
 
   return toReturn;
 }
@@ -540,7 +540,7 @@ std::map<std::string, uint64_t> ReLUUnderOp::getStatistics() {
   toReturn["result:0:activation_out"] = out_volume;
   toReturn["reads"]  = in_volume;
   toReturn["writes"] = out_volume;
-  toReturn["op:>"] = out_volume;
+  toReturn["ops:>"] = out_volume;
 
   return toReturn;
 }
@@ -552,7 +552,7 @@ std::map<std::string, uint64_t> SubOp::getStatistics() {
 
   TensorType resultTy = getResult()->getType().cast<TensorType>();
   TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  TensorType bType = getOperand(1)->getType().cast<TensorType>();
+  Type bType = getOperand(1)->getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
 
@@ -580,7 +580,7 @@ std::map<std::string, uint64_t> SubUnderOp::getStatistics() {
 
   TensorType resultTy = getResult()->getType().cast<TensorType>();
   TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  TensorType bType = getOperand(1)->getType().cast<TensorType>();
+  Type bType = getOperand(1)->getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
 
