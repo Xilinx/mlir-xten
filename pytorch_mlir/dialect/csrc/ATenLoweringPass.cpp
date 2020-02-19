@@ -289,11 +289,7 @@ public:
   matchAndRewrite(Operation *op, ArrayRef<Value *> operands,
                   ConversionPatternRewriter &rewriter) const override
   {
-    Type resultTy = op->getResult(0)->getType();
-    TensorType tensorResultTy = resultTy.cast<TensorType>();
-    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
-                                                tensorResultTy.getElementType(),
-                                                {}, 0);
+    Type elemTy = op->getResult(0)->getType().cast<TensorType>().getElementType();
 
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
@@ -302,10 +298,13 @@ public:
 
     // construct the shape argument
     std::vector<constInt> shape;
+    std::vector<int64_t> result_shape;
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[1]->getDefiningOp());
     DenseElementsAttr a0 = co0.template getAttrOfType<DenseElementsAttr>("value");
-    for (auto i : a0.getIntValues())
+    for (auto i : a0.getIntValues()) {
       shape.push_back(constInt(i.getSExtValue(),32));
+      result_shape.push_back(i.getSExtValue());
+    }
 
     // pad out the shape with -1 to make it 4d
     while (shape.size() < 4)
@@ -333,8 +332,11 @@ public:
                              shape[0], shape[1], shape[2], shape[3],
                              stride[0], stride[1], stride[2], stride[3],
                              constInt(offset.getSExtValue(), 32)};
-;
 
+
+    Type memRefResultTy = mlir::MemRefType::get(result_shape,
+                                                elemTy,
+                                                {}, 0);
     FuncOp asstridedFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                      "as_strided", callops, memRefResultTy);
 
