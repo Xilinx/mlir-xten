@@ -390,6 +390,28 @@ std::map<std::string, uint64_t> MaxPool2dWithIndicesBackwardOp::getStatistics() 
   return toReturn;
 }
 
+// mean
+std::map<std::string, uint64_t> MeanOp::getStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+
+  TensorType resultTy = getResult()->getType().cast<TensorType>();
+  TensorType aType = getOperand()->getType().cast<TensorType>();
+
+  uint64_t ofm_volume = getTensorVolume(resultTy);
+  toReturn["ops:+"] = ofm_volume;
+  toReturn["result:0:activation_out"] = ofm_volume;
+
+  // Find the size of the A and B operands
+  uint64_t a_volume = getTensorVolume(aType);
+
+  toReturn["operand:0:activation_in"] = a_volume;
+
+  toReturn["reads"] = a_volume;
+  toReturn["writes"] = ofm_volume;
+
+  return toReturn;
+}
 
 // mm
 std::map<std::string, uint64_t> MMOp::getStatistics() {

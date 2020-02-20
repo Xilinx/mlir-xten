@@ -387,7 +387,7 @@ def aten_MaxPool2dWithIndicesBackwardOp: aten_Op<"max_pool2d_with_indices_backwa
 
 }
 
-def aten_MeanOp: aten_Op<"mean", [NoSideEffect]>,
+def aten_MeanOp: aten_Op<"mean", [NoSideEffect, StatisticsOpInterface]>,
                  Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyTensor:$x
@@ -396,6 +396,9 @@ def aten_MeanOp: aten_Op<"mean", [NoSideEffect]>,
   let summary = "mean operator";
   let description = [{
     mean operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
