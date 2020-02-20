@@ -40,9 +40,9 @@ LLVM_LIBDIR = $(shell ${LLVM_BIN}/llvm-config --libdir)
 LLVM_LD_FLAGS = $(shell ${LLVM_BIN}/llvm-config --ldflags) -Wl,-rpath=$(LLVM_LIBDIR)
 
 MLIR_CXX_FLAGS = -I${LLVM_INCLUDE} \
-					  -I../include \
+				 -I../include \
                  -I$(MLIR_INCLUDE) \
-					  -I$(LLVM_BUILD)/projects/mlir/include
+				 -I$(LLVM_BUILD)/projects/mlir/include
 
 MLIR_LD_FLAGS =
 
