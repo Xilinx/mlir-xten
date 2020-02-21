@@ -106,7 +106,7 @@ def aten_AddmmOp: aten_Op<"addmm", [NoSideEffect, StatisticsOpInterface]>,
   }];
 }
 
-def aten_AsStridedOp: aten_Op<"as_strided", [NoSideEffect]>,
+def aten_AsStridedOp: aten_Op<"as_strided", [NoSideEffect, StatisticsOpInterface]>,
                       Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyTensor:$x,
@@ -117,6 +117,9 @@ def aten_AsStridedOp: aten_Op<"as_strided", [NoSideEffect]>,
   let summary = "as_strided operator";
   let description = [{
     as_strided operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -662,7 +665,7 @@ def aten_ReLUUnderOp: aten_Op<"relu_", [NoSideEffect, StatisticsOpInterface]>,
 	}];
 }
 
-def aten_TransposeOp: aten_Op<"t", [NoSideEffect, SameOperandsAndResultElementType]>,
+def aten_TransposeOp: aten_Op<"t", [NoSideEffect, SameOperandsAndResultElementType, StatisticsOpInterface]>,
                       Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyTensor:$x
@@ -672,7 +675,9 @@ def aten_TransposeOp: aten_Op<"t", [NoSideEffect, SameOperandsAndResultElementTy
   let description = [{
     Transpose operator
   }];
-
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+  }];
 }
 
 def aten_ThresholdOp: aten_Op<"threshold", [NoSideEffect]>,
@@ -728,7 +733,7 @@ def aten_UnsqueezeOp: aten_Op<"unsqueeze", [NoSideEffect]>,
   }];
 }
 
-def aten_ViewOp: aten_Op<"view", [NoSideEffect]>,
+def aten_ViewOp: aten_Op<"view", [NoSideEffect, StatisticsOpInterface]>,
                  Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyTensor:$x,
@@ -738,5 +743,8 @@ def aten_ViewOp: aten_Op<"view", [NoSideEffect]>,
   let summary = "View operator";
   let description = [{
     View operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }

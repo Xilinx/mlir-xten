@@ -138,6 +138,14 @@ std::map<std::string, uint64_t> AddmmOp::getStatistics() {
   return toReturn;
 }
 
+// as_strided can be zero overhead
+std::map<std::string, uint64_t> AsStridedOp::getStatistics() {
+  std::map<std::string, uint64_t> toReturn;
+  toReturn["reads"] = 0;
+  toReturn["writes"] = 0;
+  return toReturn;
+}
+
 // batch_norm
 std::map<std::string, uint64_t> BatchNormOp::getStatistics() {
 
@@ -633,6 +641,21 @@ std::map<std::string, uint64_t> ThresholdBackwardOp::getStatistics() {
   toReturn["reads"]  = loss_in_volume + act_in_volume;
   toReturn["writes"] = loss_out_volume;
 
+  return toReturn;
+}
+
+// transpose can be zero overhead
+std::map<std::string, uint64_t> TransposeOp::getStatistics() {
+  std::map<std::string, uint64_t> toReturn;
+  toReturn["reads"] = 0;
+  toReturn["writes"] = 0;
+  return toReturn;
+}
+// view can be zero overhead
+std::map<std::string, uint64_t> ViewOp::getStatistics() {
+  std::map<std::string, uint64_t> toReturn;
+  toReturn["reads"] = 0;
+  toReturn["writes"] = 0;
   return toReturn;
 }
 
