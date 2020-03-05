@@ -21,10 +21,11 @@ ATEN_DIALECT_OBJ_FILES = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(ATEN_DIALECT
 ATEN_PASS_SRC_FILES = $(SRCDIR)/ATenLoweringPass.cpp $(SRCDIR)/ATenToStd.cpp \
 					  $(SRCDIR)/ATenOpReport.cpp $(SRCDIR)/LivenessReport.cpp \
 					  $(SRCDIR)/ATenLayerNamePass.cpp $(SRCDIR)/ATenModulePass.cpp \
-					  $(SRCDIR)/ATenSimpleAllocatePass.cpp
+					  $(SRCDIR)/ATenSimpleAllocatePass.cpp $(SRCDIR)/ReturnEliminationPass.cpp
 ATEN_PASS_INC_FILES = $(INCDIR)/ATenLoweringPass.h $(INCDIR)/ATenOpReport.h \
 					  $(INCDIR)/LivenessReport.h $(INCDIR)/LivenessReport.h \
-					  $(INCDIR)/ATenModulePass.h $(INCDIR)/ATenSimpleAllocatePass.h
+					  $(INCDIR)/ATenModulePass.h $(INCDIR)/ATenSimpleAllocatePass.h \
+					  $(INCDIR)/ReturnEliminationPass.h
 ATEN_PASS_OBJ_FILES = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(ATEN_PASS_SRC_FILES))
 
 ATEN_TBGEN_FILES = $(BUILD_DIR)/include/ATenOps.h.inc \
