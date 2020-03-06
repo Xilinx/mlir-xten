@@ -32,7 +32,6 @@ public:
       return;
     visitedOps.insert(op);
 
-
     if (auto callOp = dyn_cast<CallOp>(op)) {
 
       auto builder = std::make_unique<mlir::OpBuilder>(op);
@@ -69,9 +68,9 @@ public:
                                                newFnName,
                                                ArrayRef<Type>{},
                                                newCallArgs);
-      op->erase();
+      erasedOps.insert(op);
       auto fn = getModule().lookupSymbol<FuncOp>(callOp.callee());
-      if (fn && fn.use_empty()) fn.erase();
+      if (fn && fn.use_empty()) erasedOps.insert(fn);
     }
     else if (isa<AllocOp>(op)) {
     }
@@ -129,21 +128,26 @@ public:
                                  retOp->getOperands().end()};
 
     retOp->dropAllReferences();
-    retOp->erase();
+    erasedOps.insert(retOp);
 
     for (Value *v : operands)
       valueMap[v] = BB.addArgument(v->getType());
+
 
     for (Value *v : operands) {
       if (!v->getType().isa<MemRefType>())
         llvm_unreachable("graph function returns non-memref");
       runOnOperation(v->getDefiningOp());
     }
+
+    for (Operation *o : erasedOps)
+      o->erase();
   }
 
 private:
   std::map<Value*,Value*> valueMap;
   std::set<Operation*> visitedOps;
+  std::set<Operation*> erasedOps;
 };
 
 } // namespace
