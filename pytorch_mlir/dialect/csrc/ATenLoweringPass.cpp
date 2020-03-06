@@ -104,7 +104,7 @@ std::string getMangledFuncName(ModuleOp module, std::string prefix, FunctionType
   return ret;
 }
 
-FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value *> &operands, ArrayRef<Type> &retTys)
+FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value *> operands, ArrayRef<Type> retTys)
 {
   Builder builder(module);
 
@@ -126,9 +126,9 @@ FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value *> &operand
   return fn;
 }
 
-FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value *> &operands, Type &retTy)
+FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value *> operands, Type &retTy)
 {
-  ArrayRef<Type> retTys{retTy};
+  std::vector<Type> retTys{retTy};
   return getATenFn(module, prefix, operands, retTys);
 }
 
@@ -218,8 +218,8 @@ public:
     auto ia = co.getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
-    ArrayRef<Value*> callops{xVal, yVal, constInt(iaVal.getSExtValue(), 32)};
-    ArrayRef<Type> retTys{memRefResultTy};
+    std::vector<Value*> callops{xVal, yVal, constInt(iaVal.getSExtValue(), 32)};
+    std::vector<Type> retTys{memRefResultTy};
     FuncOp addFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                "add", callops, memRefResultTy);
 
@@ -263,7 +263,7 @@ public:
     auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
     APInt iaVal1 = ia1.getValue();
 
-    ArrayRef<Value*> callops{aVal, bVal, cVal,
+    std::vector<Value*> callops{aVal, bVal, cVal,
                              constInt(iaVal0.getSExtValue(), 32),
                              constInt(iaVal1.getSExtValue(), 32)};
 
@@ -328,7 +328,7 @@ public:
       offset = ia2.getValue();
     }
 
-    ArrayRef<Value*> callops{xVal,
+    std::vector<Value*> callops{xVal,
                              shape[0], shape[1], shape[2], shape[3],
                              stride[0], stride[1], stride[2], stride[3],
                              constInt(offset.getSExtValue(), 32)};
@@ -392,7 +392,7 @@ public:
 
     auto f32Ty = FloatType::getF32(op->getContext());
 
-    ArrayRef<Value*> callops{aVal, bVal, cVal, dVal, eVal,
+    std::vector<Value*> callops{aVal, bVal, cVal, dVal, eVal,
                              constInt(iaVal0.getZExtValue(), 1),
                              constFloat(faVal0, f32Ty),
                              constFloat(faVal1, f32Ty),
@@ -449,7 +449,7 @@ public:
     auto kernelCI = constInt(kernel[0], 32);
     auto strideCI = constInt(stride[0], 32);
  
-    ArrayRef<Value*> callops{xVal, wVal, bVal, padCI, kernelCI, strideCI};
+    std::vector<Value*> callops{xVal, wVal, bVal, padCI, kernelCI, strideCI};
 
     FuncOp convFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                 "conv2d", callops, memRefResultTy);
@@ -511,9 +511,8 @@ public:
     auto kernelCI = constInt(kernel[0], 32);
     auto strideCI = constInt(stride[0], 32);
  
-    ArrayRef<Value*> callops{arg0, arg1, arg2, padCI, kernelCI, strideCI};
-
-    ArrayRef<mlir::Type> retTys{memRefResult0Ty, memRefResult1Ty, memRefResult2Ty};
+    std::vector<Value*> callops{arg0, arg1, arg2, padCI, kernelCI, strideCI};
+    std::vector<mlir::Type> retTys{memRefResult0Ty, memRefResult1Ty, memRefResult2Ty};
 
     FuncOp convFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                 "conv2d_backward", callops, retTys);
@@ -549,7 +548,7 @@ public:
     edsc::ValueHandle xVal(operands[0]);
     edsc::ValueHandle yVal(operands[1]);
 
-    ArrayRef<Value*> callops{xVal, yVal};
+    std::vector<Value*> callops{xVal, yVal};
 
     FuncOp divFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                "div", callops, memRefResultTy);
@@ -590,9 +589,9 @@ public:
     auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
     APInt iaVal1 = ia1.getValue();
 
-    ArrayRef<Value*> callops{aVal,
-                             constInt(iaVal0.getSExtValue(), 32),
-                             constInt(iaVal1.getZExtValue(), 1)};
+    std::vector<Value*> callops{aVal,
+                                constInt(iaVal0.getSExtValue(), 32),
+                                constInt(iaVal1.getZExtValue(), 1)};
 
     FuncOp logsoftmaxFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                       "log_softmax", callops, memRefResultTy);
@@ -632,9 +631,9 @@ public:
     auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
-    ArrayRef<Value*> callops{arg0, arg1,
-                             constInt(iaVal0.getSExtValue(), 32),
-                             arg3};
+    std::vector<Value*> callops{arg0, arg1,
+                                constInt(iaVal0.getSExtValue(), 32),
+                                arg3};
 
     FuncOp logsoftmaxBackwardFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                               "log_softmax_backward_data", callops, memRefResultTy);
@@ -681,10 +680,10 @@ public:
     unpack(operands[2], stride);
     unpack(operands[3], pad);
 
-    ArrayRef<Value*> callops{xVal,
-                             constInt(kernel[0],32),
-                             constInt(stride[0],32),
-                             constInt(pad[0],32)};
+    std::vector<Value*> callops{xVal,
+                                constInt(kernel[0],32),
+                                constInt(stride[0],32),
+                                constInt(pad[0],32)};
 
     FuncOp maxpoolFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                    "max_pool2d", callops, memRefResultTy);
@@ -743,14 +742,14 @@ public:
     auto ia = co.getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
-    ArrayRef<Value*> callops{xVal,
-                             constInt(kernel[0],32),
-                             constInt(stride[0],32),
-                             constInt(pad[0],32),
-                             constInt(dilation[0],32),
-                             constInt(iaVal.getZExtValue(), 1)};
+    std::vector<Value*> callops{xVal,
+                                constInt(kernel[0],32),
+                                constInt(stride[0],32),
+                                constInt(pad[0],32),
+                                constInt(dilation[0],32),
+                                constInt(iaVal.getZExtValue(), 1)};
 
-    ArrayRef<mlir::Type> retTys{memRefResultTy, memRefIdxTy};
+    std::vector<mlir::Type> retTys{memRefResultTy, memRefIdxTy};
 
     FuncOp maxpoolFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                    "max_pool2d_with_indices", callops, retTys);
@@ -803,13 +802,13 @@ public:
     auto ia = co.getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
-    ArrayRef<Value*> callops{operands[0], operands[1],
-                             constInt(kernel[0],32),
-                             constInt(stride[0],32),
-                             constInt(pad[0],32),
-                             constInt(dilation[0],32),
-                             constInt(iaVal.getZExtValue(), 1),
-                             operands[7]};
+    std::vector<Value*> callops{operands[0], operands[1],
+                                constInt(kernel[0],32),
+                                constInt(stride[0],32),
+                                constInt(pad[0],32),
+                                constInt(dilation[0],32),
+                                constInt(iaVal.getZExtValue(), 1),
+                                operands[7]};
 
     FuncOp maxpoolbackFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                        "max_pool2d_with_indices_backward",
@@ -846,7 +845,7 @@ public:
     edsc::ValueHandle xVal(operands[0]);
     edsc::ValueHandle yVal(operands[1]);
 
-    ArrayRef<Value*> callops{xVal, yVal};
+    std::vector<Value*> callops{xVal, yVal};
 
     FuncOp mmFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                               "mm", callops, memRefResultTy);
@@ -882,7 +881,7 @@ public:
     edsc::ValueHandle xVal(operands[0]);
     edsc::ValueHandle yVal(operands[1]);
 
-    ArrayRef<Value*> callops{xVal, yVal};
+    std::vector<Value*> callops{xVal, yVal};
 
     FuncOp mulFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                "mul", callops, memRefResultTy);
@@ -935,10 +934,10 @@ public:
 
     auto f32Ty = FloatType::getF32(op->getContext());
 
-    ArrayRef<Value*> callops{aVal, bVal, cVal, dVal, eVal,
-                             constInt(iaVal0.getZExtValue(), 1),
-                             constFloat(faVal0, f32Ty),
-                             constFloat(faVal1, f32Ty)};
+    std::vector<Value*> callops{aVal, bVal, cVal, dVal, eVal,
+                                constInt(iaVal0.getZExtValue(), 1),
+                                constFloat(faVal0, f32Ty),
+                                constFloat(faVal1, f32Ty)};
 
     FuncOp batchnormFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                      "native_batch_norm", callops, memRefResultTy);
@@ -986,10 +985,10 @@ public:
     auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
     APInt arg5 = ia1.getValue();
 
-    ArrayRef<Value*> callops{arg0, arg1, arg2, arg3,
-                             constInt(arg4.getZExtValue(), 32),
-                             constInt(arg5.getZExtValue(), 32),
-                             arg6};
+    std::vector<Value*> callops{arg0, arg1, arg2, arg3,
+                                constInt(arg4.getZExtValue(), 32),
+                                constInt(arg5.getZExtValue(), 32),
+                                arg6};
 
     FuncOp nllLoss2dFwdFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                         "nll_loss2d_backward",
@@ -1040,11 +1039,11 @@ public:
     auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia1.getValue();
 
-    ArrayRef<Value*> callops{arg0, arg1, arg2,
-                             constInt(arg3.getZExtValue(), 32),
-                             constInt(arg4.getZExtValue(), 32)};
+    std::vector<Value*> callops{arg0, arg1, arg2,
+                                constInt(arg3.getZExtValue(), 32),
+                                constInt(arg4.getZExtValue(), 32)};
 
-    ArrayRef<Type> retTy{memRefResult0Ty,memRefResult1Ty};
+    std::vector<Type> retTy{memRefResult0Ty,memRefResult1Ty};
 
     FuncOp nllLoss2dFwdFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                         "nll_loss2d_forward",
@@ -1093,10 +1092,10 @@ public:
     auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
     APInt arg5 = ia1.getValue();
 
-    ArrayRef<Value*> callops{arg0, arg1, arg2, arg3,
-                             constInt(arg4.getZExtValue(), 32),
-                             constInt(arg5.getZExtValue(), 32),
-                             arg6};
+    std::vector<Value*> callops{arg0, arg1, arg2, arg3,
+                                constInt(arg4.getZExtValue(), 32),
+                                constInt(arg5.getZExtValue(), 32),
+                                arg6};
 
     FuncOp nllLossFwdFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                       "nll_loss_backward",
@@ -1147,11 +1146,11 @@ public:
     auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia1.getValue();
 
-    ArrayRef<Value*> callops{arg0, arg1, arg2,
-                             constInt(arg3.getZExtValue(), 32),
-                             constInt(arg4.getZExtValue(), 32)};
+    std::vector<Value*> callops{arg0, arg1, arg2,
+                                constInt(arg3.getZExtValue(), 32),
+                                constInt(arg4.getZExtValue(), 32)};
 
-    ArrayRef<Type> retTy{memRefResult0Ty,memRefResult1Ty};
+    std::vector<Type> retTy{memRefResult0Ty,memRefResult1Ty};
 
     FuncOp nllLossFwdFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                       "nll_loss_forward",
@@ -1187,7 +1186,7 @@ public:
 
     edsc::ValueHandle xVal(operands[0]);
 
-    ArrayRef<Value*> callops{xVal};
+    std::vector<Value*> callops{xVal};
 
     FuncOp reluFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                 "relu", callops, memRefResultTy);
@@ -1227,8 +1226,8 @@ public:
     auto ia = co.getAttrOfType<IntegerAttr>("value");
     APInt arg2 = ia.getValue();
 
-    ArrayRef<Value*> callops{arg0, arg1,
-                             constInt(arg2.getSExtValue(), 32)};
+    std::vector<Value*> callops{arg0, arg1,
+                                constInt(arg2.getSExtValue(), 32)};
 
     FuncOp reluFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                 "threshold_backward",
@@ -1265,7 +1264,7 @@ public:
 
     edsc::ValueHandle xVal(operands[0]);
 
-    ArrayRef<Value*> callops{xVal};
+    std::vector<Value*> callops{xVal};
 
     FuncOp transposeFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                      "t", callops, memRefResultTy);
@@ -1311,7 +1310,7 @@ public:
     while (shape.size() < 4)
       shape.push_back(constInt(-1,32));
 
-    ArrayRef<Value*> callops{xVal, shape[0], shape[1], shape[2], shape[3]};
+    std::vector<Value*> callops{xVal, shape[0], shape[1], shape[2], shape[3]};
 
     FuncOp viewFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                 "view", callops, memRefResultTy);
