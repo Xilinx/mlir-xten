@@ -48,9 +48,9 @@ MLIR_CXX_FLAGS = -I${LLVM_INCLUDE} \
 
 MLIR_LD_FLAGS =
 
-CXX_FLAGS = -std=c++14 -O0 -fPIC -g -I$(INCDIR) -I$(BUILD_DIR)/include \
+CXX_FLAGS = -std=c++14 -O3 -fPIC -g -I$(INCDIR) -I$(BUILD_DIR)/include \
             $(LLVM_CXX_FLAGS) $(MLIR_CXX_FLAGS)
-LD_FLAGS = -std=c++14 -O0 -g $(LLVM_LD_FLAGS) $(MLIR_LD_FLAGS)
+LD_FLAGS = -std=c++14 -O3 -g $(LLVM_LD_FLAGS) $(MLIR_LD_FLAGS)
 
 ###################
 # rules

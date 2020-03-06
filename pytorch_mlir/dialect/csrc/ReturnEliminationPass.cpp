@@ -73,7 +73,11 @@ public:
       auto fn = getModule().lookupSymbol<FuncOp>(callOp.callee());
       if (fn && fn.use_empty()) fn.erase();
     }
+    else if (isa<AllocOp>(op)) {
+    }
     else {
+      getModule().dump();
+      op->dump();
       llvm_unreachable("unhandled operation type");
     }
 
