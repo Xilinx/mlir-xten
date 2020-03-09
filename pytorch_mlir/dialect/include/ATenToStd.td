@@ -5,7 +5,7 @@
 
 #ifdef STANDARD_OPS
 #else
-include "mlir/Dialect/StandardOps/Ops.td"
+include "mlir/Dialect/StandardOps/IR/Ops.td"
 #endif // STANDARD_OPS
 
 #ifdef ATEN_OPS

@@ -8,7 +8,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "mlir/Dialect/StandardOps/Ops.h"
+#include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/Pass/Pass.h"
 
 #include <vector>
@@ -25,7 +25,7 @@ class ReturnEliminationPass : public ModulePass<ReturnEliminationPass> {
 
 public:
   ReturnEliminationPass() {}
-  
+
   void runOnOperation(Operation *op) {
 
     if (visitedOps.count(op))
@@ -35,7 +35,7 @@ public:
     if (auto callOp = dyn_cast<CallOp>(op)) {
 
       auto builder = std::make_unique<mlir::OpBuilder>(op);
-      
+
       std::vector<Type> tys;
       for (auto t : callOp.getCalleeType().getInputs())
         tys.push_back(t);
@@ -50,17 +50,17 @@ public:
         getModule().push_back(fn);
       }
 
-      std::vector<Value*> newCallArgs{callOp.arg_operand_begin(),
+      std::vector<Value> newCallArgs{callOp.arg_operand_begin(),
                                       callOp.arg_operand_end()};
 
       for (auto v : callOp.getResults()) {
-        if (!v->getType().isa<MemRefType>())
+        if (!v.getType().isa<MemRefType>())
           llvm_unreachable("function returns non-memref");
         if (!valueMap.count(v)) {
           valueMap[v] = builder->create<AllocOp>(op->getLoc(),
-                                                 v->getType().cast<MemRefType>());
+                                                 v.getType().cast<MemRefType>());
         }
-        v->replaceAllUsesWith(valueMap[v]);
+        v.replaceAllUsesWith(valueMap[v]);
         newCallArgs.push_back(valueMap[v]);
       }
 
@@ -80,12 +80,12 @@ public:
       llvm_unreachable("unhandled operation type");
     }
 
-    for (Value *v : op->getOperands()) {
-      if (!v->getType().isa<MemRefType>())
+    for (Value v : op->getOperands()) {
+      if (!v.getType().isa<MemRefType>())
         continue;
-      if (isa<BlockArgument>(v))
+      if (v.isa<BlockArgument>())
         continue;
-      runOnOperation(v->getDefiningOp());
+      runOnOperation(v.getDefiningOp());
     }
 
   }
@@ -124,20 +124,20 @@ public:
 
     builder->create<ReturnOp>(retOp->getLoc());
 
-    std::vector<Value*> operands{retOp->getOperands().begin(),
+    std::vector<Value> operands{retOp->getOperands().begin(),
                                  retOp->getOperands().end()};
 
     retOp->dropAllReferences();
     erasedOps.insert(retOp);
 
-    for (Value *v : operands)
-      valueMap[v] = BB.addArgument(v->getType());
+    for (Value v : operands)
+      valueMap[v] = BB.addArgument(v.getType());
 
 
-    for (Value *v : operands) {
-      if (!v->getType().isa<MemRefType>())
+    for (Value v : operands) {
+      if (!v.getType().isa<MemRefType>())
         llvm_unreachable("graph function returns non-memref");
-      runOnOperation(v->getDefiningOp());
+      runOnOperation(v.getDefiningOp());
     }
 
     for (Operation *o : erasedOps)
@@ -145,7 +145,7 @@ public:
   }
 
 private:
-  std::map<Value*,Value*> valueMap;
+  std::map<Value,Value> valueMap;
   std::set<Operation*> visitedOps;
   std::set<Operation*> erasedOps;
 };

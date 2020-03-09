@@ -2,7 +2,7 @@
 
 #include "ATenToStd.h"
 #include "ATenDialect.h"
-#include "mlir/Dialect/StandardOps/Ops.h"
+#include "mlir/Dialect/StandardOps/IR/Ops.h"
 
 using namespace xilinx;
 

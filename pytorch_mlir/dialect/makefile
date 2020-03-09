@@ -12,7 +12,7 @@ LLVM_BUILD=$(abspath ../../build$(BUILD)/peano)
 LLVM_BIN=${LLVM_BUILD}/bin
 LLVM_PROJECT=$(realpath ../../peano/llvm-project)
 LLVM_INCLUDE=${LLVM_PROJECT}/llvm/include
-MLIR_INCLUDE=$(LLVM_PROJECT)/llvm/projects/mlir/include
+MLIR_INCLUDE=$(LLVM_PROJECT)/mlir/include
 
 ATEN_DIALECT_SRC_FILES = $(SRCDIR)/ATenDialect.cpp $(SRCDIR)/ATenDialectOpStats.cpp 
 ATEN_DIALECT_INC_FILES = $(INCDIR)/ATenDialect.h
@@ -35,7 +35,7 @@ ATEN_TBGEN_FILES = $(BUILD_DIR)/include/ATenOps.h.inc \
 				   $(BUILD_DIR)/include/ATenToStd.cpp.inc
 
 LLVM_CXX_FLAGS = $(shell ${LLVM_BIN}/llvm-config --cppflags)
-LLVM_LIBS = -lLLVM-10git
+LLVM_LIBS = -lLLVM-11git
 #$(shell ${LLVM_BIN}/llvm-config --libs)
 LLVM_SYSTEM_LIBS = $(shell ${LLVM_BIN}/llvm-config --system-libs)
 LLVM_LIBDIR = $(shell ${LLVM_BIN}/llvm-config --libdir)
@@ -43,9 +43,10 @@ LLVM_LD_FLAGS = $(shell ${LLVM_BIN}/llvm-config --ldflags) -Wl,-rpath=$(LLVM_LIB
 
 MLIR_CXX_FLAGS = -I${LLVM_INCLUDE} \
 				 -I../include \
-                 -I$(MLIR_INCLUDE) \
-				 -I$(LLVM_BUILD)/projects/mlir/include
+	          -I$(MLIR_INCLUDE) \
+				 -I$(LLVM_BUILD)/tools/mlir/include
 
+MLIR_LIBS = -lMLIR
 MLIR_LD_FLAGS =
 
 CXX_FLAGS = -std=c++14 -O3 -fPIC -g -I$(INCDIR) -I$(BUILD_DIR)/include \
@@ -111,4 +112,4 @@ $(BUILD_DIR)/libaten.a: $(ATEN_DIALECT_OBJ_FILES) $(ATEN_PASS_OBJ_FILES)
 ###################
 
 $(BUILD_DIR)/test.exe: $(OBJDIR)/test.o $(BUILD_DIR)/libaten.a makefile
-	$(CXX) $< $(BUILD_DIR)/libaten.a  $(LD_FLAGS) -o $@ $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) -lcurses -L$(BUILD_DIR)
+	$(CXX) $< $(BUILD_DIR)/libaten.a  $(LD_FLAGS) -o $@ $(LLVM_LIBS) $(MLIR_LIBS) $(LLVM_SYSTEM_LIBS) -lcurses -L$(BUILD_DIR)

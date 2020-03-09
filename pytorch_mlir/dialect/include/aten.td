@@ -30,12 +30,12 @@ def StatisticsOpInterface : OpInterface<"StatisticsOpInterface"> {
 class aten_Op<string mnemonic, list<OpTrait> traits = [StatisticsOpInterface]> :
     Op<aten_Dialect, mnemonic, traits>;
 
-def AnyScalarOrTensor : TypeConstraint<Or<[AnyInteger.predicate,
+def AnyScalarOrTensor : TypeConstraint<Or<[AnySignlessInteger.predicate,
                                            AnyFloat.predicate,
                                            AnyTensor.predicate]>,
                                        "scalar-or-tensor">;
 
-def AnyScalar : TypeConstraint<Or<[AnyInteger.predicate,
+def AnyScalar : TypeConstraint<Or<[AnySignlessInteger.predicate,
                                    AnyFloat.predicate]>,
                                  "scalar">;
 

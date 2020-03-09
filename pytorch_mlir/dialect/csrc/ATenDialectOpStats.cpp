@@ -32,9 +32,9 @@ uint64_t getTensorVolume(const Type ty) {
   }
 }
 
-std::vector<uint64_t> unpackListConstant(Value *op) {
+std::vector<uint64_t> unpackListConstant(Value op) {
   std::vector<uint64_t> v;
-  auto co = cast<xilinx::aten::ConstantOp>(op->getDefiningOp());
+  auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
   DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
   for (auto i : a.getIntValues())
     v.push_back(i.getSExtValue());
@@ -51,9 +51,9 @@ std::map<std::string, uint64_t> AddOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
-  TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  Type bType = getOperand(1)->getType();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+  TensorType aType = getOperand(0).getType().cast<TensorType>();
+  Type bType = getOperand(1).getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
 
@@ -79,9 +79,9 @@ std::map<std::string, uint64_t> AddUnderOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
-  TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  Type bType = getOperand(1)->getType();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+  TensorType aType = getOperand(0).getType().cast<TensorType>();
+  Type bType = getOperand(1).getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
 
@@ -110,10 +110,10 @@ std::map<std::string, uint64_t> AddmmOp::getStatistics() {
   // Then the number of forward MACs is input * output
   // And the number of adds is output if there is bias
 
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
-  TensorType biasTy = getOperand(0)->getType().cast<TensorType>();
-  TensorType inputTy = getOperand(1)->getType().cast<TensorType>();
-  TensorType weightTy = getOperand(2)->getType().cast<TensorType>();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+  TensorType biasTy = getOperand(0).getType().cast<TensorType>();
+  TensorType inputTy = getOperand(1).getType().cast<TensorType>();
+  TensorType weightTy = getOperand(2).getType().cast<TensorType>();
 
   uint64_t num_output_neurons = resultTy.getShape()[1];
   uint64_t ofm_volume = getTensorVolume(resultTy);
@@ -151,10 +151,10 @@ std::map<std::string, uint64_t> BatchNormOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult(0)->getType().cast<TensorType>();
+  TensorType resultTy = getResult(0).getType().cast<TensorType>();
   uint64_t op_volume = getTensorVolume(resultTy);
-  uint64_t weight_volume = getTensorVolume(getOperand(1)->getType());
-  uint64_t bias_volume = getTensorVolume(getOperand(2)->getType());
+  uint64_t weight_volume = getTensorVolume(getOperand(1).getType());
+  uint64_t bias_volume = getTensorVolume(getOperand(2).getType());
   toReturn["operand:0:activation_in"] = op_volume;
   toReturn["result:0:activation_out"] = op_volume;
   toReturn["operand:1:parameters_in:weight"] = weight_volume;
@@ -191,10 +191,10 @@ std::map<std::string, uint64_t> ConvolutionOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
-  TensorType inputTy = getOperand(0)->getType().cast<TensorType>();
-  TensorType weightTy = getOperand(1)->getType().cast<TensorType>();
-  TensorType biasTy = getOperand(2)->getType().cast<TensorType>();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+  TensorType inputTy = getOperand(0).getType().cast<TensorType>();
+  TensorType weightTy = getOperand(1).getType().cast<TensorType>();
+  TensorType biasTy = getOperand(2).getType().cast<TensorType>();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
   uint64_t ofm_depth = resultTy.getShape()[1];
@@ -203,7 +203,7 @@ std::map<std::string, uint64_t> ConvolutionOp::getStatistics() {
   uint64_t kernel_width = weightTy.getShape()[2];
   uint64_t kernel_height = weightTy.getShape()[3];
 
-  auto co = cast<xilinx::aten::ConstantOp>(getOperand(8)->getDefiningOp());
+  auto co = cast<xilinx::aten::ConstantOp>(getOperand(8).getDefiningOp());
   auto ia = co.getAttrOfType<IntegerAttr>("value");
   uint64_t groups = ia.getValue().getZExtValue();
 
@@ -235,10 +235,10 @@ std::map<std::string, uint64_t> ConvolutionOp::getStatistics() {
 std::map<std::string, uint64_t> ConvolutionBackwardOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
-  TensorType dx_out_resultTy = getResult(0)->getType().cast<TensorType>();
+  TensorType dx_out_resultTy = getResult(0).getType().cast<TensorType>();
   uint64_t dx_out_volume = getTensorVolume(dx_out_resultTy);
 
-  TensorType weightTy = getOperand(2)->getType().cast<TensorType>();
+  TensorType weightTy = getOperand(2).getType().cast<TensorType>();
   uint64_t weight_volume = getTensorVolume(weightTy);
   uint64_t loss_in_depth = weightTy.getShape()[0];
   uint64_t kernel_width = weightTy.getShape()[2];
@@ -249,14 +249,14 @@ std::map<std::string, uint64_t> ConvolutionBackwardOp::getStatistics() {
 
   uint64_t total_MACs = dx_out_volume * MACs_per_loss;
 
-  TensorType ifmTy = getOperand(1)->getType().cast<TensorType>();
+  TensorType ifmTy = getOperand(1).getType().cast<TensorType>();
   uint64_t ifm_volume = getTensorVolume(ifmTy);
   auto ifm_shape = ifmTy.getShape();
 
   uint64_t ifm_bwh = ifm_shape[0]*ifm_shape[2]*ifm_shape[3];  // Batch * height * width: the depth is in the weight shape already
   total_MACs += ifm_bwh * weight_volume;
 
-  TensorType dx_inTy = getOperand(0)->getType().cast<TensorType>();
+  TensorType dx_inTy = getOperand(0).getType().cast<TensorType>();
   uint64_t dx_in_volume = getTensorVolume(dx_inTy);
   toReturn["ops:+"] = dx_in_volume;
 
@@ -264,9 +264,9 @@ std::map<std::string, uint64_t> ConvolutionBackwardOp::getStatistics() {
   toReturn["reads"] = dx_in_volume + ifm_volume + weight_volume;
 
   // Writes: Conv_backward writes 3 tensors: the loss out, gradients for the weights, and gradients for the biases
-  TensorType biasTy = getResult(2)->getType().cast<TensorType>();
+  TensorType biasTy = getResult(2).getType().cast<TensorType>();
   uint64_t bias_volume = getTensorVolume(biasTy);
-  toReturn["writes"] = dx_out_volume + weight_volume + bias_volume; 
+  toReturn["writes"] = dx_out_volume + weight_volume + bias_volume;
 
   toReturn["ops:MAC"] = total_MACs;
   return toReturn;
@@ -277,9 +277,9 @@ std::map<std::string, uint64_t> DivOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
-  TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  Type bType = getOperand(1)->getType();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+  TensorType aType = getOperand(0).getType().cast<TensorType>();
+  Type bType = getOperand(1).getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
   toReturn["ops:/"] = ofm_volume;
@@ -305,9 +305,9 @@ std::map<std::string, uint64_t> DivUnderOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
-  TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  Type bType = getOperand(1)->getType();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+  TensorType aType = getOperand(0).getType().cast<TensorType>();
+  Type bType = getOperand(1).getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
   toReturn["ops:/"] = ofm_volume;
@@ -332,8 +332,8 @@ std::map<std::string, uint64_t> MaxPool2dOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
-  TensorType inputType = getOperand(0)->getType().cast<TensorType>();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+  TensorType inputType = getOperand(0).getType().cast<TensorType>();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
   toReturn["result:0:activation_out"] = ofm_volume;
@@ -359,14 +359,14 @@ std::map<std::string, uint64_t> MaxPool2dWithIndicesOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  uint64_t ofm_volume = getTensorVolume(getResult(0)->getType().cast<TensorType>());
-  uint64_t indices_volume = getTensorVolume(getResult(1)->getType().cast<TensorType>());
+  uint64_t ofm_volume = getTensorVolume(getResult(0).getType().cast<TensorType>());
+  uint64_t indices_volume = getTensorVolume(getResult(1).getType().cast<TensorType>());
 
   toReturn["writes"] = ofm_volume + indices_volume;
   toReturn["result:0:activation_out"] = ofm_volume;
   toReturn["result:1:indices_out"] = indices_volume;
 
-  uint64_t ifm_volume = getTensorVolume(getOperand(0)->getType().cast<TensorType>());
+  uint64_t ifm_volume = getTensorVolume(getOperand(0).getType().cast<TensorType>());
   toReturn["reads"] = ifm_volume;
   toReturn["operand:0:activation_in"] = ifm_volume;
 
@@ -385,14 +385,14 @@ std::map<std::string, uint64_t> MaxPool2dWithIndicesBackwardOp::getStatistics() 
 
   std::map<std::string, uint64_t> toReturn;
 
-  Type resultTy = getResult()->getType();
+  Type resultTy = getResult().getType();
   TensorType tensorResultTy = resultTy.cast<TensorType>();
   uint64_t loss_out_volume = getTensorVolume(tensorResultTy);
   toReturn["writes"] = loss_out_volume;
 
-  uint64_t loss_in_volume = getTensorVolume(getOperand(0)->getType().cast<TensorType>());
-  uint64_t act_in_volume  = getTensorVolume(getOperand(1)->getType().cast<TensorType>()); // TODO: Why is this needed?
-  uint64_t indices_volume  = getTensorVolume(getOperand(7)->getType().cast<TensorType>()); 
+  uint64_t loss_in_volume = getTensorVolume(getOperand(0).getType().cast<TensorType>());
+  uint64_t act_in_volume  = getTensorVolume(getOperand(1).getType().cast<TensorType>()); // TODO: Why is this needed?
+  uint64_t indices_volume  = getTensorVolume(getOperand(7).getType().cast<TensorType>());
   toReturn["reads"] = loss_in_volume + act_in_volume + indices_volume;
 
   return toReturn;
@@ -403,8 +403,8 @@ std::map<std::string, uint64_t> MeanOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
-  TensorType aType = getOperand()->getType().cast<TensorType>();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+  TensorType aType = getOperand().getType().cast<TensorType>();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
   toReturn["ops:+"] = ofm_volume;
@@ -426,17 +426,17 @@ std::map<std::string, uint64_t> MMOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
   uint64_t ofm_volume = getTensorVolume(resultTy);
 
   // Use the weight tensor to find the number of input neurons
-  TensorType weightTy = getOperand(1)->getType().cast<TensorType>();
+  TensorType weightTy = getOperand(1).getType().cast<TensorType>();
   uint64_t num_input_neurons = weightTy.getShape()[0];
   uint64_t total_MACs = ofm_volume * num_input_neurons;
   toReturn["ops:MAC"] = total_MACs;
 
-  uint64_t loss_in_volume = getTensorVolume(getOperand(0)->getType().cast<TensorType>());
-  uint64_t weight_volume = getTensorVolume(getOperand(1)->getType().cast<TensorType>());
+  uint64_t loss_in_volume = getTensorVolume(getOperand(0).getType().cast<TensorType>());
+  uint64_t weight_volume = getTensorVolume(getOperand(1).getType().cast<TensorType>());
   toReturn["reads"] = loss_in_volume + weight_volume;
   toReturn["writes"] = ofm_volume;
 
@@ -448,9 +448,9 @@ std::map<std::string, uint64_t> MulOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
-  TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  Type bType = getOperand(1)->getType();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+  TensorType aType = getOperand(0).getType().cast<TensorType>();
+  Type bType = getOperand(1).getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
   toReturn["ops:+"] = ofm_volume;
@@ -474,9 +474,9 @@ std::map<std::string, uint64_t> MulUnderOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
-  TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  Type bType = getOperand(1)->getType();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+  TensorType aType = getOperand(0).getType().cast<TensorType>();
+  Type bType = getOperand(1).getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
   toReturn["ops:+"] = ofm_volume;
@@ -500,10 +500,10 @@ std::map<std::string, uint64_t> NativeBatchNormOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult(0)->getType().cast<TensorType>();
+  TensorType resultTy = getResult(0).getType().cast<TensorType>();
   uint64_t op_volume = getTensorVolume(resultTy);
-  uint64_t weight_volume = getTensorVolume(getOperand(1)->getType());
-  uint64_t bias_volume = getTensorVolume(getOperand(2)->getType());
+  uint64_t weight_volume = getTensorVolume(getOperand(1).getType());
+  uint64_t bias_volume = getTensorVolume(getOperand(2).getType());
   toReturn["operand:0:activation_in"] = op_volume;
   toReturn["result:0:activation_out"] = op_volume;
   toReturn["operand:1:parameters_in:weight"] = weight_volume;
@@ -540,8 +540,8 @@ std::map<std::string, uint64_t> ReLUOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType inputTy = getOperand()->getType().cast<TensorType>();
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
+  TensorType inputTy = getOperand().getType().cast<TensorType>();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
 
   uint64_t in_volume = getTensorVolume(inputTy);
   uint64_t out_volume = getTensorVolume(resultTy);
@@ -560,8 +560,8 @@ std::map<std::string, uint64_t> ReLUUnderOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType inputTy = getOperand()->getType().cast<TensorType>();
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
+  TensorType inputTy = getOperand().getType().cast<TensorType>();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
 
   uint64_t in_volume = getTensorVolume(inputTy);
   uint64_t out_volume = getTensorVolume(resultTy);
@@ -580,9 +580,9 @@ std::map<std::string, uint64_t> SubOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
-  TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  Type bType = getOperand(1)->getType();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+  TensorType aType = getOperand(0).getType().cast<TensorType>();
+  Type bType = getOperand(1).getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
 
@@ -608,9 +608,9 @@ std::map<std::string, uint64_t> SubUnderOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult()->getType().cast<TensorType>();
-  TensorType aType = getOperand(0)->getType().cast<TensorType>();
-  Type bType = getOperand(1)->getType();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+  TensorType aType = getOperand(0).getType().cast<TensorType>();
+  Type bType = getOperand(1).getType();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
 
@@ -634,9 +634,9 @@ std::map<std::string, uint64_t> SubUnderOp::getStatistics() {
 std::map<std::string, uint64_t> ThresholdBackwardOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
-  uint64_t loss_in_volume = getTensorVolume(getOperand(0)->getType().cast<TensorType>());
-  uint64_t act_in_volume  = getTensorVolume(getOperand(1)->getType().cast<TensorType>()); 
-  uint64_t loss_out_volume = getTensorVolume(getResult()->getType().cast<TensorType>());
+  uint64_t loss_in_volume = getTensorVolume(getOperand(0).getType().cast<TensorType>());
+  uint64_t act_in_volume  = getTensorVolume(getOperand(1).getType().cast<TensorType>());
+  uint64_t loss_out_volume = getTensorVolume(getResult().getType().cast<TensorType>());
 
   toReturn["reads"]  = loss_in_volume + act_in_volume;
   toReturn["writes"] = loss_out_volume;
