@@ -1339,26 +1339,13 @@ MemRefType convertTensorType(TensorType tensor) {
 
 struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
 
-  LogicalResult convertToLLVM(ModuleOp module) {
-    LLVMTypeConverter converter(module.getContext());
-    converter.addConversion([&](TensorType type) { return convertTensorType(type); });
-    OwningRewritePatternList patterns;
-    populateStdToLLVMConversionPatterns(converter, patterns);
-
-    ConversionTarget target(*module.getContext());
-    target.addLegalDialect<LLVM::LLVMDialect>();
-    target.addLegalOp<ModuleOp, ModuleTerminatorOp>();
-    target.addDynamicallyLegalOp<FuncOp>(
-        [&](FuncOp op) { return converter.isSignatureLegal(op.getType()); });
-    if (failed(applyFullConversion(module, target, patterns, &converter)))
-      return failure();
-
-    return success();
-  }
-
   void runOnModule() override {
     LLVMTypeConverter typeConverter(getModule().getContext());
-    typeConverter.addConversion([&](TensorType type) { return convertTensorType(type); });
+    typeConverter.addConversion([&](Type type) {
+      if (auto tensor = type.dyn_cast<TensorType>())
+        return convertTensorType(tensor).cast<Type>();
+      return type;
+    });
 
     OwningRewritePatternList atenPatterns;
 
@@ -1388,10 +1375,9 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
     ConversionTarget target(getContext());
     target.addLegalDialect<AffineOpsDialect, LLVM::LLVMDialect, StandardOpsDialect>();
     target.addLegalOp<xilinx::aten::AllocOp, xilinx::aten::TypeCastOp>();
-    target.addDynamicallyLegalOp<FuncOp>();
-    // [&](FuncOp op) {
-    //   return typeConverter.isSignatureLegal(op.getType());
-    // });
+    target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
+       return typeConverter.isSignatureLegal(op.getType());
+    });
 
     if (failed(applyPartialConversion(getModule(), target, atenPatterns,
                                       &typeConverter))) {
@@ -1410,8 +1396,6 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
           op->erase();
       });
     }
-
-    //convertToLLVM(getModule());
   }
 
 };
