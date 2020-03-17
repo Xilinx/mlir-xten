@@ -40,6 +40,39 @@ def AnyScalar : TypeConstraint<Or<[AnySignlessInteger.predicate,
                                  "scalar">;
 
 
+def aten_DmaLoadOp: aten_Op<"dma_load", [StatisticsOpInterface]>,
+                Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyMemRef:$memref,
+        Variadic<AnyType>:$events
+  );
+
+  let summary = "dma operator";
+  let description = [{
+    dma operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+  }];
+}
+
+def aten_DmaStoreOp: aten_Op<"dma_store", [StatisticsOpInterface]>,
+                Results<(outs I1:$evt)> {
+  let arguments = (
+    ins AnyTensor:$tensor,
+        AnyMemRef:$memref,
+        Variadic<AnyType>:$events
+  );
+
+  let summary = "dma operator";
+  let description = [{
+    dma operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+  }];
+}
+
 def aten_AdaptiveAvgPool2dOp: aten_Op<"_adaptive_avg_pool2d", [NoSideEffect]>,
                               Results<(outs AnyTensor)> {
   let arguments = (

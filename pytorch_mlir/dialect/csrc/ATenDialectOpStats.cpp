@@ -46,6 +46,47 @@ std::vector<uint64_t> unpackListConstant(Value op) {
 namespace xilinx {
 namespace aten {
 
+std::map<std::string, uint64_t> DmaLoadOp::getStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+  MemRefType aType = memref().getType().cast<MemRefType>();
+
+  uint64_t ofm_volume = getTensorVolume(resultTy);
+  toReturn["result:0:activation_out"] = ofm_volume;
+
+  // Find the size of the A and B operands
+  uint64_t a_volume = getTensorVolume(aType);
+  toReturn["operand:0:activation_in"] = a_volume;
+
+  toReturn["reads"] = a_volume;
+  toReturn["writes"] = ofm_volume;
+
+  return toReturn;
+}
+
+
+std::map<std::string, uint64_t> DmaStoreOp::getStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+
+  //TensorType resultTy = getResult().getType().cast<TensorType>();
+  TensorType aType = tensor().getType().cast<TensorType>();
+
+  uint64_t ofm_volume = getTensorVolume(aType);
+  toReturn["result:0:activation_out"] = ofm_volume;
+
+  // Find the size of the A and B operands
+  uint64_t a_volume = getTensorVolume(aType);
+  toReturn["operand:0:activation_in"] = a_volume;
+
+  toReturn["reads"] = a_volume;
+  toReturn["writes"] = ofm_volume;
+
+  return toReturn;
+}
+
 // add
 std::map<std::string, uint64_t> AddOp::getStatistics() {
 
@@ -143,6 +184,8 @@ std::map<std::string, uint64_t> AsStridedOp::getStatistics() {
   std::map<std::string, uint64_t> toReturn;
   toReturn["reads"] = 0;
   toReturn["writes"] = 0;
+  toReturn["operand:0:activation_in"] = 0;
+  toReturn["result:0:activation_out"] = 0;
   return toReturn;
 }
 
@@ -269,6 +312,14 @@ std::map<std::string, uint64_t> ConvolutionBackwardOp::getStatistics() {
   toReturn["writes"] = dx_out_volume + weight_volume + bias_volume;
 
   toReturn["ops:MAC"] = total_MACs;
+  toReturn["operand:0:activation_in"] = dx_in_volume;
+  toReturn["operand:1:activation_in"] = ifm_volume;
+  toReturn["operand:2:parameters_in:weight"] = weight_volume;
+
+  toReturn["result:0:activation_out"] = dx_out_volume;
+  toReturn["result:1:activation_out"] = weight_volume;
+  toReturn["result:2:activation_out"] = bias_volume;
+ 
   return toReturn;
 }
 
@@ -394,6 +445,10 @@ std::map<std::string, uint64_t> MaxPool2dWithIndicesBackwardOp::getStatistics() 
   uint64_t act_in_volume  = getTensorVolume(getOperand(1).getType().cast<TensorType>()); // TODO: Why is this needed?
   uint64_t indices_volume  = getTensorVolume(getOperand(7).getType().cast<TensorType>());
   toReturn["reads"] = loss_in_volume + act_in_volume + indices_volume;
+  toReturn["operand:0:activation_in"] = loss_in_volume;
+  toReturn["operand:1:activation_in"] = act_in_volume;
+  toReturn["operand:3:activation_in"] = indices_volume;
+  toReturn["result:0:activation_out"] = loss_out_volume;
 
   return toReturn;
 }
@@ -440,6 +495,9 @@ std::map<std::string, uint64_t> MMOp::getStatistics() {
   toReturn["reads"] = loss_in_volume + weight_volume;
   toReturn["writes"] = ofm_volume;
 
+  toReturn["operand:0:activation_in"] = loss_in_volume;
+  toReturn["operand:1:activation_in"] = weight_volume;
+  toReturn["result:0:activation_out"] = ofm_volume;
   return toReturn;
 }
 
@@ -638,8 +696,8 @@ std::map<std::string, uint64_t> ThresholdBackwardOp::getStatistics() {
   uint64_t act_in_volume  = getTensorVolume(getOperand(1).getType().cast<TensorType>());
   uint64_t loss_out_volume = getTensorVolume(getResult().getType().cast<TensorType>());
 
-  toReturn["reads"]  = loss_in_volume + act_in_volume;
-  toReturn["writes"] = loss_out_volume;
+  toReturn["reads"]  = toReturn["operand:0:activation_in"] = loss_in_volume + act_in_volume;
+  toReturn["writes"] = toReturn["result:0:activation_out"] = loss_out_volume;
 
   return toReturn;
 }
@@ -647,15 +705,15 @@ std::map<std::string, uint64_t> ThresholdBackwardOp::getStatistics() {
 // transpose can be zero overhead
 std::map<std::string, uint64_t> TransposeOp::getStatistics() {
   std::map<std::string, uint64_t> toReturn;
-  toReturn["reads"] = 0;
-  toReturn["writes"] = 0;
+  toReturn["reads"]  = toReturn["operand:0:activation_in"] = 0;
+  toReturn["writes"] = toReturn["result:0:activation_out"] = 0;
   return toReturn;
 }
 // view can be zero overhead
 std::map<std::string, uint64_t> ViewOp::getStatistics() {
   std::map<std::string, uint64_t> toReturn;
-  toReturn["reads"] = 0;
-  toReturn["writes"] = 0;
+  toReturn["reads"]  = toReturn["operand:0:activation_in"] = 0;
+  toReturn["writes"] = toReturn["result:0:activation_out"] = 0;
   return toReturn;
 }
 
