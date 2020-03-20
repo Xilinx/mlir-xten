@@ -76,19 +76,19 @@ clean:
 # table gen rules
 ###################
 
-$(BUILD_DIR)/include/ATenOps.h.inc: $(INCDIR)/aten.td
+$(BUILD_DIR)/include/ATenOps.h.inc: $(INCDIR)/aten.td $(INCDIR)/acap.td
 	mkdir -p $(BUILD_DIR)/include && \
 	${LLVM_BIN}/mlir-tblgen -I$(MLIR_INCLUDE) $< --gen-op-decls > $@
 
-$(BUILD_DIR)/include/ATenOps.cpp.inc: $(INCDIR)/aten.td
+$(BUILD_DIR)/include/ATenOps.cpp.inc: $(INCDIR)/aten.td $(INCDIR)/acap.td
 	mkdir -p $(BUILD_DIR)/include && \
 	${LLVM_BIN}/mlir-tblgen -I$(MLIR_INCLUDE) $< --gen-op-defs > $@
 
-$(BUILD_DIR)/include/ATenOpInterfaces.h.inc: $(INCDIR)/aten.td
+$(BUILD_DIR)/include/ATenOpInterfaces.h.inc: $(INCDIR)/aten.td $(INCDIR)/acap.td
 	mkdir -p $(BUILD_DIR)/include && \
 	${LLVM_BIN}/mlir-tblgen -I$(MLIR_INCLUDE) $< --gen-op-interface-decls > $@
 
-$(BUILD_DIR)/include/ATenOpInterfaces.cpp.inc: $(INCDIR)/aten.td
+$(BUILD_DIR)/include/ATenOpInterfaces.cpp.inc: $(INCDIR)/aten.td $(INCDIR)/acap.td
 	mkdir -p $(BUILD_DIR)/include && \
 	${LLVM_BIN}/mlir-tblgen -I$(MLIR_INCLUDE) $< --gen-op-interface-defs > $@
 

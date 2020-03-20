@@ -46,46 +46,46 @@ std::vector<uint64_t> unpackListConstant(Value op) {
 namespace xilinx {
 namespace aten {
 
-std::map<std::string, uint64_t> DmaLoadOp::getStatistics() {
+// std::map<std::string, uint64_t> AcapDmaLoadOp::getStatistics() {
 
-  std::map<std::string, uint64_t> toReturn;
+//   std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = getResult().getType().cast<TensorType>();
-  MemRefType aType = memref().getType().cast<MemRefType>();
+//   TensorType resultTy = getResult().getType().cast<TensorType>();
+//   MemRefType aType = memref().getType().cast<MemRefType>();
 
-  uint64_t ofm_volume = getTensorVolume(resultTy);
-  toReturn["result:0:activation_out"] = ofm_volume;
+//   uint64_t ofm_volume = getTensorVolume(resultTy);
+//   toReturn["result:0:activation_out"] = ofm_volume;
 
-  // Find the size of the A and B operands
-  uint64_t a_volume = getTensorVolume(aType);
-  toReturn["operand:0:activation_in"] = a_volume;
+//   // Find the size of the A and B operands
+//   uint64_t a_volume = getTensorVolume(aType);
+//   toReturn["operand:0:activation_in"] = a_volume;
 
-  toReturn["reads"] = a_volume;
-  toReturn["writes"] = ofm_volume;
+//   toReturn["reads"] = a_volume;
+//   toReturn["writes"] = ofm_volume;
 
-  return toReturn;
-}
+//   return toReturn;
+// }
 
 
-std::map<std::string, uint64_t> DmaStoreOp::getStatistics() {
+// std::map<std::string, uint64_t> AcapDmaStoreOp::getStatistics() {
 
-  std::map<std::string, uint64_t> toReturn;
+//   std::map<std::string, uint64_t> toReturn;
 
-  //TensorType resultTy = getResult().getType().cast<TensorType>();
-  TensorType aType = tensor().getType().cast<TensorType>();
+//   //TensorType resultTy = getResult().getType().cast<TensorType>();
+//   TensorType aType = tensor().getType().cast<TensorType>();
 
-  uint64_t ofm_volume = getTensorVolume(aType);
-  toReturn["result:0:activation_out"] = ofm_volume;
+//   uint64_t ofm_volume = getTensorVolume(aType);
+//   toReturn["result:0:activation_out"] = ofm_volume;
 
-  // Find the size of the A and B operands
-  uint64_t a_volume = getTensorVolume(aType);
-  toReturn["operand:0:activation_in"] = a_volume;
+//   // Find the size of the A and B operands
+//   uint64_t a_volume = getTensorVolume(aType);
+//   toReturn["operand:0:activation_in"] = a_volume;
 
-  toReturn["reads"] = a_volume;
-  toReturn["writes"] = ofm_volume;
+//   toReturn["reads"] = a_volume;
+//   toReturn["writes"] = ofm_volume;
 
-  return toReturn;
-}
+//   return toReturn;
+// }
 
 // add
 std::map<std::string, uint64_t> AddOp::getStatistics() {
@@ -316,9 +316,9 @@ std::map<std::string, uint64_t> ConvolutionBackwardOp::getStatistics() {
   toReturn["operand:1:activation_in"] = ifm_volume;
   toReturn["operand:2:parameters_in:weight"] = weight_volume;
 
-  toReturn["result:0:activation_out"] = dx_out_volume;
-  toReturn["result:1:activation_out"] = weight_volume;
-  toReturn["result:2:activation_out"] = bias_volume;
+  toReturn["result:0:grad:dx"] = dx_out_volume;
+  toReturn["result:1:grad:dw"] = weight_volume;
+  toReturn["result:2:grad:db"] = bias_volume;
  
   return toReturn;
 }
@@ -448,7 +448,7 @@ std::map<std::string, uint64_t> MaxPool2dWithIndicesBackwardOp::getStatistics() 
   toReturn["operand:0:activation_in"] = loss_in_volume;
   toReturn["operand:1:activation_in"] = act_in_volume;
   toReturn["operand:3:activation_in"] = indices_volume;
-  toReturn["result:0:activation_out"] = loss_out_volume;
+  toReturn["result:0:grad:dx"] = loss_out_volume;
 
   return toReturn;
 }
@@ -697,7 +697,7 @@ std::map<std::string, uint64_t> ThresholdBackwardOp::getStatistics() {
   uint64_t loss_out_volume = getTensorVolume(getResult().getType().cast<TensorType>());
 
   toReturn["reads"]  = toReturn["operand:0:activation_in"] = loss_in_volume + act_in_volume;
-  toReturn["writes"] = toReturn["result:0:activation_out"] = loss_out_volume;
+  toReturn["writes"] = toReturn["result:0:grad:dx"] = loss_out_volume;
 
   return toReturn;
 }
