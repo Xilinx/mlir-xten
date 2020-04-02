@@ -44,6 +44,8 @@ public:
         "ops:+",
         "ops:/",
         "ops:sqrt",
+        "ops:-",
+        "grad"
       })
   {
   }
