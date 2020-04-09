@@ -259,7 +259,24 @@ def aten_DropoutOp: aten_Op<"dropout", [NoSideEffect]>,
   }];
 }
 
-def aten_FlattenOp: aten_Op<"flatten", [NoSideEffect]>,
+def aten_ExpandOp: aten_Op<"expand", [NoSideEffect, StatisticsOpInterface]>,
+                       Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyType:$arg0,
+        AnyType:$arg1,
+        AnyType:$arg2
+  );
+
+  let summary = "expand operator";
+  let description = [{
+    expand operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+  }];
+}
+
+def aten_FlattenOp: aten_Op<"flatten", [NoSideEffect, StatisticsOpInterface]>,
                     Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyType:$arg0,
@@ -271,19 +288,8 @@ def aten_FlattenOp: aten_Op<"flatten", [NoSideEffect]>,
   let description = [{
     Flatten operator
   }];
-}
-
-def aten_ExpandOp: aten_Op<"expand", [NoSideEffect]>,
-                       Results<(outs AnyTensor)> {
-  let arguments = (
-    ins AnyType:$arg0,
-        AnyType:$arg1,
-        AnyType:$arg2
-  );
-
-  let summary = "expand operator";
-  let description = [{
-    expand operator
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -479,8 +485,8 @@ def aten_NativeBatchNormOp: aten_Op<"native_batch_norm", [NoSideEffect, Statisti
   }];
 }
 
-def aten_NativeBatchNormBackwardOp: aten_Op<"native_batch_norm_backward", [NoSideEffect]>,
-                            Results<(outs AnyTensor:$dx, AnyTensor:$dw, AnyTensor:$db)> {
+def aten_NativeBatchNormBackwardOp: aten_Op<"native_batch_norm_backward", [NoSideEffect, StatisticsOpInterface]>,
+                            Results<(outs AnyTensor:$dx, AnyTensor:$dm, AnyTensor:$dv)> {
   let arguments = (
     ins AnyType:$arg0,
         AnyType:$arg1,
@@ -496,6 +502,9 @@ def aten_NativeBatchNormBackwardOp: aten_Op<"native_batch_norm_backward", [NoSid
   let summary = "BatchNormBackward operator";
   let description = [{
     BatchNormBackward operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -613,7 +622,7 @@ def aten_SubUnderOp: aten_Op<"sub_", [NoSideEffect, StatisticsOpInterface]>,
   }];
 }
 
-def aten_SumOp: aten_Op<"sum", [NoSideEffect]>,
+def aten_SumOp: aten_Op<"sum", [NoSideEffect, StatisticsOpInterface]>,
                  Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyTensor:$x,
@@ -624,6 +633,9 @@ def aten_SumOp: aten_Op<"sum", [NoSideEffect]>,
   let summary = "sum operator";
   let description = [{
     sum operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 
@@ -724,7 +736,7 @@ def aten_TypeCastOp : aten_Op<"type_cast", [NoSideEffect]>,
   );
 }
 
-def aten_UnsqueezeOp: aten_Op<"unsqueeze", [NoSideEffect]>,
+def aten_UnsqueezeOp: aten_Op<"unsqueeze", [NoSideEffect, StatisticsOpInterface]>,
                  Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyTensor:$x,
@@ -734,6 +746,9 @@ def aten_UnsqueezeOp: aten_Op<"unsqueeze", [NoSideEffect]>,
   let summary = "Unsqueeze operator";
   let description = [{
     Unsqueeze operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
   }];
 }
 

@@ -215,7 +215,7 @@ std::map<std::string, uint64_t> BatchNormOp::getStatistics() {
   toReturn["ops:*"] += ifm_depth;   // Calc channel vars
 
   toReturn["ops:sqrt"] = ifm_depth;  // Convert to SD
-  toReturn["ops:/"] += ifm_depth;    // Get the reciprocal
+  toReturn["ops:/"] = ifm_depth;    // Get the reciprocal
 
   toReturn["ops:+"] += op_volume;   // Subtract mean off each pixel
   toReturn["ops:*"] += op_volume;   // Multiply by 1/SD for each pixel
@@ -375,6 +375,22 @@ std::map<std::string, uint64_t> DivUnderOp::getStatistics() {
   toReturn["writes"] = ofm_volume;
 
 
+  return toReturn;
+}
+
+// expand can be zero overhead
+std::map<std::string, uint64_t> ExpandOp::getStatistics() {
+  std::map<std::string, uint64_t> toReturn;
+  toReturn["reads"]  = toReturn["operand:0:activation_in"] = 0;
+  toReturn["writes"] = toReturn["result:0:activation_out"] = 0;
+  return toReturn;
+}
+
+// flatten can be zero overhead
+std::map<std::string, uint64_t> FlattenOp::getStatistics() {
+  std::map<std::string, uint64_t> toReturn;
+  toReturn["reads"]  = toReturn["operand:0:activation_in"] = 0;
+  toReturn["writes"] = toReturn["result:0:activation_out"] = 0;
   return toReturn;
 }
 
@@ -579,7 +595,7 @@ std::map<std::string, uint64_t> NativeBatchNormOp::getStatistics() {
   toReturn["ops:*"] += ifm_depth;   // Calc channel vars
 
   toReturn["ops:sqrt"] = ifm_depth;  // Convert to SD
-  toReturn["ops:/"] += ifm_depth;    // Get the reciprocal
+  toReturn["ops:/"] = ifm_depth;    // Get the reciprocal
 
   toReturn["ops:+"] += op_volume;   // Subtract mean off each pixel
   toReturn["ops:*"] += op_volume;   // Multiply by 1/SD for each pixel
@@ -589,6 +605,79 @@ std::map<std::string, uint64_t> NativeBatchNormOp::getStatistics() {
 
   toReturn["reads"] = op_volume + weight_volume + bias_volume;
   toReturn["writes"] = op_volume;
+
+  return toReturn;
+}
+
+// batchnorm backward
+std::map<std::string, uint64_t> NativeBatchNormBackwardOp::getStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+
+  ShapedType inputTy = getOperand(0).getType().cast<ShapedType>();
+  uint64_t input_volume = getTensorVolume(inputTy);
+  uint64_t input_channels = inputTy.getShape()[1];
+
+  // from https://gitenterprise.xilinx.com/nfraser/torchscope/blob/master/torchscope/helper.py
+  // # 3 components make up the gradInput: 1 gradInput, 2 gradMean, 3 gradVar
+  // # totalGradInput = gradInput + (dL / dMean * dMean / dInput) +
+  // #                  (dL / dVar * dVar / dInput)
+
+  // # gradInput
+  // total_ops["backward"]["*"] = in_c * (in_h*in_w*batch_size) # scale
+  // # Bootstrap from previous
+  // #total_ops["backward"]["sqrt"] = in_c # Convert to std_dev
+  // #total_ops["backward"]["/"] = in_c # Calculate inverse sqrt first
+  toReturn["ops:*"] = input_volume; // scale
+
+  // # dL / dGradVar
+  // total_ops["backward"]["pow"] = in_c
+  // total_ops["backward"]["*"] = total_ops["backward"]["*"] + in_c
+  // #total_ops["backward"]["+"] = total_ops["backward"]["+"] + in_c * in_h*in_w*batch_size # Subtract mean, bootstrap from previous calculation
+  // total_ops["backward"]["*"] = total_ops["backward"]["*"] + in_c * (in_h*in_w*batch_size)
+  toReturn["ops:pow"] = input_channels;;
+  toReturn["ops:*"] += input_channels;
+  toReturn["ops:*"] += input_volume;
+
+  // # dL / dGradMean
+  // #total_ops["backward"]["+"] = total_ops["backward"]["+"] + in_c * (in_h*in_w*batch_size) # bootstrap from previous
+  // total_ops["backward"]["*"] = total_ops["backward"]["*"] + in_c # scale gradMean
+  // total_ops["backward"]["*"] = total_ops["backward"]["*"] + in_c # eltwise with dL / dGradVar
+  // total_ops["backward"]["+"] = in_c * (in_h*in_w*batch_size) # sum gradXhat
+  // total_ops["backward"]["*"] = total_ops["backward"]["*"] + in_c # scale gradXhat
+  toReturn["ops:*"] += input_channels; // scale gradMean
+  toReturn["ops:*"] += input_channels; // eltwise with dL / dGradVar
+  toReturn["ops:+"] = input_volume; // sum gradXhat
+  toReturn["ops:*"] += input_channels; // scale gradXhat
+
+  // # totalGradInput
+  // total_ops["backward"]["+"] = total_ops["backward"]["+"] + in_c * (in_h*in_w*batch_size) # Subtract mean, can't bootstrap this one
+  // total_ops["backward"]["*"] = total_ops["backward"]["*"] + in_c # scale dL / dMean
+  // total_ops["backward"]["*"] = total_ops["backward"]["*"] + in_c # scale dL / dVar
+  // total_ops["backward"]["*"] = total_ops["backward"]["*"] + in_c * (in_h*in_w*batch_size) # Eltwise multiply by dL / dVar
+  // total_ops["backward"]["+"] = total_ops["backward"]["+"] + 2 * in_c * (in_h*in_w*batch_size) # Accumulate gradient terms
+  toReturn["ops:+"] += input_volume; // Subtract mean, can't bootstrap this one
+  toReturn["ops:*"] += input_channels; // scale dL / dMean
+  toReturn["ops:*"] += input_channels; // scale dL / dVar
+  toReturn["ops:*"] += input_volume; // Eltwise multiply by dL / dVar
+  toReturn["OPS:+"] += 2 * input_volume; // Accumulate gradient terms
+
+  uint64_t reads = 0;
+  for (int i=0; i<7; i++) {
+    auto v = getTensorVolume(getOperand(i).getType());
+    toReturn["operand:"+std::to_string(i)+":activation_in"] = v;
+    reads += v;
+  }
+
+  uint64_t writes = 0;
+  for (int i=0; i<3; i++) {
+    auto v = getTensorVolume(getResult(i).getType());
+    toReturn["result:"+std::to_string(i)+":grad"] = v;
+    writes += v;
+  }
+
+  toReturn["reads"] = reads;
+  toReturn["writes"] = writes;
 
   return toReturn;
 }
@@ -688,6 +777,24 @@ std::map<std::string, uint64_t> SubUnderOp::getStatistics() {
   return toReturn;
 }
 
+// sum
+std::map<std::string, uint64_t> SumOp::getStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+  TensorType ty = getOperand(0).getType().cast<TensorType>();
+  uint64_t volume = getTensorVolume(ty);
+
+  toReturn["ops:+"] = volume;
+
+  toReturn["operand:0:activation_in"] = volume;
+  toReturn["result:0:activation_out"] = volume;
+
+  toReturn["reads"] = volume;
+  toReturn["writes"] = volume;
+
+  return toReturn;
+}
+
 // threshold_backward
 std::map<std::string, uint64_t> ThresholdBackwardOp::getStatistics() {
 
@@ -709,6 +816,15 @@ std::map<std::string, uint64_t> TransposeOp::getStatistics() {
   toReturn["writes"] = toReturn["result:0:activation_out"] = 0;
   return toReturn;
 }
+
+// unsqueeze can be zero overhead
+std::map<std::string, uint64_t> UnsqueezeOp::getStatistics() {
+  std::map<std::string, uint64_t> toReturn;
+  toReturn["reads"]  = toReturn["operand:0:activation_in"] = 0;
+  toReturn["writes"] = toReturn["result:0:activation_out"] = 0;
+  return toReturn;
+}
+
 // view can be zero overhead
 std::map<std::string, uint64_t> ViewOp::getStatistics() {
   std::map<std::string, uint64_t> toReturn;
