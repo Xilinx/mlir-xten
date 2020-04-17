@@ -57,6 +57,19 @@ def aten_AdaptiveAvgPool2dOp: aten_Op<"_adaptive_avg_pool2d", [NoSideEffect]>,
   }];
 }
 
+def aten_AdaptiveAvgPool2dBackwardOp: aten_Op<"_adaptive_avg_pool2d_backward", [NoSideEffect]>,
+                              Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$arg0,
+        AnyTensor:$arg1
+  );
+
+  let summary = "AdaptiveAvgPool2dBackward operator";
+  let description = [{
+    AdaptiveAvgPool2d operator
+  }];
+}
+
 def aten_AddOp: aten_Op<"add", [NoSideEffect, StatisticsOpInterface]>,
                 Results<(outs AnyTensor)> {
   let arguments = (
@@ -306,6 +319,58 @@ def aten_GatherOp: aten_Op<"gather", [NoSideEffect]>,
   let description = [{
     gather operator
   }];
+}
+
+def aten_HardtanhOp: aten_Op<"hardtanh", [NoSideEffect, StatisticsOpInterface]>,
+                          Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$arg0,
+        AnyScalar:$arg1,
+        AnyScalar:$arg2
+  );
+
+  let summary = "hardtanh operator";
+  let description = [{
+    hardtanh operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+  }];
+}
+
+def aten_HardtanhUnderOp: aten_Op<"hardtanh_", [NoSideEffect, StatisticsOpInterface]>,
+                          Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$arg0,
+        AnyScalar:$arg1,
+        AnyScalar:$arg2
+  );
+
+  let summary = "hardtanh operator";
+  let description = [{
+    hardtanh operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+  }];
+}
+
+def aten_HardtanhBackwardOp: aten_Op<"hardtanh_backward", [NoSideEffect/*, StatisticsOpInterface*/]>,
+                             Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$arg0,
+        AnyTensor:$arg1,
+        AnyScalar:$arg2,
+        AnyScalar:$arg3
+  );
+
+  let summary = "hardtanh backward operator";
+  let description = [{
+    hardtanh operator
+  }];
+  //let extraClassDeclaration = [{
+  //  std::map<std::string, uint64_t> getStatistics();
+  //}];
 }
 
 def aten_LogSoftmaxOp: aten_Op<"_log_softmax", [NoSideEffect]>,
@@ -585,6 +650,19 @@ def aten_NllLossForwardOp: aten_Op<"nll_loss_forward", [NoSideEffect]>,
   let summary = "NllLossForward operator";
   let description = [{
     NllLossForward operator
+  }];
+}
+
+def aten_SizeOp : aten_Op<"size", [NoSideEffect]>,
+                  Results<(outs AnyScalar)> {
+let arguments = (
+    ins AnyTensor:$a,
+        AnyScalar:$dim
+  );
+
+  let summary = "size operator";
+  let description = [{
+    size operator
   }];
 }
 

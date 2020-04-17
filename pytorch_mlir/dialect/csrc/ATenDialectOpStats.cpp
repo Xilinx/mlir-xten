@@ -394,6 +394,46 @@ std::map<std::string, uint64_t> FlattenOp::getStatistics() {
   return toReturn;
 }
 
+// hardtanh
+std::map<std::string, uint64_t> HardtanhOp::getStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+
+  TensorType inputTy = getOperand(0).getType().cast<TensorType>();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+
+  uint64_t in_volume = getTensorVolume(inputTy);
+  uint64_t out_volume = getTensorVolume(resultTy);
+
+  toReturn["operand:0:activation_in"] = in_volume;
+  toReturn["result:0:activation_out"] = out_volume;
+  toReturn["reads"]  = in_volume;
+  toReturn["writes"] = out_volume;
+  toReturn["ops:>"] = out_volume;
+
+  return toReturn;
+}
+
+// hardtanh_
+std::map<std::string, uint64_t> HardtanhUnderOp::getStatistics() {
+
+  std::map<std::string, uint64_t> toReturn;
+
+  TensorType inputTy = getOperand(0).getType().cast<TensorType>();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+
+  uint64_t in_volume = getTensorVolume(inputTy);
+  uint64_t out_volume = getTensorVolume(resultTy);
+
+  toReturn["operand:0:activation_in"] = in_volume;
+  toReturn["result:0:activation_out"] = out_volume;
+  toReturn["reads"]  = in_volume;
+  toReturn["writes"] = out_volume;
+  toReturn["ops:>"] = out_volume;
+
+  return toReturn;
+}
+
 // max_pool2d
 std::map<std::string, uint64_t> MaxPool2dOp::getStatistics() {
 
