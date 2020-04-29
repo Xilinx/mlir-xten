@@ -24,6 +24,25 @@ def StatisticsOpInterface : OpInterface<"StatisticsOpInterface"> {
       "Return statistics about the compute requirements of an op",
       "std::map<std::string, uint64_t>", "getStatistics"
     >,
+
+    InterfaceMethod<"Return memory transfer requirements of an operand",
+      "uint64_t", "getOperandTransferVolume", (ins "unsigned int":$idx, "bool":$read), /*methodBody=*/[{}], [{
+        ConcreteOp *op = static_cast<ConcreteOp *>(this);
+        if (!read) return 0;
+        auto v = *op->getODSOperands(idx).begin();
+        auto ty = v.getType();
+        return getTensorVolume(ty);
+    }]>,
+
+    InterfaceMethod<"Return memory transfer requirements of a result",
+      "uint64_t", "getResultTransferVolume", (ins "unsigned int":$idx, "bool":$write), /*methodBody=*/[{}], [{
+        ConcreteOp *op = static_cast<ConcreteOp *>(this);
+        if (!write) return 0;
+        auto v = *op->getODSResults(idx).begin();
+        auto ty = v.getType();
+        return getTensorVolume(ty);
+    }]>,
+
   ];
 }
 
@@ -43,6 +62,11 @@ def AnyScalar : TypeConstraint<Or<[AnySignlessInteger.predicate,
 #else
 include "include/acap.td"
 #endif
+
+//#ifdef ACAP_OP_DEFS
+//#else
+//include "include/aten_op_defs.td"
+//#endif
 
 def aten_AdaptiveAvgPool2dOp: aten_Op<"_adaptive_avg_pool2d", [NoSideEffect]>,
                               Results<(outs AnyTensor)> {
@@ -180,15 +204,15 @@ def aten_ConstantOp: aten_Op<"constant", [NoSideEffect]>,
 def aten_ConvolutionOp: aten_Op<"_convolution", [NoSideEffect, StatisticsOpInterface]>,
                         Results<(outs AnyTensor)> {
   let arguments = (
-    ins AnyType:$arg0,
-        AnyType:$arg1,
-        AnyType:$arg2,
-        AnyType:$arg3,
-        AnyType:$arg4,
-        AnyType:$arg5,
-        AnyType:$arg6,
-        AnyType:$arg7,
-        AnyType:$arg8,
+    ins AnyTensor:$input,
+        AnyTensor:$weight,
+        AnyTensor:$bias,
+        AnyType:$stride,
+        AnyType:$padding,
+        AnyType:$dilation,
+        AnyScalar:$transposed,
+        AnyType:$output_padding,
+        AnyScalar:$groups,
         AnyType:$arg9,
         AnyType:$arg10,
         AnyType:$arg11
@@ -200,6 +224,8 @@ def aten_ConvolutionOp: aten_Op<"_convolution", [NoSideEffect, StatisticsOpInter
   }];
   let extraClassDeclaration = [{
     std::map<std::string, uint64_t> getStatistics();
+    uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    uint64_t getResultTransferVolume(unsigned int idx, bool read);
 	}];
 }
 

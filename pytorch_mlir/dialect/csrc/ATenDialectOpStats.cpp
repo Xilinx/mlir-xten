@@ -1,9 +1,13 @@
 #include "ATenDialect.h"
 
+#include "llvm/Support/Debug.h"
+
 #include "mlir/IR/StandardTypes.h"
 #include "mlir/IR/Types.h"
 
 #include <iostream>
+
+#define DEBUG_TYPE "aten-op-stats"
 
 // This file contains the StatisticsOpInterface implementations
 // for ATDialect operations
@@ -11,26 +15,6 @@
 using namespace mlir;
 
 namespace {
-
-uint64_t getTensorVolume(const ShapedType ty) {
-
-  if (!ty.hasRank())
-    return 1;
-
-  uint64_t volume = 1;
-  for (auto &d : ty.getShape())
-    volume *= d;
-  return volume;
-}
-
-uint64_t getTensorVolume(const Type ty) {
-  if (auto t = ty.dyn_cast<ShapedType>()) {
-    return getTensorVolume(t);
-  }
-  else {
-    return 1;
-  }
-}
 
 std::vector<uint64_t> unpackListConstant(Value op) {
   std::vector<uint64_t> v;
@@ -229,24 +213,97 @@ std::map<std::string, uint64_t> BatchNormOp::getStatistics() {
   return toReturn;
 }
 
+uint64_t ConvolutionOp::getOperandTransferVolume(unsigned int idx, bool read) {
+
+  if (!read) return 0;
+
+  TensorType inputTy = input().getType().cast<TensorType>();
+  TensorType weightTy = weight().getType().cast<TensorType>();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+
+  float filter_width = weightTy.getShape()[2];
+  float filter_height = weightTy.getShape()[3];
+
+  float batch_sw = inputTy.getShape()[0];
+  float ifm_depth_sw = inputTy.getShape()[1];
+  float ih = inputTy.getShape()[2];
+  float iw = inputTy.getShape()[3];
+
+  float ofm_depth_sw = resultTy.getShape()[1];
+
+  const float batch_hw = 4;
+  const float ifm_depth_hw = 32;
+  const float ofm_depth_hw = 32;
+
+  const float ifm_tile_height = 4;
+  const float ifm_tile_width = 4;
+  const float ofm_tile_height = 4;
+  const float ofm_tile_width = 4;
+
+  float ifm_aperture = ifm_tile_height - ceilf(filter_height/2.0f);
+  float ifm_overlap = ceilf(filter_height/2.0f);
+
+  float bl = ceilf(batch_sw / batch_hw);
+  float ol = ceilf(ofm_depth_sw / ofm_depth_hw);
+  float il = ceilf(ifm_depth_sw / ifm_depth_hw);
+
+  float ifm_overhead = ol * ifm_tile_height * ((ih - ifm_overlap) / (ih * ifm_aperture));
+  float weight_overhead = bl;
+
+  double vol = getTensorVolume(getOperand(idx).getType());
+  if (idx == 0) {
+    LLVM_DEBUG(llvm::outs() << "ifm_overhead:" << ifm_overhead << "\n");
+    return vol * ifm_overhead;
+  }
+  if (idx == 1) {
+    LLVM_DEBUG(llvm::outs() << "weight_overhead:" << weight_overhead << "\n");
+    return vol * weight_overhead;
+  }
+  return vol;
+}
+
+uint64_t ConvolutionOp::getResultTransferVolume(unsigned int idx, bool write) {
+
+  TensorType inputTy = input().getType().cast<TensorType>();
+  TensorType resultTy = getResult().getType().cast<TensorType>();
+
+  float ifm_depth_sw = inputTy.getShape()[1];
+  const float ifm_depth_hw = 32;
+
+  float il = ceilf(ifm_depth_sw / ifm_depth_hw);
+
+  float write_output_overhead = il;
+  float read_output_cost = il;
+
+  double vol = getTensorVolume(resultTy);
+
+  if (write) {
+    LLVM_DEBUG(llvm::outs() << "write_output_overhead:" << write_output_overhead << "\n");
+    return vol * write_output_overhead;
+  } else {
+    LLVM_DEBUG(llvm::outs() << "read_output_cost:" << read_output_cost << "\n");
+    return vol * read_output_cost;
+  }
+}
+
 // _convolution
 std::map<std::string, uint64_t> ConvolutionOp::getStatistics() {
 
   std::map<std::string, uint64_t> toReturn;
 
   TensorType resultTy = getResult().getType().cast<TensorType>();
-  TensorType inputTy = getOperand(0).getType().cast<TensorType>();
-  TensorType weightTy = getOperand(1).getType().cast<TensorType>();
-  TensorType biasTy = getOperand(2).getType().cast<TensorType>();
+  TensorType inputTy = input().getType().cast<TensorType>();
+  TensorType weightTy = weight().getType().cast<TensorType>();
+  TensorType biasTy = bias().getType().cast<TensorType>();
 
   uint64_t ofm_volume = getTensorVolume(resultTy);
   uint64_t ofm_depth = resultTy.getShape()[1];
 
   uint64_t ifm_depth = inputTy.getShape()[1];
-  uint64_t kernel_width = weightTy.getShape()[2];
-  uint64_t kernel_height = weightTy.getShape()[3];
+  uint64_t kernel_height = weightTy.getShape()[2];
+  uint64_t kernel_width = weightTy.getShape()[3];
 
-  auto co = cast<xilinx::aten::ConstantOp>(getOperand(8).getDefiningOp());
+  auto co = cast<xilinx::aten::ConstantOp>(groups().getDefiningOp());
   auto ia = co.getAttrOfType<IntegerAttr>("value");
   uint64_t groups = ia.getValue().getZExtValue();
 

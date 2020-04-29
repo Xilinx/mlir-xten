@@ -11,7 +11,7 @@
 #include <iostream>
 #include <vector>
 
-#define DEBUG_TYPE "aten-op-report"
+#define DEBUG_TYPE "aten-op-stats"
 
 using namespace mlir;
 
