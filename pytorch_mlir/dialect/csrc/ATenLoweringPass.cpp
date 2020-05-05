@@ -5,6 +5,7 @@
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/AffineOps/AffineOps.h"
+#include "mlir/Dialect/AffineOps/EDSC/Builders.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/Dialect/StandardOps/EDSC/Builders.h"
 #include "mlir/Dialect/StandardOps/EDSC/Intrinsics.h"
@@ -158,13 +159,17 @@ public:
                   ConversionPatternRewriter &rewriter) const override {
     auto add = cast<xilinx::aten::AddOp>(op);
     auto loc = add.getLoc();
-    // Create an `aten.alloc` operation to allocate the output buffer for this op.
-    Value result = MemRefTypeCast(
-        rewriter, rewriter.create<xilinx::aten::AllocOp>(loc, add.getResult().getType())
-                      .getResult());
+    Type resultTy = add.getResult().getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    MemRefType memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                      tensorResultTy.getElementType(),
+                                                      {}, 0);
+
+    //Value result = rewriter.create<xilinx::aten::AcapAllocOp>(loc, memRefResultTy, ArrayRef<Value>{});
+    Value result = rewriter.create<AllocOp>(loc, memRefResultTy);
     Value lhs = MemRefTypeCast(rewriter, operands[0]);
     Value rhs = MemRefTypeCast(rewriter, operands[1]);
-    auto indexType = IndexType::get(edsc::ScopedContext::getContext());
+    auto indexType = IndexType::get(op->getContext());
 
     using namespace edsc;
 
@@ -173,27 +178,32 @@ public:
     ValueHandle one = intrinsics::std_constant_index(1);
     MemRefBoundsCapture vRes(result), vLHS(lhs), vRHS(rhs);
     StdIndexedValue iRes(result), iLHS(lhs), iRHS(rhs);
-    ValueHandle i(indexType), j(indexType), k(indexType), M(vRes.ub(0));
-    ValueHandle *pi = &i;
+    ValueHandle i(indexType), j(indexType), k(indexType), l(indexType), M(vRes.ub(0));
     if (vRes.rank() == 1) {
-      LoopNestBuilder({pi}, {zero}, {M},
+      AffineLoopNestBuilder({&i}, {zero}, {M},
                       {one})([&] { iRes(i) = iLHS(i) + iRHS(i); });
     } else if (vRes.rank() == 2) {
       ValueHandle N(vRes.ub(1));
-      LoopNestBuilder({&i, &j}, {zero, zero}, {M, N},
+      AffineLoopNestBuilder({&i, &j}, {zero, zero}, {M, N},
                       {one, one})([&] { iRes(i, j) = iLHS(i, j) + iRHS(i, j); });
-    } else {
-        assert(vRes.rank() == 3 && "only ranks <= 3 are supported right now");
-        ValueHandle N(vRes.ub(1));
-        ValueHandle O(vRes.ub(2));
+    } else if (vRes.rank() == 3) {
+      ValueHandle N(vRes.ub(1));
+      ValueHandle O(vRes.ub(2));
 
-      LoopNestBuilder({&i, &j, &k}, {zero, zero, zero}, {M, N, O},
+      AffineLoopNestBuilder({&i, &j, &k}, {zero, zero, zero}, {M, N, O},
                       {one, one, one})([&] { iRes(i, j, k) = iLHS(i, j, k) + iRHS(i, j, k); });
     }
+    else {
+      ValueHandle N(vRes.ub(1));
+      ValueHandle O(vRes.ub(2));
+      ValueHandle P(vRes.ub(3));
 
+      AffineLoopNestBuilder({&i, &j, &k, &l}, {zero, zero, zero, zero}, {M, N, O, P},
+                      {one, one, one, one})([&] { iRes(i, j, k, l) = iLHS(i, j, k, l) + iRHS(i, j, k, l); });
+    }
     // Return the newly allocated buffer, with a type.cast to preserve the
     // consumers.
-    rewriter.replaceOp(op, {typeCast(rewriter, result, add.getType())});
+    rewriter.replaceOp(op, {result});
     return matchSuccess();
   }
 };
@@ -1350,7 +1360,7 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
     OwningRewritePatternList atenPatterns;
 
     // c++ patterns
-    atenPatterns.insert<AddOpConversion, ConvolutionOpConversion,
+    atenPatterns.insert<AddOpConversion_affine, ConvolutionOpConversion,
                         ReLUOpConversion, TransposeOpConversion,
                         BatchNormOpConversion, NativeBatchNormOpConversion,
                         MaxPoolOpConversion, MaxPool2dWithIndicesOpConversion,
@@ -1373,8 +1383,9 @@ struct ATenLoweringPass : public ModulePass<ATenLoweringPass> {
 
     // Perform aten specific lowering.
     ConversionTarget target(getContext());
-    target.addLegalDialect<AffineOpsDialect, LLVM::LLVMDialect, StandardOpsDialect>();
-    target.addLegalOp<xilinx::aten::AllocOp, xilinx::aten::TypeCastOp>();
+    target.addLegalDialect<AffineOpsDialect, LLVM::LLVMDialect,
+                           StandardOpsDialect, loop::LoopOpsDialect>();
+    target.addLegalOp<xilinx::aten::AcapAllocOp>();
     target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
        return typeConverter.isSignatureLegal(op.getType());
     });

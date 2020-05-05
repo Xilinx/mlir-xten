@@ -72,12 +72,19 @@ public:
       auto fn = getModule().lookupSymbol<FuncOp>(callOp.callee());
       if (fn && fn.use_empty()) erasedOps.insert(fn);
     }
-    else if (isa<AllocOp>(op)) {
+    else if ( isa<AllocOp>(op) ) {
+      Value v = op->getResult(0);
+      if (valueMap.count(v)) {
+        v.replaceAllUsesWith(valueMap[v]);
+        erasedOps.insert(op);
+      }
+    }
+    else if ( isa<xilinx::aten::AcapAllocOp>(op) ) {
     }
     else {
-      getModule().dump();
-      op->dump();
-      llvm_unreachable("unhandled operation type");
+      //getModule().dump();
+      //op->dump();
+      //llvm_unreachable("unhandled operation type");
     }
 
     for (Value v : op->getOperands()) {
@@ -138,6 +145,16 @@ public:
       if (!v.getType().isa<MemRefType>())
         llvm_unreachable("graph function returns non-memref");
       runOnOperation(v.getDefiningOp());
+    }
+
+    for (auto oi=BB.rbegin(),oe=BB.rend(); oi!=oe; ++oi) {
+      Operation *o = &*oi;
+      for (Value v : o->getResults()) {
+        if (v.getType().isa<MemRefType>()) {
+          runOnOperation(o);
+          break;
+        }
+      }
     }
 
     for (Operation *o : erasedOps)

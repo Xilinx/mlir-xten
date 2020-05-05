@@ -164,11 +164,6 @@ def aten_AsStridedOp: aten_Op<"as_strided", [NoSideEffect, StatisticsOpInterface
   }];
 }
 
-def aten_AllocOp : aten_Op<"alloc", [NoSideEffect]>,
-                   Results<(outs AnyType)> {
-  let summary = "Alloc operator";
-}
-
 def aten_BatchNormOp: aten_Op<"batch_norm", [NoSideEffect, StatisticsOpInterface]>,
                       Results<(outs AnyTensor:$output, AnyTensor:$save_mean, AnyTensor:$save_invstd)> {
   let arguments = (
