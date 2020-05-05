@@ -21,7 +21,8 @@ std::string getAsString(std::map<std::string, uint64_t> &m, std::string &e) {
   return m.count(e) ? std::to_string(m[e]) : " ";
 }
 
-struct ATenOpReportPass : public ModulePass<ATenOpReportPass> {
+struct ATenOpReportPass : public PassWrapper<ATenOpReportPass,
+                                             OperationPass<ModuleOp>> {
 
 private:
   std::string &output;
@@ -54,7 +55,7 @@ public:
 
     llvm::json::Object top;
 
-    auto graph = getModule().lookupSymbol<mlir::FuncOp>("graph");
+    auto graph = getOperation().lookupSymbol<mlir::FuncOp>("graph");
     graph.walk([&](Operation *op) {
       if (auto stats = mlir::dyn_cast<xilinx::aten::StatisticsOpInterface>(op)) {
 
@@ -90,12 +91,12 @@ public:
     return ss.str();
   }
 
-  void runOnModule() override {
+  void runOnOperation() override {
 
     // I don't change anything
     markAllAnalysesPreserved();
 
-    auto module = getModule();
+    auto module = getOperation();
 
     // check that a function called "graph" exists
     auto graph = module.lookupSymbol<mlir::FuncOp>("graph");

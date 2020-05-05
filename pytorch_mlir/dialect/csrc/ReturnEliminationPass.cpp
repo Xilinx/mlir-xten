@@ -21,12 +21,14 @@ using namespace mlir;
 
 namespace {
 
-class ReturnEliminationPass : public ModulePass<ReturnEliminationPass> {
+class ReturnEliminationPass : public PassWrapper<ReturnEliminationPass,
+                                                 OperationPass<ModuleOp>> {
 
 public:
   ReturnEliminationPass() {}
 
-  void runOnOperation(Operation *op) {
+  void runOn(Operation *op) {
+    auto module = getOperation();
 
     if (visitedOps.count(op))
       return;
@@ -45,9 +47,9 @@ public:
       auto newFnTy = FunctionType::get(tys, {}, op->getContext());
       std::string newFnName = callOp.callee().str()+"_out";
 
-      if (!getModule().lookupSymbol<FuncOp>(newFnName)) {
+      if (!module.lookupSymbol<FuncOp>(newFnName)) {
         auto fn = FuncOp::create(op->getLoc(), newFnName, newFnTy);
-        getModule().push_back(fn);
+        module.push_back(fn);
       }
 
       std::vector<Value> newCallArgs{callOp.arg_operand_begin(),
@@ -69,7 +71,7 @@ public:
                                                ArrayRef<Type>{},
                                                newCallArgs);
       erasedOps.insert(op);
-      auto fn = getModule().lookupSymbol<FuncOp>(callOp.callee());
+      auto fn = module.lookupSymbol<FuncOp>(callOp.callee());
       if (fn && fn.use_empty()) erasedOps.insert(fn);
     }
     else if ( isa<AllocOp>(op) ) {
@@ -92,14 +94,14 @@ public:
         continue;
       if (v.isa<BlockArgument>())
         continue;
-      runOnOperation(v.getDefiningOp());
+      runOn(v.getDefiningOp());
     }
 
   }
 
-  void runOnModule() override {
+  void runOnOperation() override {
 
-    auto module = getModule();
+    auto module = getOperation();
     auto context = module.getContext();
 
     // check that a function called "graph" exists
@@ -144,14 +146,14 @@ public:
     for (Value v : operands) {
       if (!v.getType().isa<MemRefType>())
         llvm_unreachable("graph function returns non-memref");
-      runOnOperation(v.getDefiningOp());
+      runOn(v.getDefiningOp());
     }
 
     for (auto oi=BB.rbegin(),oe=BB.rend(); oi!=oe; ++oi) {
       Operation *o = &*oi;
       for (Value v : o->getResults()) {
         if (v.getType().isa<MemRefType>()) {
-          runOnOperation(o);
+          runOn(o);
           break;
         }
       }

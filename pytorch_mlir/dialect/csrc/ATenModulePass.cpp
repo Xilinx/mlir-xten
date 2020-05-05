@@ -18,14 +18,15 @@ using namespace mlir;
 
 namespace {
 
-class ATenModulePass : public ModulePass<ATenModulePass> {
+class ATenModulePass : public PassWrapper<ATenModulePass,
+                                          OperationPass<ModuleOp>> {
 
 public:
   ATenModulePass() {}
-    
-  void runOnModule() override {
 
-    auto module = getModule();
+  void runOnOperation() override {
+
+    auto module = getOperation();
 
     // check that a function called "graph" exists
     auto graph = module.lookupSymbol<mlir::FuncOp>("graph");
@@ -40,7 +41,7 @@ public:
     });
 
   }
-  
+
 private:
 
 };

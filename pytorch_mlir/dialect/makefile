@@ -14,7 +14,7 @@ LLVM_PROJECT=$(realpath ../../peano/llvm-project)
 LLVM_INCLUDE=${LLVM_PROJECT}/llvm/include
 MLIR_INCLUDE=$(LLVM_PROJECT)/mlir/include
 
-ATEN_DIALECT_SRC_FILES = $(SRCDIR)/ATenDialect.cpp $(SRCDIR)/ATenDialectOpStats.cpp 
+ATEN_DIALECT_SRC_FILES = $(SRCDIR)/ATenDialect.cpp $(SRCDIR)/ATenDialectOpStats.cpp
 ATEN_DIALECT_INC_FILES = $(INCDIR)/ATenDialect.h
 ATEN_DIALECT_OBJ_FILES = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(ATEN_DIALECT_SRC_FILES))
 
@@ -47,7 +47,7 @@ MLIR_CXX_FLAGS = -I${LLVM_INCLUDE} \
 	          -I$(MLIR_INCLUDE) \
 				 -I$(LLVM_BUILD)/tools/mlir/include
 
-MLIR_LIBS = -lMLIR
+MLIR_LIBS = -lMLIR -lMLIRExecutionEngine
 MLIR_LD_FLAGS =
 
 CXX_FLAGS = -std=c++14 -O3 -fPIC -g -I$(INCDIR) -I$(BUILD_DIR)/include \

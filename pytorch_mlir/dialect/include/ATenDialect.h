@@ -16,6 +16,7 @@
 #include "mlir/IR/StandardTypes.h"
 #include "mlir/IR/TypeSupport.h"
 #include "mlir/IR/Types.h"
+#include "mlir/Interfaces/SideEffects.h"
 
 #include <map>
 

@@ -16,7 +16,8 @@ using namespace mlir;
 
 namespace {
 
-struct ATenLayerNamePass : public ModulePass<ATenLayerNamePass> {
+struct ATenLayerNamePass : public PassWrapper<ATenLayerNamePass,
+                                              OperationPass<ModuleOp>> {
 
 private:
   std::map<Operation *, std::string> opToName;
@@ -24,11 +25,11 @@ private:
 public:
   ATenLayerNamePass() {}
 
-  void runOnModule() override {
+  void runOnOperation() override {
 
     markAllAnalysesPreserved();
 
-    auto module = getModule();
+    auto module = getOperation();
 
     // find the function called 'graph'
     auto graph = module.lookupSymbol<mlir::FuncOp>("graph");
