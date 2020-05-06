@@ -113,4 +113,70 @@ def aten_AcapDmaStoreOp: aten_Op<"acap_tensor_store", []>,
 //   }];
 }
 
-// 
+def aten_AcapNoOp: aten_Op<"acap_noop", []>,
+                Results<(outs AnyType)> {
+  let arguments = (
+    ins AnyType:$x
+  );
+
+  let summary = "noop returns its input";
+  let description = [{
+    noop returns its input or a copy of its input
+  }];
+}
+
+def aten_AcapConv2dOp: aten_Op<"acap_conv2d", [NoSideEffect, StatisticsOpInterface]>,
+                                Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$input,
+        AnyTensor:$weight,
+        AnyTensor:$bias,
+        AnyType:$stride,
+        AnyType:$padding,
+        AnyType:$dilation,
+        AnyScalar:$transposed,
+        AnyType:$output_padding,
+        AnyScalar:$groups,
+        AnyType:$arg9,
+        AnyType:$arg10,
+        AnyType:$arg11
+  );
+
+  let summary = "Convolution operator";
+  let description = [{
+    Convolution operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+    //uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    //uint64_t getResultTransferVolume(unsigned int idx, bool read);
+	}];
+}
+
+def aten_AcapConv2dReLUOp: aten_Op<"acap_conv2d_relu", [NoSideEffect, StatisticsOpInterface]>,
+                                   Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$input,
+        AnyTensor:$weight,
+        AnyTensor:$bias,
+        AnyType:$stride,
+        AnyType:$padding,
+        AnyType:$dilation,
+        AnyScalar:$transposed,
+        AnyType:$output_padding,
+        AnyScalar:$groups,
+        AnyType:$arg9,
+        AnyType:$arg10,
+        AnyType:$arg11
+  );
+
+  let summary = "Convolution ReLU operator";
+  let description = [{
+    Fused Convolution ReLU operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+    //uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    //uint64_t getResultTransferVolume(unsigned int idx, bool read);
+	}];
+}

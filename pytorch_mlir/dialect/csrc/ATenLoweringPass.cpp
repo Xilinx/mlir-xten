@@ -1374,6 +1374,62 @@ public:
   }
 };
 
+class NoOpConversion_affine : public ConversionPattern {
+public:
+  explicit NoOpConversion_affine(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::AcapNoOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value > operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto noop = cast<xilinx::aten::AcapNoOp>(op);
+    auto loc = noop.getLoc();
+    Type resultTy = noop.getResult().getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    MemRefType memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                      tensorResultTy.getElementType(),
+                                                      {}, 0);
+
+    Value result = rewriter.create<AllocOp>(loc, memRefResultTy);
+    Value lhs = MemRefTypeCast(rewriter, operands[0]);
+    auto indexType = IndexType::get(op->getContext());
+
+    using namespace edsc;
+
+    ScopedContext scope(rewriter, loc);
+    ValueHandle zero = intrinsics::std_constant_index(0);
+    ValueHandle one = intrinsics::std_constant_index(1);
+    MemRefBoundsCapture vRes(result);
+    StdIndexedValue iRes(result), iLHS(lhs);
+    ValueHandle i(indexType), j(indexType), k(indexType), l(indexType), M(vRes.ub(0));
+    if (vRes.rank() == 1) {
+      AffineLoopNestBuilder({&i}, {zero}, {M},
+                      {one})([&] { iRes(i) = iLHS(i); });
+    } else if (vRes.rank() == 2) {
+      ValueHandle N(vRes.ub(1));
+      AffineLoopNestBuilder({&i, &j}, {zero, zero}, {M, N},
+                      {one, one})([&] { iRes(i, j) = iLHS(i, j); });
+    } else if (vRes.rank() == 3) {
+      ValueHandle N(vRes.ub(1));
+      ValueHandle O(vRes.ub(2));
+
+      AffineLoopNestBuilder({&i, &j, &k}, {zero, zero, zero}, {M, N, O},
+                      {one, one, one})([&] { iRes(i, j, k) = iLHS(i, j, k); });
+    }
+    else {
+      ValueHandle N(vRes.ub(1));
+      ValueHandle O(vRes.ub(2));
+      ValueHandle P(vRes.ub(3));
+
+      AffineLoopNestBuilder({&i, &j, &k, &l}, {zero, zero, zero, zero}, {M, N, O, P},
+                      {one, one, one, one})([&] { iRes(i, j, k, l) = iLHS(i, j, k, l); });
+    }
+    // Return the newly allocated buffer, with a type.cast to preserve the
+    // consumers.
+    rewriter.replaceOp(op, {result});
+    return matchSuccess();
+  }
+};
 
 /// Convert an ATen type, this gets called for block and region arguments, and
 /// attributes.
@@ -1392,7 +1448,6 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
       return type;
     });
 
-    OwningRewritePatternList atenPatterns;
 
     // c++ patterns
     atenPatterns.insert<AddOpConversion, ConvolutionOpConversion,
@@ -1406,15 +1461,16 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
                         ConvolutionBackwardOpConversion, NllLossForwardOpConversion,
                         NllLossBackwardOpConversion, NllLoss2dForwardOpConversion,
                         NllLoss2dBackwardOpConversion, LogSoftmaxOpConversion,
-                        LogSoftmaxBackwardOpConversion, DivOpConversion>(
-        &getContext());
+                        LogSoftmaxBackwardOpConversion, DivOpConversion>(context);
+
+    atenPatterns.insert<NoOpConversion_affine>(context);
 
     mlir::populateFuncOpTypeConversionPattern(atenPatterns,
-                                              &getContext(),
+                                              context,
                                               typeConverter);
 
     // tablegen patterns
-    populateATenToStdPatterns(&getContext(), atenPatterns);
+    populateATenToStdPatterns(context, atenPatterns);
 
     // Perform aten specific lowering.
     ConversionTarget target(getContext());
@@ -1425,10 +1481,8 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
        return typeConverter.isSignatureLegal(op.getType());
     });
 
-    if (failed(applyPartialConversion(getOperation(), target, atenPatterns,
-                                      &typeConverter))) {
-      emitError(UnknownLoc::get(getOperation().getContext()),
-                "error lowering ATen\n");
+    if (failed(applyPartialConversion(getModule(), target, atenPatterns, &typeConverter))) {
+      emitError(UnknownLoc::get(context), "error lowering ATen\n");
       signalPassFailure();
     }
 

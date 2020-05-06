@@ -71,6 +71,59 @@ namespace aten {
 //   return toReturn;
 // }
 
+template<class T>
+std::map<std::string, uint64_t> getConv2dStatistics(T *o) {
+
+  std::map<std::string, uint64_t> toReturn;
+
+  TensorType resultTy = o->getResult().getType().template cast<TensorType>();
+  TensorType inputTy = o->input().getType().template cast<TensorType>();
+  TensorType weightTy = o->weight().getType().template cast<TensorType>();
+  TensorType biasTy = o->bias().getType().template cast<TensorType>();
+
+  uint64_t ofm_volume = getTensorVolume(resultTy);
+  uint64_t ofm_depth = resultTy.getShape()[1];
+
+  uint64_t ifm_depth = inputTy.getShape()[1];
+  uint64_t kernel_height = weightTy.getShape()[2];
+  uint64_t kernel_width = weightTy.getShape()[3];
+
+  auto co = cast<xilinx::aten::ConstantOp>(o->groups().getDefiningOp());
+  auto ia = co.template getAttrOfType<IntegerAttr>("value");
+  uint64_t groups = ia.getValue().getZExtValue();
+
+  // Number of forward MACs per pixel =
+  //  kernel_width * kernel_height * ifm_depth / groups
+  uint64_t MACs_per_OFM = (ifm_depth/groups) * kernel_height * kernel_width;
+  uint64_t total_MACs = ofm_volume * MACs_per_OFM;
+
+  uint64_t ifm_volume = getTensorVolume(inputTy);
+  uint64_t weight_volume = getTensorVolume(weightTy);
+  uint64_t bias_volume = getTensorVolume(biasTy);
+
+  // Should be gated on whether there is bias at all
+  toReturn["ops:+"] = ofm_volume;
+
+  toReturn["ops:MAC"] = total_MACs;
+  toReturn["operand:0:activation_in"] = ifm_volume;
+  toReturn["result:0:activation_out"] = ofm_volume;
+  toReturn["operand:1:parameters_in:weight"] = weight_volume;
+  toReturn["operand:2:parameters_in:bias"] = bias_volume;
+
+  toReturn["reads"] = weight_volume + bias_volume + ifm_volume;
+  toReturn["writes"] = ofm_volume;
+
+  return toReturn;
+}
+
+std::map<std::string, uint64_t> AcapConv2dReLUOp::getStatistics() {
+  return getConv2dStatistics<AcapConv2dReLUOp>(this);
+}
+
+std::map<std::string, uint64_t> AcapConv2dOp::getStatistics() {
+  return getConv2dStatistics<AcapConv2dOp>(this);
+}
+
 // add
 std::map<std::string, uint64_t> AddOp::getStatistics() {
 
