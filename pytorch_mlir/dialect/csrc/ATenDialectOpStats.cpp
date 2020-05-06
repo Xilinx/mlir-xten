@@ -116,6 +116,10 @@ std::map<std::string, uint64_t> getConv2dStatistics(T *o) {
   return toReturn;
 }
 
+std::map<std::string, uint64_t> AcapConv2dBatchNormReLUOp::getStatistics() {
+  return getConv2dStatistics<AcapConv2dBatchNormReLUOp>(this);
+}
+
 std::map<std::string, uint64_t> AcapConv2dReLUOp::getStatistics() {
   return getConv2dStatistics<AcapConv2dReLUOp>(this);
 }

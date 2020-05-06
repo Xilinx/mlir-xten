@@ -21,12 +21,11 @@ def : Pat<(aten_TransposeOp (aten_TransposeOp $input)), (aten_AcapNoOp $input)>;
 def : Pat<(aten_ReLUOp (aten_ConvolutionOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l)),
           (aten_AcapConv2dReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l)>;
 
-/*
+
 def : Pat<(aten_ReLUOp
             (aten_NativeBatchNormOp
               (aten_ConvolutionOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l),
               $a1,$a2,$a3,$a4,$a5,$a6,$a7
             )
           ),
-          (aten_AcapConv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l)>;
-*/
+          (aten_AcapConv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;

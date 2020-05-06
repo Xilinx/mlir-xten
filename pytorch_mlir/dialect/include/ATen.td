@@ -554,14 +554,14 @@ def aten_MulUnderOp: aten_Op<"mul_", [NoSideEffect, StatisticsOpInterface]>,
 def aten_NativeBatchNormOp: aten_Op<"native_batch_norm", [NoSideEffect, StatisticsOpInterface]>,
                             Results<(outs AnyTensor:$output, AnyTensor:$save_mean, AnyTensor:$save_invstd)> {
   let arguments = (
-    ins AnyType:$arg0,
-        AnyType:$arg1,
-        AnyType:$arg2,
-        AnyType:$arg3,
-        AnyType:$arg4,
-        AnyType:$arg5,
-        AnyType:$arg6,
-        AnyType:$arg7
+    ins AnyTensor:$input,
+        AnyTensor:$weight,
+        AnyTensor:$bias,
+        AnyTensor:$running_mean,
+        AnyTensor:$running_var,
+        AnyScalar:$training,
+        AnyScalar:$momentum,
+        AnyScalar:$eps
   );
 
   let summary = "BatchNorm operator";

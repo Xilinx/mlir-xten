@@ -1484,6 +1484,88 @@ public:
   }
 };
 
+/// Lower conv2d
+class AcapConv2dBatchNormReLUConversion : public ConversionPattern {
+public:
+  explicit AcapConv2dBatchNormReLUConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::AcapConv2dBatchNormReLUOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value > operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    Type resultTy = op->getResult(0).getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    std::vector<Value> callops;
+    // conv2d operands
+    {
+      edsc::ValueHandle xVal(operands[0]);
+      edsc::ValueHandle wVal(operands[1]);
+      edsc::ValueHandle bVal(operands[2]);
+
+      auto unpack = [](auto &op, auto &v) -> void {
+        auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
+        DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+        for (auto i : a.getIntValues())
+          v.push_back(i.getSExtValue());
+      };
+
+      std::vector<uint64_t> pad, kernel, stride;
+      unpack(operands[3], pad);
+      unpack(operands[4], kernel);
+      unpack(operands[5], stride);
+
+      auto padCI = constInt(pad[0],32);
+      auto kernelCI = constInt(kernel[0], 32);
+      auto strideCI = constInt(stride[0], 32);
+      std::vector<Value> cops{xVal, wVal, bVal, padCI, kernelCI, strideCI};
+      for (auto o : cops) callops.push_back(o);
+    }
+    {
+      edsc::ValueHandle bVal(operands[11+1]);
+      edsc::ValueHandle cVal(operands[11+2]);
+      edsc::ValueHandle dVal(operands[11+3]);
+      edsc::ValueHandle eVal(operands[11+4]);
+
+      auto co0 = cast<xilinx::aten::ConstantOp>(operands[11+5].getDefiningOp());
+      auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+      APInt iaVal0 = ia0.getValue();
+
+      auto co1 = cast<xilinx::aten::ConstantOp>(operands[11+6].getDefiningOp());
+      auto fa0 = co1.getAttrOfType<FloatAttr>("value");
+      APFloat faVal0 = fa0.getValue();
+
+      auto co2 = cast<xilinx::aten::ConstantOp>(operands[11+7].getDefiningOp());
+      auto fa1 = co2.getAttrOfType<FloatAttr>("value");
+      APFloat faVal1 = fa1.getValue();
+
+      auto f32Ty = FloatType::getF32(op->getContext());
+
+      std::vector<Value> cops{bVal, cVal, dVal, eVal,
+                              constInt(iaVal0.getZExtValue(), 1),
+                              constFloat(faVal0, f32Ty),
+                              constFloat(faVal1, f32Ty)};
+      for (auto o : cops) callops.push_back(o);
+    }
+    FuncOp convFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                "conv2d_bn_relu", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(convFunc),
+                         callops);
+
+    rewriter.replaceOp(op, {new_call});
+    return matchSuccess();
+  }
+};
+
 /// Convert an ATen type, this gets called for block and region arguments, and
 /// attributes.
 MemRefType convertTensorType(TensorType tensor) {
@@ -1516,7 +1598,8 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
                         NllLoss2dBackwardOpConversion, LogSoftmaxOpConversion,
                         LogSoftmaxBackwardOpConversion, DivOpConversion>(context);
 
-    atenPatterns.insert<NoOpConversion_affine, AcapConv2dReLUConversion>(context);
+    atenPatterns.insert<NoOpConversion_affine, AcapConv2dReLUConversion,
+                        AcapConv2dBatchNormReLUConversion>(context);
 
     mlir::populateFuncOpTypeConversionPattern(atenPatterns,
                                               context,

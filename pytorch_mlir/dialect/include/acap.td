@@ -180,3 +180,39 @@ def aten_AcapConv2dReLUOp: aten_Op<"acap_conv2d_relu", [NoSideEffect, Statistics
     //uint64_t getResultTransferVolume(unsigned int idx, bool read);
 	}];
 }
+
+def aten_AcapConv2dBatchNormReLUOp: aten_Op<"acap_conv2d_bn_relu", [NoSideEffect, StatisticsOpInterface]>,
+                                            Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$input,
+        AnyTensor:$weight,
+        AnyTensor:$bias,
+        AnyType:$stride,
+        AnyType:$padding,
+        AnyType:$dilation,
+        AnyScalar:$transposed,
+        AnyType:$output_padding,
+        AnyScalar:$groups,
+        AnyType:$arg9,
+        AnyType:$arg10,
+        AnyType:$arg11,
+        AnyTensor:$bn_weight,
+        AnyTensor:$bn_bias,
+        AnyTensor:$running_mean,
+        AnyTensor:$running_var,
+        AnyScalar:$training,
+        AnyScalar:$momentum,
+        AnyScalar:$eps
+
+  );
+
+  let summary = "Convolution BatchNorm ReLU operator";
+  let description = [{
+    Fused Convolution BatchNorm ReLU operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+    //uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    //uint64_t getResultTransferVolume(unsigned int idx, bool read);
+	}];
+}

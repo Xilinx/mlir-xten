@@ -60,9 +60,9 @@ struct ATenAcapFusionPass : public ModulePass<ATenAcapFusionPass> {
     target.addLegalDialect<AffineOpsDialect, LLVM::LLVMDialect,
                            StandardOpsDialect, loop::LoopOpsDialect>();
 
+    target.addLegalOp<xilinx::aten::AcapConv2dBatchNormReLUOp>();
     target.addLegalOp<xilinx::aten::AcapConv2dReLUOp>();
     target.addLegalOp<xilinx::aten::AcapNoOp>();
-    //target.addLegalOp<xilinx::aten::AcapConv2dBatchNormReLUOp>();
 
     if (failed(applyPartialConversion(module, target, fusionPatterns, &typeConverter))) {
       emitError(UnknownLoc::get(context), "error fusing ATen\n");
