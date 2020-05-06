@@ -1431,6 +1431,59 @@ public:
   }
 };
 
+/// Lower conv2d
+class AcapConv2dReLUConversion : public ConversionPattern {
+public:
+  explicit AcapConv2dReLUConversion(MLIRContext *context)
+      : ConversionPattern(xilinx::aten::AcapConv2dReLUOp::getOperationName(), 1, context) {}
+
+  PatternMatchResult
+  matchAndRewrite(Operation *op, ArrayRef<Value > operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    Type resultTy = op->getResult(0).getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
+
+    edsc::ValueHandle xVal(operands[0]);
+    edsc::ValueHandle wVal(operands[1]);
+    edsc::ValueHandle bVal(operands[2]);
+
+    auto unpack = [](auto &op, auto &v) -> void {
+      auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
+      DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+      for (auto i : a.getIntValues())
+        v.push_back(i.getSExtValue());
+    };
+
+    std::vector<uint64_t> pad, kernel, stride;
+    unpack(operands[3], pad);
+    unpack(operands[4], kernel);
+    unpack(operands[5], stride);
+
+    auto padCI = constInt(pad[0],32);
+    auto kernelCI = constInt(kernel[0], 32);
+    auto strideCI = constInt(stride[0], 32);
+
+    std::vector<Value> callops{xVal, wVal, bVal, padCI, kernelCI, strideCI};
+
+    FuncOp convFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                "conv2d_relu", callops, memRefResultTy);
+
+    auto new_call = call(memRefResultTy,
+                         rewriter.getSymbolRefAttr(convFunc),
+                         callops);
+
+    rewriter.replaceOp(op, {new_call});
+    return matchSuccess();
+  }
+};
+
 /// Convert an ATen type, this gets called for block and region arguments, and
 /// attributes.
 MemRefType convertTensorType(TensorType tensor) {
@@ -1463,7 +1516,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
                         NllLoss2dBackwardOpConversion, LogSoftmaxOpConversion,
                         LogSoftmaxBackwardOpConversion, DivOpConversion>(context);
 
-    atenPatterns.insert<NoOpConversion_affine>(context);
+    atenPatterns.insert<NoOpConversion_affine, AcapConv2dReLUConversion>(context);
 
     mlir::populateFuncOpTypeConversionPattern(atenPatterns,
                                               context,
