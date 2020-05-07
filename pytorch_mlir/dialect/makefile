@@ -29,8 +29,8 @@ ATEN_PASS_INC_FILES = $(INCDIR)/ATenLoweringPass.h $(INCDIR)/ATenOpReport.h \
 					  $(INCDIR)/ReturnEliminationPass.h $(INCDIR)/AcapOutliner.h
 ATEN_PASS_OBJ_FILES = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(ATEN_PASS_SRC_FILES))
 
-ATEN_TBGEN_FILES = $(BUILD_DIR)/include/ATenOps.h.inc \
-				   $(BUILD_DIR)/include/ATenOps.cpp.inc \
+ATEN_TBGEN_FILES = $(BUILD_DIR)/include/ATen.h.inc \
+				   $(BUILD_DIR)/include/ATen.cpp.inc \
 					$(BUILD_DIR)/include/ATenOpInterfaces.h.inc \
 				   $(BUILD_DIR)/include/ATenOpInterfaces.cpp.inc \
 				   $(BUILD_DIR)/include/ATenToStd.cpp.inc
@@ -77,19 +77,19 @@ clean:
 # table gen rules
 ###################
 
-$(BUILD_DIR)/include/ATenOps.h.inc: $(INCDIR)/aten.td $(INCDIR)/acap.td
+$(BUILD_DIR)/include/ATen.h.inc: $(INCDIR)/ATen.td $(INCDIR)/acap.td
 	mkdir -p $(BUILD_DIR)/include && \
 	${LLVM_BIN}/mlir-tblgen -I$(MLIR_INCLUDE) $< --gen-op-decls > $@
 
-$(BUILD_DIR)/include/ATenOps.cpp.inc: $(INCDIR)/aten.td $(INCDIR)/acap.td
+$(BUILD_DIR)/include/ATen.cpp.inc: $(INCDIR)/ATen.td $(INCDIR)/acap.td
 	mkdir -p $(BUILD_DIR)/include && \
 	${LLVM_BIN}/mlir-tblgen -I$(MLIR_INCLUDE) $< --gen-op-defs > $@
 
-$(BUILD_DIR)/include/ATenOpInterfaces.h.inc: $(INCDIR)/aten.td $(INCDIR)/acap.td
+$(BUILD_DIR)/include/ATenOpInterfaces.h.inc: $(INCDIR)/ATen.td $(INCDIR)/acap.td
 	mkdir -p $(BUILD_DIR)/include && \
 	${LLVM_BIN}/mlir-tblgen -I$(MLIR_INCLUDE) $< --gen-op-interface-decls > $@
 
-$(BUILD_DIR)/include/ATenOpInterfaces.cpp.inc: $(INCDIR)/aten.td $(INCDIR)/acap.td
+$(BUILD_DIR)/include/ATenOpInterfaces.cpp.inc: $(INCDIR)/ATen.td $(INCDIR)/acap.td
 	mkdir -p $(BUILD_DIR)/include && \
 	${LLVM_BIN}/mlir-tblgen -I$(MLIR_INCLUDE) $< --gen-op-interface-defs > $@
 

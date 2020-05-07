@@ -109,7 +109,7 @@ uint64_t getTensorVolume(const Type ty) {
 
 // include TableGen generated Op definitions
 #define GET_OP_CLASSES
-#include "ATenOps.h.inc"
+#include "ATen.h.inc"
 
 
 }

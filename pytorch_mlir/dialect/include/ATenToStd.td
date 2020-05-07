@@ -10,7 +10,7 @@ include "mlir/Dialect/StandardOps/IR/Ops.td"
 
 #ifdef ATEN_OPS
 #else
-include "aten.td"
+include "ATen.td"
 #endif
 
 //def : Pat<(aten_ThresholdOp $x, (aten_ConstantOp:$a1), (aten_ConstantOp:$a2)),(tb_ReLUOp $x)>;

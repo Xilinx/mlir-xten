@@ -85,12 +85,12 @@ ATenDialect::ATenDialect(mlir::MLIRContext *ctx) : mlir::Dialect("aten", ctx) {
      addTypes<ATenListType>();
      addOperations<
 #define GET_OP_LIST
-#include "ATenOps.cpp.inc"
+#include "ATen.cpp.inc"
       >();
 }
 
 #define GET_OP_CLASSES
-#include "ATenOps.cpp.inc"
+#include "ATen.cpp.inc"
 
 #include "ATenOpInterfaces.cpp.inc"
 
