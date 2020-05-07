@@ -1,0 +1,82 @@
+set(LLVM_OPTIONAL_SOURCES
+  test.cpp
+  AcapOutliner.cpp
+  ATenDialect.cpp
+  ATenDialectOpStats.cpp
+  ATenLayerNamePass.cpp
+  ATenLoweringPass.cpp
+  ATenModulePass.cpp
+  ATenOpReport.cpp
+  ATenSimpleAllocatePass.cpp
+  ATenToStd.cpp
+  LivenessReport.cpp
+  ReturnEliminationPass.cpp
+  )
+
+add_mlir_library(ATen
+  AcapOutliner.cpp
+  ATenDialect.cpp
+  ATenDialectOpStats.cpp
+  ATenLayerNamePass.cpp
+  ATenLoweringPass.cpp
+  ATenModulePass.cpp
+  ATenOpReport.cpp
+  ATenSimpleAllocatePass.cpp
+  ATenToStd.cpp
+  LivenessReport.cpp
+  ReturnEliminationPass.cpp
+
+  ADDITIONAL_HEADER_DIRS
+  ${PROJECT_SOURCE_DIR}/dialect/include
+  ${PROJECT_BINARY_DIR}/dialect/include
+
+  DEPENDS
+  MLIRATenIncGen
+  MLIRATenEnumsIncGen
+  MLIRATenOpInterfacesIncGen
+  MLIRATenToStdIncGen
+
+  LINK_LIBS
+  MLIRPass
+  MLIRTransformUtils
+  )
+llvm_update_compile_flags(ATen)
+
+set(LLVM_LINK_COMPONENTS
+  Support
+  Core
+  AsmParser
+  )
+add_llvm_executable(test.exe
+  test.cpp
+  )
+llvm_update_compile_flags(test.exe)
+get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
+get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
+target_link_libraries(test.exe
+  PRIVATE
+  ${dialect_libs}
+  ${conversion_libs}
+  ATen
+  MLIRExecutionEngine
+  MLIRLoopOpsTransforms
+  MLIRLoopAnalysis
+  MLIRAnalysis
+  MLIRDialect
+  MLIREDSC
+  MLIROptLib
+  MLIRParser
+  MLIRPass
+  MLIRSPIRV
+  MLIRSPIRVTestPasses
+  MLIRSPIRVTransforms
+  MLIRTransforms
+  MLIRTransformUtils
+  MLIRTestDialect
+  MLIRTestIR
+  MLIRTestPass
+  MLIRTestTransforms
+  MLIRSupport
+  MLIRIR
+  MLIROptLib
+  )
