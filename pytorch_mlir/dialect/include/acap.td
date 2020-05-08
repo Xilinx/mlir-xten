@@ -148,8 +148,8 @@ def aten_AcapConv2dOp: aten_Op<"acap_conv2d", [NoSideEffect, StatisticsOpInterfa
   }];
   let extraClassDeclaration = [{
     std::map<std::string, uint64_t> getStatistics();
-    //uint64_t getOperandTransferVolume(unsigned int idx, bool read);
-    //uint64_t getResultTransferVolume(unsigned int idx, bool read);
+    uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    uint64_t getResultTransferVolume(unsigned int idx, bool write);
 	}];
 }
 
@@ -176,8 +176,8 @@ def aten_AcapConv2dReLUOp: aten_Op<"acap_conv2d_relu", [NoSideEffect, Statistics
   }];
   let extraClassDeclaration = [{
     std::map<std::string, uint64_t> getStatistics();
-    //uint64_t getOperandTransferVolume(unsigned int idx, bool read);
-    //uint64_t getResultTransferVolume(unsigned int idx, bool read);
+    uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    uint64_t getResultTransferVolume(unsigned int idx, bool write);
 	}];
 }
 
@@ -212,7 +212,7 @@ def aten_AcapConv2dBatchNormReLUOp: aten_Op<"acap_conv2d_bn_relu", [NoSideEffect
   }];
   let extraClassDeclaration = [{
     std::map<std::string, uint64_t> getStatistics();
-    //uint64_t getOperandTransferVolume(unsigned int idx, bool read);
-    //uint64_t getResultTransferVolume(unsigned int idx, bool read);
+    uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    uint64_t getResultTransferVolume(unsigned int idx, bool write);
 	}];
 }

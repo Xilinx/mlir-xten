@@ -221,8 +221,8 @@ def aten_ConvolutionOp: aten_Op<"_convolution", [NoSideEffect, StatisticsOpInter
   }];
   let extraClassDeclaration = [{
     std::map<std::string, uint64_t> getStatistics();
-    //uint64_t getOperandTransferVolume(unsigned int idx, bool read);
-    //uint64_t getResultTransferVolume(unsigned int idx, bool read);
+    uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    uint64_t getResultTransferVolume(unsigned int idx, bool read);
 	}];
 }
 

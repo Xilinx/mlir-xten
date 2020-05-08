@@ -116,16 +116,133 @@ std::map<std::string, uint64_t> getConv2dStatistics(T *o) {
   return toReturn;
 }
 
+static bool simple_conv2d_model = false;
+
+template<class T>
+uint64_t getConv2dOperandTransferVolume(T *o, unsigned int idx, bool read) {
+
+  if (!read) return 0;
+
+  double vol = getTensorVolume(o->getOperand(idx).getType());
+  if (simple_conv2d_model)
+    return vol;
+
+  TensorType inputTy = o->input().getType().template cast<TensorType>();
+  TensorType weightTy = o->weight().getType().template cast<TensorType>();
+  TensorType resultTy = o->getResult().getType().template cast<TensorType>();
+
+  float filter_width = weightTy.getShape()[2];
+  float filter_height = weightTy.getShape()[3];
+
+  float batch_sw = inputTy.getShape()[0];
+  float ifm_depth_sw = inputTy.getShape()[1];
+  float ih = inputTy.getShape()[2];
+  float iw = inputTy.getShape()[3];
+
+  float ofm_depth_sw = resultTy.getShape()[1];
+
+  const float batch_hw = 4;
+  const float ifm_depth_hw = 32;
+  const float ofm_depth_hw = 32;
+
+  const float ifm_tile_height = 4;
+  const float ifm_tile_width = 4;
+  const float ofm_tile_height = 4;
+  const float ofm_tile_width = 4;
+
+  float ifm_aperture = ifm_tile_height - ceilf(filter_height/2.0f);
+  float ifm_overlap = ceilf(filter_height/2.0f);
+
+  float bl = ceilf(batch_sw / batch_hw);
+  float ol = ceilf(ofm_depth_sw / ofm_depth_hw);
+  float il = ceilf(ifm_depth_sw / ifm_depth_hw);
+
+  float ifm_overhead = ol * ifm_tile_height * ((ih - ifm_overlap) / (ih * ifm_aperture));
+  float weight_overhead = bl;
+
+  if (idx == 0) {
+    LLVM_DEBUG(llvm::outs() << "ifm_overhead:" << ifm_overhead << "\n");
+    return vol * ifm_overhead;
+  }
+  if (idx == 1) {
+    LLVM_DEBUG(llvm::outs() << "weight_overhead:" << weight_overhead << "\n");
+    return vol * weight_overhead;
+  }
+  return vol;
+}
+
+template<class T>
+uint64_t getConv2dResultTransferVolume(T *o, unsigned int idx, bool write) {
+
+  TensorType inputTy = o->input().getType().template cast<TensorType>();
+  TensorType resultTy = o->getResult().getType().template cast<TensorType>();
+
+  if (simple_conv2d_model) {
+    if (write)
+      return getTensorVolume(resultTy);
+    else
+      return 0;
+  }
+
+  float ifm_depth_sw = inputTy.getShape()[1];
+  const float ifm_depth_hw = 32;
+
+  float il = ceilf(ifm_depth_sw / ifm_depth_hw);
+
+  float write_output_overhead = il;
+  float read_output_cost = il;
+
+  double vol = getTensorVolume(resultTy);
+
+  if (write) {
+    LLVM_DEBUG(llvm::outs() << "write_output_overhead:" << write_output_overhead << "\n");
+    return vol * write_output_overhead;
+  } else {
+    LLVM_DEBUG(llvm::outs() << "read_output_cost:" << read_output_cost << "\n");
+    return vol * read_output_cost;
+  }
+}
+
+// acap conv2d bn relu
+
 std::map<std::string, uint64_t> AcapConv2dBatchNormReLUOp::getStatistics() {
   return getConv2dStatistics<AcapConv2dBatchNormReLUOp>(this);
 }
+
+uint64_t AcapConv2dBatchNormReLUOp::getOperandTransferVolume(unsigned int idx, bool read) {
+  return getConv2dOperandTransferVolume<AcapConv2dBatchNormReLUOp>(this, idx, read);
+}
+
+uint64_t AcapConv2dBatchNormReLUOp::getResultTransferVolume(unsigned int idx, bool write) {
+  return getConv2dResultTransferVolume<AcapConv2dBatchNormReLUOp>(this, idx, write);
+}
+
+// acap conv2d relu
 
 std::map<std::string, uint64_t> AcapConv2dReLUOp::getStatistics() {
   return getConv2dStatistics<AcapConv2dReLUOp>(this);
 }
 
+uint64_t AcapConv2dReLUOp::getOperandTransferVolume(unsigned int idx, bool read) {
+  return getConv2dOperandTransferVolume<AcapConv2dReLUOp>(this, idx, read);
+}
+
+uint64_t AcapConv2dReLUOp::getResultTransferVolume(unsigned int idx, bool write) {
+  return getConv2dResultTransferVolume<AcapConv2dReLUOp>(this, idx, write);
+}
+
+// acap conv2d
+
 std::map<std::string, uint64_t> AcapConv2dOp::getStatistics() {
   return getConv2dStatistics<AcapConv2dOp>(this);
+}
+
+uint64_t AcapConv2dOp::getOperandTransferVolume(unsigned int idx, bool read) {
+  return getConv2dOperandTransferVolume<AcapConv2dOp>(this, idx, read);
+}
+
+uint64_t AcapConv2dOp::getResultTransferVolume(unsigned int idx, bool write) {
+  return getConv2dResultTransferVolume<AcapConv2dOp>(this, idx, write);
 }
 
 // add
@@ -270,122 +387,17 @@ std::map<std::string, uint64_t> BatchNormOp::getStatistics() {
   return toReturn;
 }
 
+// _convolution
+std::map<std::string, uint64_t> ConvolutionOp::getStatistics() {
+  return getConv2dStatistics<ConvolutionOp>(this);
+}
+
 uint64_t ConvolutionOp::getOperandTransferVolume(unsigned int idx, bool read) {
-
-  if (!read) return 0;
-
-  TensorType inputTy = input().getType().cast<TensorType>();
-  TensorType weightTy = weight().getType().cast<TensorType>();
-  TensorType resultTy = getResult().getType().cast<TensorType>();
-
-  float filter_width = weightTy.getShape()[2];
-  float filter_height = weightTy.getShape()[3];
-
-  float batch_sw = inputTy.getShape()[0];
-  float ifm_depth_sw = inputTy.getShape()[1];
-  float ih = inputTy.getShape()[2];
-  float iw = inputTy.getShape()[3];
-
-  float ofm_depth_sw = resultTy.getShape()[1];
-
-  const float batch_hw = 4;
-  const float ifm_depth_hw = 32;
-  const float ofm_depth_hw = 32;
-
-  const float ifm_tile_height = 4;
-  const float ifm_tile_width = 4;
-  const float ofm_tile_height = 4;
-  const float ofm_tile_width = 4;
-
-  float ifm_aperture = ifm_tile_height - ceilf(filter_height/2.0f);
-  float ifm_overlap = ceilf(filter_height/2.0f);
-
-  float bl = ceilf(batch_sw / batch_hw);
-  float ol = ceilf(ofm_depth_sw / ofm_depth_hw);
-  float il = ceilf(ifm_depth_sw / ifm_depth_hw);
-
-  float ifm_overhead = ol * ifm_tile_height * ((ih - ifm_overlap) / (ih * ifm_aperture));
-  float weight_overhead = bl;
-
-  double vol = getTensorVolume(getOperand(idx).getType());
-  if (idx == 0) {
-    LLVM_DEBUG(llvm::outs() << "ifm_overhead:" << ifm_overhead << "\n");
-    return vol * ifm_overhead;
-  }
-  if (idx == 1) {
-    LLVM_DEBUG(llvm::outs() << "weight_overhead:" << weight_overhead << "\n");
-    return vol * weight_overhead;
-  }
-  return vol;
+  return getConv2dOperandTransferVolume<ConvolutionOp>(this, idx, read);
 }
 
 uint64_t ConvolutionOp::getResultTransferVolume(unsigned int idx, bool write) {
-
-  TensorType inputTy = input().getType().cast<TensorType>();
-  TensorType resultTy = getResult().getType().cast<TensorType>();
-
-  float ifm_depth_sw = inputTy.getShape()[1];
-  const float ifm_depth_hw = 32;
-
-  float il = ceilf(ifm_depth_sw / ifm_depth_hw);
-
-  float write_output_overhead = il;
-  float read_output_cost = il;
-
-  double vol = getTensorVolume(resultTy);
-
-  if (write) {
-    LLVM_DEBUG(llvm::outs() << "write_output_overhead:" << write_output_overhead << "\n");
-    return vol * write_output_overhead;
-  } else {
-    LLVM_DEBUG(llvm::outs() << "read_output_cost:" << read_output_cost << "\n");
-    return vol * read_output_cost;
-  }
-}
-
-// _convolution
-std::map<std::string, uint64_t> ConvolutionOp::getStatistics() {
-
-  std::map<std::string, uint64_t> toReturn;
-
-  TensorType resultTy = getResult().getType().cast<TensorType>();
-  TensorType inputTy = input().getType().cast<TensorType>();
-  TensorType weightTy = weight().getType().cast<TensorType>();
-  TensorType biasTy = bias().getType().cast<TensorType>();
-
-  uint64_t ofm_volume = getTensorVolume(resultTy);
-  uint64_t ofm_depth = resultTy.getShape()[1];
-
-  uint64_t ifm_depth = inputTy.getShape()[1];
-  uint64_t kernel_height = weightTy.getShape()[2];
-  uint64_t kernel_width = weightTy.getShape()[3];
-
-  auto co = cast<xilinx::aten::ConstantOp>(groups().getDefiningOp());
-  auto ia = co.getAttrOfType<IntegerAttr>("value");
-  uint64_t groups = ia.getValue().getZExtValue();
-
-  // Number of forward MACs per pixel =
-  //  kernel_width * kernel_height * ifm_depth / groups
-  uint64_t MACs_per_OFM = (ifm_depth/groups) * kernel_height * kernel_width;
-  uint64_t total_MACs = ofm_volume * MACs_per_OFM;
-
-  uint64_t ifm_volume = getTensorVolume(inputTy);
-  uint64_t weight_volume = getTensorVolume(weightTy);
-  uint64_t bias_volume = getTensorVolume(biasTy);
-
-  // Should be gated on whether there is bias at all
-  toReturn["ops:+"] = ofm_volume;
-
-  toReturn["ops:MAC"] = total_MACs;
-  toReturn["operand:0:activation_in"] = ifm_volume;
-  toReturn["result:0:activation_out"] = ofm_volume;
-  toReturn["operand:1:parameters_in:weight"] = weight_volume;
-  toReturn["operand:2:parameters_in:bias"] = bias_volume;
-
-  toReturn["reads"] = weight_volume + bias_volume + ifm_volume;
-  toReturn["writes"] = ofm_volume;
-
-  return toReturn;
+  return getConv2dResultTransferVolume<ConvolutionOp>(this, idx, write);
 }
 
 // _convolution_backward
