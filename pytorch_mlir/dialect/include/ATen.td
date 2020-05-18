@@ -9,7 +9,7 @@ include "mlir/IR/OpBase.td"
 #define ATEN_OPS
 #endif
 
-include "mlir/Interfaces/SideEffects.td"
+include "mlir/Interfaces/SideEffectInterfaces.td"
 
 def aten_Dialect : Dialect {
   let name = "aten";

@@ -9,10 +9,9 @@
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/Dialect/StandardOps/EDSC/Builders.h"
 #include "mlir/Dialect/StandardOps/EDSC/Intrinsics.h"
-#include "mlir/Dialect/LoopOps/LoopOps.h"
-#include "mlir/Dialect/LoopOps/EDSC/Builders.h"
+#include "mlir/Dialect/SCF/SCF.h"
+#include "mlir/Dialect/SCF/EDSC/Builders.h"
 #include "mlir/EDSC/Builders.h"
-#include "mlir/EDSC/Intrinsics.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/StandardTypes.h"
@@ -37,7 +36,7 @@
 
 using namespace mlir;
 using namespace edsc::intrinsics;
-using callOperation = edsc::intrinsics::OperationBuilder<mlir::CallOp>;
+using callOperation = edsc::OperationBuilder<mlir::CallOp>;
 using call = edsc::ValueBuilder<mlir::CallOp>;
 using constInt = edsc::intrinsics::std_constant_int;
 using constFloat = edsc::intrinsics::std_constant_float;
@@ -248,11 +247,11 @@ public:
     FuncOp addFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                "add", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(addFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -295,11 +294,11 @@ public:
     FuncOp addmmFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                  "addmm", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(addmmFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -365,11 +364,11 @@ public:
     FuncOp asstridedFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                      "as_strided", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(asstridedFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -426,11 +425,11 @@ public:
     FuncOp batchnormFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                      "batch_norm", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(batchnormFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -479,11 +478,11 @@ public:
     FuncOp convFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                 "conv2d", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(convFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -546,7 +545,7 @@ public:
                                   rewriter.getSymbolRefAttr(convFunc),
                                   callops);
 
-    rewriter.replaceOp(op, new_call.getOperation()->getResults());
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -578,11 +577,11 @@ public:
     FuncOp divFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                "div", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(divFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -621,11 +620,11 @@ public:
     FuncOp logsoftmaxFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                       "log_softmax", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(logsoftmaxFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -663,11 +662,11 @@ public:
     FuncOp logsoftmaxBackwardFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                               "log_softmax_backward_data", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(logsoftmaxBackwardFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -713,11 +712,11 @@ public:
     FuncOp maxpoolFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                    "max_pool2d", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(maxpoolFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -783,7 +782,7 @@ public:
                          rewriter.getSymbolRefAttr(maxpoolFunc),
                          callops);
 
-    rewriter.replaceOp(op, new_call.getOperation()->getResults());
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -843,7 +842,7 @@ public:
                                   rewriter.getSymbolRefAttr(maxpoolbackFunc),
                                   callops);
 
-    rewriter.replaceOp(op, new_call.getOperation()->getResults());
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -875,11 +874,11 @@ public:
     FuncOp mmFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                               "mm", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(mmFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -911,11 +910,11 @@ public:
     FuncOp mulFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                "mul", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(mulFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -967,11 +966,11 @@ public:
     FuncOp batchnormFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                      "native_batch_norm", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(batchnormFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -1023,7 +1022,7 @@ public:
                                   rewriter.getSymbolRefAttr(nllLoss2dFwdFunc),
                                   callops);
 
-    rewriter.replaceOp(op, new_call.getOperation()->getResults());
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -1078,7 +1077,7 @@ public:
                                   rewriter.getSymbolRefAttr(nllLoss2dFwdFunc),
                                   callops);
 
-    rewriter.replaceOp(op, new_call.getOperation()->getResults());
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -1130,7 +1129,7 @@ public:
                                   rewriter.getSymbolRefAttr(nllLossFwdFunc),
                                   callops);
 
-    rewriter.replaceOp(op, new_call.getOperation()->getResults());
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -1185,7 +1184,7 @@ public:
                                   rewriter.getSymbolRefAttr(nllLossFwdFunc),
                                   callops);
 
-    rewriter.replaceOp(op, new_call.getOperation()->getResults());
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -1216,11 +1215,11 @@ public:
     FuncOp reluFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                 "relu", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(reluFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -1259,11 +1258,11 @@ public:
                                 callops,
                                 memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(reluFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -1294,11 +1293,11 @@ public:
     FuncOp transposeFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                      "t", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(transposeFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -1340,11 +1339,11 @@ public:
     FuncOp viewFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                 "view", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
+    auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(viewFunc),
                          callops);
 
-    rewriter.replaceOp(op, {new_call});
+    rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
 };
@@ -1394,7 +1393,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
     // Perform aten specific lowering.
     ConversionTarget target(getContext());
     target.addLegalDialect<AffineDialect, LLVM::LLVMDialect,
-                           StandardOpsDialect, loop::LoopOpsDialect>();
+                           StandardOpsDialect, scf::SCFDialect>();
     target.addLegalOp<xilinx::aten::AcapAllocOp>();
     target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
        return typeConverter.isSignatureLegal(op.getType());
