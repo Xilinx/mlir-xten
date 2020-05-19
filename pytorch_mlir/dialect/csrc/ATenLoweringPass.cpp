@@ -209,9 +209,8 @@ public:
                       {one, one, one, one})(
           [&] { iRes(i, j, k, l) = iLHS(i, j, k, l) + iRHS(i, j, k, l); });
     }
-    // Return the newly allocated buffer, with a type.cast to preserve the
-    // consumers.
-    rewriter.replaceOp(op, {typeCast(rewriter, result, add.getType())});
+    // Return the newly allocated buffer.
+    rewriter.replaceOp(op, {result});
     return success();
   }
 };
@@ -388,6 +387,18 @@ public:
     Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
                                                 tensorResultTy.getElementType(),
                                                 {}, 0);
+    TensorType meanTensorResultTy =
+      op->getResult(1).getType().cast<TensorType>();
+    Type meanResultTy =
+      mlir::MemRefType::get(meanTensorResultTy.getShape(),
+                            meanTensorResultTy.getElementType(),
+                            {}, 0);
+    TensorType invstdTensorResultTy =
+      op->getResult(2).getType().cast<TensorType>();
+    Type invstdResultTy =
+      mlir::MemRefType::get(invstdTensorResultTy.getShape(),
+                            invstdTensorResultTy.getElementType(),
+                            {}, 0);
 
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
@@ -422,10 +433,12 @@ public:
                              constFloat(faVal1, f32Ty),
                              constInt(iaVal1.getZExtValue(), 1)};
 
+    auto resultTypes =  {memRefResultTy, meanResultTy, invstdResultTy};
     FuncOp batchnormFunc = getATenFn(op->getParentOfType<ModuleOp>(),
-                                     "batch_norm", callops, memRefResultTy);
+                                     "batch_norm", callops,
+                                     resultTypes);
 
-    auto new_call = callOperation(memRefResultTy,
+    auto new_call = callOperation(resultTypes,
                          rewriter.getSymbolRefAttr(batchnormFunc),
                          callops);
 
@@ -934,6 +947,18 @@ public:
     Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
                                                 tensorResultTy.getElementType(),
                                                 {}, 0);
+    TensorType meanTensorResultTy =
+      op->getResult(1).getType().cast<TensorType>();
+    Type meanResultTy =
+      mlir::MemRefType::get(meanTensorResultTy.getShape(),
+                            meanTensorResultTy.getElementType(),
+                            {}, 0);
+    TensorType invstdTensorResultTy =
+      op->getResult(2).getType().cast<TensorType>();
+    Type invstdResultTy =
+      mlir::MemRefType::get(invstdTensorResultTy.getShape(),
+                            invstdTensorResultTy.getElementType(),
+                            {}, 0);
 
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
@@ -963,10 +988,11 @@ public:
                                 constFloat(faVal0, f32Ty),
                                 constFloat(faVal1, f32Ty)};
 
+    auto resultTypes =  {memRefResultTy, meanResultTy, invstdResultTy};
     FuncOp batchnormFunc = getATenFn(op->getParentOfType<ModuleOp>(),
-                                     "native_batch_norm", callops, memRefResultTy);
+                                     "native_batch_norm", callops, resultTypes);
 
-    auto new_call = callOperation(memRefResultTy,
+    auto new_call = callOperation(resultTypes,
                          rewriter.getSymbolRefAttr(batchnormFunc),
                          callops);
 
