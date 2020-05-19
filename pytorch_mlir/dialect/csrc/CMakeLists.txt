@@ -59,7 +59,7 @@ target_link_libraries(test.exe
   ${conversion_libs}
   ATen
   MLIRExecutionEngine
-  MLIRLoopOpsTransforms
+  MLIRSCFTransforms
   MLIRLoopAnalysis
   MLIRAnalysis
   MLIRDialect
