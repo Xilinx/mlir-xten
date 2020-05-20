@@ -13,7 +13,6 @@
 
 #include <vector>
 #include <set>
-#include <map>
 
 #define DEBUG_TYPE "return-elimination"
 
@@ -94,7 +93,8 @@ public:
         continue;
       if (v.isa<BlockArgument>())
         continue;
-      runOn(v.getDefiningOp());
+      if (v.getDefiningOp())
+        runOn(v.getDefiningOp());
     }
 
   }
@@ -142,11 +142,11 @@ public:
     for (Value v : operands)
       valueMap[v] = BB.addArgument(v.getType());
 
-
     for (Value v : operands) {
       if (!v.getType().isa<MemRefType>())
         llvm_unreachable("graph function returns non-memref");
-      runOn(v.getDefiningOp());
+      if (v.getDefiningOp())
+        runOn(v.getDefiningOp());
     }
 
     for (auto oi=BB.rbegin(),oe=BB.rend(); oi!=oe; ++oi) {
@@ -164,7 +164,7 @@ public:
   }
 
 private:
-  std::map<Value,Value> valueMap;
+  llvm::DenseMap<Value,Value> valueMap;
   std::set<Operation*> visitedOps;
   std::set<Operation*> erasedOps;
 };

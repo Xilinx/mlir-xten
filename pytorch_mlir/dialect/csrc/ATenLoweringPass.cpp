@@ -1395,7 +1395,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
     OwningRewritePatternList atenPatterns;
 
     // c++ patterns
-    atenPatterns.insert<AddOpConversion_affine, ConvolutionOpConversion,
+    atenPatterns.insert<AddOpConversion, ConvolutionOpConversion,
                         ReLUOpConversion, TransposeOpConversion,
                         BatchNormOpConversion, NativeBatchNormOpConversion,
                         MaxPoolOpConversion, MaxPool2dWithIndicesOpConversion,
