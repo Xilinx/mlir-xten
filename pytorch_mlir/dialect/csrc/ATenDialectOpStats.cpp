@@ -116,7 +116,7 @@ std::map<std::string, uint64_t> getConv2dStatistics(T *o) {
   return toReturn;
 }
 
-static bool simple_conv2d_model = false;
+static bool simple_conv2d_model = true;
 
 template<class T>
 uint64_t getConv2dOperandTransferVolume(T *o, unsigned int idx, bool read) {
@@ -157,8 +157,15 @@ uint64_t getConv2dOperandTransferVolume(T *o, unsigned int idx, bool read) {
   float ol = ceilf(ofm_depth_sw / ofm_depth_hw);
   float il = ceilf(ifm_depth_sw / ifm_depth_hw);
 
-  float ifm_overhead = ol * ifm_tile_height * ((ih - ifm_overlap) / (ih * ifm_aperture));
-  float weight_overhead = bl;
+  float ifm_overhead = 1.0f;
+  float weight_overhead = 1.0f;
+  if (filter_width > 1) {
+    ifm_overhead = ol * ifm_tile_height * ((ih - ifm_overlap) / (ih * ifm_aperture));
+    weight_overhead = bl;
+  }
+  else {
+    ifm_overhead = ol;
+  }
 
   if (idx == 0) {
     LLVM_DEBUG(llvm::outs() << "ifm_overhead:" << ifm_overhead << "\n");
@@ -184,13 +191,22 @@ uint64_t getConv2dResultTransferVolume(T *o, unsigned int idx, bool write) {
       return 0;
   }
 
+  TensorType weightTy = o->weight().getType().template cast<TensorType>();
+  float filter_width = weightTy.getShape()[2];
+  //float filter_height = weightTy.getShape()[3];
+
   float ifm_depth_sw = inputTy.getShape()[1];
   const float ifm_depth_hw = 32;
 
   float il = ceilf(ifm_depth_sw / ifm_depth_hw);
 
-  float write_output_overhead = il;
-  float read_output_cost = il;
+  float write_output_overhead = 1.0f;
+  float read_output_cost = 1.0f;
+  
+  if (filter_width > 1) {
+    write_output_overhead = il;
+    read_output_cost = il;
+  }
 
   double vol = getTensorVolume(resultTy);
 
