@@ -6,9 +6,11 @@ mlir_tablegen(ATenEnums.h.inc -gen-enum-decls)
 mlir_tablegen(ATenEnums.cpp.inc -gen-enum-defs)
 add_public_tablegen_target(MLIRATenEnumsIncGen)
 
+set(LLVM_TARGET_DEFINITIONS ATenAcapFusion.td)
 mlir_tablegen(ATenAcapFusion.cpp.inc -gen-rewriters)
 add_public_tablegen_target(MLIRATenAcapFusionIncGen)
 
+set(LLVM_TARGET_DEFINITIONS AcapLoopLowering.td)
 mlir_tablegen(AcapLoopLowering.cpp.inc -gen-rewriters)
 add_public_tablegen_target(MLIRAcapLoopLoweringIncGen)
 

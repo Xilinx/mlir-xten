@@ -7,7 +7,7 @@ include "mlir/IR/OpBase.td"
 #ifdef ATEN_OPS
 #else
 #define ATEN_OPS
-include "include/aten.td"
+include "include/ATen.td"
 #endif
 
 #ifdef ACAP_OPS

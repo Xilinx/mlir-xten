@@ -1402,16 +1402,20 @@ public:
     MemRefBoundsCapture vRes(result);
     StdIndexedValue iRes(result), iLHS(lhs);
     Value M(vRes.ub(0));
-    Value ivs[4];
-    Value &i = ivs[0], &j = ivs[1], &k = ivs[2], &l = ivs[3];
     if (vRes.rank() == 1) {
+      Value ivs[1];
+      Value &i = ivs[0];
       AffineLoopNestBuilder(ivs, {zero}, {M},
                       {one})([&] { iRes(i) = iLHS(i); });
     } else if (vRes.rank() == 2) {
+    Value ivs[2];
+    Value &i = ivs[0], &j = ivs[1];
       Value N(vRes.ub(1));
       AffineLoopNestBuilder(ivs, {zero, zero}, {M, N},
                       {one, one})([&] { iRes(i, j) = iLHS(i, j); });
     } else if (vRes.rank() == 3) {
+      Value ivs[3];
+      Value &i = ivs[0], &j = ivs[1], &k = ivs[2];
       Value N(vRes.ub(1));
       Value O(vRes.ub(2));
 
@@ -1419,6 +1423,8 @@ public:
                       {one, one, one})([&] { iRes(i, j, k) = iLHS(i, j, k); });
     }
     else {
+      Value ivs[4];
+      Value &i = ivs[0], &j = ivs[1], &k = ivs[2], &l = ivs[3];
       Value N(vRes.ub(1));
       Value O(vRes.ub(2));
       Value P(vRes.ub(3));
