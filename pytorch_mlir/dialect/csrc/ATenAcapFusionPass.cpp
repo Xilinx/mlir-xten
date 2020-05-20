@@ -4,15 +4,14 @@
 #include "ATenAcapFusionPass.h"
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
-#include "mlir/Dialect/AffineOps/AffineOps.h"
-#include "mlir/Dialect/AffineOps/EDSC/Builders.h"
+#include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include "mlir/Dialect/Affine/EDSC/Builders.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/Dialect/StandardOps/EDSC/Builders.h"
 #include "mlir/Dialect/StandardOps/EDSC/Intrinsics.h"
-#include "mlir/Dialect/LoopOps/LoopOps.h"
-#include "mlir/Dialect/LoopOps/EDSC/Builders.h"
+#include "mlir/Dialect/SCF/SCF.h"
+#include "mlir/Dialect/SCF/EDSC/Builders.h"
 #include "mlir/EDSC/Builders.h"
-#include "mlir/EDSC/Intrinsics.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/StandardTypes.h"
@@ -42,10 +41,11 @@ namespace {
 
 #include "ATenAcapFusion.cpp.inc"
 
-struct ATenAcapFusionPass : public ModulePass<ATenAcapFusionPass> {
+struct ATenAcapFusionPass : public PassWrapper<ATenAcapFusionPass,
+                                               OperationPass<ModuleOp>> {
 
-  void runOnModule() override {
-    auto module = getModule();
+  void runOnOperation() override {
+    auto module = getOperation();
     auto context = module.getContext();
  
     LLVMTypeConverter typeConverter(context);
@@ -57,8 +57,8 @@ struct ATenAcapFusionPass : public ModulePass<ATenAcapFusionPass> {
     // Perform aten specific Fusion.
     ConversionTarget target(*context);
 
-    target.addLegalDialect<AffineOpsDialect, LLVM::LLVMDialect,
-                           StandardOpsDialect, loop::LoopOpsDialect>();
+    target.addLegalDialect<AffineDialect, LLVM::LLVMDialect,
+                           StandardOpsDialect, scf::SCFDialect>();
 
     target.addLegalOp<xilinx::aten::AcapConv2dBatchNormReLUOp>();
     target.addLegalOp<xilinx::aten::AcapConv2dReLUOp>();

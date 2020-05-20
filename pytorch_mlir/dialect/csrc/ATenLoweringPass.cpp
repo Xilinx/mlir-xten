@@ -36,6 +36,7 @@
 
 using namespace mlir;
 using namespace edsc::intrinsics;
+
 using callOperation = edsc::OperationBuilder<mlir::CallOp>;
 using call = edsc::ValueBuilder<mlir::CallOp>;
 using constInt = edsc::intrinsics::std_constant_int;
@@ -1379,7 +1380,7 @@ public:
   explicit NoOpConversion_affine(MLIRContext *context)
       : ConversionPattern(xilinx::aten::AcapNoOp::getOperationName(), 1, context) {}
 
-  PatternMatchResult
+  LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
     auto noop = cast<xilinx::aten::AcapNoOp>(op);
@@ -1392,42 +1393,43 @@ public:
 
     Value result = rewriter.create<AllocOp>(loc, memRefResultTy);
     Value lhs = MemRefTypeCast(rewriter, operands[0]);
-    auto indexType = IndexType::get(op->getContext());
 
     using namespace edsc;
 
     ScopedContext scope(rewriter, loc);
-    ValueHandle zero = intrinsics::std_constant_index(0);
-    ValueHandle one = intrinsics::std_constant_index(1);
+    Value zero = intrinsics::std_constant_index(0);
+    Value one = intrinsics::std_constant_index(1);
     MemRefBoundsCapture vRes(result);
     StdIndexedValue iRes(result), iLHS(lhs);
-    ValueHandle i(indexType), j(indexType), k(indexType), l(indexType), M(vRes.ub(0));
+    Value M(vRes.ub(0));
+    Value ivs[4];
+    Value &i = ivs[0], &j = ivs[1], &k = ivs[2], &l = ivs[3];
     if (vRes.rank() == 1) {
-      AffineLoopNestBuilder({&i}, {zero}, {M},
+      AffineLoopNestBuilder(ivs, {zero}, {M},
                       {one})([&] { iRes(i) = iLHS(i); });
     } else if (vRes.rank() == 2) {
-      ValueHandle N(vRes.ub(1));
-      AffineLoopNestBuilder({&i, &j}, {zero, zero}, {M, N},
+      Value N(vRes.ub(1));
+      AffineLoopNestBuilder(ivs, {zero, zero}, {M, N},
                       {one, one})([&] { iRes(i, j) = iLHS(i, j); });
     } else if (vRes.rank() == 3) {
-      ValueHandle N(vRes.ub(1));
-      ValueHandle O(vRes.ub(2));
+      Value N(vRes.ub(1));
+      Value O(vRes.ub(2));
 
-      AffineLoopNestBuilder({&i, &j, &k}, {zero, zero, zero}, {M, N, O},
+      AffineLoopNestBuilder(ivs, {zero, zero, zero}, {M, N, O},
                       {one, one, one})([&] { iRes(i, j, k) = iLHS(i, j, k); });
     }
     else {
-      ValueHandle N(vRes.ub(1));
-      ValueHandle O(vRes.ub(2));
-      ValueHandle P(vRes.ub(3));
+      Value N(vRes.ub(1));
+      Value O(vRes.ub(2));
+      Value P(vRes.ub(3));
 
-      AffineLoopNestBuilder({&i, &j, &k, &l}, {zero, zero, zero, zero}, {M, N, O, P},
+      AffineLoopNestBuilder(ivs, {zero, zero, zero, zero}, {M, N, O, P},
                       {one, one, one, one})([&] { iRes(i, j, k, l) = iLHS(i, j, k, l); });
     }
     // Return the newly allocated buffer, with a type.cast to preserve the
     // consumers.
     rewriter.replaceOp(op, {result});
-    return matchSuccess();
+    return success();
   }
 };
 
@@ -1437,7 +1439,7 @@ public:
   explicit AcapConv2dReLUConversion(MLIRContext *context)
       : ConversionPattern(xilinx::aten::AcapConv2dReLUOp::getOperationName(), 1, context) {}
 
-  PatternMatchResult
+  LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override
   {
@@ -1450,9 +1452,9 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    edsc::ValueHandle xVal(operands[0]);
-    edsc::ValueHandle wVal(operands[1]);
-    edsc::ValueHandle bVal(operands[2]);
+    Value xVal(operands[0]);
+    Value wVal(operands[1]);
+    Value bVal(operands[2]);
 
     auto unpack = [](auto &op, auto &v) -> void {
       auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
@@ -1475,12 +1477,12 @@ public:
     FuncOp convFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                 "conv2d_relu", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
-                         rewriter.getSymbolRefAttr(convFunc),
-                         callops);
+    auto new_call = callOperation(memRefResultTy,
+                                  rewriter.getSymbolRefAttr(convFunc),
+                                  callops);
 
-    rewriter.replaceOp(op, {new_call});
-    return matchSuccess();
+    rewriter.replaceOp(op, (*new_call).getResults());
+    return success();
   }
 };
 
@@ -1490,7 +1492,7 @@ public:
   explicit AcapConv2dBatchNormReLUConversion(MLIRContext *context)
       : ConversionPattern(xilinx::aten::AcapConv2dBatchNormReLUOp::getOperationName(), 1, context) {}
 
-  PatternMatchResult
+  LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override
   {
@@ -1506,9 +1508,9 @@ public:
     std::vector<Value> callops;
     // conv2d operands
     {
-      edsc::ValueHandle xVal(operands[0]);
-      edsc::ValueHandle wVal(operands[1]);
-      edsc::ValueHandle bVal(operands[2]);
+      Value xVal(operands[0]);
+      Value wVal(operands[1]);
+      Value bVal(operands[2]);
 
       auto unpack = [](auto &op, auto &v) -> void {
         auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
@@ -1529,10 +1531,10 @@ public:
       for (auto o : cops) callops.push_back(o);
     }
     {
-      edsc::ValueHandle bVal(operands[11+1]);
-      edsc::ValueHandle cVal(operands[11+2]);
-      edsc::ValueHandle dVal(operands[11+3]);
-      edsc::ValueHandle eVal(operands[11+4]);
+      Value bVal(operands[11+1]);
+      Value cVal(operands[11+2]);
+      Value dVal(operands[11+3]);
+      Value eVal(operands[11+4]);
 
       auto co0 = cast<xilinx::aten::ConstantOp>(operands[11+5].getDefiningOp());
       auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
@@ -1557,12 +1559,12 @@ public:
     FuncOp convFunc = getATenFn(op->getParentOfType<ModuleOp>(),
                                 "conv2d_bn_relu", callops, memRefResultTy);
 
-    auto new_call = call(memRefResultTy,
-                         rewriter.getSymbolRefAttr(convFunc),
-                         callops);
+    auto new_call = callOperation(memRefResultTy,
+                                  rewriter.getSymbolRefAttr(convFunc),
+                                  callops);
 
-    rewriter.replaceOp(op, {new_call});
-    return matchSuccess();
+    rewriter.replaceOp(op, (*new_call).getResults());
+    return success();
   }
 };
 
@@ -1583,6 +1585,9 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
       return type;
     });
 
+    OwningRewritePatternList atenPatterns;
+    auto module = getOperation();
+    auto context = module.getContext();
 
     // c++ patterns
     atenPatterns.insert<AddOpConversion, ConvolutionOpConversion,
@@ -1617,7 +1622,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
        return typeConverter.isSignatureLegal(op.getType());
     });
 
-    if (failed(applyPartialConversion(getModule(), target, atenPatterns, &typeConverter))) {
+    if (failed(applyPartialConversion(module, target, atenPatterns, &typeConverter))) {
       emitError(UnknownLoc::get(context), "error lowering ATen\n");
       signalPassFailure();
     }
