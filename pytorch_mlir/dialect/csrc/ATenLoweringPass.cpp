@@ -5,6 +5,7 @@
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include "mlir/Dialect/Affine/IR/AffineValueMap.h"
 #include "mlir/Dialect/Affine/EDSC/Builders.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/Dialect/StandardOps/EDSC/Builders.h"
@@ -1574,6 +1575,25 @@ public:
   }
 };
 
+class AffineParallelLowering : public OpRewritePattern<AffineParallelOp> {
+public:
+  using OpRewritePattern<AffineParallelOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(AffineParallelOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto f = rewriter.create<AffineForOp>(op.getLoc(),
+                                          op.getLowerBoundsOperands(),
+                                          op.lowerBoundsMap(),
+                                          op.getUpperBoundsOperands(),
+                                          op.upperBoundsMap());
+    f.region().getBlocks().clear();
+    rewriter.inlineRegionBefore(op.region(), f.region(), f.region().end());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 /// Convert an ATen type, this gets called for block and region arguments, and
 /// attributes.
 MemRefType convertTensorType(TensorType tensor) {
@@ -1610,7 +1630,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
                         LogSoftmaxBackwardOpConversion, DivOpConversion>(context);
 
     atenPatterns.insert<NoOpConversion_affine, AcapConv2dReLUConversion,
-                        AcapConv2dBatchNormReLUConversion>(context);
+                        AcapConv2dBatchNormReLUConversion, AffineParallelLowering>(context);
 
     mlir::populateFuncOpTypeConversionPattern(atenPatterns,
                                               context,
@@ -1621,9 +1641,10 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
 
     // Perform aten specific lowering.
     ConversionTarget target(getContext());
-    target.addLegalDialect<AffineDialect, LLVM::LLVMDialect,
+    target.addLegalDialect<LLVM::LLVMDialect,
                            StandardOpsDialect, scf::SCFDialect>();
-    target.addLegalOp<xilinx::aten::AcapAllocOp>();
+    target.addLegalOp<xilinx::aten::AcapAllocOp,
+                      AffineForOp, AffineApplyOp>();
     target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
        return typeConverter.isSignatureLegal(op.getType());
     });
