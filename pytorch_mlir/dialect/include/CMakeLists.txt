@@ -14,6 +14,7 @@ set(LLVM_TARGET_DEFINITIONS AcapLoopLowering.td)
 mlir_tablegen(AcapLoopLowering.cpp.inc -gen-rewriters)
 add_public_tablegen_target(MLIRAcapLoopLoweringIncGen)
 
+set(LLVM_TARGET_DEFINITIONS ATenOpInterface.td)
 mlir_tablegen(ATenOpInterfaces.h.inc -gen-op-interface-decls)
 mlir_tablegen(ATenOpInterfaces.cpp.inc -gen-op-interface-defs)
 add_public_tablegen_target(MLIRATenOpInterfacesIncGen)
