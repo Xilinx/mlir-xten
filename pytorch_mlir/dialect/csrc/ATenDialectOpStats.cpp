@@ -116,7 +116,7 @@ std::map<std::string, uint64_t> getConv2dStatistics(T *o) {
   return toReturn;
 }
 
-static bool simple_conv2d_model = true;
+static bool simple_conv2d_model = false;
 
 template<class T>
 uint64_t getConv2dOperandTransferVolume(T *o, unsigned int idx, bool read) {
