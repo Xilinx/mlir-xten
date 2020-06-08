@@ -2,6 +2,7 @@ set(LLVM_OPTIONAL_SOURCES
   test.cpp
   ATenAcapFusionPass.cpp
   AcapLoopLoweringPass.cpp
+  AcapHerdAssignPass.cpp
   AcapOutliner.cpp
   ATenDialect.cpp
   ATenDialectOpStats.cpp
@@ -18,6 +19,7 @@ set(LLVM_OPTIONAL_SOURCES
 add_mlir_library(ATen
   ATenAcapFusionPass.cpp
   AcapLoopLoweringPass.cpp
+  AcapHerdAssignPass.cpp
   AcapOutliner.cpp
   ATenDialect.cpp
   ATenDialectOpStats.cpp
