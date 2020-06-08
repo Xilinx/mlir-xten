@@ -1582,15 +1582,33 @@ public:
   LogicalResult matchAndRewrite(AffineParallelOp op,
                                 PatternRewriter &rewriter) const override {
 
-    auto f = rewriter.create<AffineForOp>(op.getLoc(),
-                                          op.getLowerBoundsOperands(),
-                                          op.lowerBoundsMap(),
-                                          op.getUpperBoundsOperands(),
-                                          op.upperBoundsMap());
-    f.region().getBlocks().clear();
-    rewriter.inlineRegionBefore(op.region(), f.region(), f.region().end());
-    rewriter.eraseOp(op);
-    return success();
+    if (op.getNumDims() == 1) {
+      auto f = rewriter.create<AffineForOp>(op.getLoc(),
+                                            op.getLowerBoundsOperands(),
+                                            op.lowerBoundsMap(),
+                                            op.getUpperBoundsOperands(),
+                                            op.upperBoundsMap());
+      f.region().getBlocks().clear();
+      rewriter.inlineRegionBefore(op.region(), f.region(), f.region().end());
+      rewriter.eraseOp(op);
+      return success();
+    }
+    else if (op.getNumDims() == 2) {
+      auto ub0 = op.upperBoundsMap().getResult(0).cast<AffineConstantExpr>();
+      auto ub1 = op.upperBoundsMap().getResult(1).cast<AffineConstantExpr>();
+      auto outer = rewriter.create<AffineForOp>(op.getLoc(), 0, ub0.getValue());
+      auto outer_builder = OpBuilder::atBlockBegin(outer.getBody());
+      auto inner = outer_builder.create<AffineForOp>(op.getLoc(), 0, ub1.getValue());
+      auto ivs = op.getIVs();
+      ivs[0].replaceAllUsesWith(outer.getInductionVar());
+      ivs[1].replaceAllUsesWith(inner.getInductionVar());
+      op.getBody()->back().erase();
+      inner.getBody()->getOperations().splice(inner.getBody()->begin(),
+                                              op.getBody()->getOperations());
+      rewriter.eraseOp(op);
+      return success();
+    }
+    return failure();
   }
 };
 
