@@ -41,6 +41,7 @@ add_mlir_library(ATen
   MLIRATenEnumsIncGen
   MLIRATenOpInterfacesIncGen
   MLIRATenToStdIncGen
+  MLIRATenPassIncGen
 
   LINK_LIBS
   MLIRPass

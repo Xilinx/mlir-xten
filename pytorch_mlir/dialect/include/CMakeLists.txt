@@ -23,3 +23,9 @@ add_dependencies(mlir-generic-headers MLIRATenOpInterfacesIncGen)
 set(LLVM_TARGET_DEFINITIONS ATenToStd.td)
 mlir_tablegen(ATenToStd.cpp.inc -gen-rewriters)
 add_public_tablegen_target(MLIRATenToStdIncGen)
+
+set(LLVM_TARGET_DEFINITIONS ATenPasses.td)
+mlir_tablegen(ATenPasses.h.inc -gen-pass-decls)
+add_public_tablegen_target(MLIRATenPassIncGen)
+
+add_mlir_doc(ATenPasses -gen-pass-doc ConversionPasses ./)

@@ -1,5 +1,6 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
 #include "ATenDialect.h"
+#include "ATenPasses.h"
 #include "mlir/IR/DialectImplementation.h"
 
 using namespace mlir;
@@ -93,6 +94,17 @@ ATenDialect::ATenDialect(mlir::MLIRContext *ctx) : mlir::Dialect("aten", ctx) {
 #include "ATen.cpp.inc"
 
 #include "ATenOpInterfaces.cpp.inc"
+
+void registerATenPasses() {
+// #define GEN_PASS_REGISTRATION
+//   #include "ATenPasses.h.inc"
+  xilinx::aten::registerAcapLoopLoweringPass();
+  xilinx::aten::registerATenLoweringPass();
+  xilinx::aten::registerATenSimpleAllocatePass();
+  xilinx::aten::registerATenAcapFusionPass();
+  xilinx::aten::registerReturnEliminationPass();
+
+}
 
 
 } // namespace aten

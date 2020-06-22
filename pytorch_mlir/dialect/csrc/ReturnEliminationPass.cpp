@@ -2,6 +2,8 @@
 
 // This is an empty module pass.  Copy it to make your own pass.
 
+#include "ReturnEliminationPass.h"
+
 #include "ATenDialect.h"
 
 #include "llvm/Support/Debug.h"
@@ -180,3 +182,9 @@ std::unique_ptr<mlir::Pass> createReturnEliminationPass() {
 
 } // namespace aten
 } // namespace xilinx
+
+void xilinx::aten::registerReturnEliminationPass() {
+    PassRegistration<ReturnEliminationPass>(
+      "return-elimination",
+      "eliminate returns");
+}

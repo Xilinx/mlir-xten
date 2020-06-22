@@ -14,7 +14,7 @@ namespace xilinx {
 namespace aten {
 
 std::unique_ptr<mlir::Pass> createATenAcapFusionPass();
-
+  void registerATenAcapFusionPass();
 } // namespace aten
 } // namespace xilinx
 

@@ -47,7 +47,7 @@ struct ATenAcapFusionPass : public PassWrapper<ATenAcapFusionPass,
   void runOnOperation() override {
     auto module = getOperation();
     auto context = module.getContext();
- 
+
     LLVMTypeConverter typeConverter(context);
 
     // tablegen patterns
@@ -85,3 +85,9 @@ std::unique_ptr<mlir::Pass> createATenAcapFusionPass() {
 
 } // namespace aten
 } // namespace xilinx
+
+void xilinx::aten::registerATenAcapFusionPass() {
+    PassRegistration<ATenAcapFusionPass>(
+      "aten-acap-fusion",
+      "ATen fusion with acap cost model");
+}

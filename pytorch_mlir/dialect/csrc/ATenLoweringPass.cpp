@@ -1,5 +1,6 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
 
+#include "ATenLoweringPass.h"
 #include "ATenDialect.h"
 #include "ATenToStd.h"
 
@@ -181,35 +182,43 @@ public:
     StdIndexedValue iRes(result), iLHS(lhs), iRHS(rhs);
     Value M(vRes.ub(0));
     if (vRes.rank() == 1) {
-      Value i;
-      AffineLoopNestBuilder(&i, {zero}, {M},
-                      {one})(
-          [&] { iRes(i) = iLHS(i) + iRHS(i); });
+      affineLoopNestBuilder({zero},
+                            {M},
+                            1,
+                            [&](ValueRange ivs) {
+                              Value i = ivs[0];
+                              iRes(i) = iLHS(i) + iRHS(i);
+                            });
     } else if (vRes.rank() == 2) {
       Value N(vRes.ub(1));
-      Value ivs[2];
-      Value &i = ivs[0], &j = ivs[1];
-      AffineLoopNestBuilder(ivs, {zero, zero}, {M, N},
-                      {one, one})(
-          [&] { iRes(i, j) = iLHS(i, j) + iRHS(i, j); });
+      affineLoopNestBuilder({zero, zero},
+                            {M, N},
+                            {1,1},
+                            [&](ValueRange ivs) {
+                              Value i = ivs[0]; Value j = ivs[1];
+                              iRes(i, j) = iLHS(i, j) + iRHS(i, j);
+                            });
     } else if (vRes.rank() == 3) {
       Value N(vRes.ub(1));
       Value O(vRes.ub(2));
-      Value ivs[3];
-      Value &i = ivs[0], &j = ivs[1], &k = ivs[2];
-      AffineLoopNestBuilder(ivs, {zero, zero, zero}, {M, N, O},
-                      {one, one, one})(
-          [&] { iRes(i, j, k) = iLHS(i, j, k) + iRHS(i, j, k); });
+      affineLoopNestBuilder({zero, zero, zero},
+                            {M, N, O},
+                            {1,1,1},
+                            [&](ValueRange ivs) {
+                              Value i = ivs[0]; Value j = ivs[1]; Value k = ivs[2];
+                              iRes(i, j, k) = iLHS(i, j, k) + iRHS(i, j, k);
+                            });
     } else {
       Value N(vRes.ub(1));
       Value O(vRes.ub(2));
       Value P(vRes.ub(3));
-      Value ivs[4];
-      Value &i = ivs[0], &j = ivs[1], &k = ivs[2], &l = ivs[3];
-
-      AffineLoopNestBuilder(ivs, {zero, zero, zero, zero}, {M, N, O, P},
-                      {one, one, one, one})(
-          [&] { iRes(i, j, k, l) = iLHS(i, j, k, l) + iRHS(i, j, k, l); });
+      affineLoopNestBuilder({zero, zero, zero, zero},
+                            {M, N, O, P},
+                            {1,1,1,1},
+                            [&](ValueRange ivs) {
+                              Value i = ivs[0]; Value j = ivs[1]; Value k = ivs[2]; Value l = ivs[3];
+                              iRes(i, j, k, l) = iLHS(i, j, k, l) + iRHS(i, j, k, l);
+                            });
     }
     // Return the newly allocated buffer.
     rewriter.replaceOp(op, {result});
@@ -1404,34 +1413,37 @@ public:
     StdIndexedValue iRes(result), iLHS(lhs);
     Value M(vRes.ub(0));
     if (vRes.rank() == 1) {
-      Value ivs[1];
-      Value &i = ivs[0];
-      AffineLoopNestBuilder(ivs, {zero}, {M},
-                      {one})([&] { iRes(i) = iLHS(i); });
+      affineLoopNestBuilder({zero}, {M},
+                            1, [&] (ValueRange ivs) {
+                              Value i = ivs[0];
+                              iRes(i) = iLHS(i);
+                            });
     } else if (vRes.rank() == 2) {
-    Value ivs[2];
-    Value &i = ivs[0], &j = ivs[1];
       Value N(vRes.ub(1));
-      AffineLoopNestBuilder(ivs, {zero, zero}, {M, N},
-                      {one, one})([&] { iRes(i, j) = iLHS(i, j); });
+      affineLoopNestBuilder({zero, zero}, {M, N},
+                            {1,1}, [&] (ValueRange ivs) {
+                              Value i = ivs[0]; Value j = ivs[1];
+                              iRes(i, j) = iLHS(i, j);
+                            });
     } else if (vRes.rank() == 3) {
-      Value ivs[3];
-      Value &i = ivs[0], &j = ivs[1], &k = ivs[2];
       Value N(vRes.ub(1));
       Value O(vRes.ub(2));
-
-      AffineLoopNestBuilder(ivs, {zero, zero, zero}, {M, N, O},
-                      {one, one, one})([&] { iRes(i, j, k) = iLHS(i, j, k); });
+      affineLoopNestBuilder({zero, zero, zero}, {M, N, O},
+                            {1,1,1}, [&](ValueRange ivs) {
+                              Value i = ivs[0]; Value j = ivs[1]; Value k = ivs[2];
+                              iRes(i, j, k) = iLHS(i, j, k);
+                            });
     }
     else {
-      Value ivs[4];
-      Value &i = ivs[0], &j = ivs[1], &k = ivs[2], &l = ivs[3];
       Value N(vRes.ub(1));
       Value O(vRes.ub(2));
       Value P(vRes.ub(3));
-
-      AffineLoopNestBuilder(ivs, {zero, zero, zero, zero}, {M, N, O, P},
-                      {one, one, one, one})([&] { iRes(i, j, k, l) = iLHS(i, j, k, l); });
+      affineLoopNestBuilder({zero, zero, zero, zero},
+                            {M, N, O, P},
+                            {1,1,1,1}, [&](ValueRange ivs) {
+                              Value i = ivs[0]; Value j = ivs[1]; Value k = ivs[2]; Value l = ivs[3];
+                              iRes(i, j, k, l) = iLHS(i, j, k, l);
+                            });
     }
     // Return the newly allocated buffer, with a type.cast to preserve the
     // consumers.
@@ -1662,7 +1674,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
     target.addLegalDialect<LLVM::LLVMDialect,
                            StandardOpsDialect, scf::SCFDialect>();
     target.addLegalOp<xilinx::aten::AcapAllocOp,
-                      AffineForOp, AffineApplyOp>();
+                      AffineForOp, AffineApplyOp, AffineTerminatorOp>();
     target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
        return typeConverter.isSignatureLegal(op.getType());
     });
@@ -1698,3 +1710,9 @@ std::unique_ptr<mlir::Pass> createATenLoweringPass() {
 
 } // namespace aten
 } // namespace xilinx
+
+void xilinx::aten::registerATenLoweringPass() {
+    PassRegistration<ATenLoweringPass>(
+      "aten-to-std",
+      "ATen dialect lowering to function calls");
+}
