@@ -1624,6 +1624,23 @@ public:
   }
 };
 
+class AllocOpLowering : public OpRewritePattern<AllocOp> {
+public:
+  using OpRewritePattern<AllocOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(AllocOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto memrefTy = op.getType();
+    if (op.getType().getMemorySpace() != 0) {
+      auto alloc = rewriter.create<AllocOp>(op.getLoc(), MemRefType::get(memrefTy.getShape(), memrefTy.getElementType(), memrefTy.getAffineMaps(), 0));
+      rewriter.replaceOp(op, alloc.getResult());
+      return success();
+    }
+    return failure();
+  }
+};
+
 /// Convert an ATen type, this gets called for block and region arguments, and
 /// attributes.
 MemRefType convertTensorType(TensorType tensor) {
@@ -1635,9 +1652,12 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
 
   void runOnOperation() override {
     LLVMTypeConverter typeConverter(getOperation().getContext());
-    typeConverter.addConversion([&](Type type) {
+    typeConverter.addConversion([&](Type type) -> Type {
       if (auto tensor = type.dyn_cast<TensorType>())
         return convertTensorType(tensor).cast<Type>();
+      // make all memory spaces zero
+      if (auto memref = type.dyn_cast<MemRefType>())
+        return mlir::MemRefType::get(memref.getShape(), memref.getElementType(), memref.getAffineMaps(), 0);
       return type;
     });
 
@@ -1660,7 +1680,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
                         LogSoftmaxBackwardOpConversion, DivOpConversion>(context);
 
     atenPatterns.insert<NoOpConversion_affine, AcapConv2dReLUConversion,
-                        AcapConv2dBatchNormReLUConversion, AffineParallelLowering>(context);
+                        AcapConv2dBatchNormReLUConversion, AffineParallelLowering, AllocOpLowering>(context);
 
     mlir::populateFuncOpTypeConversionPattern(atenPatterns,
                                               context,
@@ -1678,6 +1698,9 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
     target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
        return typeConverter.isSignatureLegal(op.getType());
     });
+    target.addDynamicallyLegalOp<AllocOp>([&](AllocOp op) {
+       return (op.getType().getMemorySpace() == 0);
+    });
 
     if (failed(applyPartialConversion(module, target, atenPatterns, &typeConverter))) {
       emitError(UnknownLoc::get(context), "error lowering ATen\n");
@@ -1694,6 +1717,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
           op->erase();
       });
     }
+
   }
 
 };
