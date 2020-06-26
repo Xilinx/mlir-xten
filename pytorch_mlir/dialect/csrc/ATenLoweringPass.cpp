@@ -1614,9 +1614,9 @@ public:
       auto ivs = op.getIVs();
       ivs[0].replaceAllUsesWith(outer.getInductionVar());
       ivs[1].replaceAllUsesWith(inner.getInductionVar());
-      op.getBody()->back().erase();
-      inner.getBody()->getOperations().splice(inner.getBody()->begin(),
-                                              op.getBody()->getOperations());
+      auto &body = op.getBody()->getOperations();
+      inner.getBody()->getOperations().splice(inner.getBody()->begin(), body,
+                                              body.begin(), --body.end());
       rewriter.eraseOp(op);
       return success();
     }
@@ -1692,9 +1692,12 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
     // Perform aten specific lowering.
     ConversionTarget target(getContext());
     target.addLegalDialect<LLVM::LLVMDialect,
-                           StandardOpsDialect, scf::SCFDialect>();
+                           StandardOpsDialect,
+                           scf::SCFDialect>();
     target.addLegalOp<xilinx::aten::AcapAllocOp,
-                      AffineForOp, AffineApplyOp, AffineTerminatorOp>();
+                      AffineForOp, AffineApplyOp,
+                      AffineLoadOp, AffineStoreOp,
+                      AffineTerminatorOp>();
     target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
        return typeConverter.isSignatureLegal(op.getType());
     });
