@@ -103,6 +103,7 @@ void registerATenPasses() {
   xilinx::aten::registerATenSimpleAllocatePass();
   xilinx::aten::registerATenAcapFusionPass();
   xilinx::aten::registerReturnEliminationPass();
+  xilinx::aten::registerAffineLoopOptPass();
 
 }
 

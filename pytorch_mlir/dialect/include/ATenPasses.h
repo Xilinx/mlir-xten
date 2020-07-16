@@ -9,6 +9,7 @@
 #include "ATenSimpleAllocatePass.h"
 #include "ATenAcapFusionPass.h"
 #include "ReturnEliminationPass.h"
+#include "AffineLoopOptPass.h"
 
 namespace xilinx {
   namespace aten {

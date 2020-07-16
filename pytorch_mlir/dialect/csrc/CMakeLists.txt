@@ -4,6 +4,7 @@ set(LLVM_OPTIONAL_SOURCES
   AcapLoopLoweringPass.cpp
   AcapHerdAssignPass.cpp
   AcapOutliner.cpp
+  AffineLoopOptPass.cpp
   ATenDialect.cpp
   ATenDialectOpStats.cpp
   ATenLayerNamePass.cpp
@@ -21,6 +22,7 @@ add_mlir_library(ATen
   AcapLoopLoweringPass.cpp
   AcapHerdAssignPass.cpp
   AcapOutliner.cpp
+  AffineLoopOptPass.cpp
   ATenDialect.cpp
   ATenDialectOpStats.cpp
   ATenLayerNamePass.cpp
