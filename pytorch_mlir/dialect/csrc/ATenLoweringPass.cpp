@@ -1633,7 +1633,8 @@ public:
 
     auto memrefTy = op.getType();
     if (op.getType().getMemorySpace() != 0) {
-      auto alloc = rewriter.create<AllocOp>(op.getLoc(), MemRefType::get(memrefTy.getShape(), memrefTy.getElementType(), memrefTy.getAffineMaps(), 0));
+      auto alloc = rewriter.create<AllocOp>(op.getLoc(), MemRefType::get(memrefTy.getShape(),
+                                            memrefTy.getElementType(), memrefTy.getAffineMaps(), 0));
       rewriter.replaceOp(op, alloc.getResult());
       return success();
     }
