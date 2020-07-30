@@ -48,7 +48,7 @@ struct ATenAcapFusionPass : public PassWrapper<ATenAcapFusionPass,
     auto module = getOperation();
     auto context = module.getContext();
 
-    LLVMTypeConverter typeConverter(context);
+    //    LLVMTypeConverter typeConverter(context);
 
     // tablegen patterns
     OwningRewritePatternList fusionPatterns;
@@ -64,7 +64,7 @@ struct ATenAcapFusionPass : public PassWrapper<ATenAcapFusionPass,
     target.addLegalOp<xilinx::aten::AcapConv2dReLUOp>();
     target.addLegalOp<xilinx::aten::AcapNoOp>();
 
-    if (failed(applyPartialConversion(module, target, fusionPatterns, &typeConverter))) {
+    if (failed(applyPartialConversion(module, target, fusionPatterns))) {
       emitError(UnknownLoc::get(context), "error fusing ATen\n");
       signalPassFailure();
       assert(0);

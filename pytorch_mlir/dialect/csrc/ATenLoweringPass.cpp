@@ -1698,7 +1698,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
     target.addLegalOp<xilinx::aten::AcapAllocOp,
                       AffineForOp, AffineApplyOp,
                       AffineLoadOp, AffineStoreOp,
-                      AffineTerminatorOp>();
+                      AffineYieldOp>();
     target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
        return typeConverter.isSignatureLegal(op.getType());
     });
@@ -1706,7 +1706,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
        return (op.getType().getMemorySpace() == 0);
     });
 
-    if (failed(applyPartialConversion(module, target, atenPatterns, &typeConverter))) {
+    if (failed(applyPartialConversion(module, target, atenPatterns))) {
       emitError(UnknownLoc::get(context), "error lowering ATen\n");
       signalPassFailure();
     }
