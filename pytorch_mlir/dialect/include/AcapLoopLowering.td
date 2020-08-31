@@ -10,11 +10,11 @@ include "mlir/IR/OpBase.td"
 include "include/ATen.td"
 #endif
 
-#ifdef ACAP_OPS
+#ifdef AIR_OPS
 #else
-#define ACAP_OPS
-include "include/acap.td"
+#define AIR_OPS
+include "include/AIR.td"
 #endif
 
 def : Pat<(aten_ConvolutionOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l),
-          (aten_AcapConv2dOp  $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l)>;
+          (air_Conv2dOp  $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l)>;

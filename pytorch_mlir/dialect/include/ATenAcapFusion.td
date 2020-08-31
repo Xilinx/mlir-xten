@@ -10,19 +10,19 @@ include "mlir/IR/OpBase.td"
 include "include/ATen.td"
 #endif
 
-#ifdef ACAP_OPS
+#ifdef AIR_OPS
 #else
-#define ACAP_OPS
-include "include/acap.td"
+#define AIR_OPS
+include "include/AIR.td"
 #endif
 
-def : Pat<(aten_TransposeOp (aten_TransposeOp $input)), (aten_AcapNoOp $input)>;
+def : Pat<(aten_TransposeOp (aten_TransposeOp $input)), (air_NoOp $input)>;
 
 def : Pat<(aten_ReLUOp (aten_ConvolutionOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l)),
-          (aten_AcapConv2dReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l)>;
+          (air_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l)>;
 
 def : Pat<(aten_ReLUUnderOp (aten_ConvolutionOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l)),
-          (aten_AcapConv2dReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l)>;
+          (air_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l)>;
 
 def : Pat<(aten_ReLUOp
             (aten_NativeBatchNormOp
@@ -30,7 +30,7 @@ def : Pat<(aten_ReLUOp
               $a1,$a2,$a3,$a4,$a5,$a6,$a7
             )
           ),
-          (aten_AcapConv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;
+          (air_Conv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;
 
 def : Pat<(aten_ReLUUnderOp
             (aten_NativeBatchNormOp
@@ -38,4 +38,4 @@ def : Pat<(aten_ReLUUnderOp
               $a1,$a2,$a3,$a4,$a5,$a6,$a7
             )
           ),
-          (aten_AcapConv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;
+          (air_Conv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;

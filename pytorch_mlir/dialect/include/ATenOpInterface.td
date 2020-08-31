@@ -1,6 +1,11 @@
 // (c) Copyright 2020 Xilinx Inc. All Rights Reserved.
 include "mlir/IR/OpBase.td"
 
+#ifdef ATEN_OP_INTERFACE
+#else
+#define ATEN_OP_INTERFACE
+#endif
+
 def StatisticsOpInterface : OpInterface<"StatisticsOpInterface"> {
   let description = [{
      This interface allows ops to expose a static operation profile,

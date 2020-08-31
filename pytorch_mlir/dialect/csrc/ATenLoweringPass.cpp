@@ -3,6 +3,7 @@
 #include "ATenLoweringPass.h"
 #include "ATenDialect.h"
 #include "ATenToStd.h"
+#include "AIRDialect.h"
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
@@ -167,7 +168,7 @@ public:
                                                       tensorResultTy.getElementType(),
                                                       {}, 0);
 
-    //Value result = rewriter.create<xilinx::aten::AcapAllocOp>(loc, memRefResultTy, ArrayRef<Value>{});
+    //Value result = rewriter.create<xilinx::air::AllocOp>(loc, memRefResultTy, ArrayRef<Value>{});
     Value result = rewriter.create<AllocOp>(loc, memRefResultTy);
     Value lhs = MemRefTypeCast(rewriter, operands[0]);
     Value rhs = MemRefTypeCast(rewriter, operands[1]);
@@ -1388,12 +1389,12 @@ public:
 class NoOpConversion_affine : public ConversionPattern {
 public:
   explicit NoOpConversion_affine(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::AcapNoOp::getOperationName(), 1, context) {}
+      : ConversionPattern(xilinx::air::NoOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
-    auto noop = cast<xilinx::aten::AcapNoOp>(op);
+    auto noop = cast<xilinx::air::NoOp>(op);
     auto loc = noop.getLoc();
     Type resultTy = noop.getResult().getType();
     TensorType tensorResultTy = resultTy.cast<TensorType>();
@@ -1456,7 +1457,7 @@ public:
 class AcapConv2dReLUConversion : public ConversionPattern {
 public:
   explicit AcapConv2dReLUConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::AcapConv2dReLUOp::getOperationName(), 1, context) {}
+      : ConversionPattern(xilinx::air::Conv2dReLUOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -1509,7 +1510,7 @@ public:
 class AcapConv2dBatchNormReLUConversion : public ConversionPattern {
 public:
   explicit AcapConv2dBatchNormReLUConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::AcapConv2dBatchNormReLUOp::getOperationName(), 1, context) {}
+      : ConversionPattern(xilinx::air::Conv2dBatchNormReLUOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -1699,15 +1700,15 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
     target.addLegalDialect<LLVM::LLVMDialect,
                            StandardOpsDialect,
                            scf::SCFDialect>();
-    target.addLegalOp<xilinx::aten::AcapAllocOp,
+    target.addLegalOp<xilinx::air::AllocOp,
                       AffineForOp, AffineApplyOp,
                       AffineLoadOp, AffineStoreOp,
                       AffineYieldOp>();
     target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
-       return typeConverter.isSignatureLegal(op.getType());
+      return typeConverter.isSignatureLegal(op.getType());
     });
     target.addDynamicallyLegalOp<AllocOp>([&](AllocOp op) {
-       return (op.getType().getMemorySpace() == 0);
+      return (op.getType().getMemorySpace() == 0);
     });
 
     if (failed(applyPartialConversion(module, target, atenPatterns))) {

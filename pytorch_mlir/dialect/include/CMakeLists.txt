@@ -6,6 +6,12 @@ mlir_tablegen(ATenEnums.h.inc -gen-enum-decls)
 mlir_tablegen(ATenEnums.cpp.inc -gen-enum-defs)
 add_public_tablegen_target(MLIRATenEnumsIncGen)
 
+add_mlir_dialect(AIR air)
+set(LLVM_TARGET_DEFINITIONS AIR.td)
+mlir_tablegen(AIREnums.h.inc -gen-enum-decls)
+mlir_tablegen(AIREnums.cpp.inc -gen-enum-defs)
+add_public_tablegen_target(MLIRAIREnumsIncGen)
+
 set(LLVM_TARGET_DEFINITIONS ATenAcapFusion.td)
 mlir_tablegen(ATenAcapFusion.cpp.inc -gen-rewriters)
 add_public_tablegen_target(MLIRATenAcapFusionIncGen)

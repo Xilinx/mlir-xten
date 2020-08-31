@@ -1,6 +1,7 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
 
 #include "ATenDialect.h"
+#include "AIRDialect.h"
 #include "ATenAcapFusionPass.h"
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
@@ -60,9 +61,9 @@ struct ATenAcapFusionPass : public PassWrapper<ATenAcapFusionPass,
     target.addLegalDialect<AffineDialect, LLVM::LLVMDialect,
                            StandardOpsDialect, scf::SCFDialect>();
 
-    target.addLegalOp<xilinx::aten::AcapConv2dBatchNormReLUOp>();
-    target.addLegalOp<xilinx::aten::AcapConv2dReLUOp>();
-    target.addLegalOp<xilinx::aten::AcapNoOp>();
+    target.addLegalOp<xilinx::air::Conv2dBatchNormReLUOp>();
+    target.addLegalOp<xilinx::air::Conv2dReLUOp>();
+    target.addLegalOp<xilinx::air::NoOp>();
 
     if (failed(applyPartialConversion(module, target, fusionPatterns))) {
       emitError(UnknownLoc::get(context), "error fusing ATen\n");

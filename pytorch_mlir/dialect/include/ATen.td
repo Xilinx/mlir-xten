@@ -10,7 +10,11 @@ include "mlir/IR/OpBase.td"
 #endif
 
 include "mlir/Interfaces/SideEffectInterfaces.td"
+
+#ifdef ATEN_OP_INTERFACE
+#else
 include "include/ATenOpInterface.td"
+#endif
 
 def aten_Dialect : Dialect {
   let name = "aten";
@@ -28,10 +32,10 @@ def AnyScalar : TypeConstraint<Or<[AnySignlessInteger.predicate,
                                    AnyFloat.predicate]>,
                                  "scalar">;
 
-#ifdef ACAP_OPS
-#else
-include "include/acap.td"
-#endif
+// #ifdef ACAP_OPS
+// #else
+// include "include/acap.td"
+// #endif
 
 //#ifdef ACAP_OP_DEFS
 //#else
