@@ -51,13 +51,6 @@ namespace detail {
 struct ATenListTypeStorage;
 }
 
-/// LLVM-style RTTI: one entry per subclass to allow dyn_cast/isa.
-enum ATenTypeKind {
-  // The enum starts at the range reserved for this dialect.
-  ATEN_TYPE = mlir::Type::FIRST_PRIVATE_EXPERIMENTAL_0_TYPE,
-  ATEN_LIST,
-};
-
 /// Type for Toy arrays.
 /// In MLIR Types are reference to immutable and uniqued objects owned by the
 /// MLIRContext. As such `ATenListType` only wraps a pointer to an uniqued
@@ -73,9 +66,6 @@ public:
 
   /// Get the unique instance of this Type from the context.
   static ATenListType get(mlir::Type elementType);
-
-  /// Support method to enable LLVM-style RTTI type casting.
-  static bool kindof(unsigned kind) { return kind == ATenTypeKind::ATEN_LIST; }
 };
 
 

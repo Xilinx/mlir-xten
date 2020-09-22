@@ -40,7 +40,7 @@ private:
 } // namespace detail
 
 ATenListType ATenListType::get(mlir::Type elemType) {
-  return Base::get(elemType.getContext(), ATenTypeKind::ATEN_LIST, elemType);
+  return Base::get(elemType.getContext(), elemType);
 }
 
 mlir::Type ATenListType::getElementType() {
@@ -82,7 +82,8 @@ void ATenDialect::printType(mlir::Type type, DialectAsmPrinter &os) const {
   os << ">";
 }
 
-ATenDialect::ATenDialect(mlir::MLIRContext *ctx) : mlir::Dialect("aten", ctx) {
+ATenDialect::ATenDialect(mlir::MLIRContext *ctx) :
+  mlir::Dialect("aten", ctx, ::mlir::TypeID::get<ATenDialect>()) {
      addTypes<ATenListType>();
      addOperations<
 #define GET_OP_LIST

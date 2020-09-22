@@ -1651,7 +1651,11 @@ MemRefType convertTensorType(TensorType tensor) {
 struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
                                              OperationPass<ModuleOp>> {
 
-  void runOnOperation() override {
+   void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
+     registry.insert<mlir::AffineDialect>();
+     registry.insert<mlir::LLVM::LLVMDialect>();
+   }
+   void runOnOperation() override {
     LLVMTypeConverter typeConverter(getOperation().getContext());
     typeConverter.addConversion([&](Type type) -> Type {
       if (auto tensor = type.dyn_cast<TensorType>())
