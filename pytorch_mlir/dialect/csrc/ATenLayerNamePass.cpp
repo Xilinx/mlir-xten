@@ -86,3 +86,9 @@ std::unique_ptr<mlir::Pass> createATenLayerNamePass() {
 
 } // namespace aten
 } // namespace xilinx
+
+void xilinx::aten::registerATenLayerNamePass() {
+    PassRegistration<ATenLayerNamePass>(
+      "aten-layer-name",
+      "ATen generate acdc layer name attributes");
+}

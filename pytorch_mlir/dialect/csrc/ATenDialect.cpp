@@ -99,12 +99,15 @@ ATenDialect::ATenDialect(mlir::MLIRContext *ctx) :
 void registerATenPasses() {
 // #define GEN_PASS_REGISTRATION
 //   #include "ATenPasses.h.inc"
+  xilinx::aten::registerAcapHerdAssignPass();
+  xilinx::aten::registerAcapHerdLoweringPass();
   xilinx::aten::registerAcapLoopLoweringPass();
+  xilinx::aten::registerAffineLoopOptPass();
+  xilinx::aten::registerATenAcapFusionPass();
+  xilinx::aten::registerATenLayerNamePass();
   xilinx::aten::registerATenLoweringPass();
   xilinx::aten::registerATenSimpleAllocatePass();
-  xilinx::aten::registerATenAcapFusionPass();
   xilinx::aten::registerReturnEliminationPass();
-  xilinx::aten::registerAffineLoopOptPass();
 
 }
 

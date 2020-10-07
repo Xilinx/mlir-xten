@@ -45,11 +45,13 @@ namespace {
 struct ATenAcapFusionPass : public PassWrapper<ATenAcapFusionPass,
                                                OperationPass<ModuleOp>> {
 
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
+     registry.insert<xilinx::air::AIRDialect>();
+  }
+
   void runOnOperation() override {
     auto module = getOperation();
     auto context = module.getContext();
-
-    //    LLVMTypeConverter typeConverter(context);
 
     // tablegen patterns
     OwningRewritePatternList fusionPatterns;
