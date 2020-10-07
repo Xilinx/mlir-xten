@@ -14,7 +14,8 @@ namespace xilinx {
 namespace aten {
 
 std::unique_ptr<mlir::Pass> createATenLoweringPass();
-  void registerATenLoweringPass();
+void registerATenLoweringPass();
+
 } // namespace aten
 } // namespace xilinx
 

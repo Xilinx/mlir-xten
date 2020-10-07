@@ -11,6 +11,7 @@ namespace xilinx {
 namespace aten {
 
 std::unique_ptr<mlir::Pass> createATenLayerNamePass();
+void registerATenLayerNamePass();
 
 } // namespace aten
 } // namespace xilinx

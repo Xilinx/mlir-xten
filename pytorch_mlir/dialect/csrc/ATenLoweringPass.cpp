@@ -3,7 +3,6 @@
 #include "ATenLoweringPass.h"
 #include "ATenDialect.h"
 #include "ATenToStd.h"
-#include "AIRDialect.h"
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"

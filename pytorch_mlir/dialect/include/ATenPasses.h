@@ -4,12 +4,15 @@
 #include "mlir/Pass/Pass.h"
 #include "ATenDialect.h"
 
-#include "ATenLoweringPass.h"
+#include "AcapHerdAssignPass.h"
+#include "AcapHerdLoweringPass.h"
 #include "AcapLoopLoweringPass.h"
-#include "ATenSimpleAllocatePass.h"
-#include "ATenAcapFusionPass.h"
-#include "ReturnEliminationPass.h"
 #include "AffineLoopOptPass.h"
+#include "ATenAcapFusionPass.h"
+#include "ATenLayerNamePass.h"
+#include "ATenLoweringPass.h"
+#include "ATenSimpleAllocatePass.h"
+#include "ReturnEliminationPass.h"
 
 namespace xilinx {
   namespace aten {
