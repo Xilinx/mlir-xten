@@ -159,8 +159,8 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value xVal(operands[0]);
-    Value yVal(operands[1]);
+    Value xVal(MemRefTypeCast(rewriter, operands[0]));
+    Value yVal(MemRefTypeCast(rewriter, operands[1]));
 
     auto co = cast<xilinx::aten::ConstantOp>(operands[2].getDefiningOp());
     auto ia = co.getAttrOfType<IntegerAttr>("value");
@@ -199,9 +199,9 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value aVal(operands[0]);
-    Value bVal(operands[1]);
-    Value cVal(operands[2]);
+    Value aVal(MemRefTypeCast(rewriter, operands[0]));
+    Value bVal(MemRefTypeCast(rewriter, operands[1]));
+    Value cVal(MemRefTypeCast(rewriter, operands[2]));
 
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[3].getDefiningOp());
     auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
@@ -242,7 +242,7 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value xVal(operands[0]);
+    Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
     // construct the shape argument
     std::vector<constInt> shape;
@@ -328,11 +328,11 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value aVal(operands[0]);
-    Value bVal(operands[1]);
-    Value cVal(operands[2]);
-    Value dVal(operands[3]);
-    Value eVal(operands[4]);
+    Value aVal(MemRefTypeCast(rewriter, operands[0]));
+    Value bVal(MemRefTypeCast(rewriter, operands[1]));
+    Value cVal(MemRefTypeCast(rewriter, operands[2]));
+    Value dVal(MemRefTypeCast(rewriter, operands[3]));
+    Value eVal(MemRefTypeCast(rewriter, operands[4]));
 
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[5].getDefiningOp());
     auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
@@ -391,9 +391,9 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value xVal(operands[0]);
-    Value wVal(operands[1]);
-    Value bVal(operands[2]);
+    Value xVal(MemRefTypeCast(rewriter, operands[0]));
+    Value wVal(MemRefTypeCast(rewriter, operands[1]));
+    Value bVal(MemRefTypeCast(rewriter, operands[2]));
 
     auto unpack = [](auto &op, auto &v) -> void {
       auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
@@ -453,9 +453,9 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value arg0(operands[0]); // grad_output
-    Value arg1(operands[1]); // input
-    Value arg2(operands[2]); // weight
+    Value arg0(MemRefTypeCast(rewriter, operands[0])); // grad_output
+    Value arg1(MemRefTypeCast(rewriter, operands[1])); // input
+    Value arg2(MemRefTypeCast(rewriter, operands[2])); // weight
 
     auto unpack = [](auto &op, auto &v) -> void {
       auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
@@ -507,8 +507,8 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value xVal(operands[0]);
-    Value yVal(operands[1]);
+    Value xVal(MemRefTypeCast(rewriter, operands[0]));
+    Value yVal(MemRefTypeCast(rewriter, operands[1]));
 
     std::vector<Value> callops{xVal, yVal};
 
@@ -523,6 +523,7 @@ public:
     return success();
   }
 };
+
 /// Lower LogSoftmax
 class LogSoftmaxOpConversion : public ConversionPattern {
 public:
@@ -541,7 +542,7 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value aVal(operands[0]);
+    Value aVal(MemRefTypeCast(rewriter, operands[0]));
 
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[1].getDefiningOp());
     auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
@@ -561,7 +562,7 @@ public:
     auto new_call = callOperation(memRefResultTy,
                          rewriter.getSymbolRefAttr(logsoftmaxFunc),
                          callops);
-
+    
     rewriter.replaceOp(op, (*new_call).getResults());
     return success();
   }
@@ -585,9 +586,9 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value arg0(operands[0]);
-    Value arg1(operands[1]);
-    Value arg3(operands[3]);
+    Value arg0(MemRefTypeCast(rewriter, operands[0]));
+    Value arg1(MemRefTypeCast(rewriter, operands[1]));
+    Value arg3(MemRefTypeCast(rewriter, operands[3]));
 
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[2].getDefiningOp());
     auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
@@ -628,7 +629,7 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value xVal(operands[0]);
+    Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
     auto unpack = [](auto &op, auto &v) -> void {
       auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
@@ -684,7 +685,7 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value xVal(operands[0]);
+    Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
     auto unpack = [](auto &op, auto &v) -> void {
       auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
@@ -725,7 +726,6 @@ public:
   }
 };
 
-
 /// Lower max_pool2d_with_indicies_backward
 class MaxPool2dWithIndicesBackwardOpConversion : public ConversionPattern {
 public:
@@ -744,7 +744,7 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value xVal(operands[0]);
+    Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
     auto unpack = [](auto &op, auto &v) -> void {
       auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
@@ -804,8 +804,8 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value xVal(operands[0]);
-    Value yVal(operands[1]);
+    Value xVal(MemRefTypeCast(rewriter, operands[0]));
+    Value yVal(MemRefTypeCast(rewriter, operands[1]));
 
     std::vector<Value> callops{xVal, yVal};
 
@@ -840,8 +840,8 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value xVal(operands[0]);
-    Value yVal(operands[1]);
+    Value xVal(MemRefTypeCast(rewriter, operands[0]));
+    Value yVal(MemRefTypeCast(rewriter, operands[1]));
 
     std::vector<Value> callops{xVal, yVal};
 
@@ -888,11 +888,11 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value aVal(operands[0]);
-    Value bVal(operands[1]);
-    Value cVal(operands[2]);
-    Value dVal(operands[3]);
-    Value eVal(operands[4]);
+    Value aVal(MemRefTypeCast(rewriter, operands[0]));
+    Value bVal(MemRefTypeCast(rewriter, operands[1]));
+    Value cVal(MemRefTypeCast(rewriter, operands[2]));
+    Value dVal(MemRefTypeCast(rewriter, operands[3]));
+    Value eVal(MemRefTypeCast(rewriter, operands[4]));
 
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[5].getDefiningOp());
     auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
@@ -944,11 +944,11 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value arg0(operands[0]);
-    Value arg1(operands[1]);
-    Value arg2(operands[2]);
-    Value arg3(operands[3]);
-    Value arg6(operands[6]);
+    Value arg0(MemRefTypeCast(rewriter, operands[0]));
+    Value arg1(MemRefTypeCast(rewriter, operands[1]));
+    Value arg2(MemRefTypeCast(rewriter, operands[2]));
+    Value arg3(MemRefTypeCast(rewriter, operands[3]));
+    Value arg6(MemRefTypeCast(rewriter, operands[6]));
 
     // reduction
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[4].getDefiningOp());
@@ -1000,9 +1000,9 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value arg0(operands[0]);
-    Value arg1(operands[1]);
-    Value arg2(operands[2]);
+    Value arg0(MemRefTypeCast(rewriter, operands[0]));
+    Value arg1(MemRefTypeCast(rewriter, operands[1]));
+    Value arg2(MemRefTypeCast(rewriter, operands[2]));
 
     // reduction
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[3].getDefiningOp());
@@ -1051,11 +1051,11 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value arg0(operands[0]);
-    Value arg1(operands[1]);
-    Value arg2(operands[2]);
-    Value arg3(operands[3]);
-    Value arg6(operands[6]);
+    Value arg0(MemRefTypeCast(rewriter, operands[0]));
+    Value arg1(MemRefTypeCast(rewriter, operands[1]));
+    Value arg2(MemRefTypeCast(rewriter, operands[2]));
+    Value arg3(MemRefTypeCast(rewriter, operands[3]));
+    Value arg6(MemRefTypeCast(rewriter, operands[6]));
 
     // reduction
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[4].getDefiningOp());
@@ -1107,9 +1107,9 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value arg0(operands[0]);
-    Value arg1(operands[1]);
-    Value arg2(operands[2]);
+    Value arg0(MemRefTypeCast(rewriter, operands[0]));
+    Value arg1(MemRefTypeCast(rewriter, operands[1]));
+    Value arg2(MemRefTypeCast(rewriter, operands[2]));
 
     // reduction
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[3].getDefiningOp());
@@ -1159,7 +1159,7 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value xVal(operands[0]);
+    Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
     std::vector<Value> callops{xVal};
 
@@ -1194,8 +1194,8 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value arg0(operands[0]);
-    Value arg1(operands[1]);
+    Value arg0(MemRefTypeCast(rewriter, operands[0]));
+    Value arg1(MemRefTypeCast(rewriter, operands[1]));
 
     auto co = dyn_cast<xilinx::aten::ConstantOp>(operands[2].getDefiningOp());
     auto ia = co.getAttrOfType<IntegerAttr>("value");
@@ -1237,7 +1237,7 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value xVal(operands[0]);
+    Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
     std::vector<Value> callops{xVal};
 
@@ -1272,7 +1272,7 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    Value xVal(operands[0]);
+    Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
     // construct the shape argument
     std::vector<constInt> shape;
@@ -1298,8 +1298,6 @@ public:
     return success();
   }
 };
-
-
 
 class AffineParallelLowering : public OpRewritePattern<AffineParallelOp> {
 public:
@@ -1356,6 +1354,73 @@ public:
   }
 };
 
+class ReturnOpLowering : public OpRewritePattern<ReturnOp> {
+public:
+  using OpRewritePattern<ReturnOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ReturnOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto retTys = op.getOperandTypes();
+    auto funcTy = op.getParentOfType<FuncOp>().getType();
+    auto funcRetTys = funcTy.getResults();
+
+    std::vector<Value> returnOperands;
+
+    int idx = 0;
+    for (auto a : llvm::zip(retTys, funcRetTys)) {
+      if (std::get<0>(a).isa<TensorType>() && std::get<1>(a).isa<MemRefType>()) {
+        auto oper = op.getOperand(idx);
+        if (auto cast = dyn_cast<xilinx::aten::TypeCastOp>(oper.getDefiningOp())) {
+          if (cast.getOperand().getType() == std::get<1>(a)) {
+            returnOperands.push_back(cast.getOperand());
+            rewriter.eraseOp(cast);
+            continue;
+          }
+        }
+        returnOperands.push_back(oper);
+      }
+      idx = idx + 1;
+    }
+    rewriter.replaceOpWithNewOp<ReturnOp>(op, returnOperands);
+    return success();
+  }
+};
+
+class TypeCastOpLowering : public OpRewritePattern<xilinx::aten::TypeCastOp> {
+public:
+  using OpRewritePattern<xilinx::aten::TypeCastOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(xilinx::aten::TypeCastOp op,
+                                PatternRewriter &rewriter) const override {
+
+    if (op.use_empty()) {
+      rewriter.eraseOp(op);
+      return success();
+    }
+
+    auto resultTy = op.getResult().getType();
+    auto oper = op.getOperand();
+
+    // remove identity cast
+    if (resultTy == oper.getType()) {
+      rewriter.replaceOp(op, oper);
+      return success();
+    }
+    // simplify casts of casts
+    else if (oper.getDefiningOp()) {
+      if (auto oper_cast = dyn_cast<xilinx::aten::TypeCastOp>(oper.getDefiningOp())) {
+        if (resultTy == oper_cast.getOperand().getType())
+          rewriter.replaceOp(op, oper_cast.getOperand());
+        else
+          rewriter.replaceOpWithNewOp<xilinx::aten::TypeCastOp>(op, op.getType(), oper_cast.getOperand());
+        return success();
+      }
+    }
+    return failure();
+  }
+
+};
 /// Convert an ATen type, this gets called for block and region arguments, and
 /// attributes.
 MemRefType convertTensorType(TensorType tensor) {
@@ -1369,6 +1434,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
      registry.insert<mlir::AffineDialect>();
      registry.insert<mlir::LLVM::LLVMDialect>();
    }
+
    void runOnOperation() override {
     LLVMTypeConverter typeConverter(getOperation().getContext());
     typeConverter.addConversion([&](Type type) -> Type {
@@ -1391,14 +1457,16 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
                         MaxPoolOpConversion, MaxPool2dWithIndicesOpConversion,
                         AddmmOpConversion, ViewOpConversion,
                         MulOpConversion, MMOpConversion,
-                        AsStridedOpConversion, LogSoftmaxOpConversion,
+                        AsStridedOpConversion,
                         ThresholdBackwardOpConversion, MaxPool2dWithIndicesBackwardOpConversion,
                         ConvolutionBackwardOpConversion, NllLossForwardOpConversion,
                         NllLossBackwardOpConversion, NllLoss2dForwardOpConversion,
                         NllLoss2dBackwardOpConversion, LogSoftmaxOpConversion,
                         LogSoftmaxBackwardOpConversion, DivOpConversion>(context);
 
-    atenPatterns.insert<AffineParallelLowering, AllocOpLowering>(context);
+    atenPatterns.insert<TypeCastOpLowering,
+                        ReturnOpLowering,
+                        AffineParallelLowering, AllocOpLowering>(context);
 
     mlir::populateFuncOpTypeConversionPattern(atenPatterns,
                                               context,
@@ -1412,14 +1480,24 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
     target.addLegalDialect<LLVM::LLVMDialect,
                            StandardOpsDialect,
                            scf::SCFDialect>();
-    target.addLegalOp<AffineForOp, AffineApplyOp,
-                      AffineLoadOp, AffineStoreOp,
+    target.addLegalOp<AffineApplyOp,
+                      AffineForOp,
+                      AffineLoadOp,
+                      AffineStoreOp,
                       AffineYieldOp>();
+
     target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
       return typeConverter.isSignatureLegal(op.getType());
     });
     target.addDynamicallyLegalOp<AllocOp>([&](AllocOp op) {
       return (op.getType().getMemorySpace() == 0);
+    });
+
+    target.addDynamicallyLegalOp<ReturnOp>([&](ReturnOp op) {
+      for (auto rty : op.getOperandTypes())
+        if (!rty.isa<MemRefType>())
+          return false;
+      return true;
     });
 
     if (failed(applyPartialConversion(module, target, atenPatterns))) {
