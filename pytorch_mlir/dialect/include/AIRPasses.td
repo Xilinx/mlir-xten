@@ -3,7 +3,7 @@
 
 include "mlir/Pass/PassBase.td"
 
-def AIRLowering : Pass<"air-lowering", "ModuleOp"> {
+def AIRLowering : Pass<"air-to-std", "ModuleOp"> {
   let summary = "AIR dialect lowering";
   let constructor = "xilinx::air::createAIRLoweringPass()";
 }

@@ -1371,7 +1371,7 @@ public:
     for (auto a : llvm::zip(retTys, funcRetTys)) {
       if (std::get<0>(a).isa<TensorType>() && std::get<1>(a).isa<MemRefType>()) {
         auto oper = op.getOperand(idx);
-        if (auto cast = dyn_cast<xilinx::aten::TypeCastOp>(oper.getDefiningOp())) {
+        if (auto cast = dyn_cast_or_null<xilinx::aten::TypeCastOp>(oper.getDefiningOp())) {
           if (cast.getOperand().getType() == std::get<1>(a)) {
             returnOperands.push_back(cast.getOperand());
             rewriter.eraseOp(cast);
