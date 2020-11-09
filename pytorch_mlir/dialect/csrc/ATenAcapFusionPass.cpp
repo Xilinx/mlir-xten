@@ -55,7 +55,7 @@ struct ATenAcapFusionPass : public PassWrapper<ATenAcapFusionPass,
 
     // tablegen patterns
     OwningRewritePatternList fusionPatterns;
-    populateWithGenerated(context, &fusionPatterns);
+    populateWithGenerated(context, fusionPatterns);
 
     // Perform aten specific Fusion.
     ConversionTarget target(*context);
@@ -67,7 +67,7 @@ struct ATenAcapFusionPass : public PassWrapper<ATenAcapFusionPass,
     target.addLegalOp<xilinx::air::Conv2dReLUOp>();
     target.addLegalOp<xilinx::air::NoOp>();
 
-    if (failed(applyPartialConversion(module, target, fusionPatterns))) {
+    if (failed(applyPartialConversion(module, target, std::move(fusionPatterns)))) {
       emitError(UnknownLoc::get(context), "error fusing ATen\n");
       signalPassFailure();
       assert(0);

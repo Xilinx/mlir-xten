@@ -14,6 +14,6 @@ namespace {
 namespace mlir {
 void populateATenToStdPatterns(MLIRContext *context,
                               OwningRewritePatternList &patterns) {
-  populateWithGenerated(context, &patterns);
+  populateWithGenerated(context, patterns);
 }
 }

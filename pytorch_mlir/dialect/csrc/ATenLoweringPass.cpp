@@ -1500,7 +1500,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
       return true;
     });
 
-    if (failed(applyPartialConversion(module, target, atenPatterns))) {
+    if (failed(applyPartialConversion(module, target, std::move(atenPatterns)))) {
       emitError(UnknownLoc::get(context), "error lowering ATen\n");
       signalPassFailure();
     }

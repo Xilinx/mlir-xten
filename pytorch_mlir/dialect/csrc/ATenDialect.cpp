@@ -91,8 +91,12 @@ ATenDialect::ATenDialect(mlir::MLIRContext *ctx) :
       >();
 }
 
+}
+
 #define GET_OP_CLASSES
 #include "ATen.cpp.inc"
+
+namespace aten {
 
 #include "ATenOpInterfaces.cpp.inc"
 
