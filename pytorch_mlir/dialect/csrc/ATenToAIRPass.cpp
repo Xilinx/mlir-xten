@@ -2,7 +2,7 @@
 
 #include "ATenDialect.h"
 #include "AIRDialect.h"
-#include "ATenAcapFusionPass.h"
+#include "ATenToAIRPass.h"
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
@@ -19,6 +19,7 @@
 #include "mlir/Parser.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 #include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVM.h"
 #include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVMPass.h"
@@ -40,9 +41,9 @@ using namespace xilinx;
 
 namespace {
 
-#include "ATenAcapFusion.cpp.inc"
+#include "ATenToAIR.cpp.inc"
 
-struct ATenAcapFusionPass : public PassWrapper<ATenAcapFusionPass,
+struct ATenToAIRPass : public PassWrapper<ATenToAIRPass,
                                                OperationPass<ModuleOp>> {
 
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
@@ -65,9 +66,10 @@ struct ATenAcapFusionPass : public PassWrapper<ATenAcapFusionPass,
 
     target.addLegalOp<xilinx::air::Conv2dBatchNormReLUOp>();
     target.addLegalOp<xilinx::air::Conv2dReLUOp>();
+    target.addLegalOp<xilinx::air::Conv2dOp>();
     target.addLegalOp<xilinx::air::NoOp>();
 
-    if (failed(applyPartialConversion(module, target, std::move(fusionPatterns)))) {
+    if (failed(applyPatternsAndFoldGreedily(module, /*target,*/ std::move(fusionPatterns)))) {
       emitError(UnknownLoc::get(context), "error fusing ATen\n");
       signalPassFailure();
       assert(0);
@@ -82,15 +84,15 @@ struct ATenAcapFusionPass : public PassWrapper<ATenAcapFusionPass,
 namespace xilinx {
 namespace aten {
 
-std::unique_ptr<mlir::Pass> createATenAcapFusionPass() {
-  return std::make_unique<ATenAcapFusionPass>();
+std::unique_ptr<mlir::Pass> createATenToAIRPass() {
+  return std::make_unique<ATenToAIRPass>();
 }
 
 } // namespace aten
 } // namespace xilinx
 
-void xilinx::aten::registerATenAcapFusionPass() {
-    PassRegistration<ATenAcapFusionPass>(
-      "aten-acap-fusion",
-      "ATen fusion with acap cost model");
+void xilinx::aten::registerATenToAIRPass() {
+    PassRegistration<ATenToAIRPass>(
+      "aten-to-air",
+      "ATen dialect to AIR dialect with fusion");
 }

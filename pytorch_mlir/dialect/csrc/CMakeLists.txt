@@ -1,6 +1,6 @@
 set(LLVM_OPTIONAL_SOURCES
   test.cpp
-  ATenAcapFusionPass.cpp
+  ATenToAIRPass.cpp
   AcapLoopLoweringPass.cpp
   AcapHerdAssignPass.cpp
   AcapHerdLoweringPass.cpp
@@ -18,10 +18,11 @@ set(LLVM_OPTIONAL_SOURCES
   ATenToStd.cpp
   LivenessReport.cpp
   ReturnEliminationPass.cpp
+  AIRToAffine.cpp
   )
 
 add_mlir_library(ATen
-  ATenAcapFusionPass.cpp
+  ATenToAIRPass.cpp
   AcapLoopLoweringPass.cpp
   AcapHerdAssignPass.cpp
   AcapHerdLoweringPass.cpp
@@ -39,6 +40,7 @@ add_mlir_library(ATen
   ATenToStd.cpp
   LivenessReport.cpp
   ReturnEliminationPass.cpp
+  AIRToAffine.cpp
 
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/dialect/include

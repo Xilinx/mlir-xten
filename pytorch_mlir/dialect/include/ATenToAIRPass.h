@@ -1,7 +1,7 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
 
-#ifndef ATEN_FUSION_H_
-#define ATEN_FUSION_H_
+#ifndef ATEN_TO_AIR_H_
+#define ATEN_TO_AIR_H_
 
 #include <memory>
 
@@ -13,9 +13,9 @@ class DialectConversion;
 namespace xilinx {
 namespace aten {
 
-std::unique_ptr<mlir::Pass> createATenAcapFusionPass();
-  void registerATenAcapFusionPass();
+std::unique_ptr<mlir::Pass> createATenToAIRPass();
+  void registerATenToAIRPass();
 } // namespace aten
 } // namespace xilinx
 
-#endif // ATEN_FUSION_H_
+#endif // ATEN_TO_AIR_H_

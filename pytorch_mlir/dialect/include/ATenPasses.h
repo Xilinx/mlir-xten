@@ -8,7 +8,7 @@
 #include "AcapHerdLoweringPass.h"
 #include "AcapLoopLoweringPass.h"
 #include "AffineLoopOptPass.h"
-#include "ATenAcapFusionPass.h"
+#include "ATenToAIRPass.h"
 #include "ATenLayerNamePass.h"
 #include "ATenLoweringPass.h"
 #include "ATenSimpleAllocatePass.h"

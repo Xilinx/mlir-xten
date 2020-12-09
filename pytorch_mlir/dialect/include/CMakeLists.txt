@@ -12,9 +12,9 @@ mlir_tablegen(AIREnums.h.inc -gen-enum-decls)
 mlir_tablegen(AIREnums.cpp.inc -gen-enum-defs)
 add_public_tablegen_target(MLIRAIREnumsIncGen)
 
-set(LLVM_TARGET_DEFINITIONS ATenAcapFusion.td)
-mlir_tablegen(ATenAcapFusion.cpp.inc -gen-rewriters)
-add_public_tablegen_target(MLIRATenAcapFusionIncGen)
+set(LLVM_TARGET_DEFINITIONS ATenToAIR.td)
+mlir_tablegen(ATenToAIR.cpp.inc -gen-rewriters)
+add_public_tablegen_target(MLIRATenToAIRIncGen)
 
 set(LLVM_TARGET_DEFINITIONS AcapLoopLowering.td)
 mlir_tablegen(AcapLoopLowering.cpp.inc -gen-rewriters)

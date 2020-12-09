@@ -16,5 +16,5 @@ include "include/ATen.td"
 include "include/AIR.td"
 #endif
 
-def : Pat<(aten_ConvolutionOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l),
-          (air_Conv2dOp  $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l)>;
+// def : Pat<(aten_ConvolutionOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l),
+//           (air_Conv2dOp  $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l)>;
