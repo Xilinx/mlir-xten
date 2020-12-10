@@ -112,7 +112,6 @@ void registerATenPasses() {
   xilinx::aten::registerATenLoweringPass();
   xilinx::aten::registerATenSimpleAllocatePass();
   xilinx::aten::registerReturnEliminationPass();
-
 }
 
 
