@@ -43,3 +43,5 @@ def : Pat<(aten_ReLUUnderOp
           ),
           (air_Conv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j,$k,$l,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;
 
+def : Pat<(aten_AddOp $a, (aten_ConstantOp:$b), (aten_ConstantOp:$c)),
+          (air_AddOneOp $a, $b)>;
