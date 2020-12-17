@@ -6,6 +6,7 @@
 
 #include "AIRLoweringPass.h"
 #include "AIRToAffinePass.h"
+#include "AffineToAIRPass.h"
 
 namespace xilinx {
   namespace air {

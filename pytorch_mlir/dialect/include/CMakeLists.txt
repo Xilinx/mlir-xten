@@ -16,6 +16,10 @@ set(LLVM_TARGET_DEFINITIONS ATenToAIR.td)
 mlir_tablegen(ATenToAIR.cpp.inc -gen-rewriters)
 add_public_tablegen_target(MLIRATenToAIRIncGen)
 
+set(LLVM_TARGET_DEFINITIONS AffineToAIR.td)
+mlir_tablegen(AffineToAIR.cpp.inc -gen-rewriters)
+add_public_tablegen_target(MLIRAffineToAIRIncGen)
+
 set(LLVM_TARGET_DEFINITIONS AcapLoopLowering.td)
 mlir_tablegen(AcapLoopLowering.cpp.inc -gen-rewriters)
 add_public_tablegen_target(MLIRAcapLoopLoweringIncGen)

@@ -1,6 +1,7 @@
 set(LLVM_OPTIONAL_SOURCES
   test.cpp
   ATenToAIRPass.cpp
+  AffineToAIRPass.cpp
   AcapLoopLoweringPass.cpp
   AcapHerdAssignPass.cpp
   AcapHerdLoweringPass.cpp
@@ -23,6 +24,7 @@ set(LLVM_OPTIONAL_SOURCES
 
 add_mlir_library(ATen
   ATenToAIRPass.cpp
+  AffineToAIRPass.cpp
   AcapLoopLoweringPass.cpp
   AcapHerdAssignPass.cpp
   AcapHerdLoweringPass.cpp

@@ -1516,6 +1516,18 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
       });
     }
 
+    for (auto function : getOperation().getOps<FuncOp>()) {
+      function.walk([&](Operation *op) {
+        auto tc = dyn_cast<xilinx::aten::TypeCastOp>(op);
+        if (!tc)
+          return;
+        if (tc.getType() == tc.getOperand().getType())
+          tc.replaceAllUsesWith(tc.getOperand());
+        if (op->use_empty())
+          op->erase();
+      });
+    }
+
   }
 
 };
