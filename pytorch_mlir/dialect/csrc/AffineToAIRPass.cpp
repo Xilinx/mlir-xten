@@ -147,7 +147,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
     auto loc = dma_callOp.getLoc();
 
     // for now it's all very much hard coded
-    if ( callee.equals("acap_L2_dma_copy") ) {
+    if ( callee.equals("acap_L2_dma_copy_1") ) {
       auto arg_iter = dma_callOp.arg_operand_begin();
       // input and output here are relative to the copy
       auto dim1_idx = *(arg_iter);
@@ -173,7 +173,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
       dma_callOp.erase();
       //acap_L2_dma_copy_arg1(&weights);
     }
-    else if (callee.equals("acap_L2_dma_copy_1")) {
+    else if (callee.equals("acap_L2_dma_copy")) {
       auto arg_iter = dma_callOp.arg_operand_begin();
       auto dim_idx = *(arg_iter);
       // input and output here are relative to the copy

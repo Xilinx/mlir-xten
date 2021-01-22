@@ -45,3 +45,6 @@ def : Pat<(aten_ReLUUnderOp
 
 def : Pat<(aten_AddOp $a, (aten_ConstantOp:$b), (aten_ConstantOp:$c)),
           (air_AddOneOp $a, $b)>;
+
+def : Pat<(aten_MMOp $a, $b),
+          (air_MMOp $a, $b)>;
