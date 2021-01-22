@@ -20,6 +20,7 @@ set(LLVM_OPTIONAL_SOURCES
   LivenessReport.cpp
   ReturnEliminationPass.cpp
   AIRToAffine.cpp
+  Util.cpp
   )
 
 add_mlir_library(ATen
@@ -43,6 +44,7 @@ add_mlir_library(ATen
   LivenessReport.cpp
   ReturnEliminationPass.cpp
   AIRToAffine.cpp
+  Util.cpp
 
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/dialect/include
