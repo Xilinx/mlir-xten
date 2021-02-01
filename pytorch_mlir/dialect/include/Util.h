@@ -7,5 +7,7 @@ void coalesceLoops(mlir::AffineForOp outer, mlir::AffineForOp inner);
 
 void normalizeLoop(AffineForOp afo);
 
+FuncOp getATenFn(ModuleOp module, std::string fnName, ArrayRef<Value> operands, ArrayRef<Type> retTys);
+
 }
 }

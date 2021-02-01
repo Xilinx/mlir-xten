@@ -3,6 +3,7 @@
 #include "ATenLoweringPass.h"
 #include "ATenDialect.h"
 #include "ATenToStd.h"
+#include "Util.h"
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
@@ -38,6 +39,7 @@
 
 using namespace mlir;
 using namespace edsc::intrinsics;
+using namespace xilinx::air;
 
 using callOperation = edsc::OperationBuilder<mlir::CallOp>;
 using call = edsc::ValueBuilder<mlir::CallOp>;
@@ -110,34 +112,6 @@ std::string getMangledFuncName(ModuleOp module, std::string prefix, FunctionType
     ret = ret + sep + getMangledType(t);
 
   return ret;
-}
-
-FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value> operands, ArrayRef<Type> retTys)
-{
-  Builder builder(module);
-
-  SmallVector<Type, 8> tys;
-  for (auto o : operands)
-    tys.push_back(o.getType());
-
-  auto fnTy = builder.getFunctionType(tys, retTys);
-
-  std::string fnName = getMangledFuncName(module, prefix+"_AtenAcapOp", fnTy);
-
-  auto fn = module.lookupSymbol<FuncOp>(fnName);
-
-  if (!fn) {
-    fn = FuncOp::create(builder.getUnknownLoc(), fnName, fnTy);
-    module.push_back(fn);
-  }
-
-  return fn;
-}
-
-FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value> operands, Type &retTy)
-{
-  std::vector<Type> retTys{retTy};
-  return getATenFn(module, prefix, operands, retTys);
 }
 
 /// Lower Add

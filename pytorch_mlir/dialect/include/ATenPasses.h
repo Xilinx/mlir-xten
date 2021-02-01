@@ -12,6 +12,7 @@
 #include "ATenLayerNamePass.h"
 #include "ATenLoweringPass.h"
 #include "ATenSimpleAllocatePass.h"
+#include "ATenOpReport.h"
 #include "ReturnEliminationPass.h"
 
 namespace xilinx {

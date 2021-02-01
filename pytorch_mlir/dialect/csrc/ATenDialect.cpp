@@ -109,6 +109,7 @@ void registerATenPasses() {
   xilinx::aten::registerAffineLoopOptPass();
   xilinx::aten::registerATenToAIRPass();
   xilinx::aten::registerATenLayerNamePass();
+  xilinx::aten::registerATenOpReportPass();
   xilinx::aten::registerATenLoweringPass();
   xilinx::aten::registerATenSimpleAllocatePass();
   xilinx::aten::registerReturnEliminationPass();
