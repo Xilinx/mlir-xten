@@ -17,7 +17,7 @@
 #include "mlir/EDSC/Builders.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/OperationSupport.h"
-#include "mlir/IR/StandardTypes.h"
+#include "mlir/IR/BuiltinTypes.h"
 #include "mlir/Parser.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
@@ -102,7 +102,7 @@ public:
       mlir::AffineMap lbm = afo.getLowerBoundMap();
       mlir::AffineMap ubm = afo.getUpperBoundMap();
 
-      auto int32Ty = mlir::IntegerType::get(32, op->getContext());
+      auto int32Ty = mlir::IntegerType::get(op->getContext(), 32);
       auto attr = mlir::IntegerAttr::get(int32Ty, 0);
       SmallVector<Attribute, 1> attrs{attr};
       SmallVector<Attribute, 2> ints;
@@ -122,7 +122,7 @@ public:
       // rewriter.eraseOp(store);
       rewriter.eraseOp(op);
 
-      shim_dma_memcpy.getParentOfType<FuncOp>().dump();
+      shim_dma_memcpy->getParentOfType<FuncOp>().dump();
       return success();
     }
     else if (srcTy.getMemorySpace() == 1 || dstTy.getMemorySpace() == 0) {
@@ -162,7 +162,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
                                  dim1_idx.getType(),
                                  dim0_idx.getType()};
         SmallVector<Type, 1> retTy{};
-        auto fnTy = FunctionType::get(tys, retTy, ctx);
+        auto fnTy = FunctionType::get(ctx, tys, retTy);
         dmafn = FuncOp::create(loc, dmafn_name, fnTy);
         module.push_back(dmafn);
       } 
@@ -189,7 +189,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
                                  dim1_idx.getType(),
                                  dim0_idx.getType()};
         SmallVector<Type, 1> retTy{};
-        auto fnTy = FunctionType::get(tys, retTy, ctx);
+        auto fnTy = FunctionType::get(ctx, tys, retTy);
         dmafn = FuncOp::create(loc, dmafn_name, fnTy);
         module.push_back(dmafn);
       } 
@@ -221,7 +221,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
     // check that a function called "graph" exists
     auto graph = module.lookupSymbol<mlir::FuncOp>("graph");
     if (!graph) {
-      emitError(mlir::UnknownLoc::get(module.getContext()),
+      emitError(mlir::UnknownLoc::get(context),
                 "OpReportPass failed: can't find a graph function\n");
       signalPassFailure();
       return;
