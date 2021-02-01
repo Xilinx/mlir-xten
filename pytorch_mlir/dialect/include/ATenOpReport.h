@@ -11,6 +11,7 @@ namespace xilinx {
 namespace aten {
 
 std::unique_ptr<mlir::Pass> createATenOpReportPass(std::string &output);
+void registerATenOpReportPass();
 
 } // namespace aten
 } // namespace xilinx

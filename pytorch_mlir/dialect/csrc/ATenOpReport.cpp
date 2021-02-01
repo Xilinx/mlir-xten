@@ -1,5 +1,6 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
 #include "ATenDialect.h"
+#include "ATenOpReport.h"
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -25,11 +26,33 @@ struct ATenOpReportPass : public PassWrapper<ATenOpReportPass,
                                              OperationPass<ModuleOp>> {
 
 private:
+  std::string o;
   std::string &output;
   std::vector<std::string> tableFields;
   std::map<Operation *, std::string> opToName;
 
 public:
+  ATenOpReportPass()
+    : output(o),
+      tableFields({
+        "reads",
+        "writes",
+        "activation_in",
+        "activation_out",
+        "parameters_in",
+        "ops:MAC",
+        "ops:==",
+        "ops:>",
+        "ops:*",
+        "ops:+",
+        "ops:/",
+        "ops:sqrt",
+        "ops:-",
+        "grad"
+      })
+  {
+  }
+
   ATenOpReportPass(std::string &output)
     : output(output),
       tableFields({
@@ -133,3 +156,9 @@ std::unique_ptr<mlir::Pass> createATenOpReportPass(std::string &o) {
 
 } // namespace aten
 } // namespace xilinx
+
+void xilinx::aten::registerATenOpReportPass() {
+    PassRegistration<ATenOpReportPass>(
+      "aten-op-report",
+      "Generate ATen dialect operation statistics");
+}
