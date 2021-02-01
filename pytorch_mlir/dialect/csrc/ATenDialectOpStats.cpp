@@ -2,9 +2,7 @@
 #include "AIRDialect.h"
 
 #include "llvm/Support/Debug.h"
-
-#include "mlir/IR/StandardTypes.h"
-#include "mlir/IR/Types.h"
+#include "mlir/IR/BuiltinOps.h"
 
 #include <iostream>
 
@@ -21,7 +19,7 @@ namespace {
 std::vector<uint64_t> unpackListConstant(Value op) {
   std::vector<uint64_t> v;
   auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
-  DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+  DenseElementsAttr a = co->getAttrOfType<DenseElementsAttr>("value");
   for (auto i : a.getIntValues())
     v.push_back(i.getSExtValue());
   return v;
@@ -45,7 +43,7 @@ std::map<std::string, uint64_t> getConv2dStatistics(T *o) {
   uint64_t kernel_width = weightTy.getShape()[3];
 
   auto co = cast<xilinx::aten::ConstantOp>(o->groups().getDefiningOp());
-  auto ia = co.template getAttrOfType<IntegerAttr>("value");
+  auto ia = co->template getAttrOfType<IntegerAttr>("value");
   uint64_t groups = ia.getValue().getZExtValue();
 
   // Number of forward MACs per pixel =

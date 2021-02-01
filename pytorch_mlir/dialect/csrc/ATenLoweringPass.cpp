@@ -16,7 +16,7 @@
 #include "mlir/EDSC/Builders.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/OperationSupport.h"
-#include "mlir/IR/StandardTypes.h"
+#include "mlir/IR/BuiltinTypes.h"
 #include "mlir/Parser.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
@@ -163,7 +163,7 @@ public:
     Value yVal(MemRefTypeCast(rewriter, operands[1]));
 
     auto co = cast<xilinx::aten::ConstantOp>(operands[2].getDefiningOp());
-    auto ia = co.getAttrOfType<IntegerAttr>("value");
+    auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
     std::vector<Value> callops{xVal, yVal, constInt(iaVal.getSExtValue(), 32)};
@@ -204,11 +204,11 @@ public:
     Value cVal(MemRefTypeCast(rewriter, operands[2]));
 
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[3].getDefiningOp());
-    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
     auto co1 = cast<xilinx::aten::ConstantOp>(operands[4].getDefiningOp());
-    auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
+    auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt iaVal1 = ia1.getValue();
 
     std::vector<Value> callops{aVal, bVal, cVal,
@@ -248,7 +248,7 @@ public:
     std::vector<constInt> shape;
     std::vector<int64_t> result_shape;
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[1].getDefiningOp());
-    DenseElementsAttr a0 = co0.template getAttrOfType<DenseElementsAttr>("value");
+    DenseElementsAttr a0 = co0->getAttrOfType<DenseElementsAttr>("value");
     for (auto i : a0.getIntValues()) {
       shape.push_back(constInt(i.getSExtValue(),32));
       result_shape.push_back(i.getSExtValue());
@@ -261,7 +261,7 @@ public:
     // construct the stride argument
     std::vector<constInt> stride;
     auto co1 = cast<xilinx::aten::ConstantOp>(operands[2].getDefiningOp());
-    DenseElementsAttr a1 = co1.template getAttrOfType<DenseElementsAttr>("value");
+    DenseElementsAttr a1 = co1->getAttrOfType<DenseElementsAttr>("value");
     for (auto i : a1.getIntValues())
       stride.push_back(constInt(i.getSExtValue(),32));
 
@@ -272,7 +272,7 @@ public:
     APInt offset(32,0);
     if (operands.size() > 3) {
       auto co2 = cast<xilinx::aten::ConstantOp>(operands[3].getDefiningOp());
-      auto ia2 = co2.getAttrOfType<IntegerAttr>("value");
+      auto ia2 = co2->getAttrOfType<IntegerAttr>("value");
       offset = ia2.getValue();
     }
 
@@ -335,19 +335,19 @@ public:
     Value eVal(MemRefTypeCast(rewriter, operands[4]));
 
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[5].getDefiningOp());
-    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
     auto co1 = cast<xilinx::aten::ConstantOp>(operands[6].getDefiningOp());
-    auto fa0 = co1.getAttrOfType<FloatAttr>("value");
+    auto fa0 = co1->getAttrOfType<FloatAttr>("value");
     APFloat faVal0 = fa0.getValue();
 
     auto co2 = cast<xilinx::aten::ConstantOp>(operands[7].getDefiningOp());
-    auto fa1 = co2.getAttrOfType<FloatAttr>("value");
+    auto fa1 = co2->getAttrOfType<FloatAttr>("value");
     APFloat faVal1 = fa1.getValue();
 
     auto co3 = cast<xilinx::aten::ConstantOp>(operands[8].getDefiningOp());
-    auto ia1 = co3.getAttrOfType<IntegerAttr>("value");
+    auto ia1 = co3->getAttrOfType<IntegerAttr>("value");
     APInt iaVal1 = ia1.getValue();
 
     auto f32Ty = FloatType::getF32(op->getContext());
@@ -397,7 +397,7 @@ public:
 
     auto unpack = [](auto &op, auto &v) -> void {
       auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
-      DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+      DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
       for (auto i : a.getIntValues())
         v.push_back(i.getSExtValue());
     };
@@ -459,7 +459,7 @@ public:
 
     auto unpack = [](auto &op, auto &v) -> void {
       auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
-      DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+      DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
       for (auto i : a.getIntValues())
         v.push_back(i.getSExtValue());
     };
@@ -545,11 +545,11 @@ public:
     Value aVal(MemRefTypeCast(rewriter, operands[0]));
 
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[1].getDefiningOp());
-    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
     auto co1 = cast<xilinx::aten::ConstantOp>(operands[2].getDefiningOp());
-    auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
+    auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt iaVal1 = ia1.getValue();
 
     std::vector<Value> callops{aVal,
@@ -591,7 +591,7 @@ public:
     Value arg3(MemRefTypeCast(rewriter, operands[3]));
 
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[2].getDefiningOp());
-    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
     std::vector<Value> callops{arg0, arg1,
@@ -633,7 +633,7 @@ public:
 
     auto unpack = [](auto &op, auto &v) -> void {
       auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
-      DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+      DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
       for (auto i : a.getIntValues())
         v.push_back(i.getSExtValue());
     };
@@ -689,7 +689,7 @@ public:
 
     auto unpack = [](auto &op, auto &v) -> void {
       auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
-      DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+      DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
       for (auto i : a.getIntValues())
         v.push_back(i.getSExtValue());
     };
@@ -702,7 +702,7 @@ public:
 
     //ceil_mode
     auto co = cast<xilinx::aten::ConstantOp>(operands[5].getDefiningOp());
-    auto ia = co.getAttrOfType<IntegerAttr>("value");
+    auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
     std::vector<Value> callops{xVal,
@@ -748,7 +748,7 @@ public:
 
     auto unpack = [](auto &op, auto &v) -> void {
       auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
-      DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+      DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
       for (auto i : a.getIntValues())
         v.push_back(i.getSExtValue());
     };
@@ -761,7 +761,7 @@ public:
 
     //ceil_mode
     auto co = cast<xilinx::aten::ConstantOp>(operands[6].getDefiningOp());
-    auto ia = co.getAttrOfType<IntegerAttr>("value");
+    auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
     std::vector<Value> callops{operands[0], operands[1],
@@ -895,15 +895,15 @@ public:
     Value eVal(MemRefTypeCast(rewriter, operands[4]));
 
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[5].getDefiningOp());
-    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
     auto co1 = cast<xilinx::aten::ConstantOp>(operands[6].getDefiningOp());
-    auto fa0 = co1.getAttrOfType<FloatAttr>("value");
+    auto fa0 = co1->getAttrOfType<FloatAttr>("value");
     APFloat faVal0 = fa0.getValue();
 
     auto co2 = cast<xilinx::aten::ConstantOp>(operands[7].getDefiningOp());
-    auto fa1 = co2.getAttrOfType<FloatAttr>("value");
+    auto fa1 = co2->getAttrOfType<FloatAttr>("value");
     APFloat faVal1 = fa1.getValue();
 
     auto f32Ty = FloatType::getF32(op->getContext());
@@ -952,12 +952,12 @@ public:
 
     // reduction
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[4].getDefiningOp());
-    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia0.getValue();
 
     // ignore_index
     auto co1 = cast<xilinx::aten::ConstantOp>(operands[5].getDefiningOp());
-    auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
+    auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg5 = ia1.getValue();
 
     std::vector<Value> callops{arg0, arg1, arg2, arg3,
@@ -1006,12 +1006,12 @@ public:
 
     // reduction
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[3].getDefiningOp());
-    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg3 = ia0.getValue();
 
     // ignore_index
     auto co1 = cast<xilinx::aten::ConstantOp>(operands[4].getDefiningOp());
-    auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
+    auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia1.getValue();
 
     std::vector<Value> callops{arg0, arg1, arg2,
@@ -1059,12 +1059,12 @@ public:
 
     // reduction
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[4].getDefiningOp());
-    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia0.getValue();
 
     // ignore_index
     auto co1 = cast<xilinx::aten::ConstantOp>(operands[5].getDefiningOp());
-    auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
+    auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg5 = ia1.getValue();
 
     std::vector<Value> callops{arg0, arg1, arg2, arg3,
@@ -1113,12 +1113,12 @@ public:
 
     // reduction
     auto co0 = cast<xilinx::aten::ConstantOp>(operands[3].getDefiningOp());
-    auto ia0 = co0.getAttrOfType<IntegerAttr>("value");
+    auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg3 = ia0.getValue();
 
     // ignore_index
     auto co1 = cast<xilinx::aten::ConstantOp>(operands[4].getDefiningOp());
-    auto ia1 = co1.getAttrOfType<IntegerAttr>("value");
+    auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia1.getValue();
 
     std::vector<Value> callops{arg0, arg1, arg2,
@@ -1198,7 +1198,7 @@ public:
     Value arg1(MemRefTypeCast(rewriter, operands[1]));
 
     auto co = dyn_cast<xilinx::aten::ConstantOp>(operands[2].getDefiningOp());
-    auto ia = co.getAttrOfType<IntegerAttr>("value");
+    auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt arg2 = ia.getValue();
 
     std::vector<Value> callops{arg0, arg1,
@@ -1277,7 +1277,7 @@ public:
     // construct the shape argument
     std::vector<constInt> shape;
     auto co = cast<xilinx::aten::ConstantOp>(operands[1].getDefiningOp());
-    DenseElementsAttr a = co.template getAttrOfType<DenseElementsAttr>("value");
+    DenseElementsAttr a = co->getAttrOfType<DenseElementsAttr>("value");
     for (auto i : a.getIntValues())
       shape.push_back(constInt(i.getSExtValue(),32));
 
@@ -1362,7 +1362,7 @@ public:
                                 PatternRewriter &rewriter) const override {
 
     auto retTys = op.getOperandTypes();
-    auto funcTy = op.getParentOfType<FuncOp>().getType();
+    auto funcTy = op->getParentOfType<FuncOp>().getType();
     auto funcRetTys = funcTy.getResults();
 
     std::vector<Value> returnOperands;

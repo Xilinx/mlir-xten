@@ -46,7 +46,7 @@ public:
       for (auto t : callOp.getCalleeType().getResults())
         tys.push_back(t);
 
-      auto newFnTy = FunctionType::get(tys, {}, op->getContext());
+      auto newFnTy = FunctionType::get(op->getContext(), tys, {});
       std::string newFnName = callOp.callee().str()+"_out";
 
       if (!module.lookupSymbol<FuncOp>(newFnName)) {
@@ -128,7 +128,7 @@ public:
     for (auto ty : funcTy.getResults())
       newFuncInputTys.push_back(ty);
 
-    FunctionType newFuncTy = FunctionType::get(newFuncInputTys, {}, module.getContext());
+    FunctionType newFuncTy = FunctionType::get(module.getContext(), newFuncInputTys, {});
     graph.setType(newFuncTy);
 
     Operation *retOp = BB.getTerminator();
