@@ -164,6 +164,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
         SmallVector<Type, 1> retTy{};
         auto fnTy = FunctionType::get(ctx, tys, retTy);
         dmafn = FuncOp::create(loc, dmafn_name, fnTy);
+        dmafn.setPrivate();
         module.push_back(dmafn);
       } 
       OpBuilder builder(dma_callOp);
@@ -191,6 +192,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
         SmallVector<Type, 1> retTy{};
         auto fnTy = FunctionType::get(ctx, tys, retTy);
         dmafn = FuncOp::create(loc, dmafn_name, fnTy);
+        dmafn.setPrivate();
         module.push_back(dmafn);
       } 
       OpBuilder builder(dma_callOp);
