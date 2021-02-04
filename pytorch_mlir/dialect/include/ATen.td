@@ -18,6 +18,7 @@ include "include/ATenOpInterface.td"
 
 def aten_Dialect : Dialect {
   let name = "aten";
+  let cppNamespace = "::xilinx::aten";
 }
 
 class aten_Op<string mnemonic, list<OpTrait> traits = [StatisticsOpInterface]> :

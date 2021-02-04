@@ -4,10 +4,11 @@
 #include "mlir/IR/DialectImplementation.h"
 
 using namespace mlir;
+using namespace xilinx;
+using namespace xilinx::aten;
 
 namespace xilinx {
 namespace aten {
-
 namespace detail {
 
 /// This class holds the implementation of the ATenListType.
@@ -38,6 +39,8 @@ private:
 
 };
 } // namespace detail
+}
+}
 
 ATenListType ATenListType::get(mlir::Type elemType) {
   return Base::get(elemType.getContext(), elemType);
@@ -91,16 +94,12 @@ ATenDialect::ATenDialect(mlir::MLIRContext *ctx) :
       >();
 }
 
-}
-
 #define GET_OP_CLASSES
 #include "ATen.cpp.inc"
 
-namespace aten {
-
 #include "ATenOpInterfaces.cpp.inc"
 
-void registerATenPasses() {
+void xilinx::aten::registerATenPasses() {
 // #define GEN_PASS_REGISTRATION
 //   #include "ATenPasses.h.inc"
   xilinx::aten::registerAcapHerdAssignPass();
@@ -114,7 +113,3 @@ void registerATenPasses() {
   xilinx::aten::registerATenSimpleAllocatePass();
   xilinx::aten::registerReturnEliminationPass();
 }
-
-
-} // namespace aten
-} // namespace xilinx

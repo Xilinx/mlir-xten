@@ -51,7 +51,6 @@ namespace detail {
 struct ATenListTypeStorage;
 }
 
-/// Type for Toy arrays.
 /// In MLIR Types are reference to immutable and uniqued objects owned by the
 /// MLIRContext. As such `ATenListType` only wraps a pointer to an uniqued
 /// instance of `ATenListTypeStorage` (defined in our implementation file) and
@@ -96,15 +95,14 @@ uint64_t getTensorVolume(const Type ty) {
 
 }
 
-#include "ATenOpInterfaces.h.inc"
 
+#include "ATenOpInterfaces.h.inc"
 } // namespace aten
+} // namespace xilinx
+
 
 // include TableGen generated Op definitions
 #define GET_OP_CLASSES
 #include "ATen.h.inc"
-
-
-} // namespace xilinx
 
 #endif
