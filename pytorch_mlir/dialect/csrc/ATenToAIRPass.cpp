@@ -56,8 +56,6 @@ struct ATenToAIRPass : public PassWrapper<ATenToAIRPass,
     auto module = getOperation();
     auto context = module.getContext();
 
-    LLVM_DEBUG(llvm::outs() << "PJR: " << 42 << "\n");
-
     // tablegen patterns
     OwningRewritePatternList fusionPatterns;
     populateWithGenerated(context, fusionPatterns);

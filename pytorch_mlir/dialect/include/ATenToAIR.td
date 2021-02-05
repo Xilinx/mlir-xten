@@ -51,3 +51,6 @@ def : Pat<(aten_AddOp $a, F32Tensor:$b, $c),
 
 def : Pat<(aten_MMOp $a, $b),
           (air_MMOp $a, $b)>;
+
+def : Pat<(aten_MulOp $a, $b),
+          (air_MulOp $a, $b)>;
