@@ -36,6 +36,8 @@
 #include <algorithm>
 #include <sstream>
 
+#define DEBUG_TYPE "aten-to-air-pass"
+
 using namespace mlir;
 using namespace xilinx;
 
@@ -53,6 +55,8 @@ struct ATenToAIRPass : public PassWrapper<ATenToAIRPass,
   void runOnOperation() override {
     auto module = getOperation();
     auto context = module.getContext();
+
+    LLVM_DEBUG(llvm::outs() << "PJR: " << 42 << "\n");
 
     // tablegen patterns
     OwningRewritePatternList fusionPatterns;
