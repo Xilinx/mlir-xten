@@ -150,5 +150,26 @@ FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value> operands, 
 
   return fn;
 }
+
+uint64_t getTensorVolume(const ShapedType ty) {
+
+  if (!ty.hasRank())
+    return 1;
+
+  uint64_t volume = 1;
+  for (auto &d : ty.getShape())
+    volume *= d;
+  return volume;
+}
+
+uint64_t getTensorVolume(const Type ty) {
+  if (auto t = ty.dyn_cast<ShapedType>()) {
+    return getTensorVolume(t);
+  }
+  else {
+    return 1;
+  }
+}
+
 }
 }

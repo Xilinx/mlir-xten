@@ -24,7 +24,7 @@ def StatisticsOpInterface : OpInterface<"StatisticsOpInterface"> {
         if (!read) return 0;
         auto v = *op->getODSOperands(idx).begin();
         auto ty = v.getType();
-        return getTensorVolume(ty);
+        return xilinx::air::getTensorVolume(ty);
     }]>,
 
     InterfaceMethod<"Return memory transfer requirements of a result",
@@ -33,7 +33,7 @@ def StatisticsOpInterface : OpInterface<"StatisticsOpInterface"> {
         if (!write) return 0;
         auto v = *op->getODSResults(idx).begin();
         auto ty = v.getType();
-        return getTensorVolume(ty);
+        return xilinx::air::getTensorVolume(ty);
     }]>,
 
   ];
