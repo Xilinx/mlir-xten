@@ -20,6 +20,7 @@ set(LLVM_OPTIONAL_SOURCES
   LivenessReport.cpp
   ReturnEliminationPass.cpp
   AIRToAffine.cpp
+  AIRToAIEPass.cpp
   Util.cpp
   )
 
@@ -44,6 +45,7 @@ add_mlir_library(ATen
   LivenessReport.cpp
   ReturnEliminationPass.cpp
   AIRToAffine.cpp
+  AIRToAIEPass.cpp
   Util.cpp
 
   ADDITIONAL_HEADER_DIRS
@@ -83,6 +85,7 @@ target_link_libraries(test.exe
   ${dialect_libs}
   ${conversion_libs}
   ATen
+  ${PROJECT_BINARY_DIR}/../aie/lib/libAIE.a
   MLIRExecutionEngine
   MLIRSCFTransforms
   MLIRLoopAnalysis
