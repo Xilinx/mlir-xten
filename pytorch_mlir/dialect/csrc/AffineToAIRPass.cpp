@@ -209,7 +209,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
   }
 
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
-     registry.insert<xilinx::air::AIRDialect>();
+     registry.insert<xilinx::air::airDialect>();
   }
 
   void runOnOperation() override {

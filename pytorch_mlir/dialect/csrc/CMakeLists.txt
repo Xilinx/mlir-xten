@@ -59,6 +59,7 @@ add_mlir_library(ATen
   MLIRAIRIncGen
   MLIRAIRPassIncGen
   MLIRAIREnumsIncGen
+  MLIRAIROpInterfacesIncGen
 
   LINK_LIBS
   MLIRPass

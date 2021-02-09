@@ -1,10 +1,8 @@
 // (c) Copyright 2020 Xilinx Inc. All Rights Reserved.
-include "mlir/IR/OpBase.td"
-
-#ifdef ATEN_OP_INTERFACE
-#else
+#ifndef ATEN_OP_INTERFACE
 #define ATEN_OP_INTERFACE
-#endif
+
+include "mlir/IR/OpBase.td"
 
 def StatisticsOpInterface : OpInterface<"StatisticsOpInterface"> {
   let description = [{
@@ -38,3 +36,5 @@ def StatisticsOpInterface : OpInterface<"StatisticsOpInterface"> {
 
   ];
 }
+
+#endif

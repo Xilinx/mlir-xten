@@ -49,7 +49,7 @@ struct ATenToAIRPass : public PassWrapper<ATenToAIRPass,
                                                OperationPass<ModuleOp>> {
 
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
-     registry.insert<xilinx::air::AIRDialect>();
+     registry.insert<xilinx::air::airDialect>();
   }
 
   void runOnOperation() override {

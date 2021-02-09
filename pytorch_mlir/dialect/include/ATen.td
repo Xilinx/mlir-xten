@@ -1,20 +1,11 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
-#ifdef OP_BASE
-#else
-include "mlir/IR/OpBase.td"
-#endif // OP_BASE
 
-#ifdef ATEN_OPS
-#else
+#ifndef ATEN_OPS
 #define ATEN_OPS
-#endif
 
+include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
-
-#ifdef ATEN_OP_INTERFACE
-#else
 include "include/ATenOpInterface.td"
-#endif
 
 def aten_Dialect : Dialect {
   let name = "aten";
@@ -841,3 +832,5 @@ def aten_ViewOp: aten_Op<"view", [NoSideEffect, StatisticsOpInterface]>,
     std::map<std::string, uint64_t> getStatistics();
   }];
 }
+
+#endif

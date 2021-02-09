@@ -12,6 +12,12 @@ mlir_tablegen(AIREnums.h.inc -gen-enum-decls)
 mlir_tablegen(AIREnums.cpp.inc -gen-enum-defs)
 add_public_tablegen_target(MLIRAIREnumsIncGen)
 
+set(LLVM_TARGET_DEFINITIONS AIROpBase.td)
+mlir_tablegen(AIROpInterfaces.h.inc -gen-op-interface-decls)
+mlir_tablegen(AIROpInterfaces.cpp.inc -gen-op-interface-defs)
+add_public_tablegen_target(MLIRAIROpInterfacesIncGen)
+add_dependencies(mlir-generic-headers MLIRAIROpInterfacesIncGen)
+
 set(LLVM_TARGET_DEFINITIONS ATenToAIR.td)
 mlir_tablegen(ATenToAIR.cpp.inc -gen-rewriters)
 add_public_tablegen_target(MLIRATenToAIRIncGen)
