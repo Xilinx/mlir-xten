@@ -117,9 +117,9 @@ public:
       auto upper_bound_const = rewriter.create<ConstantIndexOp>(loc, upper_bound);
       SmallVector<Value, 1> deps;
       SmallVector<Type, 1> rets;
-      auto shim_dma_memcpy = rewriter.create<xilinx::air::ShimDmaMemcpy>(loc, rets, deps, load.memref(), store.memref(),
-                                                                         load.indices()[0], afo.getLowerBoundOperands()[0],
-                                                                         store.indices()[0], zero_const, upper_bound_const);
+      /*auto shim_dma_memcpy =*/ rewriter.create<xilinx::air::DmaMemcpy2d>(loc, rets, deps, load.memref(), store.memref(),
+                                                                       load.indices()[0], afo.getLowerBoundOperands()[0],
+                                                                       store.indices()[0], zero_const, upper_bound_const);
       // rewriter.eraseOp(load);
       // rewriter.eraseOp(store);
       rewriter.eraseOp(op);
@@ -208,7 +208,6 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
     }
     else if (callee.equals("acap_L2_dma_copy")) {
       auto arg_iter = dma_callOp.arg_operand_begin();
-      auto dim_idx = *(arg_iter);
       // input and output here are relative to the copy
       auto dim1_idx = *(arg_iter);
       auto input_operand = *(++arg_iter);
@@ -283,7 +282,8 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
                            StandardOpsDialect,
                            scf::SCFDialect>();
 
-    target.addLegalOp<xilinx::air::ShimDmaMemcpy>();
+    target.addLegalOp<xilinx::air::DmaMemcpy>();
+    target.addLegalOp<xilinx::air::DmaMemcpy2d>();
     target.addLegalOp<xilinx::air::HerdLaunchOp>();
 
     target.addLegalOp<AffineApplyOp,
