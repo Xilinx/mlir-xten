@@ -115,14 +115,15 @@ public:
       auto loc = op->getLoc();
       auto zero_const = rewriter.create<ConstantIndexOp>(loc, 0);
       auto upper_bound_const = rewriter.create<ConstantIndexOp>(loc, upper_bound);
-      auto shim_dma_memcpy = rewriter.create<xilinx::air::ShimDmaMemcpy>(loc, load.memref(), store.memref(),
+      SmallVector<Value, 1> deps;
+      SmallVector<Type, 1> rets;
+      auto shim_dma_memcpy = rewriter.create<xilinx::air::ShimDmaMemcpy>(loc, rets, deps, load.memref(), store.memref(),
                                                                          load.indices()[0], afo.getLowerBoundOperands()[0],
                                                                          store.indices()[0], zero_const, upper_bound_const);
       // rewriter.eraseOp(load);
       // rewriter.eraseOp(store);
       rewriter.eraseOp(op);
 
-      shim_dma_memcpy->getParentOfType<FuncOp>().dump();
       return success();
     }
     else if (srcTy.getMemorySpace() == 1 || dstTy.getMemorySpace() == 0) {
@@ -135,8 +136,39 @@ public:
   }
 };
 
+class AffineParToHerdLaunchConversion : public OpRewritePattern<AffineParallelOp> {
+public:
+  using OpRewritePattern<AffineParallelOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(AffineParallelOp op,
+                                PatternRewriter &rewriter) const override {
+    if (op.getNumDims() == 2) {
+      auto loc = op.getLoc();
+      auto ub0 = op.upperBoundsMap().getResult(0).cast<AffineConstantExpr>();
+      auto ub1 = op.upperBoundsMap().getResult(1).cast<AffineConstantExpr>();
+      SmallVector<Value, 4> args;
+      
+      air::HerdDim2 dims{rewriter.create<ConstantIndexOp>(loc,ub0.getValue()),
+                         rewriter.create<ConstantIndexOp>(loc,ub1.getValue())};
+      auto launch = rewriter.create<air::HerdLaunchOp>(op.getLoc(), dims, args);
+      auto &bb = launch.body().front();
+      auto ivs = op.getIVs();
+      ivs[0].replaceAllUsesWith(launch.getTileIds().x);
+      ivs[1].replaceAllUsesWith(launch.getTileIds().y);
+      auto &body = op.getBody()->getOperations();
+      bb.getOperations().splice(bb.begin(), body,
+                                body.begin(), --body.end());
+      auto builder = OpBuilder::atBlockEnd(&bb);
+      builder.create<air::HerdTerminatorOp>(loc);
+      rewriter.eraseOp(op);
+      return success();
+    }
+    return failure();
+  }
+};
+
 struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
-                                               OperationPass<ModuleOp>> {
+                                            OperationPass<ModuleOp>> {
 
 
   void lower_dma_to_function(StringRef callee, CallOp dma_callOp)
@@ -216,50 +248,58 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
     auto module = getOperation();
     auto context = module.getContext();
 
-
     LLVM_DEBUG(llvm::outs() << "input\n");
     LLVM_DEBUG(module.print(llvm::outs()));
 
-    // check that a function called "graph" exists
-    auto graph = module.lookupSymbol<mlir::FuncOp>("graph");
-    if (!graph) {
-      emitError(mlir::UnknownLoc::get(context),
-                "OpReportPass failed: can't find a graph function\n");
-      signalPassFailure();
-      return;
-    }
+    // // check that a function called "graph" exists
+    // auto graph = module.lookupSymbol<mlir::FuncOp>("graph");
+    // if (!graph) {
+    //   emitError(mlir::UnknownLoc::get(context),
+    //             "OpReportPass failed: can't find a graph function\n");
+    //   signalPassFailure();
+    //   return;
+    // }
 
-    graph.walk([&](Operation *o) {
-      if (auto co = dyn_cast<CallOp>(o)) {
-        if (co.getCallee().startswith("acap_L2_dma_copy")) {
-          lowerDma(co.getCallee(), co);
-        }
-        if (co.getCallee().startswith("acap_L1_dma_copy")) {
-          lowerDma(co.getCallee(), co);
-        }
-      }
-    });
+    // graph.walk([&](Operation *o) {
+    //   if (auto co = dyn_cast<CallOp>(o)) {
+    //     if (co.getCallee().startswith("acap_L2_dma_copy")) {
+    //       lowerDma(co.getCallee(), co);
+    //     }
+    //     if (co.getCallee().startswith("acap_L1_dma_copy")) {
+    //       lowerDma(co.getCallee(), co);
+    //     }
+    //   }
+    // });
+
+    // tablegen patterns
+    OwningRewritePatternList patterns;
+    patterns.insert<AffineParToHerdLaunchConversion>(context);
+
+    populateWithGenerated(context, patterns);
+
+    ConversionTarget target(*context);
+
+    target.addLegalDialect<LLVM::LLVMDialect,
+                           StandardOpsDialect,
+                           scf::SCFDialect>();
+
+    target.addLegalOp<xilinx::air::ShimDmaMemcpy>();
+    target.addLegalOp<xilinx::air::HerdLaunchOp>();
+
+    target.addLegalOp<AffineApplyOp,
+                      AffineForOp,
+                      AffineLoadOp,
+                      AffineStoreOp,
+                      AffineYieldOp>();
+
+    if (failed(applyPartialConversion(module, target, std::move(patterns)))) {
+      emitError(UnknownLoc::get(context), "error\n");
+      signalPassFailure();
+      assert(0);
+    }
 
     LLVM_DEBUG(llvm::outs() << "output\n");
     LLVM_DEBUG(module.print(llvm::outs()));
-
-    // tablegen patterns
-    // OwningRewritePatternList patterns;
-    // patterns.insert<AffineCopyToAIRDMAConversion>(context);
-
-    // populateWithGenerated(context, patterns);
-
-    // // Perform aten specific Fusion.
-    // ConversionTarget target(*context);
-
-    // target.addLegalDialect<LLVM::LLVMDialect,
-    //                        StandardOpsDialect, scf::SCFDialect>();
-    // target.addLegalOp<xilinx::air::ShimDmaMemcpy>();
-    // if (failed(applyPartialConversion(module, target, std::move(patterns)))) {
-    //   emitError(UnknownLoc::get(context), "error\n");
-    //   signalPassFailure();
-    //   assert(0);
-    // }
 
   }
 };

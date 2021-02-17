@@ -12,7 +12,7 @@
 namespace xilinx {
   namespace air {
 // #define GEN_PASS_CLASSES
-// #include "ATRPasses.h.inc"
+// #include "AIRPasses.h.inc"
 
     void registerAIRPasses();
   }
