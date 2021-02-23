@@ -60,6 +60,7 @@ add_mlir_library(ATen
 
   LINK_LIBS
   NPCOMPATenDialect
+  NPCOMPBasicpyDialect
   MLIR
 
   AIE
