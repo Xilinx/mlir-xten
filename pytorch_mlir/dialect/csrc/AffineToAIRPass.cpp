@@ -20,8 +20,10 @@
 #include "mlir/Parser.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
+#include "mlir/Transforms/RegionUtils.h"
 
 #include "llvm/ADT/DenseSet.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
@@ -147,6 +149,11 @@ public:
       auto ub1 = op.upperBoundsMap().getResult(1).cast<AffineConstantExpr>();
       SmallVector<Value, 4> args;
       
+      llvm::SetVector<Value> region_args;
+      getUsedValuesDefinedAbove(op.getRegion(), region_args);
+      for (Value v : region_args)
+        args.push_back(v);
+
       air::HerdDim2 dims{rewriter.create<ConstantIndexOp>(loc,ub0.getValue()),
                          rewriter.create<ConstantIndexOp>(loc,ub1.getValue())};
       auto launch = rewriter.create<air::HerdLaunchOp>(op.getLoc(), dims, args);
@@ -159,6 +166,13 @@ public:
                                 body.begin(), --body.end());
       auto builder = OpBuilder::atBlockEnd(&bb);
       builder.create<air::HerdTerminatorOp>(loc);
+
+      int i = 0;
+      auto kernel_args = launch.getKernelArguments();
+      SmallPtrSet<Operation*,1> exceptions{launch};
+      for (Value v : region_args)
+        v.replaceAllUsesExcept(kernel_args[i], exceptions);
+
       rewriter.eraseOp(op);
       return success();
     }
