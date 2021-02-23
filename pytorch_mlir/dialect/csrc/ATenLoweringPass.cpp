@@ -71,48 +71,6 @@ Value MemRefTypeCast(PatternRewriter &builder, Value val) {
   return typeCast(builder, val, memRefType);
 }
 
-std::string getMangledType(const Type ty) {
-  std::stringstream ret;
-
-  if (const MemRefType mrt = ty.dyn_cast<const MemRefType>()) {
-    ret << "M";
-    auto shape = mrt.getShape();
-    const Type elem = mrt.getElementType();
-    for (auto s : shape)
-      ret << s << "x";
-    ret << getMangledType(elem);
-  }
-  else if (FloatType ft = ty.dyn_cast<FloatType>()) {
-    ret << "F" << ft.getWidth();
-  }
-  else if (const IntegerType it = ty.dyn_cast<const IntegerType>()) {
-    ret << "I" << it.getWidth();
-  }
-  else if (const NPCOMP::aten::ATenListType alt = ty.dyn_cast<const NPCOMP::aten::ATenListType>()) {
-
-  }
-  else {
-    Type t = ty;
-    t.dump();
-    assert(0 && "unhandled type in getMangledType");
-  }
-  return ret.str();
-}
-
-std::string getMangledFuncName(ModuleOp module, std::string prefix, FunctionType fnTy) {
-  std::string sep = "_";
-
-  auto resultTy = fnTy.getResults();
-  auto operTy = fnTy.getInputs();
-
-  std::string ret = prefix;
-  for (const Type t : resultTy)
-    ret = ret + sep + getMangledType(t);
-  for (const Type t : operTy)
-    ret = ret + sep + getMangledType(t);
-
-  return ret;
-}
 
 /// Lower Add
 class AddOpConversion : public ConversionPattern {
@@ -717,8 +675,6 @@ public:
 
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
-
-    Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
     auto unpack = [](auto &op, auto &v) -> void {
       auto co = cast<NPCOMP::aten::ConstantOp>(op.getDefiningOp());

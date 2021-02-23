@@ -18,11 +18,6 @@
 using namespace mlir;
 
 namespace {
-
-std::string getAsString(std::map<std::string, uint64_t> &m, std::string &e) {
-  return m.count(e) ? std::to_string(m[e]) : " ";
-}
-
 struct ATenOpReportPass : public PassWrapper<ATenOpReportPass,
                                              OperationPass<ModuleOp>> {
 

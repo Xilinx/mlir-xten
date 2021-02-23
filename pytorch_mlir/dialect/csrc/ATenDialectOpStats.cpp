@@ -17,15 +17,6 @@ using namespace xilinx;
 
 namespace {
 
-std::vector<uint64_t> unpackListConstant(Value op) {
-  std::vector<uint64_t> v;
-  auto co = cast<NPCOMP::aten::ConstantOp>(op.getDefiningOp());
-  DenseElementsAttr a = co->getAttrOfType<DenseElementsAttr>("value");
-  for (auto i : a.getIntValues())
-    v.push_back(i.getSExtValue());
-  return v;
-};
-
 template<class T>
 std::map<std::string, uint64_t> getConv2dStatistics(T *o) {
 

@@ -68,7 +68,7 @@ public:
         newCallArgs.push_back(valueMap[v]);
       }
 
-      auto newCallOp = builder->create<CallOp>(op->getLoc(),
+      /*auto newCallOp =*/ builder->create<CallOp>(op->getLoc(),
                                                newFnName,
                                                ArrayRef<Type>{},
                                                newCallArgs);
@@ -105,8 +105,7 @@ public:
   void runOnOperation() override {
 
     auto module = getOperation();
-    auto context = module.getContext();
-
+ 
     // check that a function called "graph" exists
     auto graph = module.lookupSymbol<mlir::FuncOp>("graph");
     if (!graph) {
