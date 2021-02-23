@@ -4,7 +4,7 @@
 
 #include "ReturnEliminationPass.h"
 
-#include "ATenDialect.h"
+#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "AIRDialect.h"
 
 #include "llvm/Support/Debug.h"

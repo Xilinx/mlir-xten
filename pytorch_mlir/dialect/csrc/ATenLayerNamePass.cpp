@@ -1,5 +1,5 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
-#include "ATenDialect.h"
+#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "ATenLayerNamePass.h"
 
 #include "llvm/Support/Debug.h"

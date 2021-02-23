@@ -1,6 +1,5 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
-
-#include "ATenDialect.h"
+#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "AIRDialect.h"
 #include "ATenToAIRPass.h"
 
@@ -46,16 +45,17 @@ namespace {
 #include "ATenToAIR.cpp.inc"
 
 struct ATenToAIRPass : public PassWrapper<ATenToAIRPass,
-                                               OperationPass<ModuleOp>> {
+                                          OperationPass<ModuleOp>> {
 
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
      registry.insert<xilinx::air::airDialect>();
   }
 
   void runOnOperation() override {
+
     auto module = getOperation();
     auto context = module.getContext();
-
+    
     // tablegen patterns
     OwningRewritePatternList fusionPatterns;
     populateWithGenerated(context, fusionPatterns);
@@ -70,7 +70,6 @@ struct ATenToAIRPass : public PassWrapper<ATenToAIRPass,
     target.addLegalOp<xilinx::air::Conv2dReLUOp>();
     target.addLegalOp<xilinx::air::Conv2dOp>();
     target.addLegalOp<xilinx::air::NoOp>();
-
     if (failed(applyPatternsAndFoldGreedily(module, /*target,*/ std::move(fusionPatterns)))) {
       emitError(UnknownLoc::get(context), "error fusing ATen\n");
       signalPassFailure();
@@ -92,9 +91,3 @@ std::unique_ptr<mlir::Pass> createATenToAIRPass() {
 
 } // namespace aten
 } // namespace xilinx
-
-void xilinx::aten::registerATenToAIRPass() {
-    PassRegistration<ATenToAIRPass>(
-      "aten-to-air",
-      "ATen dialect to AIR dialect with fusion");
-}

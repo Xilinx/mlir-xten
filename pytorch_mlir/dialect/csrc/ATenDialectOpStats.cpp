@@ -1,4 +1,4 @@
-#include "ATenDialect.h"
+#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "AIRDialect.h"
 #include "Util.h"
 
@@ -19,7 +19,7 @@ namespace {
 
 std::vector<uint64_t> unpackListConstant(Value op) {
   std::vector<uint64_t> v;
-  auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
+  auto co = cast<NPCOMP::aten::ConstantOp>(op.getDefiningOp());
   DenseElementsAttr a = co->getAttrOfType<DenseElementsAttr>("value");
   for (auto i : a.getIntValues())
     v.push_back(i.getSExtValue());
@@ -43,7 +43,7 @@ std::map<std::string, uint64_t> getConv2dStatistics(T *o) {
   uint64_t kernel_height = weightTy.getShape()[2];
   uint64_t kernel_width = weightTy.getShape()[3];
 
-  auto co = cast<xilinx::aten::ConstantOp>(o->groups().getDefiningOp());
+  auto co = cast<NPCOMP::aten::ConstantOp>(o->groups().getDefiningOp());
   auto ia = co->template getAttrOfType<IntegerAttr>("value");
   uint64_t groups = ia.getValue().getZExtValue();
 
@@ -223,6 +223,8 @@ uint64_t Conv2dOp::getResultTransferVolume(unsigned int idx, bool write) {
 
 }
 }
+
+#if 0
 
 namespace xilinx {
 namespace aten {
@@ -983,3 +985,4 @@ std::map<std::string, uint64_t> ViewOp::getStatistics() {
 
 } // namespace aten
 } // namespace xilinx
+#endif

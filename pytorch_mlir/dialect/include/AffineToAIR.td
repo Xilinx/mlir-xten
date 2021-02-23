@@ -4,6 +4,6 @@
 #define AFFINE_TO_AIR
 
 include "mlir/IR/OpBase.td"
-include "include/AIR.td"
+include "AIR.td"
 
 #endif

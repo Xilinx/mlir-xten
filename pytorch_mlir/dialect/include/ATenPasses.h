@@ -2,7 +2,7 @@
 #define ATENPASSES_H_
 
 #include "mlir/Pass/Pass.h"
-#include "ATenDialect.h"
+#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 
 #include "AcapHerdAssignPass.h"
 #include "AcapHerdLoweringPass.h"

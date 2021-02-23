@@ -51,29 +51,21 @@ add_mlir_library(ATen
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/dialect/include
   ${PROJECT_BINARY_DIR}/dialect/include
-
+  
   DEPENDS
-  MLIRATenIncGen
-  MLIRATenEnumsIncGen
-  MLIRATenOpInterfacesIncGen
-  MLIRATenToStdIncGen
-  MLIRATenPassIncGen
   MLIRAIRIncGen
   MLIRAIRPassIncGen
   MLIRAIREnumsIncGen
   MLIRAIROpInterfacesIncGen
 
   LINK_LIBS
-  MLIRPass
-  MLIRTransformUtils
+  NPCOMPATenDialect
+  MLIR
+
+  AIE
   )
 llvm_update_compile_flags(ATen)
 
-set(LLVM_LINK_COMPONENTS
-  Support
-  Core
-  AsmParser
-  )
 add_llvm_executable(test.exe
   test.cpp
   )
@@ -86,6 +78,7 @@ target_link_libraries(test.exe
   ${conversion_libs}
   ATen
   ${PROJECT_BINARY_DIR}/../aie/lib/libAIE.a
+  NPCOMPATenDialect
   MLIRExecutionEngine
   MLIRSCFTransforms
   MLIRLoopAnalysis

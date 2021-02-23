@@ -3,7 +3,7 @@
 #define ATEN_TO_STD_TD
 
 include "mlir/Dialect/StandardOps/IR/Ops.td"
-include "ATen.td"
+include "npcomp/Dialect/ATen/IR/ATenOps.td"
 
 //def : Pat<(aten_ThresholdOp $x, (aten_ConstantOp:$a1), (aten_ConstantOp:$a2)),(tb_ReLUOp $x)>;
 

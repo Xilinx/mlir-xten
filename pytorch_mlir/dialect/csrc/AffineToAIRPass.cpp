@@ -1,9 +1,8 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
 
-#include "ATenDialect.h"
+#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "AIRDialect.h"
 #include "AffineToAIRPass.h"
-
 
 #include "mlir/Analysis/Utils.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"

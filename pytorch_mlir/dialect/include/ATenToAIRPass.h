@@ -14,8 +14,8 @@ namespace xilinx {
 namespace aten {
 
 std::unique_ptr<mlir::Pass> createATenToAIRPass();
-  void registerATenToAIRPass();
-} // namespace aten
+
+}  // namespace aten
 } // namespace xilinx
 
 #endif // ATEN_TO_AIR_H_

@@ -1,7 +1,7 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
 
 #include "ATenLoweringPass.h"
-#include "ATenDialect.h"
+#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "ATenToStd.h"
 #include "Util.h"
 
@@ -56,7 +56,7 @@ namespace {
 Value typeCast(PatternRewriter &builder, Value val, Type destTy) {
   if (val.getType() == destTy)
     return val;
-  return builder.create<xilinx::aten::TypeCastOp>(val.getLoc(), destTy, val)
+  return builder.create<NPCOMP::aten::TypeCastOp>(val.getLoc(), destTy, val)
       .getResult();
 }
 
@@ -88,7 +88,7 @@ std::string getMangledType(const Type ty) {
   else if (const IntegerType it = ty.dyn_cast<const IntegerType>()) {
     ret << "I" << it.getWidth();
   }
-  else if (const xilinx::aten::ATenListType alt = ty.dyn_cast<const xilinx::aten::ATenListType>()) {
+  else if (const NPCOMP::aten::ATenListType alt = ty.dyn_cast<const NPCOMP::aten::ATenListType>()) {
 
   }
   else {
@@ -118,7 +118,7 @@ std::string getMangledFuncName(ModuleOp module, std::string prefix, FunctionType
 class AddOpConversion : public ConversionPattern {
 public:
   explicit AddOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::AddOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::AddOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -136,7 +136,7 @@ public:
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
     Value yVal(MemRefTypeCast(rewriter, operands[1]));
 
-    auto co = cast<xilinx::aten::ConstantOp>(operands[2].getDefiningOp());
+    auto co = cast<NPCOMP::aten::ConstantOp>(operands[2].getDefiningOp());
     auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
@@ -158,7 +158,7 @@ public:
 class AddmmOpConversion : public ConversionPattern {
 public:
   explicit AddmmOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::AddmmOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::AddmmOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -177,11 +177,11 @@ public:
     Value bVal(MemRefTypeCast(rewriter, operands[1]));
     Value cVal(MemRefTypeCast(rewriter, operands[2]));
 
-    auto co0 = cast<xilinx::aten::ConstantOp>(operands[3].getDefiningOp());
+    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[3].getDefiningOp());
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
-    auto co1 = cast<xilinx::aten::ConstantOp>(operands[4].getDefiningOp());
+    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[4].getDefiningOp());
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt iaVal1 = ia1.getValue();
 
@@ -205,7 +205,7 @@ public:
 class AsStridedOpConversion : public ConversionPattern {
 public:
   explicit AsStridedOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::AsStridedOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::AsStridedOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -221,7 +221,7 @@ public:
     // construct the shape argument
     std::vector<constInt> shape;
     std::vector<int64_t> result_shape;
-    auto co0 = cast<xilinx::aten::ConstantOp>(operands[1].getDefiningOp());
+    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[1].getDefiningOp());
     DenseElementsAttr a0 = co0->getAttrOfType<DenseElementsAttr>("value");
     for (auto i : a0.getIntValues()) {
       shape.push_back(constInt(i.getSExtValue(),32));
@@ -234,7 +234,7 @@ public:
 
     // construct the stride argument
     std::vector<constInt> stride;
-    auto co1 = cast<xilinx::aten::ConstantOp>(operands[2].getDefiningOp());
+    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[2].getDefiningOp());
     DenseElementsAttr a1 = co1->getAttrOfType<DenseElementsAttr>("value");
     for (auto i : a1.getIntValues())
       stride.push_back(constInt(i.getSExtValue(),32));
@@ -245,7 +245,7 @@ public:
 
     APInt offset(32,0);
     if (operands.size() > 3) {
-      auto co2 = cast<xilinx::aten::ConstantOp>(operands[3].getDefiningOp());
+      auto co2 = cast<NPCOMP::aten::ConstantOp>(operands[3].getDefiningOp());
       auto ia2 = co2->getAttrOfType<IntegerAttr>("value");
       offset = ia2.getValue();
     }
@@ -275,7 +275,7 @@ public:
 class BatchNormOpConversion : public ConversionPattern {
 public:
   explicit BatchNormOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::BatchNormOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::BatchNormOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -308,19 +308,19 @@ public:
     Value dVal(MemRefTypeCast(rewriter, operands[3]));
     Value eVal(MemRefTypeCast(rewriter, operands[4]));
 
-    auto co0 = cast<xilinx::aten::ConstantOp>(operands[5].getDefiningOp());
+    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[5].getDefiningOp());
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
-    auto co1 = cast<xilinx::aten::ConstantOp>(operands[6].getDefiningOp());
+    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[6].getDefiningOp());
     auto fa0 = co1->getAttrOfType<FloatAttr>("value");
     APFloat faVal0 = fa0.getValue();
 
-    auto co2 = cast<xilinx::aten::ConstantOp>(operands[7].getDefiningOp());
+    auto co2 = cast<NPCOMP::aten::ConstantOp>(operands[7].getDefiningOp());
     auto fa1 = co2->getAttrOfType<FloatAttr>("value");
     APFloat faVal1 = fa1.getValue();
 
-    auto co3 = cast<xilinx::aten::ConstantOp>(operands[8].getDefiningOp());
+    auto co3 = cast<NPCOMP::aten::ConstantOp>(operands[8].getDefiningOp());
     auto ia1 = co3->getAttrOfType<IntegerAttr>("value");
     APInt iaVal1 = ia1.getValue();
 
@@ -350,7 +350,7 @@ public:
 class ConvolutionOpConversion : public ConversionPattern {
 public:
   explicit ConvolutionOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::ConvolutionOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::ConvolutionOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -370,7 +370,7 @@ public:
     Value bVal(MemRefTypeCast(rewriter, operands[2]));
 
     auto unpack = [](auto &op, auto &v) -> void {
-      auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
+      auto co = cast<NPCOMP::aten::ConstantOp>(op.getDefiningOp());
       DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
       for (auto i : a.getIntValues())
         v.push_back(i.getSExtValue());
@@ -403,7 +403,7 @@ public:
 class ConvolutionBackwardOpConversion : public ConversionPattern {
 public:
   explicit ConvolutionBackwardOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::ConvolutionBackwardOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::ConvolutionBackwardOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -432,7 +432,7 @@ public:
     Value arg2(MemRefTypeCast(rewriter, operands[2])); // weight
 
     auto unpack = [](auto &op, auto &v) -> void {
-      auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
+      auto co = cast<NPCOMP::aten::ConstantOp>(op.getDefiningOp());
       DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
       for (auto i : a.getIntValues())
         v.push_back(i.getSExtValue());
@@ -466,7 +466,7 @@ public:
 class DivOpConversion : public ConversionPattern {
 public:
   explicit DivOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::DivOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::DivOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -502,7 +502,7 @@ public:
 class LogSoftmaxOpConversion : public ConversionPattern {
 public:
   explicit LogSoftmaxOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::LogSoftmaxOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::LogSoftmaxOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -518,11 +518,11 @@ public:
 
     Value aVal(MemRefTypeCast(rewriter, operands[0]));
 
-    auto co0 = cast<xilinx::aten::ConstantOp>(operands[1].getDefiningOp());
+    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[1].getDefiningOp());
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
-    auto co1 = cast<xilinx::aten::ConstantOp>(operands[2].getDefiningOp());
+    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[2].getDefiningOp());
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt iaVal1 = ia1.getValue();
 
@@ -543,52 +543,52 @@ public:
 };
 
 /// Lower LogSoftmaxBackwardData
-class LogSoftmaxBackwardOpConversion : public ConversionPattern {
-public:
-  explicit LogSoftmaxBackwardOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::LogSoftmaxBackwardOp::getOperationName(), 1, context) {}
+// class LogSoftmaxBackwardOpConversion : public ConversionPattern {
+// public:
+//   explicit LogSoftmaxBackwardOpConversion(MLIRContext *context)
+//       : ConversionPattern(NPCOMP::aten::LogSoftmaxBackwardOp::getOperationName(), 1, context) {}
 
-  LogicalResult
-  matchAndRewrite(Operation *op, ArrayRef<Value > operands,
-                  ConversionPatternRewriter &rewriter) const override
-  {
-    TensorType resultTy = op->getResult(0).getType().cast<TensorType>();
-    Type memRefResultTy = mlir::MemRefType::get(resultTy.getShape(),
-                                                resultTy.getElementType(),
-                                                {}, 0);
+//   LogicalResult
+//   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
+//                   ConversionPatternRewriter &rewriter) const override
+//   {
+//     TensorType resultTy = op->getResult(0).getType().cast<TensorType>();
+//     Type memRefResultTy = mlir::MemRefType::get(resultTy.getShape(),
+//                                                 resultTy.getElementType(),
+//                                                 {}, 0);
 
-    auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
+//     auto loc = op->getLoc();
+//     edsc::ScopedContext scope(rewriter, loc);
 
-    Value arg0(MemRefTypeCast(rewriter, operands[0]));
-    Value arg1(MemRefTypeCast(rewriter, operands[1]));
-    Value arg3(MemRefTypeCast(rewriter, operands[3]));
+//     Value arg0(MemRefTypeCast(rewriter, operands[0]));
+//     Value arg1(MemRefTypeCast(rewriter, operands[1]));
+//     Value arg3(MemRefTypeCast(rewriter, operands[3]));
 
-    auto co0 = cast<xilinx::aten::ConstantOp>(operands[2].getDefiningOp());
-    auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
-    APInt iaVal0 = ia0.getValue();
+//     auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[2].getDefiningOp());
+//     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
+//     APInt iaVal0 = ia0.getValue();
 
-    std::vector<Value> callops{arg0, arg1,
-                                constInt(iaVal0.getSExtValue(), 32),
-                                arg3};
+//     std::vector<Value> callops{arg0, arg1,
+//                                 constInt(iaVal0.getSExtValue(), 32),
+//                                 arg3};
 
-    FuncOp logsoftmaxBackwardFunc = getATenFn(op->getParentOfType<ModuleOp>(),
-                                              "log_softmax_backward_data", callops, memRefResultTy);
+//     FuncOp logsoftmaxBackwardFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+//                                               "log_softmax_backward_data", callops, memRefResultTy);
 
-    auto new_call = callOperation(memRefResultTy,
-                         rewriter.getSymbolRefAttr(logsoftmaxBackwardFunc),
-                         callops);
+//     auto new_call = callOperation(memRefResultTy,
+//                          rewriter.getSymbolRefAttr(logsoftmaxBackwardFunc),
+//                          callops);
 
-    rewriter.replaceOp(op, (*new_call).getResults());
-    return success();
-  }
-};
+//     rewriter.replaceOp(op, (*new_call).getResults());
+//     return success();
+//   }
+// };
 
 /// Lower maxpool2d
 class MaxPoolOpConversion : public ConversionPattern {
 public:
   explicit MaxPoolOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::MaxPool2dOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::MaxPool2dOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -606,7 +606,7 @@ public:
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
     auto unpack = [](auto &op, auto &v) -> void {
-      auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
+      auto co = cast<NPCOMP::aten::ConstantOp>(op.getDefiningOp());
       DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
       for (auto i : a.getIntValues())
         v.push_back(i.getSExtValue());
@@ -638,7 +638,7 @@ public:
 class MaxPool2dWithIndicesOpConversion : public ConversionPattern {
 public:
   explicit MaxPool2dWithIndicesOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::MaxPool2dWithIndicesOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::MaxPool2dWithIndicesOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -662,7 +662,7 @@ public:
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
     auto unpack = [](auto &op, auto &v) -> void {
-      auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
+      auto co = cast<NPCOMP::aten::ConstantOp>(op.getDefiningOp());
       DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
       for (auto i : a.getIntValues())
         v.push_back(i.getSExtValue());
@@ -675,7 +675,7 @@ public:
     unpack(operands[4], dilation);
 
     //ceil_mode
-    auto co = cast<xilinx::aten::ConstantOp>(operands[5].getDefiningOp());
+    auto co = cast<NPCOMP::aten::ConstantOp>(operands[5].getDefiningOp());
     auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
@@ -704,7 +704,7 @@ public:
 class MaxPool2dWithIndicesBackwardOpConversion : public ConversionPattern {
 public:
   explicit MaxPool2dWithIndicesBackwardOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::MaxPool2dWithIndicesBackwardOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::MaxPool2dWithIndicesBackwardOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -721,7 +721,7 @@ public:
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
     auto unpack = [](auto &op, auto &v) -> void {
-      auto co = cast<xilinx::aten::ConstantOp>(op.getDefiningOp());
+      auto co = cast<NPCOMP::aten::ConstantOp>(op.getDefiningOp());
       DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
       for (auto i : a.getIntValues())
         v.push_back(i.getSExtValue());
@@ -734,7 +734,7 @@ public:
     unpack(operands[5], dilation);
 
     //ceil_mode
-    auto co = cast<xilinx::aten::ConstantOp>(operands[6].getDefiningOp());
+    auto co = cast<NPCOMP::aten::ConstantOp>(operands[6].getDefiningOp());
     auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
@@ -763,7 +763,7 @@ public:
 class MMOpConversion : public ConversionPattern {
 public:
   explicit MMOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::MMOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::MmOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -799,7 +799,7 @@ public:
 class MulOpConversion : public ConversionPattern {
 public:
   explicit MulOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::MulOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::MulOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -835,7 +835,7 @@ public:
 class NativeBatchNormOpConversion : public ConversionPattern {
 public:
   explicit NativeBatchNormOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::NativeBatchNormOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::NativeBatchNormOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -868,15 +868,15 @@ public:
     Value dVal(MemRefTypeCast(rewriter, operands[3]));
     Value eVal(MemRefTypeCast(rewriter, operands[4]));
 
-    auto co0 = cast<xilinx::aten::ConstantOp>(operands[5].getDefiningOp());
+    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[5].getDefiningOp());
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
-    auto co1 = cast<xilinx::aten::ConstantOp>(operands[6].getDefiningOp());
+    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[6].getDefiningOp());
     auto fa0 = co1->getAttrOfType<FloatAttr>("value");
     APFloat faVal0 = fa0.getValue();
 
-    auto co2 = cast<xilinx::aten::ConstantOp>(operands[7].getDefiningOp());
+    auto co2 = cast<NPCOMP::aten::ConstantOp>(operands[7].getDefiningOp());
     auto fa1 = co2->getAttrOfType<FloatAttr>("value");
     APFloat faVal1 = fa1.getValue();
 
@@ -904,7 +904,7 @@ public:
 class NllLoss2dBackwardOpConversion : public ConversionPattern {
 public:
   explicit NllLoss2dBackwardOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::NllLoss2dBackwardOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::NllLoss2dBackwardOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -925,12 +925,12 @@ public:
     Value arg6(MemRefTypeCast(rewriter, operands[6]));
 
     // reduction
-    auto co0 = cast<xilinx::aten::ConstantOp>(operands[4].getDefiningOp());
+    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[4].getDefiningOp());
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia0.getValue();
 
     // ignore_index
-    auto co1 = cast<xilinx::aten::ConstantOp>(operands[5].getDefiningOp());
+    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[5].getDefiningOp());
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg5 = ia1.getValue();
 
@@ -956,7 +956,7 @@ public:
 class NllLoss2dForwardOpConversion : public ConversionPattern {
 public:
   explicit NllLoss2dForwardOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::NllLoss2dForwardOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::NllLoss2dForwardOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -979,12 +979,12 @@ public:
     Value arg2(MemRefTypeCast(rewriter, operands[2]));
 
     // reduction
-    auto co0 = cast<xilinx::aten::ConstantOp>(operands[3].getDefiningOp());
+    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[3].getDefiningOp());
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg3 = ia0.getValue();
 
     // ignore_index
-    auto co1 = cast<xilinx::aten::ConstantOp>(operands[4].getDefiningOp());
+    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[4].getDefiningOp());
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia1.getValue();
 
@@ -1011,7 +1011,7 @@ public:
 class NllLossBackwardOpConversion : public ConversionPattern {
 public:
   explicit NllLossBackwardOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::NllLossBackwardOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::NllLossBackwardOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -1032,12 +1032,12 @@ public:
     Value arg6(MemRefTypeCast(rewriter, operands[6]));
 
     // reduction
-    auto co0 = cast<xilinx::aten::ConstantOp>(operands[4].getDefiningOp());
+    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[4].getDefiningOp());
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia0.getValue();
 
     // ignore_index
-    auto co1 = cast<xilinx::aten::ConstantOp>(operands[5].getDefiningOp());
+    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[5].getDefiningOp());
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg5 = ia1.getValue();
 
@@ -1063,7 +1063,7 @@ public:
 class NllLossForwardOpConversion : public ConversionPattern {
 public:
   explicit NllLossForwardOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::NllLossForwardOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::NllLossForwardOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -1086,12 +1086,12 @@ public:
     Value arg2(MemRefTypeCast(rewriter, operands[2]));
 
     // reduction
-    auto co0 = cast<xilinx::aten::ConstantOp>(operands[3].getDefiningOp());
+    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[3].getDefiningOp());
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg3 = ia0.getValue();
 
     // ignore_index
-    auto co1 = cast<xilinx::aten::ConstantOp>(operands[4].getDefiningOp());
+    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[4].getDefiningOp());
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia1.getValue();
 
@@ -1118,7 +1118,7 @@ public:
 class ReLUOpConversion : public ConversionPattern {
 public:
   explicit ReLUOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::ReLUOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::ReluOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -1153,7 +1153,7 @@ public:
 class ThresholdBackwardOpConversion : public ConversionPattern {
 public:
   explicit ThresholdBackwardOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::ThresholdBackwardOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::ThresholdBackwardOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -1171,7 +1171,7 @@ public:
     Value arg0(MemRefTypeCast(rewriter, operands[0]));
     Value arg1(MemRefTypeCast(rewriter, operands[1]));
 
-    auto co = dyn_cast<xilinx::aten::ConstantOp>(operands[2].getDefiningOp());
+    auto co = dyn_cast<NPCOMP::aten::ConstantOp>(operands[2].getDefiningOp());
     auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt arg2 = ia.getValue();
 
@@ -1193,45 +1193,45 @@ public:
 };
 
 /// Lower transpose
-class TransposeOpConversion : public ConversionPattern {
-public:
-  explicit TransposeOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::TransposeOp::getOperationName(), 1, context) {}
+// class TransposeOpConversion : public ConversionPattern {
+// public:
+//   explicit TransposeOpConversion(MLIRContext *context)
+//       : ConversionPattern(NPCOMP::aten::TransposeOp::getOperationName(), 1, context) {}
 
-  LogicalResult
-  matchAndRewrite(Operation *op, ArrayRef<Value > operands,
-                  ConversionPatternRewriter &rewriter) const override
-  {
-    Type resultTy = op->getResult(0).getType();
-    TensorType tensorResultTy = resultTy.cast<TensorType>();
-    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
-                                                tensorResultTy.getElementType(),
-                                                {}, 0);
+//   LogicalResult
+//   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
+//                   ConversionPatternRewriter &rewriter) const override
+//   {
+//     Type resultTy = op->getResult(0).getType();
+//     TensorType tensorResultTy = resultTy.cast<TensorType>();
+//     Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+//                                                 tensorResultTy.getElementType(),
+//                                                 {}, 0);
 
-    auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
+//     auto loc = op->getLoc();
+//     edsc::ScopedContext scope(rewriter, loc);
 
-    Value xVal(MemRefTypeCast(rewriter, operands[0]));
+//     Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
-    std::vector<Value> callops{xVal};
+//     std::vector<Value> callops{xVal};
 
-    FuncOp transposeFunc = getATenFn(op->getParentOfType<ModuleOp>(),
-                                     "t", callops, memRefResultTy);
+//     FuncOp transposeFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+//                                      "t", callops, memRefResultTy);
 
-    auto new_call = callOperation(memRefResultTy,
-                         rewriter.getSymbolRefAttr(transposeFunc),
-                         callops);
+//     auto new_call = callOperation(memRefResultTy,
+//                          rewriter.getSymbolRefAttr(transposeFunc),
+//                          callops);
 
-    rewriter.replaceOp(op, (*new_call).getResults());
-    return success();
-  }
-};
+//     rewriter.replaceOp(op, (*new_call).getResults());
+//     return success();
+//   }
+// };
 
 /// Lower view
 class ViewOpConversion : public ConversionPattern {
 public:
   explicit ViewOpConversion(MLIRContext *context)
-      : ConversionPattern(xilinx::aten::ViewOp::getOperationName(), 1, context) {}
+      : ConversionPattern(NPCOMP::aten::ViewOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
@@ -1250,7 +1250,7 @@ public:
 
     // construct the shape argument
     std::vector<constInt> shape;
-    auto co = cast<xilinx::aten::ConstantOp>(operands[1].getDefiningOp());
+    auto co = cast<NPCOMP::aten::ConstantOp>(operands[1].getDefiningOp());
     DenseElementsAttr a = co->getAttrOfType<DenseElementsAttr>("value");
     for (auto i : a.getIntValues())
       shape.push_back(constInt(i.getSExtValue(),32));
@@ -1345,7 +1345,7 @@ public:
     for (auto a : llvm::zip(retTys, funcRetTys)) {
       if (std::get<0>(a).isa<TensorType>() && std::get<1>(a).isa<MemRefType>()) {
         auto oper = op.getOperand(idx);
-        if (auto cast = dyn_cast_or_null<xilinx::aten::TypeCastOp>(oper.getDefiningOp())) {
+        if (auto cast = dyn_cast_or_null<NPCOMP::aten::TypeCastOp>(oper.getDefiningOp())) {
           if (cast.getOperand().getType() == std::get<1>(a)) {
             returnOperands.push_back(cast.getOperand());
             rewriter.eraseOp(cast);
@@ -1361,11 +1361,11 @@ public:
   }
 };
 
-class TypeCastOpLowering : public OpRewritePattern<xilinx::aten::TypeCastOp> {
+class TypeCastOpLowering : public OpRewritePattern<NPCOMP::aten::TypeCastOp> {
 public:
-  using OpRewritePattern<xilinx::aten::TypeCastOp>::OpRewritePattern;
+  using OpRewritePattern<NPCOMP::aten::TypeCastOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(xilinx::aten::TypeCastOp op,
+  LogicalResult matchAndRewrite(NPCOMP::aten::TypeCastOp op,
                                 PatternRewriter &rewriter) const override {
 
     if (op.use_empty()) {
@@ -1383,11 +1383,11 @@ public:
     }
     // simplify casts of casts
     else if (oper.getDefiningOp()) {
-      if (auto oper_cast = dyn_cast<xilinx::aten::TypeCastOp>(oper.getDefiningOp())) {
+      if (auto oper_cast = dyn_cast<NPCOMP::aten::TypeCastOp>(oper.getDefiningOp())) {
         if (resultTy == oper_cast.getOperand().getType())
           rewriter.replaceOp(op, oper_cast.getOperand());
         else
-          rewriter.replaceOpWithNewOp<xilinx::aten::TypeCastOp>(op, op.getType(), oper_cast.getOperand());
+          rewriter.replaceOpWithNewOp<NPCOMP::aten::TypeCastOp>(op, op.getType(), oper_cast.getOperand());
         return success();
       }
     }
@@ -1426,7 +1426,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
 
     // c++ patterns
     atenPatterns.insert<AddOpConversion, ConvolutionOpConversion,
-                        ReLUOpConversion, TransposeOpConversion,
+                        ReLUOpConversion, /*TransposeOpConversion,*/
                         BatchNormOpConversion, NativeBatchNormOpConversion,
                         MaxPoolOpConversion, MaxPool2dWithIndicesOpConversion,
                         AddmmOpConversion, ViewOpConversion,
@@ -1436,7 +1436,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
                         ConvolutionBackwardOpConversion, NllLossForwardOpConversion,
                         NllLossBackwardOpConversion, NllLoss2dForwardOpConversion,
                         NllLoss2dBackwardOpConversion, LogSoftmaxOpConversion,
-                        LogSoftmaxBackwardOpConversion, DivOpConversion>(context);
+                        /*LogSoftmaxBackwardOpConversion,*/ DivOpConversion>(context);
 
     atenPatterns.insert<TypeCastOpLowering,
                         ReturnOpLowering,
@@ -1482,7 +1482,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
     // remove dead constant ops
     for (auto function : getOperation().getOps<FuncOp>()) {
       function.walk([&](Operation *op) {
-        auto constOp = dyn_cast<xilinx::aten::ConstantOp>(op);
+        auto constOp = dyn_cast<NPCOMP::aten::ConstantOp>(op);
         if (!constOp)
           return;
         if (op->use_empty())
@@ -1492,7 +1492,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
 
     for (auto function : getOperation().getOps<FuncOp>()) {
       function.walk([&](Operation *op) {
-        auto tc = dyn_cast<xilinx::aten::TypeCastOp>(op);
+        auto tc = dyn_cast<NPCOMP::aten::TypeCastOp>(op);
         if (!tc)
           return;
         if (tc.getType() == tc.getOperand().getType())

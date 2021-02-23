@@ -1,6 +1,4 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
-#include "ATenDialect.h"
-#include "ATenOpReport.h"
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -8,6 +6,9 @@
 #include "llvm/Support/JSON.h"
 
 #include "mlir/Pass/Pass.h"
+
+#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
+#include "ATenOpReport.h"
 
 #include <iostream>
 #include <vector>
@@ -80,7 +81,7 @@ public:
 
     auto graph = getOperation().lookupSymbol<mlir::FuncOp>("graph");
     graph.walk([&](Operation *op) {
-      if (auto stats = mlir::dyn_cast<xilinx::aten::StatisticsOpInterface>(op)) {
+      if (auto stats = mlir::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
 
         // acdc name for this layer
         std::string layerName = opToName[op];

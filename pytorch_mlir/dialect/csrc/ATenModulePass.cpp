@@ -2,7 +2,7 @@
 
 // This is an empty module pass.  Copy it to make your own pass.
 
-#include "ATenDialect.h"
+#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
