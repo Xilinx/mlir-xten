@@ -66,39 +66,3 @@ add_mlir_library(ATen
   AIE
   )
 llvm_update_compile_flags(ATen)
-
-add_llvm_executable(test.exe
-  test.cpp
-  )
-llvm_update_compile_flags(test.exe)
-get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
-get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
-target_link_libraries(test.exe
-  PRIVATE
-  ${dialect_libs}
-  ${conversion_libs}
-  ATen
-  ${PROJECT_BINARY_DIR}/../aie/lib/libAIE.a
-  NPCOMPATenDialect
-  MLIRExecutionEngine
-  MLIRSCFTransforms
-  MLIRLoopAnalysis
-  MLIRAnalysis
-  MLIRDialect
-  MLIREDSC
-  MLIROptLib
-  MLIRParser
-  MLIRPass
-  MLIRSPIRV
-  MLIRSPIRVTestPasses
-  MLIRSPIRVTransforms
-  MLIRTransforms
-  MLIRTransformUtils
-  MLIRTestDialect
-  MLIRTestIR
-  MLIRTestPass
-  MLIRTestTransforms
-  MLIRSupport
-  MLIRIR
-  MLIROptLib
-  )
