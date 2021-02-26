@@ -170,8 +170,8 @@ public:
       int i = 0;
       auto kernel_args = launch.getKernelArguments();
       SmallPtrSet<Operation*,1> exceptions{launch};
-      for (Value v : region_args)
-        v.replaceAllUsesExcept(kernel_args[i], exceptions);
+      for (Value v : args)
+        replaceAllUsesInRegionWith(v, kernel_args[i++], launch.getRegion());
 
       rewriter.eraseOp(op);
       return success();
@@ -295,7 +295,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
                            StandardOpsDialect,
                            scf::SCFDialect>();
 
-    target.addLegalOp<xilinx::air::DmaMemcpy>();
+    target.addLegalOp<xilinx::air::DmaMemcpyOp>();
     target.addLegalOp<xilinx::air::DmaMemcpy2d>();
     target.addLegalOp<xilinx::air::HerdLaunchOp>();
 
