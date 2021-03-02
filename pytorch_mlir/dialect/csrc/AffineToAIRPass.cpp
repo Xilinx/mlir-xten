@@ -377,11 +377,14 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
       assert(0);
     }
 
-    std::vector<AffineDmaWaitOp> waits;
+    std::vector<Operation*> waits;
     for (auto f : module.getOps<FuncOp>()) {
       f.walk([&](Operation *op) {
         if (auto wo = dyn_cast<AffineDmaWaitOp>(op)) {
-          waits.push_back(wo);
+          auto memref = wo.getTagMemRef();
+          for (auto u : memref.getUsers()) {
+              waits.push_back(u);
+          }
         }
       });
     }
