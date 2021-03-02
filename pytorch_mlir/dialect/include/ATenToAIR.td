@@ -33,7 +33,7 @@ def : Pat<(aten_ReluUnderOp
 def : Pat<(aten_AddOp $a, (aten_ConstantOp:$b), (aten_ConstantOp:$c)),
           (air_AddOneOp $a, $b)>;
 
-def : Pat<(aten_AddOp $a, F32Tensor:$b, $c),
+def : Pat<(aten_AddOp $a, $b, $c),
           (air_AddOneOp $a, $b)>;
 
 def : Pat<(aten_MmOp $a, $b),
