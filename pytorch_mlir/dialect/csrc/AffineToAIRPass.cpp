@@ -45,6 +45,8 @@ namespace {
 
 #include "AffineToAIR.cpp.inc"
 
+static uint64_t DmaMemcpyOpID;
+
 class AffineCopyToAIRDMAConversion : public ConversionPattern {
 public:
   explicit AffineCopyToAIRDMAConversion(MLIRContext *context)
@@ -71,11 +73,16 @@ public:
 
     SmallVector<Type,1> tys;
     SmallVector<Value,1> deps;
-    rewriter.create<air::DmaMemcpyOp>(op->getLoc(), tys,
-                                       deps, dst, src, 
-                                       dst_indices.front(),
-                                       src_indices.front(),
-                                       affine_dma_start.getNumElements());
+    auto dma = rewriter.create<air::DmaMemcpyOp>(op->getLoc(), tys,
+                                                 deps, dst, src,
+                                                 dst_indices.front(),
+                                                 src_indices.front(),
+                                                 affine_dma_start.getNumElements());
+
+    dma->setAttr("id",
+                 mlir::IntegerAttr::get(mlir::IntegerType::get(op->getContext(), 32),
+                                        ++DmaMemcpyOpID));
+
     rewriter.eraseOp(op);
     return success();
   }
@@ -252,7 +259,6 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
 
           auto srcTy = load.memref().getType().cast<mlir::MemRefType>();
           auto dstTy = store.memref().getType().cast<mlir::MemRefType>();
-          forOp->print(llvm::outs());
         }
       }
     }
@@ -370,6 +376,8 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
                       AffineLoadOp,
                       AffineStoreOp,
                       AffineYieldOp>();
+
+    DmaMemcpyOpID = 0;
 
     if (failed(applyPartialConversion(module, target, std::move(patterns)))) {
       emitError(UnknownLoc::get(context), "error\n");
