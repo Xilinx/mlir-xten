@@ -105,64 +105,59 @@ public:
   void runOnOperation() override {
 
     auto module = getOperation();
- 
-    // check that a function called "graph" exists
-    auto graph = module.lookupSymbol<mlir::FuncOp>("graph");
-    if (!graph) {
-      emitError(mlir::UnknownLoc::get(module.getContext()),
-                "OpReportPass failed: can't find a graph function\n");
-      signalPassFailure();
-      return;
-    }
 
-    // assume a single bb with a single return statement
-    Block &BB = graph.front();
+    for (auto graph : module.getOps<mlir::FuncOp>()) {
+      // assume a single bb with a single return statement
+      if (graph.isExternal())
+        return;
+      Block &BB = graph.front();
 
-    FunctionType funcTy = graph.getType();
-    std::vector<Type> newFuncInputTys;
+      FunctionType funcTy = graph.getType();
+      std::vector<Type> newFuncInputTys;
 
-    for (auto ty : funcTy.getInputs())
-      newFuncInputTys.push_back(ty);
+      for (auto ty : funcTy.getInputs())
+        newFuncInputTys.push_back(ty);
 
-    for (auto ty : funcTy.getResults())
-      newFuncInputTys.push_back(ty);
+      for (auto ty : funcTy.getResults())
+        newFuncInputTys.push_back(ty);
 
-    FunctionType newFuncTy = FunctionType::get(module.getContext(), newFuncInputTys, {});
-    graph.setType(newFuncTy);
+      FunctionType newFuncTy = FunctionType::get(module.getContext(), newFuncInputTys, {});
+      graph.setType(newFuncTy);
 
-    Operation *retOp = BB.getTerminator();
-    auto builder = std::make_unique<mlir::OpBuilder>(retOp);
+      Operation *retOp = BB.getTerminator();
+      auto builder = std::make_unique<mlir::OpBuilder>(retOp);
 
-    builder->create<ReturnOp>(retOp->getLoc());
+      builder->create<ReturnOp>(retOp->getLoc());
 
-    std::vector<Value> operands{retOp->getOperands().begin(),
-                                 retOp->getOperands().end()};
+      std::vector<Value> operands{retOp->getOperands().begin(),
+                                  retOp->getOperands().end()};
 
-    retOp->dropAllReferences();
-    erasedOps.insert(retOp);
+      retOp->dropAllReferences();
+      erasedOps.insert(retOp);
 
-    for (Value v : operands)
-      valueMap[v] = BB.addArgument(v.getType());
+      for (Value v : operands)
+        valueMap[v] = BB.addArgument(v.getType());
 
-    for (Value v : operands) {
-      if (!v.getType().isa<MemRefType>())
-        llvm_unreachable("graph function returns non-memref");
-      if (v.getDefiningOp())
-        runOn(v.getDefiningOp());
-    }
+      for (Value v : operands) {
+        if (!v.getType().isa<MemRefType>())
+          llvm_unreachable("graph function returns non-memref");
+        if (v.getDefiningOp())
+          runOn(v.getDefiningOp());
+      }
 
-    for (auto oi=BB.rbegin(),oe=BB.rend(); oi!=oe; ++oi) {
-      Operation *o = &*oi;
-      for (Value v : o->getResults()) {
-        if (v.getType().isa<MemRefType>()) {
-          runOn(o);
-          break;
+      for (auto oi=BB.rbegin(),oe=BB.rend(); oi!=oe; ++oi) {
+        Operation *o = &*oi;
+        for (Value v : o->getResults()) {
+          if (v.getType().isa<MemRefType>()) {
+            runOn(o);
+            break;
+          }
         }
       }
-    }
 
-    for (Operation *o : erasedOps)
-      o->erase();
+      for (Operation *o : erasedOps)
+        o->erase();
+    }
   }
 
 private:
