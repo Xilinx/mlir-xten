@@ -257,8 +257,8 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
           if (store.value() != load)
             return failure();
 
-          auto srcTy = load.memref().getType().cast<mlir::MemRefType>();
-          auto dstTy = store.memref().getType().cast<mlir::MemRefType>();
+          //auto srcTy = load.memref().getType().cast<mlir::MemRefType>();
+          //auto dstTy = store.memref().getType().cast<mlir::MemRefType>();
         }
       }
     }
@@ -317,6 +317,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
       builder.create<CallOp>(loc, retTy, builder.getSymbolRefAttr(dmafn_name), opers);
       dma_callOp.erase();
     }
+    return success();
   }
 
   LogicalResult lowerDma(StringRef callee, CallOp dma_callOp) {
