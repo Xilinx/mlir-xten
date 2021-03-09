@@ -11,7 +11,6 @@ set(LLVM_OPTIONAL_SOURCES
   AIRDialect.cpp
   AIRLoweringPass.cpp
   ATenDialectOpStats.cpp
-  ATenLayerNamePass.cpp
   ATenLoweringPass.cpp
   ATenModulePass.cpp
   ATenOpReport.cpp
@@ -36,7 +35,6 @@ add_mlir_library(ATen
   AIRDialect.cpp
   AIRLoweringPass.cpp
   ATenDialectOpStats.cpp
-  ATenLayerNamePass.cpp
   ATenLoweringPass.cpp
   ATenModulePass.cpp
   ATenOpReport.cpp
