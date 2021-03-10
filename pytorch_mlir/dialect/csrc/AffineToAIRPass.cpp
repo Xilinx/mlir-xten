@@ -64,9 +64,6 @@ public:
     auto dst = affine_dma_start.getDstMemRef();
     auto dst_indices = affine_dma_start.getDstIndices();
 
-    if (!affine_dma_start.getSrcMap().isIdentity())
-      return failure();
-
     if (src_indices.size() != 1 ||
         dst_indices.size() != 1)
       return failure();
