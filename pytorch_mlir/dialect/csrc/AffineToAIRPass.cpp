@@ -64,16 +64,19 @@ public:
     auto dst = affine_dma_start.getDstMemRef();
     auto dst_indices = affine_dma_start.getDstIndices();
 
-    if (src_indices.size() != 1 ||
-        dst_indices.size() != 1)
-      return failure();
+    // if (src_indices.size() != 1 ||
+    //     dst_indices.size() != 1)
+    //   return failure();
+
+    auto src_map = rewriter.create<AffineApplyOp>(op->getLoc(), affine_dma_start.getSrcMap(), src_indices);
+    auto dst_map = rewriter.create<AffineApplyOp>(op->getLoc(), affine_dma_start.getDstMap(), dst_indices);
 
     SmallVector<Type,1> tys;
     SmallVector<Value,1> deps;
     auto dma = rewriter.create<air::DmaMemcpyOp>(op->getLoc(), tys,
                                                  deps, dst, src,
-                                                 dst_indices.front(),
-                                                 src_indices.front(),
+                                                 dst_map,
+                                                 src_map,
                                                  affine_dma_start.getNumElements());
 
     dma->setAttr("id",
