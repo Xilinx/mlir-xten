@@ -180,6 +180,6 @@ std::unique_ptr<mlir::Pass> createReturnEliminationPass() {
 
 void xilinx::aten::registerReturnEliminationPass() {
     PassRegistration<ReturnEliminationPass>(
-      "return-elimination",
+      "air-return-elimination",
       "eliminate returns");
 }

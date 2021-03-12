@@ -1477,6 +1477,6 @@ std::unique_ptr<mlir::Pass> createATenLoweringPass() {
 
 void xilinx::aten::registerATenLoweringPass() {
     PassRegistration<ATenLoweringPass>(
-      "aten-to-std",
+      "aten-lowering",
       "ATen dialect lowering to function calls");
 }
