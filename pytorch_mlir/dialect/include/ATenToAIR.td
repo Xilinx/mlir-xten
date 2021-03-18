@@ -39,3 +39,6 @@ def : Pat<(aten_MmOp $a, $b),
 
 def : Pat<(aten_MulOp $a, $b),
           (air_MulOp $a, $b)>;
+
+def : Pat<(aten_AddOp $a, $b, $c),
+          (air_AddOp $a, $b)>;
