@@ -84,7 +84,7 @@ public:
   {
     Type resultTy = op->getResult(0).getType();
     TensorType tensorResultTy = resultTy.cast<TensorType>();
-    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+    MemRefType memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
                                                 tensorResultTy.getElementType(),
                                                 {}, 0);
 

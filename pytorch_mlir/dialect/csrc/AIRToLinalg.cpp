@@ -4,24 +4,7 @@
 
 #include "AIRDialect.h"
 
-// #include "Util.h"
-
-// #include "mlir/Analysis/Utils.h"
-// #include "mlir/Dialect/Affine/IR/AffineOps.h"
-// #include "mlir/Dialect/Affine/EDSC/Builders.h"
-// #include "mlir/Dialect/StandardOps/IR/Ops.h"
-// #include "mlir/Dialect/StandardOps/EDSC/Builders.h"
-// #include "mlir/Dialect/StandardOps/EDSC/Intrinsics.h"
-// #include "mlir/Dialect/SCF/EDSC/Builders.h"
-// #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
-// #include "mlir/EDSC/Builders.h"
-// #include "mlir/IR/Builders.h"
-// #include "mlir/IR/IntegerSet.h"
-// #include "mlir/IR/OperationSupport.h"
-// #include "mlir/IR/BuiltinTypes.h"
-// #include "mlir/Support/MathExtras.h"
-// #include "mlir/Transforms/LoopUtils.h"
-
+#include "mlir/Dialect/Linalg/EDSC/Intrinsics.h"
 #include "mlir/Dialect/Linalg/IR/LinalgOps.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Pass/Pass.h"
@@ -40,6 +23,24 @@ namespace {
 
 #include "AIRToLinalg.cpp.inc"
 
+Value typeCast(PatternRewriter &builder, Value val, Type destTy) {
+  if (val.getType() == destTy)
+    return val;
+  return builder.create<NPCOMP::aten::TypeCastOp>(val.getLoc(), destTy, val)
+      .getResult();
+}
+
+/// Create a type cast to memref
+Value MemRefTypeCast(PatternRewriter &builder, Value val) {
+  if (val.getType().isa<MemRefType>())
+    return val;
+  auto tensorTy = val.getType().dyn_cast<TensorType>();
+  if (!tensorTy)
+    return val;
+  auto memRefType = mlir::MemRefType::get(tensorTy.getShape(), tensorTy.getElementType(), {}, 0);
+  return typeCast(builder, val, memRefType);
+}
+
 class AIRMMOpConversion : public ConversionPattern {
 public:
   explicit AIRMMOpConversion(MLIRContext *context)
@@ -48,9 +49,30 @@ public:
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
-    //auto mmult = cast<air::MMOp>(op);
-    //auto loc = mmult.getLoc();
+    auto mmult = cast<air::MMOp>(op);
+    auto loc = mmult.getLoc();
 
+    edsc::ScopedContext scope(rewriter, loc);
+
+    auto A = MemRefTypeCast(rewriter, operands[0]);
+    auto B = MemRefTypeCast(rewriter, operands[1]);
+
+    auto resultTy = op->getResult(0).getType();
+    auto tensorResultTy = resultTy.cast<TensorType>();
+    auto memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    auto C = rewriter.create<AllocOp>(loc, memRefResultTy);
+
+    edsc::intrinsics::linalg_matmul(ValueRange{A, B}, ValueRange{C});
+
+    auto tensor_cast 
+      = rewriter.create<NPCOMP::aten::TypeCastOp>(loc,
+                                                  tensorResultTy,
+                                                  C->getResult(0));
+
+    rewriter.replaceOp(op, tensor_cast.getResult());
     return success();
   }
 };
@@ -62,7 +84,8 @@ class AIRToLinalgPass : public PassWrapper<AIRToLinalgPass,
 public:
   AIRToLinalgPass() {}
 
-  void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+     registry.insert<NPCOMP::aten::ATenDialect>();
      registry.insert<linalg::LinalgDialect>();
   }
 
@@ -75,9 +98,9 @@ public:
 
     // tablegen patterns
     OwningRewritePatternList patterns;
-    populateWithGenerated(context, patterns);
+    //populateWithGenerated(context, patterns);
 
-    //patterns.insert<AIRMMOpConversion>(context);
+    patterns.insert<AIRMMOpConversion>(context);
 
     // populateFuncOpTypeConversionPattern(patterns,
     //                                     context,
@@ -87,6 +110,9 @@ public:
 
     target.addLegalDialect<AffineDialect, linalg::LinalgDialect,
                            StandardOpsDialect, scf::SCFDialect>();
+
+    target.addLegalOp<NPCOMP::aten::TypeCastOp>();
+
     target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
        return typeConverter.isSignatureLegal(op.getType());
     });
