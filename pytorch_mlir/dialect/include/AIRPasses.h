@@ -8,6 +8,7 @@
 #include "AIRToAffinePass.h"
 #include "AffineToAIRPass.h"
 #include "AIRToAIEPass.h"
+#include "AIRToLinalgPass.h"
 
 namespace xilinx {
   namespace air {
