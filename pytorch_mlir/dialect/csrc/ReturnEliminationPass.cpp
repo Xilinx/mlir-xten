@@ -51,6 +51,7 @@ public:
 
       if (!module.lookupSymbol<FuncOp>(newFnName)) {
         auto fn = FuncOp::create(op->getLoc(), newFnName, newFnTy);
+        fn.setPrivate();
         module.push_back(fn);
       }
 
@@ -107,10 +108,16 @@ public:
     auto module = getOperation();
 
     for (auto graph : module.getOps<mlir::FuncOp>()) {
-      // assume a single bb with a single return statement
+      // assume a single return statement
       if (graph.isExternal())
         return;
       Block &BB = graph.front();
+  
+      std::vector<ReturnOp> retOps;
+      graph.walk([&](Operation *op) {
+        if (auto r = dyn_cast<ReturnOp>(op))
+          retOps.push_back(r);
+      });
 
       FunctionType funcTy = graph.getType();
       std::vector<Type> newFuncInputTys;
@@ -124,7 +131,7 @@ public:
       FunctionType newFuncTy = FunctionType::get(module.getContext(), newFuncInputTys, {});
       graph.setType(newFuncTy);
 
-      Operation *retOp = BB.getTerminator();
+      Operation *retOp = retOps.front();
       auto builder = std::make_unique<mlir::OpBuilder>(retOp);
 
       builder->create<ReturnOp>(retOp->getLoc());
