@@ -20,6 +20,7 @@ set(LLVM_OPTIONAL_SOURCES
   ReturnEliminationPass.cpp
   AIRToAffine.cpp
   AIRToLinalg.cpp
+  AIRLinalgCodegen.cpp
   AIRToAIEPass.cpp
   Util.cpp
   )
@@ -45,6 +46,7 @@ add_mlir_library(ATen
   ReturnEliminationPass.cpp
   AIRToAffine.cpp
   AIRToLinalg.cpp
+  AIRLinalgCodegen.cpp
   AIRToAIEPass.cpp
   Util.cpp
 

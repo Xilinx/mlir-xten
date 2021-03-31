@@ -41,6 +41,98 @@ Value MemRefTypeCast(PatternRewriter &builder, Value val) {
   return typeCast(builder, val, memRefType);
 }
 
+template <class T>
+class AIRBinaryOpConversion : public ConversionPattern {
+public:
+  AIRBinaryOpConversion(StringRef rootName, PatternBenefit benefit, MLIRContext *ctx)
+      : ConversionPattern(rootName, benefit, ctx) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value > operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto loc = op->getLoc();
+
+    auto A = MemRefTypeCast(rewriter, operands[0]);
+    auto B = MemRefTypeCast(rewriter, operands[1]);
+
+    auto resultTy = op->getResult(0).getType();
+    auto tensorResultTy = resultTy.cast<TensorType>();
+    auto elementTy = tensorResultTy.getElementType();
+    auto rank = tensorResultTy.getRank();
+    auto memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    auto C = rewriter.create<AllocOp>(loc, memRefResultTy);
+
+    SmallVector<Value, 2> inputTensors{A,B};
+    SmallVector<Value, 1> outputTensors{C};
+
+    auto identMap = rewriter.getMultiDimIdentityMap(rank);
+    SmallVector<AffineMap, 4> indexMap(3, identMap);
+
+    auto linalgOp = rewriter.create<linalg::GenericOp>(
+      loc, ArrayRef<Type>(), inputTensors, outputTensors, indexMap,
+      SmallVector<StringRef>(rank, getParallelIteratorTypeName()),
+      "", static_cast<const T*>(this)->getDefaultLibraryFunc(),
+      [&](OpBuilder &nestedBuilder, Location nestedLoc, ValueRange blockArgs) {
+        auto result
+          = static_cast<const T*>(this)->emitBinaryOp(op,
+                                                      elementTy,
+                                                      rewriter,
+                                                      blockArgs[0],
+                                                      blockArgs[1]);
+        nestedBuilder.create<linalg::YieldOp>(loc, result);
+      });
+
+    auto tensor_cast
+      = rewriter.create<NPCOMP::aten::TypeCastOp>(loc,
+                                                  tensorResultTy,
+                                                  C->getResult(0));
+
+    rewriter.replaceOp(op, tensor_cast.getResult());
+    return success();
+  }
+};
+
+class AIRAddOpConversion : public AIRBinaryOpConversion<AIRAddOpConversion> {
+public:
+  explicit AIRAddOpConversion(MLIRContext *context)
+      : AIRBinaryOpConversion(air::AddOp::getOperationName(), 1, context) {}
+
+  StringRef getDefaultLibraryFunc() const {
+      return "air_add_op";
+  }
+
+  Value
+  emitBinaryOp(Operation *op, Type elementTy,
+               ConversionPatternRewriter &rewriter, Value a, Value b) const {
+    if (elementTy.isa<FloatType>())
+      return rewriter.create<AddFOp>(op->getLoc(), a, b);
+    else
+      return rewriter.create<AddIOp>(op->getLoc(), a, b);
+  }
+};
+
+class AIRMulOpConversion : public AIRBinaryOpConversion<AIRMulOpConversion> {
+public:
+  explicit AIRMulOpConversion(MLIRContext *context)
+      : AIRBinaryOpConversion(air::MulOp::getOperationName(), 1, context) {}
+
+  StringRef getDefaultLibraryFunc() const {
+      return "air_mul_op";
+  }
+
+  Value
+  emitBinaryOp(Operation *op, Type elementTy,
+               ConversionPatternRewriter &rewriter, Value a, Value b) const {
+    if (elementTy.isa<FloatType>())
+      return rewriter.create<MulFOp>(op->getLoc(), a, b);
+    else
+      return rewriter.create<MulIOp>(op->getLoc(), a, b);
+  }
+};
+
 class AIRMMOpConversion : public ConversionPattern {
 public:
   explicit AIRMMOpConversion(MLIRContext *context)
@@ -67,7 +159,7 @@ public:
 
     edsc::intrinsics::linalg_matmul(ValueRange{A, B}, ValueRange{C});
 
-    auto tensor_cast 
+    auto tensor_cast
       = rewriter.create<NPCOMP::aten::TypeCastOp>(loc,
                                                   tensorResultTy,
                                                   C->getResult(0));
@@ -76,7 +168,6 @@ public:
     return success();
   }
 };
-
 
 class AIRToLinalgPass : public PassWrapper<AIRToLinalgPass,
                                            OperationPass<ModuleOp>> {
@@ -100,7 +191,9 @@ public:
     OwningRewritePatternList patterns;
     //populateWithGenerated(context, patterns);
 
-    patterns.insert<AIRMMOpConversion>(context);
+    patterns.insert<AIRMMOpConversion,
+                    AIRAddOpConversion,
+                    AIRMulOpConversion>(context);
 
     // populateFuncOpTypeConversionPattern(patterns,
     //                                     context,
