@@ -64,10 +64,6 @@ public:
     auto dst = affine_dma_start.getDstMemRef();
     auto dst_indices = affine_dma_start.getDstIndices();
 
-    // if (src_indices.size() != 1 ||
-    //     dst_indices.size() != 1)
-    //   return failure();
-
     auto src_map = rewriter.create<AffineApplyOp>(op->getLoc(), affine_dma_start.getSrcMap(), src_indices);
     auto dst_map = rewriter.create<AffineApplyOp>(op->getLoc(), affine_dma_start.getDstMap(), dst_indices);
 
@@ -218,6 +214,86 @@ public:
   }
 };
 
+class ScfParToHerdLaunchConversion : public OpRewritePattern<scf::ParallelOp> {
+public:
+  using OpRewritePattern<scf::ParallelOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(scf::ParallelOp op,
+                                PatternRewriter &rewriter) const override {
+    if (op.getNumLoops() == 2) {
+      auto loc = op.getLoc();
+      auto lb0 = dyn_cast<ConstantIndexOp>(op.lowerBound()[0].getDefiningOp());
+      auto lb1 = dyn_cast<ConstantIndexOp>(op.lowerBound()[1].getDefiningOp());
+      auto ub0 = dyn_cast<ConstantIndexOp>(op.upperBound()[0].getDefiningOp());
+      auto ub1 = dyn_cast<ConstantIndexOp>(op.upperBound()[1].getDefiningOp());
+      auto step0 = dyn_cast<ConstantIndexOp>(op.step()[0].getDefiningOp());
+      auto step1 = dyn_cast<ConstantIndexOp>(op.step()[1].getDefiningOp());
+
+      // lowerBound, upperBound and step must be ConstantIndexOps
+      if (!(lb0 && lb1 && step0 && step1 && ub0 && ub1))
+        return failure();
+
+      auto ub0_int = ub0.getValue();
+      auto ub1_int = ub1.getValue();
+      auto lb0_int = lb0.getValue();
+      auto lb1_int = lb1.getValue();
+      auto step0_int = step0.getValue();
+      auto step1_int = step1.getValue();
+
+      // must start at (0,0)
+      if (lb0_int || lb1_int)
+        return failure();
+
+      // step must divide upper bound evenly
+      if ((ub0_int % step0_int) || (ub1_int % step1_int))
+        return failure();
+
+      ub0_int = ub0_int / step0_int;
+      ub1_int = ub1_int / step1_int;
+
+      // TODO this is code duplicated from the affine version, refactor.
+      SmallVector<Value, 4> args;
+      SmallVector<Value, 4> constants;
+      llvm::SetVector<Value> region_args;
+      getUsedValuesDefinedAbove(op.getRegion(), region_args);
+      for (Value v : region_args) {
+        if (v.getDefiningOp() && isa<ConstantOp>(v.getDefiningOp()))
+          constants.push_back(v);
+        else
+          args.push_back(v);
+      }
+      air::HerdDim2 dims{rewriter.create<ConstantIndexOp>(loc,ub0_int),
+                         rewriter.create<ConstantIndexOp>(loc,ub1_int)};
+      auto launch = rewriter.create<air::HerdLaunchOp>(op.getLoc(), dims, args);
+      auto &bb = launch.body().front();
+      auto ivs = op.getInductionVars();
+      ivs[0].replaceAllUsesWith(launch.getTileIds().x);
+      ivs[1].replaceAllUsesWith(launch.getTileIds().y);
+      auto &body = op.getBody()->getOperations();
+      bb.getOperations().splice(bb.begin(), body,
+                                body.begin(), --body.end());
+      rewriter.setInsertionPointToStart(&launch.getRegion().front());
+      for (auto c : constants) {
+        replaceAllUsesInRegionWith(c,
+                                   rewriter.clone(*c.getDefiningOp())->getResult(0),
+                                   launch.getRegion());
+      }
+      auto builder = OpBuilder::atBlockEnd(&bb);
+      builder.create<air::HerdTerminatorOp>(loc);
+
+      int i = 0;
+      auto kernel_args = launch.getKernelArguments();
+      for (Value v : args)
+        replaceAllUsesInRegionWith(v, kernel_args[i++], launch.getRegion());
+
+      rewriter.eraseOp(op);
+
+      return success();
+    }
+    return failure();
+  }
+};
+
 struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
                                             OperationPass<ModuleOp>> {
 
@@ -358,15 +434,16 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
     // tablegen patterns
     OwningRewritePatternList patterns;
     patterns.insert<AffineParToHerdLaunchConversion,
-                    AffineCopyToAIRDMAConversion>(context);
+                    AffineCopyToAIRDMAConversion,
+                    ScfParToHerdLaunchConversion>(context);
 
     populateWithGenerated(context, patterns);
 
     ConversionTarget target(*context);
 
     target.addLegalDialect<LLVM::LLVMDialect,
-                           StandardOpsDialect,
-                           scf::SCFDialect>();
+                           StandardOpsDialect/*,
+                           scf::SCFDialect*/>();
 
     target.addLegalOp<xilinx::air::DmaMemcpyOp>();
     target.addLegalOp<xilinx::air::DmaMemcpy2d>();
