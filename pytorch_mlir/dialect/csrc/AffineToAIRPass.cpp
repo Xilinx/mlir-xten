@@ -64,17 +64,35 @@ public:
     auto dst = affine_dma_start.getDstMemRef();
     auto dst_indices = affine_dma_start.getDstIndices();
 
-    auto src_map = rewriter.create<AffineApplyOp>(op->getLoc(), affine_dma_start.getSrcMap(), src_indices);
-    auto dst_map = rewriter.create<AffineApplyOp>(op->getLoc(), affine_dma_start.getDstMap(), dst_indices);
+    SmallVector<AffineApplyOp, 4> src_applies;
+    SmallVector<AffineApplyOp, 4> dst_applies;
+    unsigned dims = affine_dma_start.getDstMap().getNumResults();
+    for (unsigned i=0; i<dims; i++) {
+      auto src_submap = affine_dma_start.getSrcMap().getSubMap({i});
+      auto dst_submap = affine_dma_start.getDstMap().getSubMap({i});
+      src_applies.push_back(
+        rewriter.create<AffineApplyOp>(op->getLoc(), src_submap, src_indices));
+      dst_applies.push_back(
+        rewriter.create<AffineApplyOp>(op->getLoc(), dst_submap, dst_indices));
+    }
 
     SmallVector<Type,1> tys;
     SmallVector<Value,1> deps;
-    auto dma = rewriter.create<air::DmaMemcpyOp>(op->getLoc(), tys,
-                                                 deps, dst, src,
-                                                 dst_map,
-                                                 src_map,
-                                                 affine_dma_start.getNumElements());
-
+    Operation *dma = nullptr;
+    if (dims == 1) {
+      dma = rewriter.create<air::DmaMemcpyOp>(op->getLoc(), tys,
+                                              deps, dst, src,
+                                              dst_applies[0],
+                                              src_applies[0],
+                                              affine_dma_start.getNumElements());
+    }
+    else if (dims == 2) {
+      dma = rewriter.create<air::DmaMemcpy2dOp>(op->getLoc(), tys,
+                                                deps, dst, src,
+                                                dst_applies[0], dst_applies[1],
+                                                src_applies[0], src_applies[1],
+                                                affine_dma_start.getNumElements());
+    }
     dma->setAttr("id",
                  mlir::IntegerAttr::get(mlir::IntegerType::get(op->getContext(), 32),
                                         ++DmaMemcpyOpID));
@@ -446,7 +464,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
                            scf::SCFDialect*/>();
 
     target.addLegalOp<xilinx::air::DmaMemcpyOp>();
-    target.addLegalOp<xilinx::air::DmaMemcpy2d>();
+    target.addLegalOp<xilinx::air::DmaMemcpy2dOp>();
     target.addLegalOp<xilinx::air::HerdLaunchOp>();
 
     target.addLegalOp<AffineApplyOp,
