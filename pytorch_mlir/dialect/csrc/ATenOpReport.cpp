@@ -76,31 +76,36 @@ public:
 
     auto graph = getOperation().lookupSymbol<mlir::FuncOp>("graph");
     graph.walk([&](Operation *op) {
+
+      std::map<std::string, uint64_t> layerStatsMap;
       if (auto stats = mlir::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
+        layerStatsMap = stats.getStatistics();
+      }
+      else {
+        layerStatsMap = xilinx::aten::getATenOpStats(op);
+      }
+      if (!layerStatsMap.size()) return;
 
-        // acdc name for this layer
-        std::string layerName = opToName[op];
+      // acdc name for this layer
+      std::string layerName = opToName[op];
 
-        // raw stats for this layer
-        std::map<std::string, uint64_t> layerStatsMap = stats.getStatistics();
+      // raw stats for this layer
+      // JSON version of the stats we are building
+      llvm::json::Object layerStatsJSON;
 
-        // JSON version of the stats we are building
-        llvm::json::Object layerStatsJSON;
-
-        // foreach string f in tableField,
-        // get the sum of all entries in layerStatsMap containing f
-        for (auto &f : tableFields) {
-          for (auto &p : layerStatsMap) {
-            if (p.first.find(f) != std::string::npos) {
-              if (auto count = layerStatsJSON[f].getAsInteger())
-                layerStatsJSON[f] = (int64_t)p.second + *count;
-              else
-                layerStatsJSON[f] = (int64_t)p.second;
-            }
+      // foreach string f in tableField,
+      // get the sum of all entries in layerStatsMap containing f
+      for (auto &f : tableFields) {
+        for (auto &p : layerStatsMap) {
+          if (p.first.find(f) != std::string::npos) {
+            if (auto count = layerStatsJSON[f].getAsInteger())
+              layerStatsJSON[f] = (int64_t)p.second + *count;
+            else
+              layerStatsJSON[f] = (int64_t)p.second;
           }
         }
-        top[layerName] = llvm::json::Value(std::move(layerStatsJSON));
       }
+      top[layerName] = llvm::json::Value(std::move(layerStatsJSON));
     });
 
     llvm::json::Value topv(std::move(top));
@@ -138,6 +143,7 @@ public:
     });
 
     output = emitJSONReport();
+    llvm::outs() << output;
   }
 };
 
