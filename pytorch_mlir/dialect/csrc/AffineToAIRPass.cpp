@@ -87,11 +87,22 @@ public:
                                               affine_dma_start.getNumElements());
     }
     else if (dims == 2) {
+      Value stride;
+      Value elem_per_stride;
+      if (affine_dma_start.isStrided()) {
+        stride = affine_dma_start.getStride();
+        elem_per_stride = affine_dma_start.getNumElementsPerStride();
+      }
+      else {
+        stride = elem_per_stride = affine_dma_start.getNumElements();
+      }
+
       dma = rewriter.create<air::DmaMemcpy2dOp>(op->getLoc(), tys,
                                                 deps, dst, src,
                                                 dst_applies[0], dst_applies[1],
                                                 src_applies[0], src_applies[1],
-                                                affine_dma_start.getNumElements());
+                                                affine_dma_start.getNumElements(),
+                                                stride, elem_per_stride);
     }
     dma->setAttr("id",
                  mlir::IntegerAttr::get(mlir::IntegerType::get(op->getContext(), 32),
