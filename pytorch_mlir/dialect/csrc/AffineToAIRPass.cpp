@@ -5,14 +5,15 @@
 #include "AffineToAIRPass.h"
 
 #include "mlir/Analysis/Utils.h"
-#include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Affine/EDSC/Builders.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
-#include "mlir/Dialect/StandardOps/EDSC/Builders.h"
-#include "mlir/Dialect/StandardOps/EDSC/Intrinsics.h"
+#include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include "mlir/Dialect/Linalg/IR/LinalgOps.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/SCF/EDSC/Builders.h"
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/Dialect/StandardOps/EDSC/Builders.h"
+#include "mlir/Dialect/StandardOps/EDSC/Intrinsics.h"
+#include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/EDSC/Builders.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/OperationSupport.h"
@@ -46,6 +47,96 @@ namespace {
 #include "AffineToAIR.cpp.inc"
 
 static uint64_t DmaMemcpyOpID;
+
+/// Extract int64_t values from the assumed ArrayAttr of IntegerAttr.
+static SmallVector<int64_t, 4> extractFromI64ArrayAttr(Attribute attr) {
+  return llvm::to_vector<4>(
+      llvm::map_range(attr.cast<ArrayAttr>(), [](Attribute a) -> int64_t {
+        return a.cast<IntegerAttr>().getInt();
+      }));
+}
+
+class LinalgCopyToAIRDmaConversion : public OpRewritePattern<linalg::CopyOp> {
+  using OpRewritePattern<linalg::CopyOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(linalg::CopyOp op,
+                                PatternRewriter &rewriter) const override {
+    auto loc = op.getLoc();
+    auto src = op.input();
+    auto dst = op.output();
+    auto src_type = src.getType().cast<MemRefType>();
+    auto dst_type = src.getType().cast<MemRefType>();
+    auto dims = src_type.getShape().size();
+
+    SmallVector<Value, 4> src_indices;
+    SmallVector<Value, 4> dst_indices;
+
+    if (dims == 2) {
+      Value zero = rewriter.create<ConstantIndexOp>(loc,0);
+      Value stride = zero;
+      Value elem_per_stride = zero;
+      SmallVector<Value,1> deps;
+      SmallVector<Type,1> tys;
+      if (auto alloc = src.getDefiningOp<AllocOp>()) {
+        src_indices.push_back(zero);
+        src_indices.push_back(zero);
+        elem_per_stride = rewriter.create<ConstantIndexOp>(loc,
+                            alloc.getType().getShape()[0]);
+      }
+      else if (auto subview = src.getDefiningOp<SubViewOp>()) {
+        auto offsets = subview.offsets().begin();
+        auto static_offsets = extractFromI64ArrayAttr(subview.static_offsets());
+        for (auto o : static_offsets) {
+          if (o >= 0)
+            src_indices.push_back(rewriter.create<ConstantIndexOp>(loc, o));
+          else
+            src_indices.push_back(*offsets++);
+        }
+        src = subview.source();
+        stride = rewriter.create<ConstantIndexOp>(loc,
+                   src.getType().cast<MemRefType>().getShape()[1]);
+      }
+      else
+        return failure();
+
+      if (auto alloc = dst.getDefiningOp<AllocOp>()) {
+        dst_indices.push_back(zero);
+        dst_indices.push_back(zero);
+        elem_per_stride = rewriter.create<ConstantIndexOp>(loc,
+                            alloc.getType().getShape()[1]);
+      }
+      else if (auto subview = dst.getDefiningOp<SubViewOp>()) {
+        auto offsets = subview.offsets().begin();
+        auto static_offsets = extractFromI64ArrayAttr(subview.static_offsets());
+        for (auto o : static_offsets) {
+          if (o >= 0)
+            dst_indices.push_back(rewriter.create<ConstantIndexOp>(loc, o));
+          else
+            dst_indices.push_back(*offsets++);
+        }
+        dst = subview.source();
+        stride = rewriter.create<ConstantIndexOp>(loc,
+                   dst.getType().cast<MemRefType>().getShape()[1]);
+      }
+      else
+        return failure();
+  
+      auto dma = rewriter.create<air::DmaMemcpy2dOp>(loc, tys,
+                                                    deps, dst, src,
+                                                    dst_indices[0], dst_indices[1],
+                                                    src_indices[0], src_indices[1],
+                                                    rewriter.create<ConstantIndexOp>(
+                                                      loc,
+                                                      src_type.getNumElements()),
+                                                    stride, elem_per_stride);
+    }
+    else {
+      // assert(0 && "dims != 2");
+      return failure();
+    }
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
 
 class AffineCopyToAIRDMAConversion : public ConversionPattern {
 public:
@@ -247,8 +338,62 @@ class ScfParToHerdLaunchConversion : public OpRewritePattern<scf::ParallelOp> {
 public:
   using OpRewritePattern<scf::ParallelOp>::OpRewritePattern;
 
+  LogicalResult normalizeScfParallel(scf::ParallelOp parOp,
+                                     PatternRewriter &rewriter) const
+  {
+    auto loc = parOp.getLoc();
+
+    // everything must be a constant
+    for (auto step : parOp.step()) {
+      if (!step.getDefiningOp<ConstantIndexOp>())
+        return failure();
+    }
+    for (auto lowerBound : parOp.lowerBound()) {
+      if (!lowerBound.getDefiningOp<ConstantIndexOp>())
+        return failure();
+    }
+    for (auto upperBound : parOp.upperBound()) {
+      if (!upperBound.getDefiningOp<ConstantIndexOp>())
+        return failure();
+    }
+
+    auto ivs = parOp.getInductionVars().begin();
+    auto step = parOp.step().begin();
+    auto lowerBound = parOp.lowerBound().begin();
+    auto upperBound = parOp.upperBound().begin();
+
+    SmallVector<Value, 4> new_step;
+    SmallVector<Value, 4> new_ub;
+    SmallVector<Value, 4> new_lb;
+    
+    auto builder = OpBuilder::atBlockBegin(parOp.getBody());
+    while (step != parOp.step().end()) {
+      Value sv = *step++;
+      Value lbv = *lowerBound++;
+      float s = sv.getDefiningOp<ConstantIndexOp>().getValue();
+      float lb = lbv.getDefiningOp<ConstantIndexOp>().getValue();
+      float ub = (*upperBound++).getDefiningOp<ConstantIndexOp>().getValue();
+      new_ub.push_back(rewriter.create<ConstantIndexOp>(loc,(uint64_t)ceil((ub - lb) / s)));
+      new_lb.push_back(rewriter.create<ConstantIndexOp>(loc,0));
+      new_step.push_back(rewriter.create<ConstantIndexOp>(loc,1));
+      auto iv = *ivs++;
+      auto mul = 
+        builder.create<MulIOp>(loc, iv, sv.getDefiningOp<ConstantIndexOp>());
+      Value new_iv = builder.create<AddIOp>(loc, mul, lbv);
+      SmallPtrSet<Operation *, 1> keep{mul};
+      iv.replaceAllUsesExcept(new_iv, keep);
+    }
+
+    parOp.lowerBoundMutable().assign(new_lb);
+    parOp.upperBoundMutable().assign(new_ub);
+    parOp.stepMutable().assign(new_step);
+
+    return success();
+  }
+
   LogicalResult matchAndRewrite(scf::ParallelOp op,
                                 PatternRewriter &rewriter) const override {
+    normalizeScfParallel(op, rewriter);
     if (op.getNumLoops() == 2) {
       auto loc = op.getLoc();
       auto lb0 = dyn_cast<ConstantIndexOp>(op.lowerBound()[0].getDefiningOp());
@@ -441,15 +586,6 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
     LLVM_DEBUG(llvm::outs() << "input\n");
     LLVM_DEBUG(module.print(llvm::outs()));
 
-    // // check that a function called "graph" exists
-    // auto graph = module.lookupSymbol<mlir::FuncOp>("graph");
-    // if (!graph) {
-    //   emitError(mlir::UnknownLoc::get(context),
-    //             "OpReportPass failed: can't find a graph function\n");
-    //   signalPassFailure();
-    //   return;
-    // }
-
     for (auto f : module.getOps<FuncOp>()) {
       f.walk([&](Operation *op) {
         if (auto co = dyn_cast<CallOp>(op)) {
@@ -464,6 +600,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
     OwningRewritePatternList patterns;
     patterns.insert<AffineParToHerdLaunchConversion,
                     AffineCopyToAIRDMAConversion,
+                    LinalgCopyToAIRDmaConversion,
                     ScfParToHerdLaunchConversion>(context);
 
     populateWithGenerated(context, patterns);
