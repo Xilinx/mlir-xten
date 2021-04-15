@@ -6,6 +6,7 @@
 
 #include "mlir/Dialect/Linalg/EDSC/Intrinsics.h"
 #include "mlir/Dialect/Linalg/IR/LinalgOps.h"
+#include "mlir/Dialect/Linalg/Transforms/Transforms.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
@@ -210,12 +211,17 @@ public:
        return typeConverter.isSignatureLegal(op.getType());
     });
 
-
     if (failed(applyPartialConversion(module, target, std::move(patterns)))) {
       emitError(UnknownLoc::get(context), "error lowering AIR to Linalg\n");
       signalPassFailure();
       //assert(0);
     }
+
+    module.walk([&](linalg::MatmulOp op) {
+      op->setAttr(
+        linalg::LinalgTransforms::kLinalgTransformMarker,
+        StringAttr::get("ACDC_mmult", op->getContext()));
+    });
   }
 
 private:
