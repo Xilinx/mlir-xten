@@ -1148,40 +1148,40 @@ public:
   }
 };
 
-/// Lower transpose
-// class TransposeOpConversion : public ConversionPattern {
-// public:
-//   explicit TransposeOpConversion(MLIRContext *context)
-//       : ConversionPattern(NPCOMP::aten::TransposeOp::getOperationName(), 1, context) {}
+// Lower transpose
+class TransposeOpConversion : public ConversionPattern {
+public:
+  explicit TransposeOpConversion(MLIRContext *context)
+      : ConversionPattern(NPCOMP::aten::TOp::getOperationName(), 1, context) {}
 
-//   LogicalResult
-//   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
-//                   ConversionPatternRewriter &rewriter) const override
-//   {
-//     Type resultTy = op->getResult(0).getType();
-//     TensorType tensorResultTy = resultTy.cast<TensorType>();
-//     Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
-//                                                 tensorResultTy.getElementType(),
-//                                                 {}, 0);
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value > operands,
+                  ConversionPatternRewriter &rewriter) const override
+  {
+    Type resultTy = op->getResult(0).getType();
+    TensorType tensorResultTy = resultTy.cast<TensorType>();
+    Type memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
 
-//     auto loc = op->getLoc();
-//     edsc::ScopedContext scope(rewriter, loc);
+    auto loc = op->getLoc();
+    edsc::ScopedContext scope(rewriter, loc);
 
-//     Value xVal(MemRefTypeCast(rewriter, operands[0]));
+    Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
-//     std::vector<Value> callops{xVal};
+    std::vector<Value> callops{xVal};
 
-//     FuncOp transposeFunc = getATenFn(op->getParentOfType<ModuleOp>(),
-//                                      "t", callops, memRefResultTy);
+    FuncOp transposeFunc = getATenFn(op->getParentOfType<ModuleOp>(),
+                                     "t", callops, memRefResultTy);
 
-//     auto new_call = callOperation(memRefResultTy,
-//                          rewriter.getSymbolRefAttr(transposeFunc),
-//                          callops);
+    auto new_call = callOperation(memRefResultTy,
+                         rewriter.getSymbolRefAttr(transposeFunc),
+                         callops);
 
-//     rewriter.replaceOp(op, (*new_call).getResults());
-//     return success();
-//   }
-// };
+    rewriter.replaceOp(op, (*new_call).getResults());
+    return success();
+  }
+};
 
 /// Lower view
 class ViewOpConversion : public ConversionPattern {
@@ -1382,7 +1382,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
 
     // c++ patterns
     atenPatterns.insert<AddOpConversion, ConvolutionOpConversion,
-                        ReLUOpConversion, /*TransposeOpConversion,*/
+                        ReLUOpConversion, TransposeOpConversion,
                         BatchNormOpConversion, NativeBatchNormOpConversion,
                         MaxPoolOpConversion, MaxPool2dWithIndicesOpConversion,
                         AddmmOpConversion, ViewOpConversion,
