@@ -275,29 +275,10 @@ public:
     Value dVal(MemRefTypeCast(rewriter, operands[3]));
     Value eVal(MemRefTypeCast(rewriter, operands[4]));
 
-    auto co0 = operands[5].getDefiningOp<ConstantOp>();
-    auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
-    APInt iaVal0 = ia0.getValue();
-
-    auto co1 = operands[6].getDefiningOp<ConstantOp>();
-    auto fa0 = co1->getAttrOfType<FloatAttr>("value");
-    APFloat faVal0 = fa0.getValue();
-
-    auto co2 = operands[7].getDefiningOp<ConstantOp>();
-    auto fa1 = co2->getAttrOfType<FloatAttr>("value");
-    APFloat faVal1 = fa1.getValue();
-
-    auto co3 = operands[8].getDefiningOp<ConstantOp>();
-    auto ia1 = co3->getAttrOfType<IntegerAttr>("value");
-    APInt iaVal1 = ia1.getValue();
-
     auto f32Ty = FloatType::getF32(op->getContext());
 
     std::vector<Value> callops{aVal, bVal, cVal, dVal, eVal,
-                             constInt(iaVal0.getZExtValue(), 1),
-                             constFloat(faVal0, f32Ty),
-                             constFloat(faVal1, f32Ty),
-                             constInt(iaVal1.getZExtValue(), 1)};
+                             operands[5], operands[6], operands[7], operands[8]};
 
     auto resultTypes =  {memRefResultTy, meanResultTy, invstdResultTy};
     FuncOp batchnormFunc = getATenFn(op->getParentOfType<ModuleOp>(),

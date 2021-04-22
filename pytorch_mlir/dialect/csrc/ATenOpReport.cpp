@@ -28,6 +28,13 @@ private:
   std::map<Operation *, std::string> opToName;
 
 public:
+  Option<std::string>
+  ATenOpReportFilename{*this, "output-file",
+                        llvm::cl::desc("Output filename for JSON report"),
+                        llvm::cl::init("-")};
+
+  ATenOpReportPass(const ATenOpReportPass &pass) : output(o) {}
+
   ATenOpReportPass()
     : output(o),
       tableFields({
@@ -143,7 +150,14 @@ public:
     });
 
     output = emitJSONReport();
-    llvm::outs() << output;
+    
+    if (ATenOpReportFilename != "-") {
+      std::error_code EC;
+      llvm::raw_fd_ostream aie_ostream(ATenOpReportFilename, EC);
+      aie_ostream << output;
+    } else {
+      llvm::outs() << output;
+    }
   }
 };
 
