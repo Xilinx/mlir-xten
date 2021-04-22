@@ -134,7 +134,7 @@ public:
     unsigned currentLayer = 0;
     opToName.clear();
     graph.walk([&](Operation *op) {
-      auto attr = op->getAttrOfType<StringAttr>("acdc_layer_name");
+      auto attr = op->getAttrOfType<StringAttr>("layer_name");
       if (attr)
         opToName[op] = attr.getValue().str();
       else

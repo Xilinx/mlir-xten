@@ -7,7 +7,7 @@ include "AIR.td"
 def : Pat<(aten_ConvolutionOp $a,$b,$c,$d,$e,$f,$g,$h,$i),
           (air_Conv2dOp  $a,$b,$c,$d,$e,$f,$g,$h,$i)>;
 
-// def : Pat<(aten_TransposeOp (aten_TransposeOp $input)), (air_NoOp $input)>;
+def : Pat<(aten_TOp (aten_TOp $input)), (air_NoOp $input)>;
 
 def : Pat<(aten_ReluOp (air_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i)),
           (air_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i)>;
