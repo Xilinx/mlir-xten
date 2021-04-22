@@ -2,6 +2,7 @@
 
 #include "ATenLoweringPass.h"
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
+#include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
 #include "ATenToStd.h"
 #include "Util.h"
 
@@ -71,6 +72,17 @@ Value MemRefTypeCast(PatternRewriter &builder, Value val) {
   return typeCast(builder, val, memRefType);
 }
 
+void unpack_int_list(const Value &op, std::vector<int64_t> &v) {
+  if (auto co = op.getDefiningOp<NPCOMP::aten::ConstantOp>()) {
+    DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
+    for (auto i : a.getIntValues())
+      v.push_back(i.getSExtValue());
+  }
+  else if (auto co = op.getDefiningOp<NPCOMP::Basicpy::BuildListOp>()) {
+    for (auto o : op.getDefiningOp()->getOperands())
+      v.push_back(o.template getDefiningOp<ConstantIntOp>().getValue());
+  }
+}
 
 /// Lower Add
 class AddOpConversion : public ConversionPattern {
@@ -94,7 +106,7 @@ public:
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
     Value yVal(MemRefTypeCast(rewriter, operands[1]));
 
-    auto co = cast<NPCOMP::aten::ConstantOp>(operands[2].getDefiningOp());
+    auto co = operands[2].getDefiningOp<ConstantOp>();
     auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
@@ -135,11 +147,11 @@ public:
     Value bVal(MemRefTypeCast(rewriter, operands[1]));
     Value cVal(MemRefTypeCast(rewriter, operands[2]));
 
-    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[3].getDefiningOp());
+    auto co0 = operands[3].getDefiningOp<ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
-    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[4].getDefiningOp());
+    auto co1 = operands[4].getDefiningOp<ConstantOp>();
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt iaVal1 = ia1.getValue();
 
@@ -179,11 +191,10 @@ public:
     // construct the shape argument
     std::vector<constInt> shape;
     std::vector<int64_t> result_shape;
-    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[1].getDefiningOp());
-    DenseElementsAttr a0 = co0->getAttrOfType<DenseElementsAttr>("value");
-    for (auto i : a0.getIntValues()) {
-      shape.push_back(constInt(i.getSExtValue(),32));
-      result_shape.push_back(i.getSExtValue());
+    unpack_int_list(operands[1], result_shape);
+
+    for (auto i : result_shape) {
+      shape.push_back(constInt(i,32));
     }
 
     // pad out the shape with -1 to make it 4d
@@ -192,10 +203,10 @@ public:
 
     // construct the stride argument
     std::vector<constInt> stride;
-    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[2].getDefiningOp());
-    DenseElementsAttr a1 = co1->getAttrOfType<DenseElementsAttr>("value");
-    for (auto i : a1.getIntValues())
-      stride.push_back(constInt(i.getSExtValue(),32));
+    std::vector<int64_t> stride_i;
+    unpack_int_list(operands[2], stride_i);
+    for (auto i : stride_i)
+      stride.push_back(constInt(i,32));
 
     // pad out the stride with -1 to make it 4d
     while (stride.size() < 4)
@@ -203,9 +214,7 @@ public:
 
     APInt offset(32,0);
     if (operands.size() > 3) {
-      auto co2 = cast<NPCOMP::aten::ConstantOp>(operands[3].getDefiningOp());
-      auto ia2 = co2->getAttrOfType<IntegerAttr>("value");
-      offset = ia2.getValue();
+      offset = APInt(32,operands[3].getDefiningOp<ConstantIntOp>().getValue());
     }
 
     std::vector<Value> callops{xVal,
@@ -266,19 +275,19 @@ public:
     Value dVal(MemRefTypeCast(rewriter, operands[3]));
     Value eVal(MemRefTypeCast(rewriter, operands[4]));
 
-    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[5].getDefiningOp());
+    auto co0 = operands[5].getDefiningOp<ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
-    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[6].getDefiningOp());
+    auto co1 = operands[6].getDefiningOp<ConstantOp>();
     auto fa0 = co1->getAttrOfType<FloatAttr>("value");
     APFloat faVal0 = fa0.getValue();
 
-    auto co2 = cast<NPCOMP::aten::ConstantOp>(operands[7].getDefiningOp());
+    auto co2 = operands[7].getDefiningOp<ConstantOp>();
     auto fa1 = co2->getAttrOfType<FloatAttr>("value");
     APFloat faVal1 = fa1.getValue();
 
-    auto co3 = cast<NPCOMP::aten::ConstantOp>(operands[8].getDefiningOp());
+    auto co3 = operands[8].getDefiningOp<ConstantOp>();
     auto ia1 = co3->getAttrOfType<IntegerAttr>("value");
     APInt iaVal1 = ia1.getValue();
 
@@ -327,17 +336,10 @@ public:
     Value wVal(MemRefTypeCast(rewriter, operands[1]));
     Value bVal(MemRefTypeCast(rewriter, operands[2]));
 
-    auto unpack = [](auto &op, auto &v) -> void {
-      auto co = cast<NPCOMP::aten::ConstantOp>(op.getDefiningOp());
-      DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
-      for (auto i : a.getIntValues())
-        v.push_back(i.getSExtValue());
-    };
-
-    std::vector<uint64_t> pad, kernel, stride;
-    unpack(operands[3], pad);
-    unpack(operands[4], kernel);
-    unpack(operands[5], stride);
+    std::vector<int64_t> pad, kernel, stride;
+    unpack_int_list(operands[3], pad);
+    unpack_int_list(operands[4], kernel);
+    unpack_int_list(operands[5], stride);
 
     auto padCI = constInt(pad[0],32);
     auto kernelCI = constInt(kernel[0], 32);
@@ -389,17 +391,10 @@ public:
     Value arg1(MemRefTypeCast(rewriter, operands[1])); // input
     Value arg2(MemRefTypeCast(rewriter, operands[2])); // weight
 
-    auto unpack = [](auto &op, auto &v) -> void {
-      auto co = cast<NPCOMP::aten::ConstantOp>(op.getDefiningOp());
-      DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
-      for (auto i : a.getIntValues())
-        v.push_back(i.getSExtValue());
-    };
-
-    std::vector<uint64_t> pad, kernel, stride;
-    unpack(operands[3], pad);
-    unpack(operands[4], kernel);
-    unpack(operands[5], stride);
+    std::vector<int64_t> pad, kernel, stride;
+    unpack_int_list(operands[3], pad);
+    unpack_int_list(operands[4], kernel);
+    unpack_int_list(operands[5], stride);
 
     auto padCI = constInt(pad[0],32);
     auto kernelCI = constInt(kernel[0], 32);
@@ -476,11 +471,11 @@ public:
 
     Value aVal(MemRefTypeCast(rewriter, operands[0]));
 
-    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[1].getDefiningOp());
+    auto co0 = operands[1].getDefiningOp<ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
-    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[2].getDefiningOp());
+    auto co1 = operands[2].getDefiningOp<ConstantOp>();
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt iaVal1 = ia1.getValue();
 
@@ -522,7 +517,7 @@ public:
 //     Value arg1(MemRefTypeCast(rewriter, operands[1]));
 //     Value arg3(MemRefTypeCast(rewriter, operands[3]));
 
-//     auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[2].getDefiningOp());
+//     auto co0 = operands[2].getDefiningOp<ConstantOp>();
 //     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
 //     APInt iaVal0 = ia0.getValue();
 
@@ -563,17 +558,10 @@ public:
 
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
-    auto unpack = [](auto &op, auto &v) -> void {
-      auto co = cast<NPCOMP::aten::ConstantOp>(op.getDefiningOp());
-      DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
-      for (auto i : a.getIntValues())
-        v.push_back(i.getSExtValue());
-    };
-
-    std::vector<uint64_t> pad, kernel, stride;
-    unpack(operands[1], kernel);
-    unpack(operands[2], stride);
-    unpack(operands[3], pad);
+    std::vector<int64_t> pad, kernel, stride;
+    unpack_int_list(operands[1], kernel);
+    unpack_int_list(operands[2], stride);
+    unpack_int_list(operands[3], pad);
 
     std::vector<Value> callops{xVal,
                                 constInt(kernel[0],32),
@@ -619,21 +607,14 @@ public:
 
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
-    auto unpack = [](auto &op, auto &v) -> void {
-      auto co = cast<NPCOMP::aten::ConstantOp>(op.getDefiningOp());
-      DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
-      for (auto i : a.getIntValues())
-        v.push_back(i.getSExtValue());
-    };
-
-    std::vector<uint64_t> pad, kernel, stride, dilation;
-    unpack(operands[1], kernel);
-    unpack(operands[2], stride);
-    unpack(operands[3], pad);
-    unpack(operands[4], dilation);
+    std::vector<int64_t> pad, kernel, stride, dilation;
+    unpack_int_list(operands[1], kernel);
+    unpack_int_list(operands[2], stride);
+    unpack_int_list(operands[3], pad);
+    unpack_int_list(operands[4], dilation);
 
     //ceil_mode
-    auto co = cast<NPCOMP::aten::ConstantOp>(operands[5].getDefiningOp());
+    auto co = operands[5].getDefiningOp<ConstantOp>();
     auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
@@ -676,21 +657,14 @@ public:
     auto loc = op->getLoc();
     edsc::ScopedContext scope(rewriter, loc);
 
-    auto unpack = [](auto &op, auto &v) -> void {
-      auto co = cast<NPCOMP::aten::ConstantOp>(op.getDefiningOp());
-      DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
-      for (auto i : a.getIntValues())
-        v.push_back(i.getSExtValue());
-    };
-
-    std::vector<uint64_t> pad, kernel, stride, dilation;
-    unpack(operands[2], kernel);
-    unpack(operands[3], stride);
-    unpack(operands[4], pad);
-    unpack(operands[5], dilation);
+    std::vector<int64_t> pad, kernel, stride, dilation;
+    unpack_int_list(operands[2], kernel);
+    unpack_int_list(operands[3], stride);
+    unpack_int_list(operands[4], pad);
+    unpack_int_list(operands[5], dilation);
 
     //ceil_mode
-    auto co = cast<NPCOMP::aten::ConstantOp>(operands[6].getDefiningOp());
+    auto co = operands[6].getDefiningOp<ConstantOp>();
     auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
@@ -824,15 +798,15 @@ public:
     Value dVal(MemRefTypeCast(rewriter, operands[3]));
     Value eVal(MemRefTypeCast(rewriter, operands[4]));
 
-    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[5].getDefiningOp());
+    auto co0 = operands[5].getDefiningOp<ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
-    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[6].getDefiningOp());
+    auto co1 = operands[6].getDefiningOp<ConstantOp>();
     auto fa0 = co1->getAttrOfType<FloatAttr>("value");
     APFloat faVal0 = fa0.getValue();
 
-    auto co2 = cast<NPCOMP::aten::ConstantOp>(operands[7].getDefiningOp());
+    auto co2 = operands[7].getDefiningOp<ConstantOp>();
     auto fa1 = co2->getAttrOfType<FloatAttr>("value");
     APFloat faVal1 = fa1.getValue();
 
@@ -881,12 +855,12 @@ public:
     Value arg6(MemRefTypeCast(rewriter, operands[6]));
 
     // reduction
-    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[4].getDefiningOp());
+    auto co0 = operands[4].getDefiningOp<ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia0.getValue();
 
     // ignore_index
-    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[5].getDefiningOp());
+    auto co1 = operands[5].getDefiningOp<ConstantOp>();
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg5 = ia1.getValue();
 
@@ -935,12 +909,12 @@ public:
     Value arg2(MemRefTypeCast(rewriter, operands[2]));
 
     // reduction
-    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[3].getDefiningOp());
+    auto co0 = operands[3].getDefiningOp<ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg3 = ia0.getValue();
 
     // ignore_index
-    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[4].getDefiningOp());
+    auto co1 = operands[4].getDefiningOp<ConstantOp>();
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia1.getValue();
 
@@ -988,12 +962,12 @@ public:
     Value arg6(MemRefTypeCast(rewriter, operands[6]));
 
     // reduction
-    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[4].getDefiningOp());
+    auto co0 = operands[4].getDefiningOp<ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia0.getValue();
 
     // ignore_index
-    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[5].getDefiningOp());
+    auto co1 = operands[5].getDefiningOp<ConstantOp>();
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg5 = ia1.getValue();
 
@@ -1042,12 +1016,12 @@ public:
     Value arg2(MemRefTypeCast(rewriter, operands[2]));
 
     // reduction
-    auto co0 = cast<NPCOMP::aten::ConstantOp>(operands[3].getDefiningOp());
+    auto co0 = operands[3].getDefiningOp<ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg3 = ia0.getValue();
 
     // ignore_index
-    auto co1 = cast<NPCOMP::aten::ConstantOp>(operands[4].getDefiningOp());
+    auto co1 = operands[4].getDefiningOp<ConstantOp>();
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia1.getValue();
 
@@ -1127,7 +1101,7 @@ public:
     Value arg0(MemRefTypeCast(rewriter, operands[0]));
     Value arg1(MemRefTypeCast(rewriter, operands[1]));
 
-    auto co = dyn_cast<NPCOMP::aten::ConstantOp>(operands[2].getDefiningOp());
+    auto co = operands[2].getDefiningOp<ConstantOp>();
     auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt arg2 = ia.getValue();
 
@@ -1206,10 +1180,9 @@ public:
 
     // construct the shape argument
     std::vector<constInt> shape;
-    auto co = cast<NPCOMP::aten::ConstantOp>(operands[1].getDefiningOp());
-    DenseElementsAttr a = co->getAttrOfType<DenseElementsAttr>("value");
-    for (auto i : a.getIntValues())
-      shape.push_back(constInt(i.getSExtValue(),32));
+    auto co = cast<NPCOMP::Basicpy::BuildListOp>(operands[1].getDefiningOp());
+    for (auto o : co.getOperation()->getOperands())
+      shape.push_back(constInt(o.getDefiningOp<ConstantIntOp>().getValue(),32));
 
     // pad out the shape with -1 to make it 4d
     while (shape.size() < 4)
@@ -1438,7 +1411,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
     // remove dead constant ops
     for (auto function : getOperation().getOps<FuncOp>()) {
       function.walk([&](Operation *op) {
-        auto constOp = dyn_cast<NPCOMP::aten::ConstantOp>(op);
+        auto constOp = dyn_cast<ConstantOp>(op);
         if (!constOp)
           return;
         if (op->use_empty())
