@@ -50,6 +50,7 @@ add_mlir_library(ATen
   AIRLinalgCodegen.cpp
   AIRToAIEPass.cpp
   Util.cpp
+  AirDataflowUtils.cpp
 
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/dialect/include
