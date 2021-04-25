@@ -9,8 +9,11 @@ using namespace mlir;
 
 namespace xilinx {
     namespace air {
+        enum Split {PSplit, CaSplit};
+        enum SplitType {wSplitType, aSplitType, bSplitType};
+
         ShapedType halveShapeAt(ShapedType initShape, unsigned int at);
-        void splitConstant(ConstantOp op, std::vector<Operation*> &ops, OpBuilder &builder);
+        void splitConstant(ConstantOp op, std::vector<Operation*> &ops, OpBuilder &builder, Split split, SplitType t);
     }
 }
 
