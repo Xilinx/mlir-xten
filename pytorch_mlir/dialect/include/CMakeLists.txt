@@ -17,6 +17,10 @@ set(LLVM_TARGET_DEFINITIONS ATenToAIR.td)
 mlir_tablegen(ATenToAIR.cpp.inc -gen-rewriters)
 add_public_tablegen_target(MLIRATenToAIRIncGen)
 
+#set(LLVM_TARGET_DEFINITIONS ONNXToAIR.td)
+#mlir_tablegen(ONNXToAIR.cpp.inc -gen-rewriters)
+#add_public_tablegen_target(MLIRONNXToAIRIncGen)
+
 set(LLVM_TARGET_DEFINITIONS AffineToAIR.td)
 mlir_tablegen(AffineToAIR.cpp.inc -gen-rewriters)
 add_public_tablegen_target(MLIRAffineToAIRIncGen)

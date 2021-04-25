@@ -20,7 +20,7 @@ namespace {
 template<class T>
 std::map<std::string, uint64_t> getConv2dStatistics(T o) {
 
-  std::map<std::string, uint64_t> toReturn;
+    std::map<std::string, uint64_t> toReturn;
 
   TensorType resultTy = o.getResult().getType().template cast<TensorType>();
   TensorType inputTy = o.input().getType().template cast<TensorType>();
@@ -37,7 +37,6 @@ std::map<std::string, uint64_t> getConv2dStatistics(T o) {
   auto co = cast<ConstantOp>(o.groups().getDefiningOp());
   auto ia = co->template getAttrOfType<IntegerAttr>("value");
   uint64_t groups = ia.getValue().getZExtValue();
-
   // Number of forward MACs per pixel =
   //  kernel_width * kernel_height * ifm_depth / groups
   uint64_t MACs_per_OFM = (ifm_depth/groups) * kernel_height * kernel_width;
@@ -212,6 +211,66 @@ uint64_t Conv2dOp::getResultTransferVolume(unsigned int idx, bool write) {
   return getConv2dResultTransferVolume<Conv2dOp>(*this, idx, write);
 }
 
+    // TODO verify correctness of this
+    std::map<std::string, uint64_t> PartialConv2dOp::getStatistics() {
+        return getConv2dStatistics<PartialConv2dOp>(*this);
+    }
+
+    uint64_t PartialConv2dOp::getOperandTransferVolume(unsigned int idx, bool read) {
+        return getConv2dOperandTransferVolume<PartialConv2dOp>(*this, idx, read);
+    }
+
+    uint64_t PartialConv2dOp::getResultTransferVolume(unsigned int idx, bool write) {
+        return getConv2dResultTransferVolume<PartialConv2dOp>(*this, idx, write);
+    }
+
+    std::map<std::string, uint64_t> PartialConv2dReLUOp::getStatistics() {
+        return getConv2dStatistics<PartialConv2dReLUOp>(*this);
+    }
+
+    uint64_t PartialConv2dReLUOp::getOperandTransferVolume(unsigned int idx, bool read) {
+        return getConv2dOperandTransferVolume<PartialConv2dReLUOp>(*this, idx, read);
+    }
+
+    uint64_t PartialConv2dReLUOp::getResultTransferVolume(unsigned int idx, bool write) {
+        return getConv2dResultTransferVolume<PartialConv2dReLUOp>(*this, idx, write);
+    }
+
+    std::map<std::string, uint64_t> PartialConv2dBatchNormReLUOp::getStatistics() {
+        return getConv2dStatistics<PartialConv2dBatchNormReLUOp>(*this);
+    }
+
+    uint64_t PartialConv2dBatchNormReLUOp::getOperandTransferVolume(unsigned int idx, bool read) {
+        return getConv2dOperandTransferVolume<PartialConv2dBatchNormReLUOp>(*this, idx, read);
+    }
+
+    uint64_t PartialConv2dBatchNormReLUOp::getResultTransferVolume(unsigned int idx, bool write) {
+        return getConv2dResultTransferVolume<PartialConv2dBatchNormReLUOp>(*this, idx, write);
+    }
+
+    std::map<std::string, uint64_t> ConcatOp::getStatistics() {
+        std::map<std::string, uint64_t> toReturn;
+
+        toReturn["ops:+"] = 0;
+        toReturn["ops:MAC"] = 0;
+
+        // NOTE assumes concat is a network communication step
+        toReturn["reads"] = 0;
+        toReturn["writes"] = 0;
+
+        return toReturn;
+    }
+
+    uint64_t ConcatOp::getOperandTransferVolume(unsigned int idx, bool read) {
+        // TODO
+        return 0;
+    }
+
+    uint64_t ConcatOp::getResultTransferVolume(unsigned int idx, bool write) {
+        // TODO
+        return 0;
+    }
+
 }
 }
 
@@ -322,16 +381,16 @@ std::map<std::string, uint64_t> getStatistics(AddmmOp op) {
   return toReturn;
 }
 
-// as_strided can be zero overhead
-template<>
-std::map<std::string, uint64_t> getStatistics(AsStridedOp op) {
-  std::map<std::string, uint64_t> toReturn;
-  toReturn["reads"] = 0;
-  toReturn["writes"] = 0;
-  toReturn["operand:0:activation_in"] = 0;
-  toReturn["result:0:activation_out"] = 0;
-  return toReturn;
-}
+    // as_strided can be zero overhead
+    template<>
+    std::map<std::string, uint64_t> getStatistics(AsStridedOp op) {
+        std::map<std::string, uint64_t> toReturn;
+        toReturn["reads"] = 0;
+        toReturn["writes"] = 0;
+        toReturn["operand:0:activation_in"] = 0;
+        toReturn["result:0:activation_out"] = 0;
+        return toReturn;
+    }
 
 // batch_norm
 template<>
