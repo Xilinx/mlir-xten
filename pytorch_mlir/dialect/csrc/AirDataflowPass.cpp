@@ -1,4 +1,4 @@
-// (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
+// (c) Copyright 2021 Xilinx Inc. All Rights Reserved.
 
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -200,11 +200,13 @@ namespace xilinx {
 
         };
 
-        struct ATenTestRewritePass : public PassWrapper<ATenTestRewritePass, OperationPass<ModuleOp>> {
+        struct AirDataflowPass : public PassWrapper<AirDataflowPass, OperationPass<ModuleOp>> {
         private:
-            // TODO add structure map + analysis vars
+            // TODO map layerName -> operations
 
         public:
+            AirDataflowPass() {}
+
             void runOnOperation() override {
                 ModuleOp module = getOperation();
 
@@ -230,18 +232,17 @@ namespace xilinx {
     }
 }
 
-// TODO rename to AIR based pass
 namespace xilinx {
     namespace air {
-        std::unique_ptr<mlir::Pass> createATenTestRewritePass() {
-            return std::make_unique<ATenTestRewritePass>();
+        std::unique_ptr<mlir::Pass> createAirDataflowPass() {
+            return std::make_unique<AirDataflowPass>();
         }
 
     } // namespace aten
 } // namespace xilinx
 
-void xilinx::air::registerATenTestRewritePass() {
-    PassRegistration<ATenTestRewritePass>("air-expand-graph",
-                                          "Dataflow expansion of ATen NN graph towards AIE implementation");
+void xilinx::air::registerAirDataflowPass() {
+    PassRegistration<AirDataflowPass>("air-expand-graph",
+                                      "Dataflow expansion of ATen NN graph towards AIE implementation");
 }
 

@@ -29,6 +29,7 @@ add_mlir_library(ATen
   ATenToAIRPass.cpp
   AffineToAIRPass.cpp
   AirDataflowPass.cpp
+  AirNamePass.cpp
   AcapLoopLoweringPass.cpp
   AcapHerdAssignPass.cpp
   AcapHerdLoweringPass.cpp
