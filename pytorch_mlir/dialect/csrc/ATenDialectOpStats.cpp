@@ -271,6 +271,30 @@ uint64_t Conv2dOp::getResultTransferVolume(unsigned int idx, bool write) {
         return 0;
     }
 
+    std::map<std::string, uint64_t> SplitOp::getStatistics() {
+        std::map<std::string, uint64_t> toReturn;
+
+        toReturn["ops:+"] = 0;
+        toReturn["ops:MAC"] = 0;
+
+        // NOTE assumes concat is a network communication step
+        toReturn["reads"] = 0;
+        toReturn["writes"] = 0;
+
+        return toReturn;
+    }
+
+    uint64_t SplitOp::getOperandTransferVolume(unsigned int idx, bool read) {
+        // TODO
+        return 0;
+    }
+
+    uint64_t SplitOp::getResultTransferVolume(unsigned int idx, bool write) {
+        // TODO
+        return 0;
+    }
+
+
 }
 }
 

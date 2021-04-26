@@ -34,7 +34,7 @@ namespace xilinx {
         }
 
         // TODO make following 3 functions code look better
-        void splitConstantActivations(ConstantOp op, std::vector<Operation*> &ops, OpBuilder &builder, Split split, DenseElementsAttr at) {
+        void splitConstantActivations(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, DenseElementsAttr at) {
             ShapedType initialShape = at.getType();
             ArrayRef<int64_t> s = initialShape.getShape();
 
@@ -92,12 +92,12 @@ namespace xilinx {
                 Operation* cstl = builder.create<ConstantOp>(builder.getUnknownLoc(), ttype, attrLeft);
                 Operation* cstr = builder.create<ConstantOp>(builder.getUnknownLoc(), ttype, attrRight);
 
-                ops.push_back(cstl);
-                ops.push_back(cstr);
+                ops.push_back(cstl->getResult(0));
+                ops.push_back(cstr->getResult(0));
             }
         }
 
-        void splitConstantWeights(ConstantOp op, std::vector<Operation*> &ops, OpBuilder &builder, Split split, DenseElementsAttr at) {
+        void splitConstantWeights(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, DenseElementsAttr at) {
             ShapedType initialShape = at.getType();
             ArrayRef<int64_t> s = initialShape.getShape();
 
@@ -155,13 +155,13 @@ namespace xilinx {
                 Operation* cstl = builder.create<ConstantOp>(builder.getUnknownLoc(), ttype, attrLeft);
                 Operation* cstr = builder.create<ConstantOp>(builder.getUnknownLoc(), ttype, attrRight);
 
-                ops.push_back(cstl);
-                ops.push_back(cstr);
+                ops.push_back(cstl->getResult(0));
+                ops.push_back(cstr->getResult(0));
             }
 
         }
 
-        void splitConstantBias(ConstantOp op, std::vector<Operation*> &ops, OpBuilder &builder, Split split, DenseElementsAttr at) {
+        void splitConstantBias(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, DenseElementsAttr at) {
             ShapedType initialShape = at.getType();
             if(initialShape.getElementType().isF32()) { // TODO is this the only choice?
                 std::vector<APFloat> left;
@@ -200,13 +200,13 @@ namespace xilinx {
                 Operation* cstl = builder.create<ConstantOp>(builder.getUnknownLoc(), ttype, attrLeft);
                 Operation* cstr = builder.create<ConstantOp>(builder.getUnknownLoc(), ttype, attrRight);
 
-                ops.push_back(cstl);
-                ops.push_back(cstr);
+                ops.push_back(cstl->getResult(0));
+                ops.push_back(cstr->getResult(0));
             }
 
         }
 
-        void splitConstant(ConstantOp op, std::vector<Operation*> &ops, OpBuilder &builder, Split split, SplitType t) {
+        void splitConstant(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t) {
             for(NamedAttribute attr: op->getAttrs()) {
                 // We Look for the Dense Attribute
                 auto at = attr.second.dyn_cast<DenseElementsAttr>();

@@ -19,19 +19,21 @@
 
 using namespace mlir;
 
+// TODO make the patterns generic
+//   - Check with concat etc..
+//   - Insert concat / split whenever needed
+
 namespace xilinx {
     namespace air {
 
-        // TODO make the patterns generic and tests
         struct PPattern : public OpRewritePattern<Conv2dReLUOp> {
         public:
             PPattern(MLIRContext *context) : OpRewritePattern<Conv2dReLUOp>(context, 1) {}
 
             LogicalResult matchAndRewrite(Conv2dReLUOp op, PatternRewriter &rewriter) const override {
                 OpBuilder builder(op.getOperation());
-                std::vector<Operation*> nConsts;
-                std::vector<Operation*> nConvs;
-                std::vector<Operation*> nBiases;
+                std::vector<Value> nConsts;
+                std::vector<Value> nBiases;
 
                 // Split weights
                 Operation* weights = op.weight().getDefiningOp();//->getName();
@@ -57,8 +59,8 @@ namespace xilinx {
                 Operation* lconv = builder.create<Conv2dReLUOp>(builder.getUnknownLoc(),
                                                                 nReturnType,
                                                                 op.input(),
-                                                                nConsts.at(0)->getResult(0),
-                                                                nBiases.at(0)->getResult(0),
+                                                                nConsts.at(0),
+                                                                nBiases.at(0),
                                                                 op.stride(),
                                                                 op.padding(),
                                                                 op.dilation(),
@@ -69,8 +71,8 @@ namespace xilinx {
                 Operation* rconv = builder.create<Conv2dReLUOp>(builder.getUnknownLoc(),
                                                                 nReturnType,
                                                                 op.input(),
-                                                                nConsts.at(1)->getResult(0),
-                                                                nBiases.at(1)->getResult(0),
+                                                                nConsts.at(1),
+                                                                nBiases.at(1),
                                                                 op.stride(),
                                                                 op.padding(),
                                                                 op.dilation(),
@@ -90,7 +92,7 @@ namespace xilinx {
                 // TODO check the width here
                 Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), 0, 32);
 
-                Operation* res = builder.create<ConcatOp>(builder.getUnknownLoc(), concatResType, convs, cstDim->getResult(0));  
+                Operation* res = builder.create<ConcatOp>(builder.getUnknownLoc(), concatResType, convs, cstDim->getResult(0));
 
                 // Replace output of old convolution usage by concat value
                 op.getResult().replaceAllUsesWith(res->getResult(0));
@@ -110,9 +112,9 @@ namespace xilinx {
 
             LogicalResult matchAndRewrite(Conv2dReLUOp op, PatternRewriter &rewriter) const override {
                 OpBuilder builder(op.getOperation());
-                std::vector<Operation*> nConsts;
-                std::vector<Operation*> nConvs;
-                std::vector<Operation*> nBiases;
+                std::vector<Value> nConsts;
+                std::vector<Value> nBiases;
+                std::vector<Value> nActivations;
 
                 // Split weights
                 Operation* weights = op.weight().getDefiningOp();//->getName();
@@ -130,21 +132,33 @@ namespace xilinx {
                     llvm::outs() << "Cannot convert to ConstOp!\n";
                 }
 
+                // split activations
+                if(auto constOp = op.input().getDefiningOp<ConstantOp>()) {
+                    splitConstant(constOp, nActivations, builder, CaSplit, aSplitType);
+                } else {
+                    llvm::outs() << "Inserting a split operation!\n";
+                    // This is then a normal value, break it down
+                    ShapedType shape = halveShapeAt(op.input().getType().dyn_cast<ShapedType>(), 1);
+                    //std::vector<ShapedType> shapes = ArrayRef<ShapedType>(std::vector<ShapedType>{shape, shape});
+
+                    Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), 1, 32);
+                    Operation* splitOp = builder.create<SplitOp>(builder.getUnknownLoc(), TypeRange({shape, shape}), op.input(), cstDim->getResult(0));
+
+                    nActivations.push_back(splitOp->getResult(0));
+                    nActivations.push_back(splitOp->getResult(1));
+                }
+
                 // Split Return Type shape
                 ShapedType nReturnType = halveShapeAt(op.getResult().getType().dyn_cast<ShapedType>(), 1);
                 llvm::outs() << "Return Type: " << op.getResult().getType() << " and new is " << nReturnType << "\n";
 
-                // Start from Conv so no partialIn for first; and no partial out for second
-                auto optAttrIn = builder.getI64ArrayAttr(ArrayRef<int64_t>(std::vector<int64_t>(0, 1)));
-                auto optAttrOut = builder.getI64ArrayAttr(ArrayRef<int64_t>(std::vector<int64_t>(1, 0)));
-
                 // Generate new convs
                 Operation* lconv = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
                                                                        nReturnType,
-                                                                       op.input(),
+                                                                       nActivations.at(0),
                                                                        nullptr,
-                                                                       nConsts.at(0)->getResult(0),
-                                                                       nBiases.at(0)->getResult(0),
+                                                                       nConsts.at(0),
+                                                                       nBiases.at(0),
                                                                        op.stride(),
                                                                        op.padding(),
                                                                        op.dilation(),
@@ -154,10 +168,10 @@ namespace xilinx {
 
                 Operation* rconv = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
                                                                        nReturnType,
-                                                                       op.input(),
+                                                                       nActivations.at(1),
                                                                        lconv->getResult(0),
-                                                                       nConsts.at(1)->getResult(0),
-                                                                       nBiases.at(1)->getResult(0),
+                                                                       nConsts.at(1),
+                                                                       nBiases.at(1),
                                                                        op.stride(),
                                                                        op.padding(),
                                                                        op.dilation(),
@@ -165,22 +179,8 @@ namespace xilinx {
                                                                        op.output_padding(),
                                                                        op.groups());
 
-                // Concat
-                ShapedType concatResType = op.getResult().getType().dyn_cast<ShapedType>();
-
-                std::vector<Value> vec;
-                vec.push_back(lconv->getResult(0));
-                vec.push_back(rconv->getResult(0));
-                ArrayRef<Value> convsRef = ArrayRef<Value>(vec);
-                ValueRange convs(convsRef);
-
-                // TODO check the width here
-                Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), 0, 32);
-
-                Operation* res = builder.create<ConcatOp>(builder.getUnknownLoc(), concatResType, convs, cstDim->getResult(0));  
-
                 // Replace output of old convolution usage by concat value
-                op.getResult().replaceAllUsesWith(res->getResult(0));
+                op.getResult().replaceAllUsesWith(rconv->getResult(0));
 
                 // Delete previous Csts and ConvolutionOp
                 weights->erase();

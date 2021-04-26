@@ -13,7 +13,7 @@ namespace xilinx {
         enum SplitType {wSplitType, aSplitType, bSplitType};
 
         ShapedType halveShapeAt(ShapedType initShape, unsigned int at);
-        void splitConstant(ConstantOp op, std::vector<Operation*> &ops, OpBuilder &builder, Split split, SplitType t);
+        void splitConstant(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t);
     }
 }
 
