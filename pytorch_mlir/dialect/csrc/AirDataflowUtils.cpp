@@ -195,8 +195,8 @@ namespace xilinx {
                     i++;
                 }
 
-                assert((split == PSplit) && (left.size() == right.size() == (at.getType().getNumElements() / 2)) ||
-                       (split == CaSplit) && (left.size() == right.size() == at.getType().getNumElements()));
+                // assert((split == PSplit) && (left.size() == right.size() == (at.getType().getNumElements() / 2)) ||
+                //        (split == CaSplit) && (left.size() == right.size() == at.getType().getNumElements()));
 
                 // now splitted the dense in two part, need to regenerate it
                 ShapedType ttype;
