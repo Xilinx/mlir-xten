@@ -6,6 +6,7 @@
 #include "mlir/IR/BuiltinOps.h"
 
 #include <iostream>
+#include <type_traits>
 
 #define DEBUG_TYPE "aten-op-stats"
 
@@ -18,53 +19,51 @@ using namespace xilinx;
 namespace {
 
 template<class T>
-std::map<std::string, uint64_t> getConv2dStatistics(T o) {
-
+std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, TensorType resultTy) {
     std::map<std::string, uint64_t> toReturn;
 
-  TensorType resultTy = o.getResult().getType().template cast<TensorType>();
-  TensorType inputTy = o.input().getType().template cast<TensorType>();
-  TensorType weightTy = o.weight().getType().template cast<TensorType>();
-  TensorType biasTy = o.bias().getType().template cast<TensorType>();
+    TensorType inputTy = o.input().getType().template cast<TensorType>();
+    TensorType weightTy = o.weight().getType().template cast<TensorType>();
+    TensorType biasTy = o.bias().getType().template cast<TensorType>();
 
-  uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
-  //uint64_t ofm_depth = resultTy.getShape()[1];
+    uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+    //uint64_t ofm_depth = resultTy.getShape()[1];
 
-  uint64_t ifm_depth = inputTy.getShape()[1];
-  uint64_t kernel_height = weightTy.getShape()[2];
-  uint64_t kernel_width = weightTy.getShape()[3];
+    uint64_t ifm_depth = inputTy.getShape()[1];
+    uint64_t kernel_height = weightTy.getShape()[2];
+    uint64_t kernel_width = weightTy.getShape()[3];
 
-  auto co = cast<ConstantOp>(o.groups().getDefiningOp());
-  auto ia = co->template getAttrOfType<IntegerAttr>("value");
-  uint64_t groups = ia.getValue().getZExtValue();
-  // Number of forward MACs per pixel =
-  //  kernel_width * kernel_height * ifm_depth / groups
-  uint64_t MACs_per_OFM = (ifm_depth/groups) * kernel_height * kernel_width;
-  uint64_t total_MACs = ofm_volume * MACs_per_OFM;
+    auto co = cast<ConstantOp>(o.groups().getDefiningOp());
+    auto ia = co->template getAttrOfType<IntegerAttr>("value");
+    uint64_t groups = ia.getValue().getZExtValue();
+    // Number of forward MACs per pixel =
+    //  kernel_width * kernel_height * ifm_depth / groups
+    uint64_t MACs_per_OFM = (ifm_depth/groups) * kernel_height * kernel_width;
+    uint64_t total_MACs = ofm_volume * MACs_per_OFM;
 
-  uint64_t ifm_volume = xilinx::air::getTensorVolume(inputTy);
-  uint64_t weight_volume = xilinx::air::getTensorVolume(weightTy);
-  uint64_t bias_volume = xilinx::air::getTensorVolume(biasTy);
+    uint64_t ifm_volume = xilinx::air::getTensorVolume(inputTy);
+    uint64_t weight_volume = xilinx::air::getTensorVolume(weightTy);
+    uint64_t bias_volume = xilinx::air::getTensorVolume(biasTy);
 
-  // Should be gated on whether there is bias at all
-  toReturn["ops:+"] = ofm_volume;
+    // Should be gated on whether there is bias at all
+    toReturn["ops:+"] = ofm_volume;
 
-  toReturn["ops:MAC"] = total_MACs;
-  toReturn["operand:0:activation_in"] = ifm_volume;
-  toReturn["result:0:activation_out"] = ofm_volume;
-  toReturn["operand:1:parameters_in:weight"] = weight_volume;
-  toReturn["operand:2:parameters_in:bias"] = bias_volume;
+    toReturn["ops:MAC"] = total_MACs;
+    toReturn["operand:0:activation_in"] = ifm_volume;
+    toReturn["result:0:activation_out"] = ofm_volume;
+    toReturn["operand:1:parameters_in:weight"] = weight_volume;
+    toReturn["operand:2:parameters_in:bias"] = bias_volume;
 
-  toReturn["reads"] = weight_volume + bias_volume + ifm_volume;
-  toReturn["writes"] = ofm_volume;
+    toReturn["reads"] = weight_volume + bias_volume + ifm_volume;
+    toReturn["writes"] = ofm_volume;
 
-  return toReturn;
+    return toReturn;
 }
 
 static bool simple_conv2d_model = false;
 
 template<class T>
-uint64_t getConv2dOperandTransferVolume(T o, unsigned int idx, bool read) {
+uint64_t getConv2dOperandTransferVolumeWithType(T o, unsigned int idx, bool read, TensorType resultTy) {
 
   if (!read) return 0;
 
@@ -74,7 +73,6 @@ uint64_t getConv2dOperandTransferVolume(T o, unsigned int idx, bool read) {
 
   TensorType inputTy = o.input().getType().template cast<TensorType>();
   TensorType weightTy = o.weight().getType().template cast<TensorType>();
-  TensorType resultTy = o.getResult().getType().template cast<TensorType>();
 
   float filter_width = weightTy.getShape()[2];
   float filter_height = weightTy.getShape()[3];
@@ -124,10 +122,9 @@ uint64_t getConv2dOperandTransferVolume(T o, unsigned int idx, bool read) {
 }
 
 template<class T>
-uint64_t getConv2dResultTransferVolume(T o, unsigned int idx, bool write) {
+uint64_t getConv2dResultTransferVolumeWithType(T o, unsigned int idx, bool write, TensorType resultTy) {
 
   TensorType inputTy = o.input().getType().template cast<TensorType>();
-  TensorType resultTy = o.getResult().getType().template cast<TensorType>();
 
   if (simple_conv2d_model) {
     if (write)
@@ -147,7 +144,7 @@ uint64_t getConv2dResultTransferVolume(T o, unsigned int idx, bool write) {
 
   float write_output_overhead = 1.0f;
   float read_output_cost = 1.0f;
-  
+
   if (filter_width > 1) {
     write_output_overhead = il;
     read_output_cost = il;
@@ -163,6 +160,86 @@ uint64_t getConv2dResultTransferVolume(T o, unsigned int idx, bool write) {
     return vol * read_output_cost;
   }
 }
+
+// TODO can this indirection be cleaned?
+
+
+// Conv2dStatistics
+template<class T>
+std::map<std::string, uint64_t> getConv2dStatistics(T o) {
+    TensorType resultType = o.getResult().getType().template cast<TensorType>();
+    return getConv2dStatisticsWithType(o, resultType);
+}
+
+template<>
+std::map<std::string, uint64_t> getConv2dStatistics<xilinx::air::PartialConv2dOp>(xilinx::air::PartialConv2dOp o) {
+    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
+    return getConv2dStatisticsWithType(o, resultType);
+}
+
+template<>
+std::map<std::string, uint64_t> getConv2dStatistics<xilinx::air::PartialConv2dReLUOp>(xilinx::air::PartialConv2dReLUOp o) {
+    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
+    return getConv2dStatisticsWithType(o, resultType);
+}
+
+template<>
+std::map<std::string, uint64_t> getConv2dStatistics<xilinx::air::PartialConv2dBatchNormReLUOp>(xilinx::air::PartialConv2dBatchNormReLUOp o) {
+    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
+    return getConv2dStatisticsWithType(o, resultType);
+}
+
+
+// OperandTransferVolume
+template<class T>
+uint64_t getConv2dOperandTransferVolume(T o, unsigned int idx, bool read) {
+    TensorType resultType = o.getResult().getType().template cast<TensorType>();
+    return getConv2dOperandTransferVolumeWithType(o, idx, read, resultType);
+}
+
+template<>
+uint64_t getConv2dOperandTransferVolume<xilinx::air::PartialConv2dOp>(xilinx::air::PartialConv2dOp o, unsigned int idx, bool read) {
+    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
+    return getConv2dOperandTransferVolumeWithType(o, idx, read, resultType);
+}
+
+template<>
+uint64_t getConv2dOperandTransferVolume<xilinx::air::PartialConv2dReLUOp>(xilinx::air::PartialConv2dReLUOp o, unsigned int idx, bool read) {
+    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
+    return getConv2dOperandTransferVolumeWithType(o, idx, read, resultType);
+}
+
+template<>
+uint64_t getConv2dOperandTransferVolume<xilinx::air::PartialConv2dBatchNormReLUOp>(xilinx::air::PartialConv2dBatchNormReLUOp o, unsigned int idx, bool read) {
+    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
+    return getConv2dOperandTransferVolumeWithType(o, idx, read, resultType);
+}
+
+// ResultTransferVolume
+template<class T>
+uint64_t  getConv2dResultTransferVolume(T o, unsigned int idx, bool write) {
+    TensorType resultType = o.getResult().getType().template cast<TensorType>();
+    return getConv2dResultTransferVolumeWithType(o, idx, write, resultType);
+}
+
+template<>
+uint64_t getConv2dResultTransferVolume<xilinx::air::PartialConv2dOp>(xilinx::air::PartialConv2dOp o, unsigned int idx, bool write) {
+    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
+    return getConv2dResultTransferVolumeWithType(o, idx, write, resultType);
+}
+
+template<>
+uint64_t getConv2dResultTransferVolume<xilinx::air::PartialConv2dReLUOp>(xilinx::air::PartialConv2dReLUOp o, unsigned int idx, bool write) {
+    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
+    return getConv2dResultTransferVolumeWithType(o, idx, write, resultType);
+}
+
+template<>
+uint64_t getConv2dResultTransferVolume<xilinx::air::PartialConv2dBatchNormReLUOp>(xilinx::air::PartialConv2dBatchNormReLUOp o, unsigned int idx, bool write) {
+    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
+    return getConv2dResultTransferVolumeWithType(o, idx, write, resultType);
+}
+
 
 } // namespace
 

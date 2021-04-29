@@ -5,7 +5,7 @@
 
 namespace mlir {
     class Pass;
-} // namespace mlir
+}
 
 namespace xilinx {
     namespace air {
@@ -13,5 +13,6 @@ namespace xilinx {
         std::unique_ptr<mlir::Pass> createAirDataflowPass();
         void registerAirDataflowPass();
 
-    } // namespace aten
-} // namespace xilinx
+    }
+}
+

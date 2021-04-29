@@ -9,7 +9,7 @@ using namespace mlir;
 
 namespace xilinx {
     namespace air {
-        enum Split {PSplit, CaSplit};
+        enum Split {PSplit, CaSplit, LSplit, WSplit};
         enum SplitType {wSplitType, aSplitType, bSplitType};
 
         ShapedType halveShapeAt(ShapedType initShape, unsigned int at);
