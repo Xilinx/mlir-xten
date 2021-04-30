@@ -305,6 +305,10 @@ public:
       air::HerdDim2 dims{rewriter.create<ConstantIndexOp>(loc,ub0.getValue()),
                          rewriter.create<ConstantIndexOp>(loc,ub1.getValue())};
       auto launch = rewriter.create<air::HerdLaunchOp>(op.getLoc(), dims, args);
+
+      if (auto attr = op->getAttrOfType<StringAttr>(SymbolTable::getSymbolAttrName()))
+        launch->setAttr(SymbolTable::getSymbolAttrName(), attr);
+
       auto &bb = launch.body().front();
       auto ivs = op.getIVs();
       ivs[0].replaceAllUsesWith(launch.getTileIds().x);
@@ -642,6 +646,32 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
     }
     for (auto o : waits) o->erase();
 
+    std::vector<std::string> herd_syms;
+    for (auto f : module.getOps<FuncOp>()) {
+      // record existing symbol names
+      f.walk([&](xilinx::air::HerdLaunchOp op) {
+        if (auto attr = op->getAttrOfType<StringAttr>(SymbolTable::getSymbolAttrName())) {
+          std::string name = attr.getValue().str();
+          assert( (std::find(herd_syms.begin(), herd_syms.end(), name) == herd_syms.end())
+            && "unexpected duplicate symbol");
+          herd_syms.push_back(name);
+        }
+      });
+      // generate missing symbol names
+      f.walk([&](xilinx::air::HerdLaunchOp op) {
+        if (!op->getAttrOfType<StringAttr>(SymbolTable::getSymbolAttrName())) {
+          unsigned id = 0;
+          std::string name;
+          do {
+            std::stringstream ss;
+            ss << "herd_" << id++;
+            name = ss.str();
+          } while ( std::find(herd_syms.begin(), herd_syms.end(), name) != herd_syms.end() );
+          herd_syms.push_back(name);
+          op->setAttr(SymbolTable::getSymbolAttrName(), StringAttr::get(name, op.getContext()));
+        }
+      });
+    }
     LLVM_DEBUG(llvm::outs() << "output\n");
     LLVM_DEBUG(module.print(llvm::outs()));
 
