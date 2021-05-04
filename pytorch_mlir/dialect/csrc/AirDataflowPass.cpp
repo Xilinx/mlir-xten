@@ -356,7 +356,7 @@ namespace xilinx {
 
                 // Take context from the top level Module?
                 //PPattern p(module->getContext());
-                CaPattern ca(module->getContext());
+                //CaPattern ca(module->getContext());
                 LPattern l(module->getContext());
                 MyPatternRewriter rewriter(module->getContext());
 
