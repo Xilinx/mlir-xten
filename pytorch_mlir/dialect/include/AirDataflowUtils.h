@@ -7,6 +7,18 @@
 
 #include "AIRDialect.h"
 
+// Weight locations
+#define COUT_LOC 0
+#define CIN_LOC 1
+#define F0_LOC 2
+#define F1_LOC 3
+
+// Acts locs
+#define BATCH_LOC 0
+#define C_LOC 1
+#define N_LOC 2
+#define M_LOC 3
+
 using namespace mlir;
 
 namespace xilinx {
@@ -32,10 +44,19 @@ namespace xilinx {
         };
 
         ShapedType breakShapeInto(ShapedType initShape, unsigned int at, unsigned int into);
+        ShapedType mergeShapeInto(ShapedType initShape, unsigned int at, unsigned int into);
+
         void splitConstantInto(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into);
+
         void deleteOpsFrom(std::vector<Operation*> &ops);
+
         void insertConcat(OpBuilder &builder, Value prevRes, std::vector<Value> &values, unsigned int dim);
-        void replaceSplit(OpBuilder &builder, xilinx::air::SplitOp split, std::vector<Value> &values, std::vector<Operation*> &toDelete, unsigned int dim);
+        void replaceConcat(OpBuilder &builder, xilinx::air::ConcatOp concat, std::vector<Value> nInputs,
+                           std::vector<Operation*> toDelete, unsigned int dim, unsigned int into);
+
+        void insertSplit(OpBuilder &builder, Value prevInput, std::vector<Value> &nInputs, unsigned int dim, unsigned int into);
+        void replaceSplit(OpBuilder &builder, xilinx::air::SplitOp split, std::vector<Value> &values,
+                          std::vector<Operation*> &toDelete, unsigned int dim);
     }
 }
 

@@ -37,91 +37,6 @@ using namespace mlir;
 namespace xilinx {
     namespace air {
 
-        struct CaPattern : public OpRewritePattern<Conv2dReLUOp> {
-        public:
-            CaPattern(MLIRContext *context) : OpRewritePattern<Conv2dReLUOp>(context, 1) {}
-
-            LogicalResult matchAndRewrite(Conv2dReLUOp op, PatternRewriter &rewriter) const override {
-                OpBuilder builder(op.getOperation());
-                std::vector<Value> nConsts;
-                std::vector<Value> nBiases;
-                std::vector<Value> nActivations;
-
-                // Split weights
-                Operation* weights = op.weight().getDefiningOp();//->getName();
-                if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
-                    splitConstantInto(constOp, nConsts, builder, CaSplit, wSplitType, 2);
-                } else {
-                    llvm::outs() << "Cannot convert to ConstOp!\n";
-                }
-
-                // Split biases
-                Operation* biases = op.bias().getDefiningOp();
-                if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
-                    splitConstantInto(constOp, nBiases, builder, CaSplit, bSplitType, 2);
-                } else {
-                    llvm::outs() << "Cannot convert to ConstOp!\n";
-                }
-
-                // split activations
-                if(auto constOp = op.input().getDefiningOp<ConstantOp>()) {
-                    splitConstantInto(constOp, nActivations, builder, CaSplit, aSplitType, 2);
-                } else {
-                    llvm::outs() << "Inserting a split operation!\n";
-                    // This is then a normal value, break it down
-                    ShapedType shape = breakShapeInto(op.input().getType().dyn_cast<ShapedType>(), 1, 2);
-                    //std::vector<ShapedType> shapes = ArrayRef<ShapedType>(std::vector<ShapedType>{shape, shape});
-
-                    Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), 1, 32);
-                    Operation* splitOp = builder.create<SplitOp>(builder.getUnknownLoc(), TypeRange({shape, shape}), op.input(), cstDim->getResult(0));
-
-                    nActivations.push_back(splitOp->getResult(0));
-                    nActivations.push_back(splitOp->getResult(1));
-                }
-
-                // Split Return Type shape
-                ShapedType nReturnType = breakShapeInto(op.getResult().getType().dyn_cast<ShapedType>(), 1, 2);
-                llvm::outs() << "Return Type: " << op.getResult().getType() << " and new is " << nReturnType << "\n";
-
-                // Generate new convs
-                Operation* lconv = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
-                                                                       nReturnType,
-                                                                       nActivations.at(0),
-                                                                       nullptr,
-                                                                       nConsts.at(0),
-                                                                       nBiases.at(0),
-                                                                       op.stride(),
-                                                                       op.padding(),
-                                                                       op.dilation(),
-                                                                       op.transposed(),
-                                                                       op.output_padding(),
-                                                                       op.groups());
-
-                Operation* rconv = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
-                                                                       op.getResult().getType(),
-                                                                       nActivations.at(1),
-                                                                       lconv->getResult(0),
-                                                                       nConsts.at(1),
-                                                                       nBiases.at(1),
-                                                                       op.stride(),
-                                                                       op.padding(),
-                                                                       op.dilation(),
-                                                                       op.transposed(),
-                                                                       op.output_padding(),
-                                                                       op.groups());
-
-                // Replace output of old convolution usage by concat value
-                op.getResult().replaceAllUsesWith(rconv->getResult(0));
-
-                // Delete previous Csts and ConvolutionOp
-                weights->erase();
-                biases->erase();
-                op.erase();
-
-                return success();
-            }
-        };
-
         struct LPattern : public OpRewritePattern<Conv2dReLUOp> {
         public:
             LPattern(MLIRContext *context) : OpRewritePattern<Conv2dReLUOp>(context, 1) {}
@@ -252,7 +167,7 @@ namespace xilinx {
             }
 
             // TODO how to make that generic with respect to Conv Ops? As much as possible?
-            LogicalResult pTransform(std::string layerName, unsigned int into) {
+            LogicalResult PTransform(std::string layerName, unsigned int into) {
                 std::vector<Operation*> layerOps = layerNameToOps[layerName];
                 std::vector<Operation*> cstsToDelete;
                 std::vector<Operation*> nLayerOps;
@@ -267,7 +182,7 @@ namespace xilinx {
                     std::vector<Value> nConvs;
 
                     // Split weights
-                    Operation* weights = op.weight().getDefiningOp();//->getName();
+                    Operation* weights = op.weight().getDefiningOp();
                     if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
                         splitConstantInto(constOp, nConsts, builder, PSplit, wSplitType, into);
                     } else {
@@ -308,29 +223,115 @@ namespace xilinx {
                     // if split afterwards check size of concat else concat
                     if(op->hasOneUse() && (llvm::dyn_cast<SplitOp>(*(op->getUsers().begin())))) {
                         SplitOp split = llvm::dyn_cast<SplitOp>(*(op->getUsers().begin()));
-                        replaceSplit(builder, split, nConvs, cstsToDelete, 0);
+                        replaceSplit(builder, split, nConvs, cstsToDelete, COUT_LOC);
                     } else {
-                        insertConcat(builder, op.getResult(), nConvs, 0);
+                        insertConcat(builder, op.getResult(), nConvs, COUT_LOC);
                     }
-
-
 
                     // Delete previous Csts and ConvolutionOp
                     cstsToDelete.push_back(weights);
                     cstsToDelete.push_back(biases);
                 }
 
+                layerNameToOps[layerName] = nLayerOps;
+
                 // cleanup
                 deleteOpsFrom(cstsToDelete);
                 deleteOpsFrom(layerOps);
 
-                layerNameToOps[layerName] = nLayerOps;
 
                 return success();
             }
 
             LogicalResult CaTransform(std::string layerName, unsigned int into) {
-                // TODO 
+                std::vector<Operation*> layerOps = layerNameToOps[layerName];
+                std::vector<Operation*> toDelete;
+                std::vector<Operation*> nLayerOps;
+
+                for(Operation* genOp : layerOps) {
+                    OpBuilder builder(genOp);
+
+                    Conv2dReLUOp op = llvm::dyn_cast<Conv2dReLUOp>(genOp);
+
+                    std::vector<Value> nConsts;
+                    std::vector<Value> nBiases;
+                    std::vector<Value> nInputs;
+                    //std::vector<Value> nConvs;
+
+                    // Split weights
+                    Operation* weights = op.weight().getDefiningOp();
+                    if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
+                        splitConstantInto(constOp, nConsts, builder, CaSplit, wSplitType, into);
+                    } else {
+                        llvm::outs() << "Cannot convert to ConstOp!\n";
+                    }
+
+                    // Split biases
+                   Operation* biases = op.bias().getDefiningOp();
+                    if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
+                        splitConstantInto(constOp, nBiases, builder, CaSplit, bSplitType, into);
+                    } else {
+                        llvm::outs() << "Cannot convert to ConstOp!\n";
+                    }
+
+                    // split activations
+                    if(auto constOp = op.input().getDefiningOp<ConstantOp>()) {
+                        splitConstantInto(constOp, nInputs, builder, CaSplit, aSplitType, into);
+                    } else {
+                        if(ConcatOp concatOp = op.input().getDefiningOp<ConcatOp>()) {
+                            replaceConcat(builder, concatOp, nInputs, toDelete, C_LOC, into);
+                        } else {
+                            insertSplit(builder, op.input(), nInputs, C_LOC, into);
+                        }
+                    }
+
+                    // Generate convolutions
+                    Operation* conv = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
+                                                                          op.getResult().getType(),
+                                                                          nInputs.at(0),
+                                                                          nullptr,
+                                                                          nConsts.at(0),
+                                                                          nBiases.at(0),
+                                                                          op.stride(),
+                                                                          op.padding(),
+                                                                          op.dilation(),
+                                                                          op.transposed(),
+                                                                          op.output_padding(),
+                                                                          op.groups());
+                    nLayerOps.push_back(conv);
+
+                    for(unsigned int i = 1; i < into; i++) {
+                        Operation* nConv =  builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
+                                                                                op.getResult().getType(),
+                                                                                nInputs.at(i),
+                                                                                conv->getResult(0),
+                                                                                nConsts.at(0),
+                                                                                nBiases.at(0),
+                                                                                op.stride(),
+                                                                                op.padding(),
+                                                                                op.dilation(),
+                                                                                op.transposed(),
+                                                                                op.output_padding(),
+                                                                                op.groups());
+                        conv = nConv;
+                        nLayerOps.push_back(conv);
+                    }
+
+                    // Insert it in the graph
+                    op.getResult().replaceAllUsesWith(conv->getResult(0));
+
+                    // Prepare to delete
+                    toDelete.push_back(weights);
+                    toDelete.push_back(biases);
+                }
+
+                layerNameToOps[layerName] = nLayerOps;
+
+                // cleanup
+                deleteOpsFrom(toDelete);
+                deleteOpsFrom(layerOps);
+
+                return success();
             }
 
             // Allocate necessary attributes for tiling where line counts from 0 to max in flight at that layer
@@ -360,12 +361,7 @@ namespace xilinx {
                 MyPatternRewriter rewriter(module->getContext());
 
                 // expand slowest layer
-                graph.walk([&](Operation *op) {
-                        Conv2dReLUOp conv = llvm::dyn_cast<Conv2dReLUOp>(op);
-                        if(conv) {
-                            pTransform("conv2d_relu0", 4);
-                        }
-                    });
+                CaTransform("conv2d_relu0", 4);
             }
         };
     }

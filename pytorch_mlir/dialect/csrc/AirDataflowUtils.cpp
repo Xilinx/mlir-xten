@@ -8,35 +8,30 @@
 
 using namespace mlir;
 
-// Weight locations
-#define COUT_LOC 0
-#define CIN_LOC 1
-#define F0_LOC 2
-#define F1_LOC 3
-
-// Acts locs
-#define C_LOC 0
-#define N_LOC 1
-#define M_LOC 2
-
 namespace xilinx {
     namespace air {
-        ShapedType breakShapeInto(ShapedType initShape, unsigned int at, unsigned int into) {
+        ShapedType baseShapeManupulation(ShapedType initShape, unsigned int at, unsigned int into, bool manipulationType) {
             auto shape = initShape.getShape();
             std::vector<long> newShape = std::vector<long>(shape);
-            newShape[at] = newShape[at] / into;
+            if(manipulationType) {
+                newShape[at] = newShape[at] / into;
+            } else {
+                newShape[at] = newShape[at] * into;
+            }
             shape = initShape.getShape();
-            //int i = 0;
-            //for(auto e : shape) {
-            //llvm::outs() << "Got shape: " << e << " vs " << newShape[i] << "\n";
-            //newShape.push_back(e);
-            //i++;
-            //}
 
             ArrayRef<long> nShape = ArrayRef<long>(newShape);
             ShapedType ttype = RankedTensorType::get(nShape, initShape.getElementType());
 
             return ttype;
+        }
+
+        ShapedType breakShapeInto(ShapedType initShape, unsigned int at, unsigned int into) {
+            return baseShapeManupulation(initShape, at, into, true);
+        }
+
+        ShapedType mergeShapeInto(ShapedType initShape, unsigned int at, unsigned int into) {
+            return baseShapeManupulation(initShape, at, into, false);
         }
 
         // TODO most likely factor some code here
@@ -179,7 +174,7 @@ namespace xilinx {
                         // NOTE assume that same kernel with 0 bias from the compiler point of view
                         // NOTE create duplicate constants here
                         for(unsigned int j = 1; j < into; j++) {
-                            vects.at(1).push_back(APFloat((float)0));
+                            vects.at(j).push_back(APFloat((float)0));
                         }
                     }
                     i++;
@@ -263,11 +258,9 @@ namespace xilinx {
             ops.clear();
         }
 
+        // TODO double check shape propagation here
         void insertConcat(OpBuilder &builder, Value prevRes, std::vector<Value> &values, unsigned int dim) {
             ShapedType prevResType = prevRes.getType().dyn_cast<ShapedType>();
-            for(Operation* userOp: prevRes.getUsers()) {
-                llvm::outs() << "Op is: " << userOp->getName() << "\n";
-            }
 
             ArrayRef<Value> valuesRef = ArrayRef<Value>(values);
             ValueRange valuesRange(valuesRef);
@@ -279,7 +272,21 @@ namespace xilinx {
             prevRes.replaceAllUsesWith(res->getResult(0));
         }
 
-        void replaceSplit(OpBuilder &builder, xilinx::air::SplitOp split, std::vector<Value> &values, std::vector<Operation*> &toDelete, unsigned int dim) {
+        void insertSplit(OpBuilder &builder, Value prevInput, std::vector<Value> &nInputs, unsigned int dim, unsigned int into) {
+            ShapedType nShape = breakShapeInto(prevInput.getType().dyn_cast<ShapedType>(), dim, into);
+            std::vector<Type> shapes = std::vector<Type>(into, nShape);
+            ArrayRef<Type> tShapes = ArrayRef<Type>(shapes);
+
+            Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
+            Operation* splitOp = builder.create<SplitOp>(builder.getUnknownLoc(), TypeRange(tShapes), prevInput, cstDim->getResult(0));
+
+            for(auto indexedResult: llvm::enumerate(splitOp->getResults())) {
+                nInputs.push_back(indexedResult.value());
+            }
+        }
+
+        void replaceSplit(OpBuilder &builder, xilinx::air::SplitOp split, std::vector<Value> &values,
+                          std::vector<Operation*> &toDelete, unsigned int dim) {
             unsigned int into = values.size();
 
             if(split.getNumResults() == into) {
@@ -318,6 +325,45 @@ namespace xilinx {
 
         }
 
+        void replaceConcat(OpBuilder &builder, xilinx::air::ConcatOp concat, std::vector<Value> nInputs,
+                           std::vector<Operation*> toDelete, unsigned int dim, unsigned int into) {
+            if(into == concat.getNumOperands()) {
+                for(unsigned int i = 0; i < concat.getNumOperands(); i++) {
+                    nInputs.push_back(concat.getOperand(i));
+                }
+
+                toDelete.push_back(concat);
+            } else {
+                unsigned int concatOperands = concat.getNumOperands();
+                unsigned int operandsPerConv = concatOperands / into;
+                unsigned int rem = concatOperands % into;
+
+                unsigned int consumed = 0;
+                for(unsigned int i = 0; i < into; i++) {
+                    unsigned int shouldHandle = operandsPerConv + ((i > rem) ? 1 : 0);
+                    if(shouldHandle == 1) {
+                        nInputs.push_back(concat.getOperand(consumed));
+                        consumed++;
+                    } else {
+                        ShapedType opShape = concat.getOperand(consumed).getType().dyn_cast<ShapedType>();
+                        Type nShape = mergeShapeInto(opShape, 0, shouldHandle);
+                        std::vector<Value> values;
+
+                        for(unsigned int j = 0; j < shouldHandle; j++) {
+                            values.push_back(concat.getOperand(consumed));
+                            consumed++;
+                        }
+
+                        ArrayRef<Value> af = ArrayRef<Value>(values);
+
+                        Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
+                        Operation* res = builder.create<xilinx::air::ConcatOp>(builder.getUnknownLoc(), nShape, ValueRange(af), cstDim->getResult(0));
+
+                        nInputs.push_back(res->getResult(0));
+                    }
+                }
+            }
+        }
     }
 }
 
