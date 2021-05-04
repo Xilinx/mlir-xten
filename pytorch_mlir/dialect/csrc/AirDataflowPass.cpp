@@ -37,101 +37,6 @@ using namespace mlir;
 namespace xilinx {
     namespace air {
 
-        struct LPattern : public OpRewritePattern<Conv2dReLUOp> {
-        public:
-            LPattern(MLIRContext *context) : OpRewritePattern<Conv2dReLUOp>(context, 1) {}
-
-            LogicalResult matchAndRewrite(Conv2dReLUOp op, PatternRewriter &rewriter) const override {
-                OpBuilder builder(op.getOperation());
-                std::vector<Value> nConsts;
-                std::vector<Value> nBiases;
-
-                // Split weights
-                Operation* weights = op.weight().getDefiningOp();//->getName();
-                if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
-                    splitConstantInto(constOp, nConsts, builder, LSplit, wSplitType, 2);
-                } else {
-                    llvm::outs() << "Cannot convert to ConstOp!\n";
-                }
-
-                // Split biases
-                Operation* biases = op.bias().getDefiningOp();
-                if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
-                    splitConstantInto(constOp, nBiases, builder, LSplit, bSplitType, 2);
-                } else {
-                    llvm::outs() << "Cannot convert to ConstOp!\n";
-                }
-
-
-                // Split Return Type shape
-                ShapedType returnType = op.getResult().getType().dyn_cast<ShapedType>();
-
-                // Generate new convs
-                Operation* nConv = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
-                                                                       TypeRange({returnType, returnType}),
-                                                                       op.input(),
-                                                                       nullptr,
-                                                                       nConsts.at(0),
-                                                                       nBiases.at(0),
-                                                                       op.stride(),
-                                                                       op.padding(),
-                                                                       op.dilation(),
-                                                                       op.transposed(),
-                                                                       op.output_padding(),
-                                                                       op.groups());
-
-                Value forward = nConv->getResult(1);
-                Value partial = nConv->getResult(0);
-
-                uint64_t F = nConsts.size();
-                for(unsigned int i = 1; i < F; i++) {
-                    nConv = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
-                                                                (i == (F-1)) ? TypeRange({returnType}) : TypeRange({returnType, returnType}),
-                                                                forward,
-                                                                partial,
-                                                                nConsts.at(i),
-                                                                nBiases.at(1),
-                                                                op.stride(),
-                                                                op.padding(),
-                                                                op.dilation(),
-                                                                op.transposed(),
-                                                                op.output_padding(),
-                                                                op.groups());
-                    partial = nConv->getResult(0);
-                    if(i < (F-1)) {
-                        forward = nConv->getResult(1);
-                    }
-
-                }
-
-
-                // Replace output of old convolution usage by concat value
-                op.getResult().replaceAllUsesWith(nConv->getResult(0));
-
-                // Delete previous Csts and ConvolutionOp
-                weights->erase();
-                biases->erase();
-                op.erase();
-
-                return success();
-            }
-        };
-
-        struct WPattern : public OpRewritePattern<Conv2dReLUOp> {
-        public:
-            WPattern(MLIRContext *context) : OpRewritePattern<Conv2dReLUOp>(context, 1) {}
-
-            LogicalResult matchAndRewrite(Conv2dReLUOp op, PatternRewriter &rewriter) const override {
-                // TODO
-                return success();
-            }
-        };
-
-        class MyPatternRewriter : public PatternRewriter {
-        public:
-            MyPatternRewriter(MLIRContext *ctx) : PatternRewriter(ctx) {}
-        };
-
         struct AirDataflowPass : public PassWrapper<AirDataflowPass, OperationPass<ModuleOp>> {
         private:
             std::map<std::string, std::vector<Operation*>> layerNameToOps;
@@ -334,6 +239,95 @@ namespace xilinx {
                 return success();
             }
 
+            LogicalResult LTransform(std::string layerName, unsigned int into) {
+                std::vector<Operation*> layerOps = layerNameToOps[layerName];
+                std::vector<Operation*> toDelete;
+                std::vector<Operation*> nLayerOps;
+
+                for(Operation* genOp : layerOps) {
+                    OpBuilder builder(genOp);
+
+                    Conv2dReLUOp op = llvm::dyn_cast<Conv2dReLUOp>(genOp);
+
+                    std::vector<Value> nConsts;
+                    std::vector<Value> nBiases;
+                    std::vector<Value> nConvs;
+
+                    // Split weights
+                    Operation* weights = op.weight().getDefiningOp();//->getName();
+                    if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
+                        splitConstantInto(constOp, nConsts, builder, LSplit, wSplitType, into);
+                    } else {
+                        llvm::outs() << "Cannot convert to ConstOp!\n";
+                    }
+
+                    // Split biases
+                    Operation* biases = op.bias().getDefiningOp();
+                    if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
+                        splitConstantInto(constOp, nBiases, builder, LSplit, bSplitType, 2);
+                    } else {
+                        llvm::outs() << "Cannot convert to ConstOp!\n";
+                    }
+
+                    // Same return type here
+                    ShapedType returnType = op.getResult().getType().dyn_cast<ShapedType>();
+
+                    // Generate new convs
+                    Operation* nConv = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
+                                                                           TypeRange({returnType, returnType}),
+                                                                           op.input(),
+                                                                           nullptr,
+                                                                           nConsts.at(0),
+                                                                           nBiases.at(0),
+                                                                           op.stride(),
+                                                                           op.padding(),
+                                                                           op.dilation(),
+                                                                           op.transposed(),
+                                                                           op.output_padding(),
+                                                                           op.groups());
+
+                    Value forward = nConv->getResult(1);
+                    Value partial = nConv->getResult(0);
+
+                    for(unsigned int i = 1; i < into; i++) {
+                        nConv = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
+                                                                    (i == (into-1)) ? TypeRange({returnType}) : TypeRange({returnType, returnType}),
+                                                                    forward,
+                                                                    partial,
+                                                                    nConsts.at(i),
+                                                                    nBiases.at(1),
+                                                                    op.stride(),
+                                                                    op.padding(),
+                                                                    op.dilation(),
+                                                                    op.transposed(),
+                                                                    op.output_padding(),
+                                                                    op.groups());
+                        partial = nConv->getResult(0);
+                        if(i < (into-1)) {
+                            forward = nConv->getResult(1);
+                        }
+
+                    }
+
+
+                    // Replace output of old convolution usage by concat value
+                    op.getResult().replaceAllUsesWith(nConv->getResult(0));
+
+                    toDelete.push_back(weights);
+                    toDelete.push_back(biases);
+                }
+
+                // Delete previous Csts and ConvolutionOp
+                layerNameToOps[layerName] = nLayerOps;
+
+                // cleanup
+                deleteOpsFrom(toDelete);
+                deleteOpsFrom(layerOps);
+
+                return success();
+
+            }
+
             // Allocate necessary attributes for tiling where line counts from 0 to max in flight at that layer
             // - AIn = ArrayAttr [min line, max line] -> can now bank number from this
             // - AOut = ArrayAttr [min line, max line] -> can now bank number from this
@@ -354,14 +348,8 @@ namespace xilinx {
                 initializeLayerNameToOps(graph);
                 initializeLayerNameToParams(graph);
 
-                // Take context from the top level Module?
-                //PPattern p(module->getContext());
-                //CaPattern ca(module->getContext());
-                LPattern l(module->getContext());
-                MyPatternRewriter rewriter(module->getContext());
-
                 // expand slowest layer
-                CaTransform("conv2d_relu0", 4);
+                LTransform("conv2d_relu0", 3);
             }
         };
     }
