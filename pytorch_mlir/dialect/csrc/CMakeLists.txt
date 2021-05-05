@@ -28,8 +28,6 @@ set(LLVM_OPTIONAL_SOURCES
 add_mlir_library(ATen
   ATenToAIRPass.cpp
   AffineToAIRPass.cpp
-  AirDataflowPass.cpp
-  AirNamePass.cpp
   AcapLoopLoweringPass.cpp
   AcapHerdAssignPass.cpp
   AcapHerdLoweringPass.cpp
@@ -52,11 +50,15 @@ add_mlir_library(ATen
   AIRToAIEPass.cpp
   Util.cpp
   AirDataflowUtils.cpp
+  AirDataflowPass.cpp
+  AirNamePass.cpp
+  AirOpWrapper.cpp
+  AirDataflowExplorer.cpp
 
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/dialect/include
   ${PROJECT_BINARY_DIR}/dialect/include
-  
+
   DEPENDS
   MLIRAIRIncGen
   MLIRAIRPassIncGen

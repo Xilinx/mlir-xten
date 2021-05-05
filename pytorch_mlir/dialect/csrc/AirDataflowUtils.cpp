@@ -259,6 +259,14 @@ namespace xilinx {
             ops.clear();
         }
 
+        void deleteOpsFrom(std::vector<AbsOpWrapper*> &ops) {
+            for(unsigned int i = 0; i < ops.size(); i++) {
+                ops.at(i)->getUnderlyingOperation()->erase();
+                delete ops.at(i);
+            }
+            ops.clear();
+        }
+
         // TODO double check shape propagation here
         void insertConcat(OpBuilder &builder, Value prevRes, std::vector<Value> &values, unsigned int dim) {
             ShapedType prevResType = prevRes.getType().dyn_cast<ShapedType>();

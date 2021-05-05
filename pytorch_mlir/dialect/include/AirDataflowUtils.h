@@ -6,6 +6,7 @@
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 
 #include "AIRDialect.h"
+#include "AirOpWrapper.h"
 
 // Weight locations
 #define COUT_LOC 0
@@ -49,6 +50,7 @@ namespace xilinx {
         void splitConstantInto(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into);
 
         void deleteOpsFrom(std::vector<Operation*> &ops);
+        void deleteOpsFrom(std::vector<AbsOpWrapper*> &ops);
 
         void insertConcat(OpBuilder &builder, Value prevRes, std::vector<Value> &values, unsigned int dim);
         void replaceConcat(OpBuilder &builder, xilinx::air::ConcatOp concat, std::vector<Value> nInputs,
