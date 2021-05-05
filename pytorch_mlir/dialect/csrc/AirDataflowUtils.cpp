@@ -201,6 +201,7 @@ namespace xilinx {
         }
 
         // TODO support WSplit
+        // TODO remove the unecessary indirection here, this should belong to the Pattern themselves
         unsigned int splitToDim(Split split, SplitType t) {
             if(t == bSplitType) {
                 if(split == PSplit) {

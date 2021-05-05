@@ -11,7 +11,7 @@
 #include "AirDataflow.h"
 #include "AIRDialect.h"
 #include "AirDataflowUtils.h"
-#include "AirDataflowExplorer.h"
+//#include "AirDataflowExplorer.h"
 
 #include <iostream>
 #include <vector>
@@ -295,7 +295,7 @@ namespace xilinx {
                                                                     forward,
                                                                     partial,
                                                                     nConsts.at(i),
-                                                                    nBiases.at(1),
+                                                                    nBiases.at(i),
                                                                     op.stride(),
                                                                     op.padding(),
                                                                     op.dilation(),
@@ -349,7 +349,8 @@ namespace xilinx {
                 initializeLayerNameToParams(graph);
 
                 // expand slowest layer
-                LTransform("conv2d_relu0", 3);
+                PTransform("conv2d_relu1", 4);
+                CaTransform("conv2d_relu1", 4);
             }
         };
     }
