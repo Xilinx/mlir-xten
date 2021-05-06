@@ -106,7 +106,7 @@ namespace xilinx {
             // TODO how to make that generic with respect to Conv Ops? As much as possible?
             LogicalResult PTransform(std::string layerName, unsigned int into) {
                 std::vector<AbsOpWrapper*> layerOps = layerNameToOps[layerName];
-                std::vector<Operation*> cstsToDelete;
+                std::vector<Operation*> toDelete;
                 std::vector<AbsOpWrapper*> nLayerOps;
 
                 for(AbsOpWrapper* genOp : layerOps) {
@@ -118,6 +118,7 @@ namespace xilinx {
                     std::vector<Value> nConsts;
                     std::vector<Value> nBiases;
                     std::vector<Value> nConvs;
+                    std::vector<Value> nInputs;
 
                     // Split weights
                     Operation* weights;
@@ -145,10 +146,18 @@ namespace xilinx {
                     // TODO for Maxpool2d with indices, check other return types and check that assumption
                     std::vector<Type> shapes = std::vector<Type>();
                     for(unsigned int i = 0; i < op->getNumResults(); i++) {
-                        ShapedType origType = op->getResult(0).getType().dyn_cast<ShapedType>();
+                        ShapedType origType = op->getResult(i).getType().dyn_cast<ShapedType>();
                         assert(origType);
-                        ShapedType nReturnType = breakShapeInto(origType, 1, into);
+                        ShapedType nReturnType = breakShapeInto(origType, C_LOC, into);
                         shapes.push_back(nReturnType);
+                    }
+
+                    if(genOp->isDepthWise()) {
+                        if(ConcatOp concatOp = genOp->getInput().getDefiningOp<ConcatOp>()) {
+                            replaceConcat(builder, concatOp, nInputs, toDelete, C_LOC, into);
+                        } else {
+                            insertSplit(builder, genOp->getInput(), nInputs, C_LOC, into);
+                        }
                     }
 
                     ArrayRef<Type> nReturnType = ArrayRef<Type>(shapes);
@@ -156,10 +165,18 @@ namespace xilinx {
                     // Generate new convs
                     for(unsigned int i = 0; i < into; i++) {
                         Operation* conv;
+
+                        Value input;
+                        if(genOp->isDepthWise()) {
+                            input = nInputs.at(i);
+                        } else {
+                            input = genOp->getInput();
+                        }
+
                         if(genOp->hasWeights()) {
                             conv = genOp->buildOp(builder,
                                                   TypeRange({nReturnType}),
-                                                  genOp->getInput(),
+                                                  input,
                                                   llvm::Optional<Value>(nConsts.at(i)),
                                                   llvm::Optional<Value>(nBiases.at(i)),
                                                   llvm::Optional<Value>(), false);
@@ -168,7 +185,7 @@ namespace xilinx {
                         } else {
                             conv = genOp->buildOp(builder,
                                                   TypeRange({nReturnType}),
-                                                  genOp->getInput(),
+                                                  input,
                                                   llvm::Optional<Value>(),
                                                   llvm::Optional<Value>(),
                                                   llvm::Optional<Value>(), false);
@@ -183,23 +200,22 @@ namespace xilinx {
                     // if split afterwards check size of concat else concat
                     if(op->hasOneUse() && (llvm::dyn_cast<SplitOp>(*(op->getUsers().begin())))) {
                         SplitOp split = llvm::dyn_cast<SplitOp>(*(op->getUsers().begin()));
-                        replaceSplit(builder, split, nConvs, cstsToDelete, COUT_LOC);
+                        replaceSplit(builder, split, nConvs, toDelete, C_LOC);
                     } else {
-                        insertConcat(builder, op->getResult(0), nConvs, COUT_LOC);
+                        insertConcat(builder, op->getResult(0), nConvs, C_LOC);
                     }
 
                     // Delete previous Csts and ConvolutionOp
-
                     if(genOp->hasWeights()) {
-                        cstsToDelete.push_back(weights);
-                        cstsToDelete.push_back(biases);
+                        toDelete.push_back(weights);
+                        toDelete.push_back(biases);
                     }
                 }
 
                 layerNameToOps[layerName] = nLayerOps;
 
                 // cleanup
-                deleteOpsFrom(cstsToDelete);
+                deleteOpsFrom(toDelete);
                 deleteOpsFrom(layerOps);
 
 
@@ -380,6 +396,8 @@ namespace xilinx {
                 PTransform("conv2d_relu1", 4);
                 PTransform("conv2d_relu0", 4);
                 PTransform("max_pool2d_with_indices0", 4);
+
+                llvm::outs() << "We are done!\n";
 
                 clearLayerNameToOps();
             }

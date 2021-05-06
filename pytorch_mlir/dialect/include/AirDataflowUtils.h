@@ -53,8 +53,8 @@ namespace xilinx {
         void deleteOpsFrom(std::vector<AbsOpWrapper*> &ops);
 
         void insertConcat(OpBuilder &builder, Value prevRes, std::vector<Value> &values, unsigned int dim);
-        void replaceConcat(OpBuilder &builder, xilinx::air::ConcatOp concat, std::vector<Value> nInputs,
-                           std::vector<Operation*> toDelete, unsigned int dim, unsigned int into);
+        void replaceConcat(OpBuilder &builder, xilinx::air::ConcatOp concat, std::vector<Value> &nInputs,
+                           std::vector<Operation*> &toDelete, unsigned int dim, unsigned int into);
 
         void insertSplit(OpBuilder &builder, Value prevInput, std::vector<Value> &nInputs, unsigned int dim, unsigned int into);
         void replaceSplit(OpBuilder &builder, xilinx::air::SplitOp split, std::vector<Value> &values,

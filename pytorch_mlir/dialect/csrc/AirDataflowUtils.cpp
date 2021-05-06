@@ -300,7 +300,7 @@ namespace xilinx {
         void replaceSplit(OpBuilder &builder, xilinx::air::SplitOp split, std::vector<Value> &values,
                           std::vector<Operation*> &toDelete, unsigned int dim) {
             unsigned int into = values.size();
-
+            llvm::outs() << "Split number of operands: " << split.getNumOperands() << "\n";
             if(split.getNumResults() == into) {
                 for(unsigned int i = 0; i < into; i++) {
                     split.getResult(i).replaceAllUsesWith(values.at(i));
@@ -337,15 +337,17 @@ namespace xilinx {
 
         }
 
-        void replaceConcat(OpBuilder &builder, xilinx::air::ConcatOp concat, std::vector<Value> nInputs,
-                           std::vector<Operation*> toDelete, unsigned int dim, unsigned int into) {
-            if(into == concat.getNumOperands()) {
-                for(unsigned int i = 0; i < concat.getNumOperands(); i++) {
+        void replaceConcat(OpBuilder &builder, xilinx::air::ConcatOp concat, std::vector<Value> &nInputs,
+                           std::vector<Operation*> &toDelete, unsigned int dim, unsigned int into) {
+            if(into == (concat.getNumOperands() - 1)) { // because there is the dim argument as well
+                for(unsigned int i = 0; i < into; i++) {
                     nInputs.push_back(concat.getOperand(i));
                 }
 
                 toDelete.push_back(concat);
             } else {
+                llvm::outs() << "We are in the wrong place!\n";
+
                 unsigned int concatOperands = concat.getNumOperands();
                 unsigned int operandsPerConv = concatOperands / into;
                 unsigned int rem = concatOperands % into;

@@ -30,6 +30,10 @@ namespace xilinx {
             return true;
         }
 
+        bool Conv2dOpWrapper::isDepthWise() {
+            return false;
+        }
+
         Operation* Conv2dOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                             llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain) {
             assert(weight.hasValue());
@@ -90,6 +94,10 @@ namespace xilinx {
             return true;
         }
 
+        bool PartialConv2dOpWrapper::isDepthWise() {
+            return false;
+        }
+
         Operation* PartialConv2dOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                                    llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain) {
             assert(weight.hasValue());
@@ -141,6 +149,10 @@ namespace xilinx {
 
         bool Conv2dReLUOpWrapper::hasWeights() {
             return true;
+        }
+
+        bool Conv2dReLUOpWrapper::isDepthWise() {
+            return false;
         }
 
         Operation* Conv2dReLUOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
@@ -203,6 +215,10 @@ namespace xilinx {
             return true;
         }
 
+        bool PartialConv2dReLUOpWrapper::isDepthWise() {
+            return false;
+        }
+
         Operation* PartialConv2dReLUOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input,
                                                        llvm::Optional<Value> weight, llvm::Optional<Value> bias,
                                                        llvm::Optional<Value> partialIn, bool firstInPartialChain) {
@@ -257,6 +273,10 @@ namespace xilinx {
 
         bool MaxPool2dWithIndicesOpWrapper::hasWeights() {
             return false;
+        }
+
+        bool MaxPool2dWithIndicesOpWrapper::isDepthWise() {
+            return true;
         }
 
         Operation* MaxPool2dWithIndicesOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input,
