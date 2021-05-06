@@ -32,11 +32,44 @@ namespace xilinx {
             virtual Value getInput() = 0;
             virtual Value getBiases() = 0;
             virtual bool hasWeights() = 0;
+            virtual bool isDepthWise() = 0;
             //virtual bool hasFusedBN(); // TODO
             //virtual Value getBNWeights();
             //virtual Value getBNBias();
             virtual Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                        llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain) = 0;
+        };
+
+        class Conv2dOpWrapper : public AbsOpWrapper {
+        private:
+            Conv2dOp conv;
+        public:
+            Conv2dOpWrapper(Conv2dOp c);
+            ~Conv2dOpWrapper();
+            Operation* getUnderlyingOperation();
+            Value getWeights();
+            Value getInput();
+            Value getBiases();
+            bool hasWeights();
+            bool isDepthWise();
+            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
+                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
+        };
+
+        class PartialConv2dOpWrapper : public AbsOpWrapper {
+        private:
+            PartialConv2dOp conv;
+        public:
+            PartialConv2dOpWrapper(PartialConv2dOp c);
+            ~PartialConv2dOpWrapper();
+            Operation* getUnderlyingOperation();
+            Value getWeights();
+            Value getInput();
+            Value getBiases();
+            bool hasWeights();
+            bool isDepthWise();
+            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
+                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
         };
 
         class Conv2dReLUOpWrapper : public AbsOpWrapper {
@@ -50,6 +83,7 @@ namespace xilinx {
             Value getInput();
             Value getBiases();
             bool hasWeights();
+            bool isDepthWise();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
         };
@@ -65,6 +99,7 @@ namespace xilinx {
             Value getInput();
             Value getBiases();
             bool hasWeights();
+            bool isDepthWise();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
         };
@@ -80,6 +115,7 @@ namespace xilinx {
             Value getInput();
             Value getBiases();
             bool hasWeights();
+            bool isDepthWise();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
         };

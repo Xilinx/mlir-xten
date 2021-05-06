@@ -20,6 +20,10 @@ namespace xilinx {
             }
             shape = initShape.getShape();
 
+            for(uint64_t i = 0; i < newShape.size(); i++) {
+                assert(newShape[at] > 0);
+            }
+
             ArrayRef<long> nShape = ArrayRef<long>(newShape);
             ShapedType ttype = RankedTensorType::get(nShape, initShape.getElementType());
 
@@ -247,7 +251,6 @@ namespace xilinx {
                         unsigned int splitDim = splitToDim(split, t);
                         splitConstantWeightsInto(op, ops, builder, splitDim, at, into);
                     }
-
                 }
             }
         }

@@ -29,6 +29,8 @@ using namespace mlir;
 //   - Support all convolution types
 
 // TODO Make sure that the communication is not shuffled somehow
+// TODO make sure that dim of split is correct one
+// TODO write verifiers
 
 // General idea: because it is easy to know from the analytical model what do we do with everything:
 // That analytical model part is responsible for finding an optimal solution, and then it communicates it here
@@ -118,39 +120,66 @@ namespace xilinx {
                     std::vector<Value> nConvs;
 
                     // Split weights
-                    Operation* weights = genOp->getWeights().getDefiningOp();
-                    if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
-                        splitConstantInto(constOp, nConsts, builder, PSplit, wSplitType, into);
-                    } else {
-                        llvm::outs() << "Cannot convert to ConstOp!\n";
+                    Operation* weights;
+                    if(genOp->hasWeights()) {
+                        weights = genOp->getWeights().getDefiningOp();
+                        if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
+                            splitConstantInto(constOp, nConsts, builder, PSplit, wSplitType, into);
+                        } else {
+                            llvm::outs() << "Cannot convert to ConstOp!\n";
+                        }
                     }
 
                     // Split biases
-                    Operation* biases = genOp->getBiases().getDefiningOp();
-                    if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
-                        splitConstantInto(constOp, nBiases, builder, PSplit, bSplitType, into);
-                    } else {
-                        llvm::outs() << "Cannot convert to ConstOp!\n";
+                    Operation* biases;
+                    if(genOp->hasWeights()) {
+                        biases = genOp->getBiases().getDefiningOp();
+                        if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
+                            splitConstantInto(constOp, nBiases, builder, PSplit, bSplitType, into);
+                        } else {
+                            llvm::outs() << "Cannot convert to ConstOp!\n";
+                        }
                     }
 
                     // Split Return Type shape
-                    ShapedType nReturnType = breakShapeInto(op->getResult(0).getType().dyn_cast<ShapedType>(), 1, into);
-                    llvm::outs() << "Return Type: " << op->getResult(0).getType() << " and new is " << nReturnType << "\n";
+                    // TODO for Maxpool2d with indices, check other return types and check that assumption
+                    std::vector<Type> shapes = std::vector<Type>();
+                    for(unsigned int i = 0; i < op->getNumResults(); i++) {
+                        ShapedType origType = op->getResult(0).getType().dyn_cast<ShapedType>();
+                        assert(origType);
+                        ShapedType nReturnType = breakShapeInto(origType, 1, into);
+                        shapes.push_back(nReturnType);
+                    }
+
+                    ArrayRef<Type> nReturnType = ArrayRef<Type>(shapes);
 
                     // Generate new convs
                     for(unsigned int i = 0; i < into; i++) {
-                        Operation* conv = genOp->buildOp(builder,
-                                                        TypeRange({nReturnType}),
-                                                        genOp->getInput(),
-                                                        llvm::Optional<Value>(nConsts.at(i)),
-                                                        llvm::Optional<Value>(nBiases.at(i)),
-                                                        llvm::Optional<Value>(), false);
+                        Operation* conv;
+                        if(genOp->hasWeights()) {
+                            conv = genOp->buildOp(builder,
+                                                  TypeRange({nReturnType}),
+                                                  genOp->getInput(),
+                                                  llvm::Optional<Value>(nConsts.at(i)),
+                                                  llvm::Optional<Value>(nBiases.at(i)),
+                                                  llvm::Optional<Value>(), false);
+
+                            assert(conv != nullptr);
+                        } else {
+                            conv = genOp->buildOp(builder,
+                                                  TypeRange({nReturnType}),
+                                                  genOp->getInput(),
+                                                  llvm::Optional<Value>(),
+                                                  llvm::Optional<Value>(),
+                                                  llvm::Optional<Value>(), false);
+
+                            assert(conv != nullptr);
+                        }
 
                         nConvs.push_back(conv->getResult(0));
                         nLayerOps.push_back(opToWrapper(conv));
                     }
 
-                    // TODO make sure that dim of split is correct one
                     // if split afterwards check size of concat else concat
                     if(op->hasOneUse() && (llvm::dyn_cast<SplitOp>(*(op->getUsers().begin())))) {
                         SplitOp split = llvm::dyn_cast<SplitOp>(*(op->getUsers().begin()));
@@ -160,8 +189,11 @@ namespace xilinx {
                     }
 
                     // Delete previous Csts and ConvolutionOp
-                    cstsToDelete.push_back(weights);
-                    cstsToDelete.push_back(biases);
+
+                    if(genOp->hasWeights()) {
+                        cstsToDelete.push_back(weights);
+                        cstsToDelete.push_back(biases);
+                    }
                 }
 
                 layerNameToOps[layerName] = nLayerOps;
@@ -344,8 +376,10 @@ namespace xilinx {
                 initializeLayerNameToParams(graph);
 
                 // expand slowest layer
-                PTransform("conv2d_relu1", 4);
                 CaTransform("conv2d_relu1", 4);
+                PTransform("conv2d_relu1", 4);
+                PTransform("conv2d_relu0", 4);
+                PTransform("max_pool2d_with_indices0", 4);
 
                 clearLayerNameToOps();
             }
