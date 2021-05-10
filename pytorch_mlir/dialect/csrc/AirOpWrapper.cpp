@@ -1,4 +1,5 @@
 #include "AirOpWrapper.h"
+#include "consts.h"
 
 namespace xilinx {
     namespace air {
@@ -24,6 +25,10 @@ namespace xilinx {
 
         Value Conv2dOpWrapper::getInput() {
             return this->conv.input();
+        }
+
+        unsigned int Conv2dOpWrapper::getKernelSize() {
+            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
         }
 
         bool Conv2dOpWrapper::hasWeights() {
@@ -90,6 +95,10 @@ namespace xilinx {
             return this->conv.input();
         }
 
+        unsigned int PartialConv2dOpWrapper::getKernelSize() {
+            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
+        }
+
         bool PartialConv2dOpWrapper::hasWeights() {
             return true;
         }
@@ -145,6 +154,10 @@ namespace xilinx {
 
         Value Conv2dReLUOpWrapper::getInput() {
             return this->conv.input();
+        }
+
+        unsigned int Conv2dReLUOpWrapper::getKernelSize() {
+            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
         }
 
         bool Conv2dReLUOpWrapper::hasWeights() {
@@ -211,6 +224,10 @@ namespace xilinx {
             return this->conv.input();
         }
 
+        unsigned int PartialConv2dReLUOpWrapper::getKernelSize() {
+            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
+        }
+
         bool PartialConv2dReLUOpWrapper::hasWeights() {
             return true;
         }
@@ -267,8 +284,25 @@ namespace xilinx {
             return Value();
         }
 
+        unsigned int MaxPool2dWithIndicesOpWrapper::getKernelSize() {
+            Value ks = this->maxpool.kernel_size();
+
+            ConstantOp op = ks.getDefiningOp<ConstantOp>();
+            if(!op) {
+                llvm::outs() << "Kernel size needs to be statically defined!\n";
+                return -1;
+            }
+
+            for(NamedAttribute attr : op->getAttrs()) {
+                auto at = attr.second.dyn_cast<IntegerAttr>();
+                if(at) { // TODO also check that no other attr match?
+                    return (unsigned int)(at.getValue().roundToDouble());
+                }
+            }
+        }
+
         Value MaxPool2dWithIndicesOpWrapper::getInput() {
-            return this->maxpool.self(); // TODO why self?!
+            return this->maxpool.self();
         }
 
         bool MaxPool2dWithIndicesOpWrapper::hasWeights() {

@@ -31,6 +31,7 @@ namespace xilinx {
             virtual Value getWeights() = 0;
             virtual Value getInput() = 0;
             virtual Value getBiases() = 0;
+            virtual unsigned int getKernelSize() = 0;
             virtual bool hasWeights() = 0;
             virtual bool isDepthWise() = 0;
             //virtual bool hasFusedBN(); // TODO
@@ -50,6 +51,7 @@ namespace xilinx {
             Value getWeights();
             Value getInput();
             Value getBiases();
+            unsigned int getKernelSize();
             bool hasWeights();
             bool isDepthWise();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
@@ -66,6 +68,7 @@ namespace xilinx {
             Value getWeights();
             Value getInput();
             Value getBiases();
+            unsigned int getKernelSize();
             bool hasWeights();
             bool isDepthWise();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
@@ -82,6 +85,7 @@ namespace xilinx {
             Value getWeights();
             Value getInput();
             Value getBiases();
+            unsigned int getKernelSize();
             bool hasWeights();
             bool isDepthWise();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
@@ -98,6 +102,7 @@ namespace xilinx {
             Value getWeights();
             Value getInput();
             Value getBiases();
+            unsigned int getKernelSize();
             bool hasWeights();
             bool isDepthWise();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
@@ -114,6 +119,7 @@ namespace xilinx {
             Value getWeights();
             Value getInput();
             Value getBiases();
+            unsigned int getKernelSize();
             bool hasWeights();
             bool isDepthWise();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,

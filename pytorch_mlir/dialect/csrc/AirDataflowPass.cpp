@@ -55,12 +55,10 @@ namespace xilinx {
                     return new PartialConv2dReLUOpWrapper(conv);
                 } else if(auto maxpool = llvm::dyn_cast<mlir::NPCOMP::aten::MaxPool2dWithIndicesOp>(op)) {
                     return new MaxPool2dWithIndicesOpWrapper(maxpool);
-                } else if(llvm::dyn_cast<Conv2dReLUOp>(op)) {
-                    llvm::outs() << "Unimplemented errror\n";
-                    exit(1);
-                } else if(llvm::dyn_cast<Conv2dReLUOp>(op)) {
-                    llvm::outs() << "Unimplemented errror\n";
-                    exit(1);
+                } else if(auto conv = llvm::dyn_cast<Conv2dOp>(op)) {
+                    return new Conv2dOpWrapper(conv);
+                } else if(auto conv = llvm::dyn_cast<PartialConv2dOp>(op)) {
+                    return new PartialConv2dOpWrapper(conv);
                 } else if(llvm::dyn_cast<Conv2dReLUOp>(op)) {
                     llvm::outs() << "Unimplemented errror\n";
                     exit(1);
@@ -396,8 +394,6 @@ namespace xilinx {
                 PTransform("conv2d_relu1", 4);
                 PTransform("conv2d_relu0", 4);
                 PTransform("max_pool2d_with_indices0", 4);
-
-                llvm::outs() << "We are done!\n";
 
                 clearLayerNameToOps();
             }

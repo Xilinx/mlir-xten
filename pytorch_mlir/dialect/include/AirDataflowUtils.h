@@ -7,18 +7,7 @@
 
 #include "AIRDialect.h"
 #include "AirOpWrapper.h"
-
-// Weight locations
-#define COUT_LOC 0
-#define CIN_LOC 1
-#define F0_LOC 2
-#define F1_LOC 3
-
-// Acts locs
-#define BATCH_LOC 0
-#define C_LOC 1
-#define N_LOC 2
-#define M_LOC 3
+#include "consts.h"
 
 using namespace mlir;
 
@@ -41,6 +30,10 @@ namespace xilinx {
                 Ca = 1;
                 W = 1;
                 L = 1;
+            }
+
+            unsigned int cores() {
+                return P * Ca * L * W;
             }
         };
 
