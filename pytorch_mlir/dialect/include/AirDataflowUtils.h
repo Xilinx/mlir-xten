@@ -32,6 +32,13 @@ namespace xilinx {
                 L = 1;
             }
 
+            ModelParams(unsigned int defP, unsigned int defCa, unsigned int defL, unsigned int defW) {
+                this->P = defP;
+                this->Ca = defCa;
+                this->L = defL;
+                this->W = defW;
+            }
+
             unsigned int cores() {
                 return P * Ca * L * W;
             }

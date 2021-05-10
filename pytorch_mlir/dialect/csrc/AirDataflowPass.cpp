@@ -11,7 +11,7 @@
 #include "AirDataflow.h"
 #include "AIRDialect.h"
 #include "AirDataflowUtils.h"
-//#include "AirOpWrapper.h"
+#include "AirDataflowExplorer.h"
 
 #include <iostream>
 #include <vector>
@@ -43,7 +43,6 @@ namespace xilinx {
         private:
             std::map<std::string, std::vector<AbsOpWrapper*>> layerNameToOps;
             std::map<std::string, ModelParams> layerNameToParams;
-            // TODO add some sync between structs and graph modifications
 
         public:
             AirDataflowPass() {}
@@ -65,19 +64,25 @@ namespace xilinx {
                 }
             }
 
-            void initializeLayerNameToOps(FuncOp graph) {
-                // Fill layerNameToOps with basic information
+            DataflowExplorer initializeLayerNameToOps(FuncOp graph) {
+                // TODO do we have the guarantee to be in network order?
+                std::vector<std::pair<std::string, AbsOpWrapper*>> explorerInit;
+
                 graph.walk([&](Operation *op) {
                         if(op->getAttr("name") != nullptr) {
                             auto opName = (op->getAttr("name").dyn_cast<StringAttr>()).getValue();
                             AbsOpWrapper* wrappedOp = opToWrapper(op);
                             if(layerNameToOps.count(opName.str()) == 0) {
                                 layerNameToOps[opName.str()] = std::vector<AbsOpWrapper*>({wrappedOp});
-                            } else {// TODO should never be reached
-                                layerNameToOps[opName.str()].push_back(wrappedOp);
+                                explorerInit.push_back(std::make_pair(opName.str(), wrappedOp));
+                            } else {
+                                llvm::outs() << "Cannot have multiple layer with the same name during initizalization\n";
+                                exit(1);
                             }
                         }
                     });
+
+                return DataflowExplorer(explorerInit);
             }
 
             void clearLayerNameToOps() {
@@ -386,8 +391,10 @@ namespace xilinx {
                     return;
                 }
 
-                initializeLayerNameToOps(graph);
-                initializeLayerNameToParams(graph);
+                DataflowExplorer dataflowExplorer = initializeLayerNameToOps(graph);
+                //initializeLayerNameToParams(graph);
+
+                dataflowExplorer.generateValidTopologies();
 
                 // expand slowest layer
                 CaTransform("conv2d_relu1", 4);

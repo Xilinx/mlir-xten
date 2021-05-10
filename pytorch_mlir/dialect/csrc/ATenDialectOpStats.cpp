@@ -1,4 +1,5 @@
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
+#include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
 #include "AIRDialect.h"
 #include "Util.h"
 
@@ -17,6 +18,18 @@ using namespace mlir;
 using namespace xilinx;
 
 namespace {
+
+    void unpack_int_list(const Value &op, std::vector<int64_t> &v) {
+        if (auto co = op.getDefiningOp<NPCOMP::aten::ConstantOp>()) {
+            DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
+            for (auto i : a.getIntValues())
+                v.push_back(i.getSExtValue());
+        }
+        else if (auto co = op.getDefiningOp<NPCOMP::Basicpy::BuildListOp>()) {
+            for (auto o : op.getDefiningOp()->getOperands())
+                v.push_back(o.template getDefiningOp<ConstantIntOp>().getValue());
+        }
+    }
 
 template<class T>
 std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, TensorType resultTy) {
@@ -747,25 +760,25 @@ std::map<std::string, uint64_t> getStatistics(MaxPool2dOp op) {
 template<>
 std::map<std::string, uint64_t> getStatistics(MaxPool2dWithIndicesOp op) {
 
-  std::map<std::string, uint64_t> toReturn;
+    std::map<std::string, uint64_t> toReturn;
 
-  // uint64_t ofm_volume = xilinx::air::getTensorVolume(op.getResult(0).getType().cast<TensorType>());
-  // uint64_t indices_volume = xilinx::air::getTensorVolume(op.getResult(1).getType().cast<TensorType>());
+    uint64_t ofm_volume = xilinx::air::getTensorVolume(op.getResult(0).getType().cast<TensorType>());
+    uint64_t indices_volume = xilinx::air::getTensorVolume(op.getResult(1).getType().cast<TensorType>());
 
-  // toReturn["writes"] = ofm_volume + indices_volume;
-  // toReturn["result:0:activation_out"] = ofm_volume;
-  // toReturn["result:1:indices_out"] = indices_volume;
+    toReturn["writes"] = ofm_volume + indices_volume;
+    toReturn["result:0:activation_out"] = ofm_volume;
+    toReturn["result:1:indices_out"] = indices_volume;
 
-  // uint64_t ifm_volume = xilinx::air::getTensorVolume(op.getOperand(0).getType().cast<TensorType>());
-  // toReturn["reads"] = ifm_volume;
-  // toReturn["operand:0:activation_in"] = ifm_volume;
+    uint64_t ifm_volume = xilinx::air::getTensorVolume(op.getOperand(0).getType().cast<TensorType>());
+    toReturn["reads"] = ifm_volume;
+    toReturn["operand:0:activation_in"] = ifm_volume;
 
-  // // To find the number of compares, we need the filter extent
+    // To find the number of compares, we need the filter extent
+    std::vector<int64_t> kernel_size;
+    unpack_int_list(op.getOperand(1), kernel_size);
 
-  // std::vector<uint64_t> kernel_size = unpackListConstant(op.getOperand(1));
-
-  // uint64_t aperture = kernel_size[0] * kernel_size[1];
-  // toReturn["ops:>"] = ofm_volume * (aperture-1);
+    uint64_t aperture = kernel_size[0] * kernel_size[1];
+    toReturn["ops:>"] = ofm_volume * (aperture-1);
 
   return toReturn;
 }
@@ -1174,6 +1187,7 @@ std::map<std::string, uint64_t> getStatistics(aten::ViewOp op) {
 
 std::map<std::string, uint64_t> getATenOpStats(Operation *op)
 {
+
 #define GET_STATS(T) \
   if (isa<T>(op)) return getStatistics<T>( cast<T>(op) );
 

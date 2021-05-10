@@ -11,18 +11,32 @@
 
 #define DEBUG_TYPE "air-dataflow-explorer"
 
+#define MARGIN 2
+
 namespace xilinx {
     namespace air {
-        DataflowExplorer::DataflowExplorer(std::map<std::string, AbsOpWrapper*> &nameToOps) {
-            this->layerNameToOps = nameToOps;
+        // TODO for now both types are the same elementType
+        DataflowExplorer::DataflowExplorer(std::vector<std::pair<std::string, AbsOpWrapper*>> &nameToOps) {
+            unsigned int id = 0;
+            for(auto pair : nameToOps) {
+                this->layerNameToID[pair.first] = id;
+                this->layerNameToOps.push_back(pair.second);
+                id++;
+            }
+
+            this->validTopologies = std::vector<std::vector<ModelParams>>(id, std::vector<ModelParams>());
+            unsigned int aWidth = this->layerNameToOps[0]->getInput().getType().dyn_cast<ShapedType>().getElementTypeBitWidth() / 8;
+            this->arch = new AIEv1(aWidth, aWidth);
         }
 
         DataflowExplorer::~DataflowExplorer() {
             delete this->arch;
         }
 
-        unsigned int DataflowExplorer::getLinesPerTile(std::string layerName, ModelParams &params) {
-            ShapedType aShape = this->layerNameToOps[layerName]->getInput().getType().dyn_cast<ShapedType>();
+        // Analytical model functions
+
+        unsigned int DataflowExplorer::getLinesPerTile(unsigned int layerId, ModelParams &params) {
+            ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
 
             ArrayRef<int64_t> aShapeAR = aShape.getShape();
             int64_t C = aShapeAR[C_LOC];
@@ -33,8 +47,8 @@ namespace xilinx {
             return linesPerBanks;
         }
 
-        unsigned int DataflowExplorer::getBanksPerLine(std::string layerName, ModelParams& params) {
-            ShapedType aShape = this->layerNameToOps[layerName]->getInput().getType().dyn_cast<ShapedType>();
+        unsigned int DataflowExplorer::getBanksPerLine(unsigned int layerId, ModelParams& params) {
+            ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
 
             ArrayRef<int64_t> aShapeAR = aShape.getShape();
             int64_t C = aShapeAR[C_LOC];
@@ -46,28 +60,28 @@ namespace xilinx {
         }
 
         // Analytical model functions
-        unsigned int DataflowExplorer::getActivationInBanks(std::string layerName, ModelParams &params) {
-            unsigned int F0 = this->layerNameToOps[layerName]->getKernelSize();
-            int64_t linesPerBanks = this->getLinesPerTile(layerName, params);
+        unsigned int DataflowExplorer::getActivationInBanks(unsigned int layerId, ModelParams &params) {
+            unsigned int F0 = this->layerNameToOps[layerId]->getKernelSize();
+            int64_t linesPerBanks = this->getLinesPerTile(layerId, params);
             if(linesPerBanks != 0) {
                 return ceil(ceil((float)F0 / params.L) / linesPerBanks);
             } else {
-                unsigned int banksPerLine = this->getBanksPerLine(layerName, params);
+                unsigned int banksPerLine = this->getBanksPerLine(layerId, params);
                 return ceil((float)F0 / params.L) * banksPerLine;
             }
         }
 
-        unsigned int DataflowExplorer::getActivationOutBanks(std::string layer, ModelParams &params) {
+        unsigned int DataflowExplorer::getActivationOutBanks(unsigned int layerId, ModelParams &params) {
             return 2; // simple 4KB PingPong buffers
         }
 
         // either 2 or 4
-        unsigned int DataflowExplorer::getWeightBanks(std::string layer, ModelParams &params) {
-            if(!this->layerNameToOps[layer]->hasWeights()) {
+        unsigned int DataflowExplorer::getWeightBanks(unsigned int layerId, ModelParams &params) {
+            if(!this->layerNameToOps[layerId]->hasWeights()) {
                 return 0;
             }
 
-            ShapedType wShape = this->layerNameToOps[layer]->getWeights().getType().dyn_cast<ShapedType>();
+            ShapedType wShape = this->layerNameToOps[layerId]->getWeights().getType().dyn_cast<ShapedType>();
             ArrayRef<int64_t> wShapeAR = wShape.getShape();
             int64_t COut = wShapeAR[COUT_LOC];
             int64_t CIn = wShapeAR[CIN_LOC];
@@ -84,10 +98,10 @@ namespace xilinx {
             }
         }
 
-        unsigned int DataflowExplorer::getTotalMemBanks(std::string layer, ModelParams &params) {
-            unsigned int inBanks = this->getActivationInBanks(layer, params);
-            unsigned int outBanks = this->getActivationOutBanks(layer, params);
-            unsigned int weightBanks = this->getWeightBanks(layer, params);
+        unsigned int DataflowExplorer::getTotalMemBanks(unsigned int layerId, ModelParams &params) {
+            unsigned int inBanks = this->getActivationInBanks(layerId, params);
+            unsigned int outBanks = this->getActivationOutBanks(layerId, params);
+            unsigned int weightBanks = this->getWeightBanks(layerId, params);
 
             return inBanks + outBanks + weightBanks;
         }
@@ -104,10 +118,10 @@ namespace xilinx {
             return someGet;
         }
 
-        unsigned int DataflowExplorer::getK(std::string layerName, ModelParams &params) {
-            unsigned int linesPerTile = this->getLinesPerTile(layerName, params);
+        unsigned int DataflowExplorer::getK(unsigned int layerId, ModelParams &params) {
+            unsigned int linesPerTile = this->getLinesPerTile(layerId, params);
 
-            ShapedType aShape = this->layerNameToOps[layerName]->getInput().getType().dyn_cast<ShapedType>();
+            ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
             ArrayRef<int64_t> aShapeAR = aShape.getShape();
             int64_t N = aShapeAR[N_LOC];
 
@@ -115,16 +129,32 @@ namespace xilinx {
             return K;
         }
 
-        unsigned int DataflowExplorer::getComputeTimePerTile(std::string layerName, ModelParams &params) {
-            unsigned int K = this->getK(layerName, params);
-            return this->getComputeTime(layerName, params) / K;
+        unsigned int DataflowExplorer::getComputeTimePerTile(unsigned int layerId, ModelParams &params) {
+            unsigned int K = this->getK(layerId, params);
+            return this->getComputeTime(layerId, params) / K;
         }
 
-        unsigned int DataflowExplorer::getComputeTime(std::string layerName, ModelParams &params) {
-            std::map<std::string, uint64_t> stats = xilinx::aten::getATenOpStats(this->layerNameToOps[layerName]->getUnderlyingOperation());
-            uint64_t macs = stats["ops:MAC"];
+        std::map<std::string, uint64_t> getStats(Operation* op) {
+            std::map<std::string, uint64_t> layerStatsMap;
+            if (auto stats = llvm::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
+                layerStatsMap = stats.getStatistics();
+            } else {
+                layerStatsMap = xilinx::aten::getATenOpStats(op);
+            }
 
-            AbsOpWrapper* layer = this->layerNameToOps[layerName];
+            if(!layerStatsMap.size()) {
+                llvm::outs() << "No statistics provided for that op!!\n";
+                exit(1);
+            }
+
+            return layerStatsMap;
+        }
+
+        unsigned int DataflowExplorer::getComputeTime(unsigned int layerId, ModelParams &params) {
+            std::map<std::string, uint64_t> stats = getStats(this->layerNameToOps[layerId]->getUnderlyingOperation());
+            uint64_t macs = (stats.count("ops:MAC") == 0) ? stats["ops:>"] : stats["ops:MAC"];
+
+            AbsOpWrapper* layer = this->layerNameToOps[layerId];
             ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
             ArrayRef<int64_t> aShapeAR = aShape.getShape();
             int64_t CIn = aShapeAR[C_LOC];
@@ -149,13 +179,13 @@ namespace xilinx {
             return time / this->arch->getVectSize();
         }
 
-        unsigned int DataflowExplorer::getActCommunicationTimePerTile(std::string layer, ModelParams &params) {
-            unsigned int K = this->getK(layer, params);
-            return this->getActCommunicationTime(layer, params) / K;
+        unsigned int DataflowExplorer::getActCommunicationTimePerTile(unsigned int layerId, ModelParams &params) {
+            unsigned int K = this->getK(layerId, params);
+            return this->getActCommunicationTime(layerId, params) / K;
         }
 
-        unsigned int DataflowExplorer::getActCommunicationTime(std::string layerName, ModelParams &params) {
-            AbsOpWrapper* layer = this->layerNameToOps[layerName];
+        unsigned int DataflowExplorer::getActCommunicationTime(unsigned int layerId, ModelParams &params) {
+            AbsOpWrapper* layer = this->layerNameToOps[layerId];
             ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
             ArrayRef<int64_t> aShapeAR = aShape.getShape();
             uint64_t C = aShapeAR[C_LOC];
@@ -166,12 +196,12 @@ namespace xilinx {
             return actSize / this->arch->getComSpeed();
         }
 
-        unsigned int DataflowExplorer::getWeightCommunicationTimePerTile(std::string layer, ModelParams &params) {
-            if(!this->layerNameToOps[layer]->hasWeights()) {
+        unsigned int DataflowExplorer::getWeightCommunicationTimePerTile(unsigned int layerId, ModelParams &params) {
+            if(!this->layerNameToOps[layerId]->hasWeights()) {
                 return 0;
             }
 
-            ShapedType wShape = this->layerNameToOps[layer]->getWeights().getType().dyn_cast<ShapedType>();
+            ShapedType wShape = this->layerNameToOps[layerId]->getWeights().getType().dyn_cast<ShapedType>();
             ArrayRef<int64_t> wShapeAR = wShape.getShape();
             int64_t COut = wShapeAR[COUT_LOC];
             int64_t CIn = wShapeAR[CIN_LOC];
@@ -188,26 +218,102 @@ namespace xilinx {
             return weightSize / this->arch->getComSpeed();
         }
 
-        unsigned int DataflowExplorer::getWeightCommunicationTime(std::string layerName, ModelParams &params) {
-            unsigned int comPerTile = this->getWeightCommunicationTimePerTile(layerName, params);
-            unsigned int K = this->getK(layerName, params);
+        unsigned int DataflowExplorer::getWeightCommunicationTime(unsigned int layerId, ModelParams &params) {
+            unsigned int comPerTile = this->getWeightCommunicationTimePerTile(layerId, params);
+            unsigned int K = this->getK(layerId, params);
             return comPerTile * K;
         }
 
-        unsigned int DataflowExplorer::getTotalTimePerTile(std::string layerName, ModelParams &params) {
-            unsigned int weightComTile = this->getWeightCommunicationTimePerTile(layerName, params);
-            unsigned int actComTile = this->getActCommunicationTimePerTile(layerName, params);
-            unsigned int computeTile = this->getComputeTimePerTile(layerName, params);
+        unsigned int DataflowExplorer::getTotalTimePerTile(unsigned int layerId, ModelParams &params) {
+            unsigned int weightComTile = this->getWeightCommunicationTimePerTile(layerId, params);
+            unsigned int actComTile = this->getActCommunicationTimePerTile(layerId, params);
+            unsigned int computeTile = this->getComputeTimePerTile(layerId, params);
 
             // finds the bottleneck
             return std::max(std::max(actComTile, weightComTile), computeTile);
         }
 
-        unsigned int DataflowExplorer::getTotalTime(std::string layerName, ModelParams &params) {
-            unsigned int totalTimeTile = this->getTotalTimePerTile(layerName, params);
-            unsigned int K = this->getK(layerName, params);
+        unsigned int DataflowExplorer::getTotalTime(unsigned int layerId, ModelParams &params) {
+            unsigned int totalTimeTile = this->getTotalTimePerTile(layerId, params);
+            unsigned int K = this->getK(layerId, params);
 
             return K * totalTimeTile;
+        }
+
+        // Explore functions
+        std::vector<uint64_t>  DataflowExplorer::generateExplorationBounds() {
+            unsigned int numCores = this->arch->getNumCores();
+            std::vector<uint64_t> macsPerLayer;
+
+            uint64_t sum = 0;
+            for(AbsOpWrapper* elem : this->layerNameToOps) {
+                std::map<std::string, uint64_t> stats = getStats(elem->getUnderlyingOperation());
+                uint64_t macs = (stats.count("ops:MAC") == 0) ? stats["ops:>"] : stats["ops:MAC"];
+
+                macsPerLayer.push_back(macs);
+                sum += macs;
+            }
+
+            for(unsigned int i = 0; i < macsPerLayer.size(); i++) {
+                macsPerLayer[i] = (macsPerLayer[i] * MARGIN / sum) * numCores;
+            }
+
+            //std::transform(macsPerLayer.begin(), macsPerLayer.end(), macsPerLayer.begin(),
+            //               [&sum, &numCores](uint64_t macs) -> unsigned int {return (macs / sum) * MARGIN * numCores;});
+
+            return macsPerLayer;
+        }
+
+        // Is not valid if does not fit under the memory constraints
+        bool DataflowExplorer::isValid(unsigned int layerId, ModelParams &params) {
+            AbsOpWrapper* layer = this->layerNameToOps[layerId];
+
+            ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
+            ArrayRef<int64_t> aShapeAR = aShape.getShape();
+
+            int64_t CIn = aShapeAR[C_LOC];
+            int64_t COut;
+            if(layer->hasWeights()) {
+                ShapedType wShape = layer->getWeights().getType().dyn_cast<ShapedType>();
+                ArrayRef<int64_t> wShapeAR = wShape.getShape();
+                COut = wShapeAR[COUT_LOC];
+            } else {
+                COut = CIn;
+            }
+
+            unsigned int F0 = layer->getKernelSize();
+
+            bool memFit = this->getTotalMemBanks(layerId, params) > this->arch->getNumBanks();
+            bool enoughCIn = (CIn / params.Ca) >= 8;
+            bool enoughCOut = (COut / params.P) >= 8;
+            bool enoughF = (F0 / params.L) >= 1;
+
+            return memFit && enoughCIn && enoughCOut && enoughF;
+        }
+
+        void DataflowExplorer::generateValidTopologies() {
+            std::vector<uint64_t> bounds = this->generateExplorationBounds();
+
+            for(unsigned int layerId = 0; layerId < bounds.size(); layerId++) {
+                unsigned int layerCores = bounds.at(layerId);
+                unsigned int F0 = this->layerNameToOps[layerId]->getKernelSize();
+                for(unsigned int p = 1; p < layerCores; p++) {
+                    for(unsigned int ca = 1; ca < (layerCores - (p-1)); ca++) {
+                        for(unsigned int f = 1; f < (std::min(layerCores - (p-1) - (ca-1), F0)); f++) {
+                            for(unsigned int w = 1; w < layerCores - (p-1) - (f-1) - (ca-1); w++) {
+                                ModelParams params(p, ca, f, 1);
+                                if(this->isValid(layerId, params)) {
+                                    this->validTopologies.at(layerId).push_back(params);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        void DataflowExplorer::printValidTopologies() {
+            // TODO
         }
     }
 }

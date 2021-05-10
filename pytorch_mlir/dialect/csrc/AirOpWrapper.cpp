@@ -1,8 +1,23 @@
 #include "AirOpWrapper.h"
 #include "AirDataflowConsts.h"
 
+#include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
+
 namespace xilinx {
     namespace air {
+
+        void unpack_int_list(const Value &op, std::vector<int64_t> &v) {
+            if (auto co = op.getDefiningOp<NPCOMP::aten::ConstantOp>()) {
+                DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
+                for (auto i : a.getIntValues())
+                    v.push_back(i.getSExtValue());
+            }
+            else if (auto co = op.getDefiningOp<NPCOMP::Basicpy::BuildListOp>()) {
+                for (auto o : op.getDefiningOp()->getOperands())
+                    v.push_back(o.template getDefiningOp<ConstantIntOp>().getValue());
+            }
+        }
+
         AbsOpWrapper::~AbsOpWrapper() {}
 
         Conv2dOpWrapper::Conv2dOpWrapper(Conv2dOp c) {
@@ -286,19 +301,10 @@ namespace xilinx {
 
         unsigned int MaxPool2dWithIndicesOpWrapper::getKernelSize() {
             Value ks = this->maxpool.kernel_size();
+            std::vector<int64_t> kernel_size;
+            unpack_int_list(ks, kernel_size);
 
-            ConstantOp op = ks.getDefiningOp<ConstantOp>();
-            if(!op) {
-                llvm::outs() << "Kernel size needs to be statically defined!\n";
-                return -1;
-            }
-
-            for(NamedAttribute attr : op->getAttrs()) {
-                auto at = attr.second.dyn_cast<IntegerAttr>();
-                if(at) { // TODO also check that no other attr match?
-                    return (unsigned int)(at.getValue().roundToDouble());
-                }
-            }
+            return kernel_size.at(0);
         }
 
         Value MaxPool2dWithIndicesOpWrapper::getInput() {

@@ -84,14 +84,14 @@ public:
     auto graph = getOperation().lookupSymbol<mlir::FuncOp>("graph");
     graph.walk([&](Operation *op) {
 
-      std::map<std::string, uint64_t> layerStatsMap;
-      if (auto stats = mlir::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
-        layerStatsMap = stats.getStatistics();
-      }
-      else {
-        layerStatsMap = xilinx::aten::getATenOpStats(op);
-      }
-      if (!layerStatsMap.size()) return;
+            std::map<std::string, uint64_t> layerStatsMap;
+            if (auto stats = mlir::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
+                layerStatsMap = stats.getStatistics();
+            }
+            else {
+                layerStatsMap = xilinx::aten::getATenOpStats(op);
+            }
+            if (!layerStatsMap.size()) return;
 
       // acdc name for this layer
       std::string layerName = opToName[op];
