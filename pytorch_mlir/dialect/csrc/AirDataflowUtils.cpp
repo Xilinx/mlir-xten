@@ -3,7 +3,7 @@
 #include "mlir/IR/OperationSupport.h"
 
 #include "AirDataflowUtils.h"
-#include "consts.h"
+#include "AirDataflowConsts.h"
 
 #define DEBUG_TYPE "air-dataflow-utils"
 
