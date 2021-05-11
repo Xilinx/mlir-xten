@@ -17,56 +17,61 @@ namespace xilinx {
         class AbsArchitecture {
         public:
             virtual ~AbsArchitecture() {};
-            virtual unsigned int getBankSize() = 0;
-            virtual unsigned int getNumBanks() = 0;
-            virtual unsigned int getMemSize() = 0;
-            virtual unsigned int getVectSize() = 0;
-            virtual unsigned int getComSpeed() = 0;
-            virtual unsigned int getPipelineDepth() = 0;
-            virtual unsigned int getNumCores() = 0;
+            virtual uint64_t getBankSize() = 0;
+            virtual uint64_t getNumBanks() = 0;
+            virtual uint64_t getMemSize() = 0;
+            virtual uint64_t getVectSize() = 0;
+            virtual uint64_t getComSpeed() = 0;
+            virtual uint64_t getPipelineDepth() = 0;
+            virtual uint64_t getNumCores() = 0;
+            virtual uint64_t getClockFrequency() = 0;
         };
 
         class AIEv1 : public AbsArchitecture {
         private:
-            unsigned int xWidth;
-            unsigned int zWidth;
+            uint64_t xWidth;
+            uint64_t zWidth;
 
         public:
-            AIEv1(unsigned int acts, unsigned int weights) : xWidth(acts), zWidth(weights) {}
+            AIEv1(uint64_t acts, uint64_t weights) : xWidth(acts), zWidth(weights) {}
             ~AIEv1() {}
 
             // Size in bytes
-            unsigned int getBankSize() {
+            uint64_t getBankSize() {
                 return pow(2, 12);
             }
 
             // Integer
-            unsigned int getNumBanks() {
+            uint64_t getNumBanks() {
                 return 8;
             }
 
             // Size in bytes
-            unsigned int getMemSize() {
+            uint64_t getMemSize() {
                 return getBankSize() * getNumBanks();
             }
 
             // Integer
-            unsigned int getVectSize() {
+            uint64_t getVectSize() {
                 return 128 / (xWidth * zWidth);
             }
 
             // Bytes per cycles
-            unsigned int getComSpeed() {
+            uint64_t getComSpeed() {
                 return 4;
             }
 
             // Integer, TODO check that
-            unsigned int getPipelineDepth() {
+            uint64_t getPipelineDepth() {
                 return 8;
             }
 
-            unsigned int getNumCores() {
+            uint64_t getNumCores() {
                 return 400;
+            }
+
+            uint64_t getClockFrequency() {
+                return pow(10, 9);
             }
         };
 
@@ -78,31 +83,38 @@ namespace xilinx {
             AbsArchitecture* arch;
 
             // Analytical model functions
-            unsigned int getLinesPerTile(unsigned int layerId, ModelParams &params);
-            unsigned int getBanksPerLine(unsigned int layerId, ModelParams &params);
-            unsigned int getK(unsigned int layerId, ModelParams &params);
-            unsigned int getMissmatchChannels(int64_t dim, unsigned int params);
-            unsigned int getMissmatchLines(int64_t dim, unsigned int params);
+            uint64_t getLinesPerTile(uint64_t layerId, ModelParams &params);
+            uint64_t getBanksPerLine(uint64_t layerId, ModelParams &params);
+            uint64_t getK(uint64_t layerId, ModelParams &params);
+            uint64_t getMissmatchChannels(int64_t dim, uint64_t params);
+            uint64_t getMissmatchLines(int64_t dim, uint64_t params);
 
-            unsigned int getComputeTimePerTile(unsigned int layerId, ModelParams &params);
-            unsigned int getComputeTime(unsigned int layerId, ModelParams &params);
+            uint64_t getComputeTimePerTile(uint64_t layerId, ModelParams &params);
+            uint64_t getComputeTime(uint64_t layerId, ModelParams &params);
 
-            unsigned int getActivationInBanks(unsigned int layerId, ModelParams &params);
-            unsigned int getActivationOutBanks(unsigned int layerId, ModelParams &params);
-            unsigned int getWeightBanks(unsigned int layerId, ModelParams &params);
-            unsigned int getTotalMemBanks(unsigned int layerId, ModelParams &params);
+            uint64_t getActivationInBanks(uint64_t layerId, ModelParams &params);
+            uint64_t getActivationOutBanks(uint64_t layerId, ModelParams &params);
+            uint64_t getWeightBanks(uint64_t layerId, ModelParams &params);
+            uint64_t getTotalMemBanks(uint64_t layerId, ModelParams &params);
 
-            unsigned int getActCommunicationTimePerTile(unsigned int layerId, ModelParams &params);
-            unsigned int getActCommunicationTime(unsigned int layerId, ModelParams &params);
+            uint64_t getActCommunicationTimePerTile(uint64_t layerId, ModelParams &params);
+            uint64_t getActCommunicationTime(uint64_t layerId, ModelParams &params);
 
-            unsigned int getWeightCommunicationTimePerTile(unsigned int layerId, ModelParams &params);
-            unsigned int getWeightCommunicationTime(unsigned int layerid, ModelParams &params);
+            uint64_t getWeightCommunicationTimePerTile(uint64_t layerId, ModelParams &params);
+            uint64_t getWeightCommunicationTime(uint64_t layerid, ModelParams &params);
 
-            unsigned int getTotalTimePerTile(unsigned int layerId, ModelParams &params);
-            unsigned int getTotalTime(unsigned int layerId, ModelParams &params);
+            uint64_t getTotalTimePerTile(uint64_t layerId, ModelParams &params);
+            uint64_t getTotalTime(uint64_t layerId, ModelParams &params);
+
+            uint64_t getTotalCompute();
+
+            uint64_t getEndToEndLatency(std::vector<ModelParams> &params);
+            uint64_t getThroughput(std::vector<ModelParams> &params);
+            double getUtilization(std::vector<ModelParams> &Params);
+            uint64_t getArea(std::vector<ModelParams> &params);
 
             // Explore functions
-            bool isValid(unsigned int layerId, ModelParams &params);
+            bool isValid(uint64_t layerId, ModelParams &params);
             std::vector<uint64_t> generateExplorationBounds();
         public:
             DataflowExplorer(std::vector<std::pair<std::string, AbsOpWrapper*>> &nameToOps);

@@ -395,12 +395,13 @@ namespace xilinx {
                 //initializeLayerNameToParams(graph);
 
                 dataflowExplorer.generateValidTopologies();
+                dataflowExplorer.dumpValidTopologies();
 
                 // expand slowest layer
-                CaTransform("conv2d_relu1", 4);
-                PTransform("conv2d_relu1", 4);
-                PTransform("conv2d_relu0", 4);
-                PTransform("max_pool2d_with_indices0", 4);
+                //CaTransform("conv2d_relu1", 4);
+                //PTransform("conv2d_relu1", 4);
+                //PTransform("conv2d_relu0", 4);
+                //PTransform("max_pool2d_with_indices0", 4);
 
                 clearLayerNameToOps();
             }

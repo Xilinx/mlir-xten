@@ -42,6 +42,10 @@ namespace xilinx {
             unsigned int cores() {
                 return P * Ca * L * W;
             }
+
+            void print() {
+                llvm::outs() << "P: " << this->P << ", Ca: " << this->Ca << ", L: " << this->L << ", W: " << this->W << "\n";
+            }
         };
 
         ShapedType breakShapeInto(ShapedType initShape, unsigned int at, unsigned int into);
