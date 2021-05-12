@@ -19,6 +19,7 @@
 // TODO also take into account kernel efficiency?
 // TODO Need to take into account kernel fusion at some point, either here or afterwards
 // TODO Need to incorporate external bandwdith at some point
+// TODO take into account parallel line handling when memory or no?
 
 namespace xilinx {
     namespace air {
@@ -42,15 +43,18 @@ namespace xilinx {
 
         // Analytical model functions
 
+        // TODO lines per tile need to agree with K ? Or no? Is it better to save on memory or save on compute potentially?
         uint64_t DataflowExplorer::getLinesPerTile(uint64_t layerId, ModelParams &params) {
             ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
 
             ArrayRef<int64_t> aShapeAR = aShape.getShape();
             int64_t C = aShapeAR[C_LOC];
             int64_t M = aShapeAR[M_LOC];
+            //int64_t N = aShapeAR[N_LOC];
 
             int64_t lineSize = (ceil(C / params.P) * M) * (aShape.getElementTypeBitWidth() / 8);
             int64_t linesPerBanks = (int64_t)floor(this->arch->getBankSize() / (float)lineSize);
+
             return linesPerBanks;
         }
 
@@ -66,20 +70,45 @@ namespace xilinx {
             return banksPerLine;
         }
 
+        uint64_t DataflowExplorer::getK(uint64_t layerId, ModelParams &params) {
+            uint64_t linesPerTile = this->getLinesPerTile(layerId, params);
+
+            ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
+            ArrayRef<int64_t> aShapeAR = aShape.getShape();
+            int64_t N = aShapeAR[N_LOC];
+
+            uint64_t K = std::max((uint64_t)1, (uint64_t)ceil((float)N / linesPerTile));
+
+            //llvm::outs() << "N= " << N << " K = " << K << " linesPerTile = " << linesPerTile <<"\n";
+            return K;
+        }
+
         // Analytical model functions
         uint64_t DataflowExplorer::getActivationInBanks(uint64_t layerId, ModelParams &params) {
             uint64_t F0 = this->layerNameToOps[layerId]->getKernelSize();
             int64_t linesPerBanks = this->getLinesPerTile(layerId, params);
+            uint64_t banksPerLine = this->getBanksPerLine(layerId, params);
+
+            uint64_t banksForFilter = 0;
             if(linesPerBanks != 0) {
-                return ceil(ceil((float)F0 / params.L) / linesPerBanks);
+                banksForFilter = ceil(ceil((float)F0 / params.L) / linesPerBanks);
             } else {
-                uint64_t banksPerLine = this->getBanksPerLine(layerId, params);
-                return ceil((float)F0 / params.L) * banksPerLine;
+                banksForFilter = ceil((float)F0 / params.L) * banksPerLine;
             }
+
+            uint64_t minBanksForFilter = (F0 == 1) ? 1 : 2;
+            return std::max(minBanksForFilter, banksForFilter) + banksPerLine;
         }
 
+        // PingPong 4KB buffers
+        // If Cascade is there can use the shared memory between the cores to share output space
+        // TODO this is architecture specific, make that more generic
         uint64_t DataflowExplorer::getActivationOutBanks(uint64_t layerId, ModelParams &params) {
-            return 2; // simple 4KB PingPong buffers
+            if(params.Ca == 1 && params.L == 1) {
+                return 2;
+            } else {
+                return 1;
+            }
         }
 
         // either 2 or 4
@@ -101,7 +130,7 @@ namespace xilinx {
             if((weightBanks > 4) || (weightBanks == 3)) {
                 return 4;
             } else {
-                return weightBanks;
+                return 2;
             }
         }
 
@@ -123,17 +152,6 @@ namespace xilinx {
             uint64_t allGet = floor((float)dim / param);
             uint64_t someGet = dim - allGet * param;
             return someGet;
-        }
-
-        uint64_t DataflowExplorer::getK(uint64_t layerId, ModelParams &params) {
-            uint64_t linesPerTile = this->getLinesPerTile(layerId, params);
-
-            ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
-            int64_t N = aShapeAR[N_LOC];
-
-            uint64_t K = std::max((uint64_t)1, N / linesPerTile);
-            return K;
         }
 
         uint64_t DataflowExplorer::getComputeTimePerTile(uint64_t layerId, ModelParams &params) {
@@ -183,6 +201,7 @@ namespace xilinx {
             // TODO double check this expression
             // TODO what about efficicency here?
             uint64_t time  = macs / ((params.P - missmatchP) * (params.Ca - missmatchCa) * (params.L - missmatchL) * params.W);
+            //llvm::outs() << "macs should be: " << macs << "and time is: " << time <<"\n";
             return time / this->arch->getVectSize();
         }
 
@@ -364,7 +383,6 @@ namespace xilinx {
             uint64_t numCores = this->arch->getNumCores();
             for(uint64_t i = 0; i < macsPerLayer.size(); i++) {
                 macsPerLayer[i] = std::min((uint64_t)(((double)macsPerLayer[i] * MARGIN / sum) * numCores), numCores);
-                llvm::outs() << "Computed: " << std::min((uint64_t)(((double)macsPerLayer[i] * MARGIN / sum) * numCores), numCores) << "\n";
             }
 
             //std::transform(macsPerLayer.begin(), macsPerLayer.end(), macsPerLayer.begin(),
@@ -392,12 +410,21 @@ namespace xilinx {
 
             uint64_t F0 = layer->getKernelSize();
 
-            bool memFit = this->getTotalMemBanks(layerId, params) < this->arch->getNumBanks();
+            bool memFit = this->getTotalMemBanks(layerId, params) <= this->arch->getNumBanks();
             bool enoughCIn = (CIn / params.Ca) >= 8;
             bool enoughCOut = (COut / params.P) >= 8;
             bool enoughF = (F0 / params.L) >= 1;
 
             // TODO also check that W is rate balanced ?
+
+            /*if(layerId == 4) {
+                llvm::outs() << "MemFit: " << memFit << " Cin: " << enoughCIn << " COut " << enoughCOut << " F " << enoughF << "\n";
+                llvm::outs() << "For params: (P=" << params.P << ", Ca=" << params.Ca << ", F=" << params.L << ", W=" << params.W << "\n";
+                llvm::outs() << "MemFit is: " << this->getTotalMemBanks(layerId, params) << "with: " <<
+                    this->getActivationInBanks(layerId, params) << ", " <<
+                    this->getActivationOutBanks(layerId, params) << ", " <<
+                    this->getWeightBanks(layerId, params) << "\n";
+                    }*/
 
             return memFit && enoughCIn && enoughCOut && enoughF;
         }
@@ -412,10 +439,10 @@ namespace xilinx {
             for(uint64_t layerId = 0; layerId < bounds.size(); layerId++) {
                 uint64_t layerCores = bounds.at(layerId);
                 uint64_t F0 = this->layerNameToOps[layerId]->getKernelSize();
-                for(uint64_t p = 1; p < layerCores; p++) {
-                    for(uint64_t ca = 1; ca < (layerCores - (p-1)); ca++) {
-                        for(uint64_t f = 1; f < (std::min(layerCores - (p-1) - (ca-1), F0)); f++) {
-                            for(uint64_t w = 1; w < layerCores - (p-1) - (f-1) - (ca-1); w++) {
+                for(uint64_t p = 1; p <= layerCores; p++) {
+                    for(uint64_t ca = 1; ca <= (layerCores - (p-1)); ca++) {
+                        for(uint64_t f = 1; f <= (std::min(layerCores - (p-1) - (ca-1), F0)); f++) {
+                            for(uint64_t w = 1; w <= layerCores - (p-1) - (f-1) - (ca-1); w++) {
                                 ModelParams params(p, ca, f, w);
                                 if(this->isValid(layerId, params)) {
                                     this->validTopologies.at(layerId).push_back(params);
@@ -497,11 +524,15 @@ namespace xilinx {
                             std::vector<ModelParams> pathHead = inNode->areaToThroughput.at(i);
                             if(pathHead.size() != 0) {
                                 pathHead.push_back(layerNode->params);
-                                uint64_t nThroughput = this->getThroughput(pathHead);
-                                uint64_t locThroughput = this->getThroughput(layerNode->areaToThroughput.at(i));
+                                uint64_t nArea = i + layerNode->params.cores();
 
-                                if(nThroughput > locThroughput) {
-                                    layerNode->areaToThroughput[i] = pathHead; // TODO double check that assignment
+                                if(nArea <= this->arch->getNumCores()) {
+                                    uint64_t nThroughput = this->getThroughput(pathHead);
+                                    uint64_t locThroughput = this->getThroughput(layerNode->areaToThroughput.at(i));
+
+                                    if(nThroughput > locThroughput) {
+                                        layerNode->areaToThroughput[i] = pathHead; // TODO double check that assignment
+                                    }
                                 }
                             }
                         }
@@ -511,11 +542,15 @@ namespace xilinx {
                             std::vector<ModelParams> pathHead = inNode->areaToLatency.at(i);
                             if(pathHead.size() != 0) {
                                 pathHead.push_back(layerNode->params);
-                                uint64_t nLatency = this->getEndToEndLatency(pathHead);
-                                uint64_t locLatency = this->getEndToEndLatency(layerNode->areaToLatency.at(i));
+                                uint64_t nArea = i + layerNode->params.cores();
 
-                                if(nLatency < locLatency) {
-                                    layerNode->areaToLatency[i] = pathHead; // TODO double check that assignment
+                                if(nArea <= this->arch->getNumCores()) {
+                                    uint64_t nLatency = this->getEndToEndLatency(pathHead);
+                                    uint64_t locLatency = this->getEndToEndLatency(layerNode->areaToLatency.at(i));
+
+                                    if(nLatency < locLatency) {
+                                        layerNode->areaToLatency[i] = pathHead; // TODO double check that assignment
+                                    }
                                 }
                             }
                         }
@@ -580,21 +615,32 @@ namespace xilinx {
 
             std::ofstream configs;
             configs.open("./configs.csv", std::ios::out | std::ios::app);
-            configs << "layerName P Ca L W Mem Compute ActCommunication WeightCommunication TotalTime\n";
+            configs << "layerName P Ca L W K Mem Compute ActCommunication WeightCommunication TotalTime\n";
 
             for(uint64_t i = 0; i < this->validTopologies.size(); i++) {
-                llvm::outs() << "Layer: " << names[i] << " \n";
+                llvm::outs() << "Layer: " << names[i] << ", with valid topologies: " << this->validTopologies.at(i).size() << "\n";
                 for(ModelParams elem : this->validTopologies.at(i)) {
+                    uint64_t K = this->getK(i, elem);
                     uint64_t mem = this->getTotalMemBanks(i, elem);
                     uint64_t compute = this->getComputeTime(i, elem);
                     uint64_t actComm = this->getActCommunicationTime(i, elem);
                     uint64_t wComm = this->getWeightCommunicationTime(i, elem);
                     uint64_t totalTime = this->getTotalTime(i, elem);
-                    configs << names[i] << " " << elem.P << " " << elem.Ca << " " << elem.L << " " << elem.W << " "
-                            << mem << " " << compute << " " << actComm << " " << wComm << " " << totalTime << "\n";
+                    configs << names[i] << " " << elem.P << " " << elem.Ca << " " << elem.L << " " << elem.W << " " <<
+                        K << " "<< mem << " " << compute << " " << actComm << " " << wComm << " " << totalTime << "\n";
                 }
             }
             configs.close();
+        }
+
+        void DataflowExplorer::dumpParetoFrontiers() {
+            std::ofstream paretoThroughput;
+            paretoThroughput.open("./pareto_throughput.csv", std::ios::out | std::ios::app);
+            paretoThroughput << "Area Throughput\n";
+
+            for(uint64_t i = 0; i < this->paretoThroughput.size(); i++) {
+                // TODO
+            }
         }
     }
 }

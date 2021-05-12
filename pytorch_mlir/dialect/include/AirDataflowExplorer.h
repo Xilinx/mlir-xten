@@ -53,6 +53,7 @@ namespace xilinx {
 
             // Integer
             uint64_t getVectSize() {
+                //llvm::outs() << "Vects size is: " << 128 / (xWidth * zWidth) << "\n";
                 return 128 / (xWidth * zWidth);
             }
 
@@ -151,6 +152,7 @@ namespace xilinx {
             void enumerate();
             void printValidTopologies();
             void dumpValidTopologies();
+            void dumpParetoFrontiers();
             std::map<std::string, ModelParams> getBestTopology();
         };
     }
