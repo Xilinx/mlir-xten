@@ -17,6 +17,8 @@
 #define MARGIN 2
 
 // TODO also take into account kernel efficiency?
+// TODO Need to take into account kernel fusion at some point, either here or afterwards
+// TODO Need to incorporate external bandwdith at some point
 
 namespace xilinx {
     namespace air {
@@ -130,7 +132,7 @@ namespace xilinx {
             ArrayRef<int64_t> aShapeAR = aShape.getShape();
             int64_t N = aShapeAR[N_LOC];
 
-            uint64_t K = N / linesPerTile;
+            uint64_t K = std::max((uint64_t)1, N / linesPerTile);
             return K;
         }
 
@@ -238,6 +240,7 @@ namespace xilinx {
             return std::max(std::max(actComTile, weightComTile), computeTile);
         }
 
+        // TODO make sure that this works for W (and L when we take into account line movement but should be OK from shared memory)
         uint64_t DataflowExplorer::getTotalTime(uint64_t layerId, ModelParams &params) {
             uint64_t totalTimeTile = this->getTotalTimePerTile(layerId, params);
             uint64_t K = this->getK(layerId, params);
@@ -260,21 +263,66 @@ namespace xilinx {
         // TODO at the moment for the next 4 functions assume start from layer 0 if not all layers are present
         // TODO might want to change that in the future
         uint64_t DataflowExplorer::getEndToEndLatency(std::vector<ModelParams> &params) {
-            uint64_t latency = 0;
+            if(params.size() == 0) {
+                return (uint64_t)-1;
+            }
+
+            uint64_t locSlowest = 0;
+            uint64_t slowest = 0;
+            uint64_t loc = 0;
             for(uint64_t i = 0; i < params.size(); i++) {
-                latency += this->getTotalTime(i, params.at(i));
+                if(params.at(i).P != 0 && params.at(i).Ca != 0 && params.at(i).L != 0 && params.at(i).W != 0) {
+                    uint64_t totalTimeLayer = this->getTotalTime(loc, params.at(i));
+                    if(totalTimeLayer > slowest) {
+                        slowest = totalTimeLayer;
+                        locSlowest = i;
+                    }
+                    loc++;
+                }
+            }
+
+            uint64_t latency = 0;
+            loc = 0;
+            for(uint64_t i = 0; i < locSlowest; i++) {
+                if(params.at(i).P != 0 && params.at(i).Ca != 0 && params.at(i).L != 0 && params.at(i).W != 0) {
+                    latency += this->getTotalTimePerTile(loc, params.at(i));
+                    loc++;
+                }
+            }
+
+            latency += this->getTotalTime(locSlowest, params.at(locSlowest));
+            loc++;
+
+            for(uint64_t i = locSlowest + 1; i < params.size(); i++) {
+                if(params.at(i).P != 0 && params.at(i).Ca != 0 && params.at(i).L != 0 && params.at(i).W != 0) {
+                    latency += this->getTotalTimePerTile(loc, params.at(i));
+                    loc++;
+                }
             }
 
             return latency;
         }
 
+        uint64_t getThroughputFromDelay(uint64_t delay) {
+            return (uint64_t)(1/(delay * pow(10, -9)));
+        }
+
         uint64_t DataflowExplorer::getThroughput(std::vector<ModelParams> &params) {
+            if(params.size() == 0) {
+                return 0;
+            }
+
             uint64_t throughput = 0;
+            uint64_t loc = 0;
             for(uint64_t i = 0; i < params.size(); i++) {
-                uint64_t totalTimeLayer = this->getTotalTime(i, params.at(i));
-                uint64_t layerThroughput = (uint64_t)(1/(totalTimeLayer * pow(10, -9)));
-                if(layerThroughput > throughput) {
-                    throughput = layerThroughput;
+                if(params.at(i).P != 0 && params.at(i).Ca != 0 && params.at(i).L != 0 && params.at(i).W != 0) {
+                    uint64_t totalTimeLayer = this->getTotalTime(loc, params.at(i));
+                    uint64_t layerThroughput = (uint64_t)(1/(totalTimeLayer * pow(10, -9)));
+                    if(layerThroughput > throughput) {
+                        throughput = layerThroughput;
+                    }
+
+                    loc += 1;
                 }
             }
 
@@ -301,20 +349,22 @@ namespace xilinx {
 
         // Explore functions
         std::vector<uint64_t>  DataflowExplorer::generateExplorationBounds() {
-            uint64_t numCores = this->arch->getNumCores();
             std::vector<uint64_t> macsPerLayer;
 
             uint64_t sum = 0;
             for(AbsOpWrapper* elem : this->layerNameToOps) {
                 std::map<std::string, uint64_t> stats = getStats(elem->getUnderlyingOperation());
                 uint64_t macs = (stats.count("ops:MAC") == 0) ? stats["ops:>"] : stats["ops:MAC"];
+                llvm::outs() << "macs were: " << macs << "\n";
 
                 macsPerLayer.push_back(macs);
                 sum += macs;
             }
 
+            uint64_t numCores = this->arch->getNumCores();
             for(uint64_t i = 0; i < macsPerLayer.size(); i++) {
-                macsPerLayer[i] = (macsPerLayer[i] * MARGIN / sum) * numCores;
+                macsPerLayer[i] = std::min((uint64_t)(((double)macsPerLayer[i] * MARGIN / sum) * numCores), numCores);
+                llvm::outs() << "Computed: " << std::min((uint64_t)(((double)macsPerLayer[i] * MARGIN / sum) * numCores), numCores) << "\n";
             }
 
             //std::transform(macsPerLayer.begin(), macsPerLayer.end(), macsPerLayer.begin(),
@@ -355,6 +405,10 @@ namespace xilinx {
         void DataflowExplorer::generateValidTopologies() {
             std::vector<uint64_t> bounds = this->generateExplorationBounds();
 
+            for(auto i : bounds) {
+                llvm::outs() << "Bounds: " << i << "\n";
+            }
+
             for(uint64_t layerId = 0; layerId < bounds.size(); layerId++) {
                 uint64_t layerCores = bounds.at(layerId);
                 uint64_t F0 = this->layerNameToOps[layerId]->getKernelSize();
@@ -373,7 +427,133 @@ namespace xilinx {
             }
         }
 
+        // take valid topologies and build a graph with ins set to all nodes, areaToNode left empty
+        // Also take into account communication characteristics of the underlying architecture
+        void DataflowExplorer::generatePathGraph() {
+            this->pathGraph = std::vector<std::vector<Node_t*>>(this->validTopologies.size() + 2, std::vector<Node_t*>());
+
+            Node_t* root = new Node_t(ModelParams(0,0,0,0));
+            root->areaToThroughput = std::vector<std::vector<ModelParams>>(this->arch->getNumCores() + 1, std::vector<ModelParams>());
+            root->areaToLatency = std::vector<std::vector<ModelParams>>(this->arch->getNumCores() + 1, std::vector<ModelParams>());
+
+            // Init paths of size
+            root->areaToThroughput[0] = std::vector<ModelParams>(1, root->params);
+            root->areaToLatency[0] = std::vector<ModelParams>(1, root->params);
+
+            this->pathGraph.at(0).push_back(root);
+
+            for(unsigned int i = 0; i < this->validTopologies.size(); i++) {
+                for(ModelParams p : this->validTopologies.at(i)) {
+                    if(i == 0) {
+                        Node_t* node = new Node_t(p);
+                        node->ins.push_back(root);
+                        this->pathGraph.at(i+1).push_back(node);
+                    } else {
+                        Node_t* node = new Node_t(p);
+
+                        // TODO check ins append constraints in more details
+                        for(Node_t* n : this->pathGraph.at(i)) {
+                            if(this->layerNameToOps.at(i)->isDepthWise()) {
+                                unsigned int nP = n->params.P;
+                                unsigned int P = p.P;
+
+                                if(nP == P) {
+                                    node->ins.push_back(n);
+                                }
+                            } else {
+                                unsigned int nP = n->params.P;
+                                unsigned int Ca = p.Ca;
+
+                                if(nP == Ca) {
+                                    node->ins.push_back(n);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Node_t* sink = new Node_t(ModelParams(0,0,0,0));
+            for(Node_t* n : this->pathGraph.at(this->pathGraph.size() - 2)) {
+                sink->ins.push_back(n);
+            }
+
+            this->pathGraph.at(this->pathGraph.size() - 1).push_back(sink);
+        }
+
+        // Uses the ins generated by previous function to build the areaToNode for all functions
+        // TODO make that function look better
+        // TODO check sink stuff
+        void DataflowExplorer::enumeratePaths() {
+            for(uint64_t layer = 1; layer < this->pathGraph.size(); layer++) {
+                for(Node_t* layerNode : this->pathGraph.at(layer)) {
+                    layerNode->areaToThroughput =  std::vector<std::vector<ModelParams>>(this->arch->getNumCores() + 1, std::vector<ModelParams>());
+                    layerNode->areaToLatency = std::vector<std::vector<ModelParams>>(this->arch->getNumCores() + 1, std::vector<ModelParams>());
+
+                    for(Node_t* inNode : layerNode->ins) {
+                        // Handle throughput
+                        for(uint64_t i = 0; i < inNode->areaToThroughput.size(); i++) {
+                            // TODO double check that this is a copy
+                            std::vector<ModelParams> pathHead = inNode->areaToThroughput.at(i);
+                            if(pathHead.size() != 0) {
+                                pathHead.push_back(layerNode->params);
+                                uint64_t nThroughput = this->getThroughput(pathHead);
+                                uint64_t locThroughput = this->getThroughput(layerNode->areaToThroughput.at(i));
+
+                                if(nThroughput > locThroughput) {
+                                    layerNode->areaToThroughput[i] = pathHead; // TODO double check that assignment
+                                }
+                            }
+                        }
+
+                        // Handle Latency
+                        for(uint64_t i = 0; i < inNode->areaToLatency.size(); i++) {
+                            std::vector<ModelParams> pathHead = inNode->areaToLatency.at(i);
+                            if(pathHead.size() != 0) {
+                                pathHead.push_back(layerNode->params);
+                                uint64_t nLatency = this->getEndToEndLatency(pathHead);
+                                uint64_t locLatency = this->getEndToEndLatency(layerNode->areaToLatency.at(i));
+
+                                if(nLatency < locLatency) {
+                                    layerNode->areaToLatency[i] = pathHead; // TODO double check that assignment
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        void DataflowExplorer::getParetoFrontierAndCleanGraph() {
+            for(uint64_t l = 0; l < this->pathGraph.size(); l++) {
+                std::vector<Node_t*> layer = this->pathGraph.at(l);
+
+                if(l == (this->pathGraph.size() - 1)) {
+                    assert(layer.size() == 1);
+                    this->paretoThroughput = layer.at(0)->areaToThroughput;
+                    this->paretoLatency = layer.at(0)->areaToLatency;
+                }
+
+                for(uint64_t n = 0; n < layer.size(); n++) {
+                    Node_t* node = layer.at(n);
+
+                    node->ins.clear();
+                    delete node;
+                }
+            }
+        }
+
+        void DataflowExplorer::enumerate() {
+            this->generateValidTopologies();
+            this->generatePathGraph();
+            this->enumeratePaths();
+            this->getParetoFrontierAndCleanGraph();
+        }
+
+        // Visualisations stuff
+
         void DataflowExplorer::printValidTopologies() {
+            llvm::outs() << "Valid topologies size: " << this->validTopologies.size() << "\n";
             std::vector<std::string> names(this->layerNameToID.size(), "");
 
             std::map<std::string, uint64_t>::iterator it;
@@ -391,6 +571,7 @@ namespace xilinx {
 
         void DataflowExplorer::dumpValidTopologies() {
             std::vector<std::string> names(this->layerNameToID.size(), "");
+            llvm::outs() << "ValidTopologies size: " << this->validTopologies.size() << " namesSize " << names.size() << "\n";
 
             std::map<std::string, uint64_t>::iterator it;
             for(it = this->layerNameToID.begin(); it != this->layerNameToID.end(); it++) {
@@ -398,8 +579,9 @@ namespace xilinx {
             }
 
             std::ofstream configs;
-            configs.open("../configs.csv");
+            configs.open("./configs.csv", std::ios::out | std::ios::app);
             configs << "layerName P Ca L W Mem Compute ActCommunication WeightCommunication TotalTime\n";
+
             for(uint64_t i = 0; i < this->validTopologies.size(); i++) {
                 llvm::outs() << "Layer: " << names[i] << " \n";
                 for(ModelParams elem : this->validTopologies.at(i)) {

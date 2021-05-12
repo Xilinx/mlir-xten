@@ -75,12 +75,34 @@ namespace xilinx {
             }
         };
 
+        // TODO investigate if it's to big to keep model params here or no
+        class Node_t {
+        public:
+            ModelParams params;
+            std::vector<Node_t*> ins;
+            // Maps an area to a path
+            // area is in # of cores and is the index
+            std::vector<std::vector<ModelParams>> areaToThroughput;
+            std::vector<std::vector<ModelParams>> areaToLatency;
+
+            Node_t(ModelParams p) {
+                params = p;
+            }
+        };
+
+        // TODO build destructors for graphs
+
         class DataflowExplorer {
         private:
             std::vector<AbsOpWrapper*> layerNameToOps;
             std::map<std::string, uint64_t> layerNameToID;
             std::vector<std::vector<ModelParams>> validTopologies;
+            std::vector<std::vector<Node_t*>> pathGraph;
             AbsArchitecture* arch;
+
+            // Pareto stuff found at the end of exploration
+            std::vector<std::vector<ModelParams>> paretoThroughput;
+            std::vector<std::vector<ModelParams>> paretoLatency;
 
             // Analytical model functions
             uint64_t getLinesPerTile(uint64_t layerId, ModelParams &params);
@@ -116,17 +138,20 @@ namespace xilinx {
             // Explore functions
             bool isValid(uint64_t layerId, ModelParams &params);
             std::vector<uint64_t> generateExplorationBounds();
+
+            void generateValidTopologies();
+            void generatePathGraph();
+            void enumeratePaths();
+            void getParetoFrontierAndCleanGraph();
         public:
             DataflowExplorer(std::vector<std::pair<std::string, AbsOpWrapper*>> &nameToOps);
             ~DataflowExplorer();
 
             // Explore function
-            void generateValidTopologies();
+            void enumerate();
             void printValidTopologies();
             void dumpValidTopologies();
             std::map<std::string, ModelParams> getBestTopology();
-
-
         };
     }
 }

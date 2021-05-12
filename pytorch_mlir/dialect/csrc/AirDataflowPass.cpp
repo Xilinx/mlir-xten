@@ -394,7 +394,8 @@ namespace xilinx {
                 DataflowExplorer dataflowExplorer = initializeLayerNameToOps(graph);
                 //initializeLayerNameToParams(graph);
 
-                dataflowExplorer.generateValidTopologies();
+                dataflowExplorer.enumerate();
+                //dataflowExplorer.printValidTopologies();
                 dataflowExplorer.dumpValidTopologies();
 
                 // expand slowest layer
