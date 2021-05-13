@@ -128,6 +128,9 @@ class LinalgCopyToAIRDmaConversion : public OpRewritePattern<linalg::CopyOp> {
                                                       loc,
                                                       src_type.getNumElements()),
                                                     stride, elem_per_stride);
+      dma->setAttr("id",
+                   mlir::IntegerAttr::get(mlir::IntegerType::get(op->getContext(), 32),
+                                          ++DmaMemcpyOpID));
     }
     else {
       // assert(0 && "dims != 2");
