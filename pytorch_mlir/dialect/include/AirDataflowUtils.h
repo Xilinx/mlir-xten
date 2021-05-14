@@ -43,6 +43,10 @@ namespace xilinx {
                 return P * Ca * L * W;
             }
 
+            bool nonZero() {
+                return (P != 0) && (Ca != 0) && (L != 0) && (W != 0);
+            }
+
             void print() {
                 llvm::outs() << "P: " << this->P << ", Ca: " << this->Ca << ", L: " << this->L << ", W: " << this->W << "\n";
             }

@@ -106,13 +106,10 @@ namespace xilinx {
         private:
             std::vector<AbsOpWrapper*> layerNameToOps;
             std::map<std::string, uint64_t> layerNameToID;
+            std::map<uint64_t, std::string> layerIdToName;
             std::vector<std::vector<ModelParams>> validTopologies;
             std::vector<std::vector<Node_t*>> pathGraph;
             AbsArchitecture* arch;
-
-            // Pareto stuff found at the end of exploration
-            std::vector<std::vector<ModelParams>> paretoThroughput;
-            std::vector<std::vector<ModelParams>> paretoLatency;
 
             // Analytical model functions
             uint64_t getLinesPerTile(uint64_t layerId, ModelParams &params);
@@ -154,15 +151,23 @@ namespace xilinx {
             void generatePathGraph();
             void enumeratePaths();
             void getParetoFrontierAndCleanGraph();
+
         public:
+            // Pareto stuff found at the end of exploration
+            std::vector<std::vector<ModelParams>> paretoThroughput;
+            std::vector<std::vector<ModelParams>> paretoLatency;
+
             DataflowExplorer(std::vector<std::pair<std::string, AbsOpWrapper*>> &nameToOps);
             ~DataflowExplorer();
 
             // Explore function
             void enumerate();
             void printValidTopologies();
+            void dumpModelParam(ModelParams& params, std::ofstream &outputFile, std::string layerName, uint64_t i);
             void dumpValidTopologies();
             void dumpParetoFrontiers();
+            void dumpPath(std::vector<ModelParams> &path, std::string fname);
+            void dumpPathsFrom(std::vector<std::vector<ModelParams>> &paths, std::string prefix);
             std::map<std::string, ModelParams> getBestTopology();
         };
     }

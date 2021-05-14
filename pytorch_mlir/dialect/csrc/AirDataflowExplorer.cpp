@@ -15,6 +15,7 @@
 #define DEBUG_TYPE "air-dataflow-explorer"
 
 #define MARGIN 2
+#define DW_SHARED true
 
 // TODO also take into account kernel efficiency?
 // TODO Need to take into account kernel fusion at some point, either here or afterwards
@@ -29,6 +30,7 @@ namespace xilinx {
             uint64_t id = 0;
             for(auto pair : nameToOps) {
                 this->layerNameToID[pair.first] = id;
+                this->layerIdToName[id] = pair.first;
                 this->layerNameToOps.push_back(pair.second);
                 id++;
             }
@@ -224,6 +226,13 @@ namespace xilinx {
             uint64_t N = aShapeAR[N_LOC];
 
             int64_t actSize = C * M * N * getElementWidth(aShape, FORCE_INT8);
+
+            if(DW_SHARED &&
+               ((this->layerNameToOps[layerId]->isDepthWise() && (layerId > 0) && !this->layerNameToOps[layerId-1]->isDepthWise())
+                || (layerId == 0) && this->layerNameToOps[layerId]->isDepthWise())) {
+                actSize = 0; // TODO make better, to make com 0 because assume shared memory
+            }
+
             return actSize / this->arch->getComSpeed();
         }
 
@@ -640,6 +649,18 @@ namespace xilinx {
             }
         }
 
+        void DataflowExplorer::dumpModelParam(ModelParams &params, std::ofstream &outputFile, std::string layerName, uint64_t i) {
+            uint64_t K = this->getK(i, params);
+            uint64_t mem = this->getTotalMemBanks(i, params);
+            uint64_t compute = this->getComputeTime(i, params);
+            uint64_t actComm = this->getActCommunicationTime(i, params);
+            uint64_t wComm = this->getWeightCommunicationTime(i, params);
+            uint64_t totalTime = this->getTotalTime(i, params);
+            outputFile << layerName << " " << params.P << " " << params.Ca << " " << params.L << " " << params.W << " " <<
+                K << " "<< mem << " " << compute << " " << actComm << " " << wComm << " " << totalTime << "\n";
+
+        }
+
         void DataflowExplorer::dumpValidTopologies() {
             std::vector<std::string> names(this->layerNameToID.size(), "");
             llvm::outs() << "ValidTopologies size: " << this->validTopologies.size() << " namesSize " << names.size() << "\n";
@@ -656,14 +677,7 @@ namespace xilinx {
             for(uint64_t i = 0; i < this->validTopologies.size(); i++) {
                 llvm::outs() << "Layer: " << names[i] << ", with valid topologies: " << this->validTopologies.at(i).size() << "\n";
                 for(ModelParams elem : this->validTopologies.at(i)) {
-                    uint64_t K = this->getK(i, elem);
-                    uint64_t mem = this->getTotalMemBanks(i, elem);
-                    uint64_t compute = this->getComputeTime(i, elem);
-                    uint64_t actComm = this->getActCommunicationTime(i, elem);
-                    uint64_t wComm = this->getWeightCommunicationTime(i, elem);
-                    uint64_t totalTime = this->getTotalTime(i, elem);
-                    configs << names[i] << " " << elem.P << " " << elem.Ca << " " << elem.L << " " << elem.W << " " <<
-                        K << " "<< mem << " " << compute << " " << actComm << " " << wComm << " " << totalTime << "\n";
+                    this->dumpModelParam(elem, configs, names[i], i);
                 }
             }
             configs.close();
@@ -702,6 +716,37 @@ namespace xilinx {
             }
 
             pareto.close();
+        }
+
+        void DataflowExplorer::dumpPath(std::vector<ModelParams> &path, std::string fname) {
+            std::vector<std::string> names(this->layerNameToID.size(), "");
+            std::map<std::string, uint64_t>::iterator it;
+            for(it = this->layerNameToID.begin(); it != this->layerNameToID.end(); it++) {
+                names[it->second] = it->first;
+            }
+
+            std::ofstream outF;
+            outF.open(fname, std::ios::out);
+            outF << "layerName P Ca L W K Mem Compute ActCommunication WeightCommunication TotalTime\n";
+
+            uint64_t loc = 0;
+            for(ModelParams p : path) {
+                if(p.nonZero()) {
+                    this->dumpModelParam(p, outF, names[loc], loc);
+                    loc++;
+                }
+
+            }
+
+            outF.close();
+        }
+
+        void DataflowExplorer::dumpPathsFrom(std::vector<std::vector<ModelParams>> &paths, std::string prefix) {
+            for(uint64_t i = 0; i < paths.size(); i++) {
+                if(paths.at(i).size() != 0) {
+                    this->dumpPath(paths.at(i), prefix + std::to_string(i) + ".csv");
+                }
+            }
         }
     }
 }
