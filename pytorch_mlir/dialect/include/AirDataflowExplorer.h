@@ -4,6 +4,8 @@
 #include "AirDataflowUtils.h"
 #include "AirOpWrapper.h"
 
+#define FORCE_INT8 1
+
 #include <memory>
 #include <math.h>
 
@@ -13,6 +15,13 @@ namespace mlir {
 
 namespace xilinx {
     namespace air {
+        static unsigned int getElementWidth(ShapedType tensorType, bool forceINT8) {
+            if(forceINT8) {
+                return 1;
+            } else {
+                return (tensorType.getElementTypeBitWidth() / 8);
+            }
+        }
 
         class AbsArchitecture {
         public:
@@ -138,6 +147,7 @@ namespace xilinx {
 
             // Explore functions
             bool isValid(uint64_t layerId, ModelParams &params);
+            bool wMatches(Node_t* layerNode, Node_t* inNode, uint64_t layerId);
             std::vector<uint64_t> generateExplorationBounds();
 
             void generateValidTopologies();
