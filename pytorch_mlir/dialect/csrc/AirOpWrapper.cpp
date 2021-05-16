@@ -54,6 +54,14 @@ namespace xilinx {
             return false;
         }
 
+        double Conv2dOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
+            if(dynamic_cast<AIEv1*>(arch)) {
+                return 0.95;
+            } else {
+                return 0.8; // If not traced then return estimate
+            }
+        }
+
         Operation* Conv2dOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                             llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain) {
             assert(weight.hasValue());
@@ -122,6 +130,14 @@ namespace xilinx {
             return false;
         }
 
+        double PartialConv2dOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
+            if(dynamic_cast<AIEv1*>(arch)) {
+                return 0.95;
+            } else {
+                return 0.8; // If not traced then return estimate
+            }
+        }
+
         Operation* PartialConv2dOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                                    llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain) {
             assert(weight.hasValue());
@@ -181,6 +197,14 @@ namespace xilinx {
 
         bool Conv2dReLUOpWrapper::isDepthWise() {
             return false;
+        }
+
+        double Conv2dReLUOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
+            if(dynamic_cast<AIEv1*>(arch)) {
+                return 0.95;
+            } else {
+                return 0.8; // If not traced then return estimate
+            }
         }
 
         Operation* Conv2dReLUOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
@@ -251,6 +275,14 @@ namespace xilinx {
             return false;
         }
 
+        double PartialConv2dReLUOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
+            if(dynamic_cast<AIEv1*>(arch)) {
+                return 0.95;
+            } else {
+                return 0.8; // If not traced then return estimate
+            }
+        }
+
         Operation* PartialConv2dReLUOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input,
                                                        llvm::Optional<Value> weight, llvm::Optional<Value> bias,
                                                        llvm::Optional<Value> partialIn, bool firstInPartialChain) {
@@ -317,6 +349,14 @@ namespace xilinx {
 
         bool MaxPool2dWithIndicesOpWrapper::isDepthWise() {
             return true;
+        }
+
+        double MaxPool2dWithIndicesOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
+            if(dynamic_cast<AIEv1*>(arch)) {
+                return 0.15;
+            } else {
+                return 0.8; // If not traced then return estimate
+            }
         }
 
         Operation* MaxPool2dWithIndicesOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input,

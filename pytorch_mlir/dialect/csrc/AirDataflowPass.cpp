@@ -398,7 +398,8 @@ namespace xilinx {
                 //dataflowExplorer.printValidTopologies();
                 dataflowExplorer.dumpValidTopologies();
                 dataflowExplorer.dumpParetoFrontiers();
-                dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoThroughput, "throughput");
+                dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoThroughput, "./output/throughput");
+                dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoLatency, "./output/latency");
 
                 // expand slowest layer
                 //CaTransform("conv2d_relu1", 4);

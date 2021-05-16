@@ -11,6 +11,7 @@
 #include "AIRDialect.h"
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 
+#include "Arch.h"
 
 // NOTE this could be merged with the ops directly possibly, but would need to both NPCOMP and AIR
 // But we will need the build function here anyway as each op will have different arguments and we
@@ -34,6 +35,7 @@ namespace xilinx {
             virtual unsigned int getKernelSize() = 0;
             virtual bool hasWeights() = 0;
             virtual bool isDepthWise() = 0;
+            virtual double getKernelEfficiency(AbsArchitecture* arch) = 0;
             //virtual bool hasFusedBN(); // TODO
             //virtual Value getBNWeights();
             //virtual Value getBNBias();
@@ -54,6 +56,7 @@ namespace xilinx {
             unsigned int getKernelSize();
             bool hasWeights();
             bool isDepthWise();
+            double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
         };
@@ -71,6 +74,7 @@ namespace xilinx {
             unsigned int getKernelSize();
             bool hasWeights();
             bool isDepthWise();
+            double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
         };
@@ -88,6 +92,7 @@ namespace xilinx {
             unsigned int getKernelSize();
             bool hasWeights();
             bool isDepthWise();
+            double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
         };
@@ -105,6 +110,7 @@ namespace xilinx {
             unsigned int getKernelSize();
             bool hasWeights();
             bool isDepthWise();
+            double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
         };
@@ -122,6 +128,7 @@ namespace xilinx {
             unsigned int getKernelSize();
             bool hasWeights();
             bool isDepthWise();
+            double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
         };
