@@ -24,16 +24,28 @@ namespace xilinx {
             }
         }
 
+        class PathInfo_t {
+        public:
+            std::vector<ModelParams> path;
+            uint64_t maxTotalTime;
+            uint64_t value; // Either throughput or latency or quantity of interest
+
+            PathInfo_t(uint64_t startValue) {
+                maxTotalTime = 0;
+                value = startValue;
+            }
+        };
 
         // TODO investigate if it's to big to keep model params here or no
         class Node_t {
         public:
             ModelParams params;
             std::vector<Node_t*> ins;
+
             // Maps an area to a path
             // area is in # of cores and is the index
-            std::vector<std::vector<ModelParams>> areaToThroughput;
-            std::vector<std::vector<ModelParams>> areaToLatency;
+            std::vector<PathInfo_t> areaToThroughput;
+            std::vector<PathInfo_t> areaToLatency;
 
             Node_t(ModelParams p) {
                 params = p;
@@ -94,8 +106,8 @@ namespace xilinx {
 
         public:
             // Pareto stuff found at the end of exploration
-            std::vector<std::vector<ModelParams>> paretoThroughput;
-            std::vector<std::vector<ModelParams>> paretoLatency;
+            std::vector<PathInfo_t> paretoThroughput;
+            std::vector<PathInfo_t> paretoLatency;
 
             DataflowExplorer(std::vector<std::pair<std::string, AbsOpWrapper*>> &nameToOps);
             ~DataflowExplorer();
@@ -106,8 +118,8 @@ namespace xilinx {
             void dumpModelParam(ModelParams& params, std::ofstream &outputFile, std::string layerName, uint64_t i);
             void dumpValidTopologies();
             void dumpParetoFrontiers();
-            void dumpPath(std::vector<ModelParams> &path, std::string fname);
-            void dumpPathsFrom(std::vector<std::vector<ModelParams>> &paths, std::string prefix);
+            void dumpPath(PathInfo_t &path, std::string fname);
+            void dumpPathsFrom(std::vector<PathInfo_t> &paths, std::string prefix);
             std::map<std::string, ModelParams> getBestTopology();
         };
     }
