@@ -170,6 +170,42 @@ public:
   }
 };
 
+class AIRConv2dOpConversion : public ConversionPattern {
+public:
+  explicit AIRConv2dOpConversion(MLIRContext *context)
+      : ConversionPattern(air::Conv2dOp::getOperationName(), 1, context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value > operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto mmult = cast<air::Conv2dOp>(op);
+    auto loc = mmult.getLoc();
+
+    edsc::ScopedContext scope(rewriter, loc);
+
+    auto A = MemRefTypeCast(rewriter, operands[0]);
+    auto B = MemRefTypeCast(rewriter, operands[1]);
+
+    auto resultTy = op->getResult(0).getType();
+    auto tensorResultTy = resultTy.cast<TensorType>();
+    auto memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    auto C = rewriter.create<AllocOp>(loc, memRefResultTy);
+
+    rewriter.create<linalg::ConvNCHWOp>(loc, ValueRange{A, B}, ValueRange{C});
+
+    auto tensor_cast
+      = rewriter.create<NPCOMP::aten::TypeCastOp>(loc,
+                                                  tensorResultTy,
+                                                  C->getResult(0));
+
+    rewriter.replaceOp(op, tensor_cast.getResult());
+    return success();
+  }
+};
+
 class AIRToLinalgPass : public PassWrapper<AIRToLinalgPass,
                                            OperationPass<ModuleOp>> {
 
@@ -194,7 +230,8 @@ public:
 
     patterns.insert<AIRMMOpConversion,
                     AIRAddOpConversion,
-                    AIRMulOpConversion>(context);
+                    AIRMulOpConversion,
+                    AIRConv2dOpConversion>(context);
 
     // populateFuncOpTypeConversionPattern(patterns,
     //                                     context,
