@@ -259,6 +259,11 @@ public:
         linalg::LinalgTransforms::kLinalgTransformMarker,
         StringAttr::get("ACDC_mmult", op->getContext()));
     });
+    module.walk([&](linalg::ConvNCHWOp op) {
+      op->setAttr(
+        linalg::LinalgTransforms::kLinalgTransformMarker,
+        StringAttr::get("ACDC_conv2d", op->getContext()));
+    });
   }
 
 private:
