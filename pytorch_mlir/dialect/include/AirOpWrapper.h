@@ -41,6 +41,7 @@ namespace xilinx {
             //virtual Value getBNBias();
             virtual Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                        llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain) = 0;
+            virtual Operation* wCopy(OpBuilder &builder, unsigned int into) = 0;
         };
 
         class Conv2dOpWrapper : public AbsOpWrapper {
@@ -59,6 +60,7 @@ namespace xilinx {
             double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
+            Operation* wCopy(OpBuilder &builder, unsigned int into);
         };
 
         class PartialConv2dOpWrapper : public AbsOpWrapper {
@@ -77,6 +79,7 @@ namespace xilinx {
             double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
+            Operation* wCopy(OpBuilder &builder, unsigned int into);
         };
 
         class Conv2dReLUOpWrapper : public AbsOpWrapper {
@@ -95,6 +98,7 @@ namespace xilinx {
             double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
+            Operation* wCopy(OpBuilder &builder, unsigned int into);
         };
 
         class PartialConv2dReLUOpWrapper : public AbsOpWrapper {
@@ -113,6 +117,7 @@ namespace xilinx {
             double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
+            Operation* wCopy(OpBuilder &builder, unsigned int into);
         };
 
         class MaxPool2dWithIndicesOpWrapper : public AbsOpWrapper {
@@ -131,8 +136,8 @@ namespace xilinx {
             double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
+            Operation* wCopy(OpBuilder &builder, unsigned int into);
         };
-
     }
 }
 

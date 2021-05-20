@@ -321,8 +321,6 @@ namespace xilinx {
                         split.getResult(consumed).replaceAllUsesWith(values.at(i));
                         consumed++;
                     } else {
-                        // TODO handle case where cannot do the expected split
-                        // TODO double check the split op here
                         ArrayRef<Value> af = ArrayRef<Value>(values);
                         Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
                         Operation* splitOp = builder.create<xilinx::air::SplitOp>(builder.getUnknownLoc(), TypeRange(af), values.at(i), cstDim->getResult(0));
@@ -347,8 +345,6 @@ namespace xilinx {
 
                 toDelete.push_back(concat);
             } else {
-                llvm::outs() << "We are in the wrong place!\n";
-
                 unsigned int concatOperands = concat.getNumOperands();
                 unsigned int operandsPerConv = concatOperands / into;
                 unsigned int rem = concatOperands % into;

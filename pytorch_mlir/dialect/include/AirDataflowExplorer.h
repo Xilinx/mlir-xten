@@ -120,6 +120,8 @@ namespace xilinx {
             void dumpParetoFrontiers();
             void dumpPath(PathInfo_t &path, std::string fname);
             void dumpPathsFrom(std::vector<PathInfo_t> &paths, std::string prefix);
+
+            std::map<std::string, ModelParams> getMaxThroughput();
             std::map<std::string, ModelParams> getBestTopology();
         };
     }

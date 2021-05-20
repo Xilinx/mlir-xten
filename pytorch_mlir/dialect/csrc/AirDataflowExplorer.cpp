@@ -23,6 +23,10 @@
 // TODO Need to incorporate external bandwdith at some point
 // TODO take into account parallel line handling when memory or no?
 // TODO Check that utilization is computed correctly, or latency etc..
+// TODO also implement generic one without any architecture restructions?
+// TODO Double check W == W
+
+// TODO Add proper line analysis
 
 namespace xilinx {
     namespace air {
@@ -126,6 +130,7 @@ namespace xilinx {
         }
 
         // either 2 or 4
+        // TODO check that not in F duplication case
         uint64_t DataflowExplorer::getWeightBanks(uint64_t layerId, ModelParams &params) {
             if(!this->layerNameToOps[layerId]->hasWeights()) {
                 return 0;
@@ -794,6 +799,38 @@ namespace xilinx {
                     this->dumpPath(paths.at(i), prefix + std::to_string(i) + ".csv");
                 }
             }
+        }
+
+        std::map<std::string, ModelParams> DataflowExplorer::getMaxThroughput() {
+            if(this->paretoThroughput.size() == 0) {
+                llvm::outs() << "Must run the exploration first before extracting the maximum throughput..\n";
+                return std::map<std::string, ModelParams>();
+            }
+
+            uint64_t maxValue = 0;
+            std::vector<ModelParams> bestPath;
+            for(auto pathInfo : this->paretoThroughput) {
+                if(pathInfo.value > maxValue) {
+                    maxValue = pathInfo.value;
+                    bestPath = pathInfo.path;
+                }
+            }
+
+            llvm::outs() << "Using: \n";
+            for(ModelParams p : bestPath) {
+                p.print();
+            }
+
+            std::map<std::string, ModelParams> layerNameToParams;
+            uint64_t loc = 0;
+            for(uint64_t i = 0; i < bestPath.size(); i++) {
+                if(bestPath.at(i).nonZero()) {
+                    layerNameToParams[this->layerIdToName[loc]] = bestPath.at(i);
+                    loc++;
+                }
+            }
+
+            return layerNameToParams;
         }
     }
 }

@@ -23,7 +23,9 @@ namespace xilinx {
             unsigned int Ca;
             unsigned int L;
             unsigned int W;
-            // unsigned int K; // Probably enough as an with implicit parameter
+            // unsigned int K; // Probably enough as an implicit parameter
+            // unsigned int lineGrannularity; // TODO add this?
+            // TODO is false then should disabel W optimisation? Or should we find something more detailed for it?
 
             ModelParams() {
                 P = 1;
