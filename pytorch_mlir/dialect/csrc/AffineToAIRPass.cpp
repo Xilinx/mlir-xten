@@ -14,6 +14,8 @@
 #include "mlir/Dialect/StandardOps/EDSC/Builders.h"
 #include "mlir/Dialect/StandardOps/EDSC/Intrinsics.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/MemRef/EDSC/Intrinsics.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/EDSC/Builders.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/OperationSupport.h"
@@ -76,13 +78,13 @@ class LinalgCopyToAIRDmaConversion : public OpRewritePattern<linalg::CopyOp> {
       Value elem_per_stride = zero;
       SmallVector<Value,1> deps;
       SmallVector<Type,1> tys;
-      if (auto alloc = src.getDefiningOp<AllocOp>()) {
+      if (auto alloc = src.getDefiningOp<memref::AllocOp>()) {
         src_indices.push_back(zero);
         src_indices.push_back(zero);
         elem_per_stride = rewriter.create<ConstantIndexOp>(loc,
                             alloc.getType().getShape()[0]);
       }
-      else if (auto subview = src.getDefiningOp<SubViewOp>()) {
+      else if (auto subview = src.getDefiningOp<memref::SubViewOp>()) {
         auto offsets = subview.offsets().begin();
         auto static_offsets = extractFromI64ArrayAttr(subview.static_offsets());
         for (auto o : static_offsets) {
@@ -98,13 +100,13 @@ class LinalgCopyToAIRDmaConversion : public OpRewritePattern<linalg::CopyOp> {
       else
         return failure();
 
-      if (auto alloc = dst.getDefiningOp<AllocOp>()) {
+      if (auto alloc = dst.getDefiningOp<memref::AllocOp>()) {
         dst_indices.push_back(zero);
         dst_indices.push_back(zero);
         elem_per_stride = rewriter.create<ConstantIndexOp>(loc,
                             alloc.getType().getShape()[1]);
       }
-      else if (auto subview = dst.getDefiningOp<SubViewOp>()) {
+      else if (auto subview = dst.getDefiningOp<memref::SubViewOp>()) {
         auto offsets = subview.offsets().begin();
         auto static_offsets = extractFromI64ArrayAttr(subview.static_offsets());
         for (auto o : static_offsets) {
@@ -604,13 +606,13 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
     }
 
     // tablegen patterns
-    OwningRewritePatternList patterns;
+    OwningRewritePatternList patterns(&getContext());
     patterns.insert<AffineParToHerdLaunchConversion,
                     AffineCopyToAIRDMAConversion,
                     LinalgCopyToAIRDmaConversion,
                     ScfParToHerdLaunchConversion>(context);
 
-    populateWithGenerated(context, patterns);
+    populateWithGenerated(patterns);
 
     ConversionTarget target(*context);
 
@@ -671,7 +673,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
             name = ss.str();
           } while ( std::find(herd_syms.begin(), herd_syms.end(), name) != herd_syms.end() );
           herd_syms.push_back(name);
-          op->setAttr(SymbolTable::getSymbolAttrName(), StringAttr::get(name, op.getContext()));
+          op->setAttr(SymbolTable::getSymbolAttrName(), StringAttr::get(op->getContext(), name));
         }
       });
     }

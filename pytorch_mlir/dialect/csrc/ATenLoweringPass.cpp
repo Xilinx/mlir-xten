@@ -13,6 +13,8 @@
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/Dialect/StandardOps/EDSC/Builders.h"
 #include "mlir/Dialect/StandardOps/EDSC/Intrinsics.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/MemRef/EDSC/Intrinsics.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/SCF/EDSC/Builders.h"
 #include "mlir/EDSC/Builders.h"
@@ -1220,16 +1222,16 @@ public:
   }
 };
 
-class AllocOpLowering : public OpRewritePattern<AllocOp> {
+class AllocOpLowering : public OpRewritePattern<memref::AllocOp> {
 public:
-  using OpRewritePattern<AllocOp>::OpRewritePattern;
+  using OpRewritePattern<memref::AllocOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(AllocOp op,
+  LogicalResult matchAndRewrite(memref::AllocOp op,
                                 PatternRewriter &rewriter) const override {
 
     auto memrefTy = op.getType();
     if (op.getType().getMemorySpace() != 0) {
-      auto alloc = rewriter.create<AllocOp>(op.getLoc(), MemRefType::get(memrefTy.getShape(),
+      auto alloc = rewriter.create<memref::AllocOp>(op.getLoc(), MemRefType::get(memrefTy.getShape(),
                                             memrefTy.getElementType(), memrefTy.getAffineMaps(), 0));
       rewriter.replaceOp(op, alloc.getResult());
       return success();
@@ -1330,7 +1332,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
       return type;
     });
 
-    OwningRewritePatternList atenPatterns;
+    OwningRewritePatternList atenPatterns(&getContext());
     auto module = getOperation();
     auto context = module.getContext();
 
@@ -1353,11 +1355,10 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
                         AffineParallelLowering, AllocOpLowering>(context);
 
     mlir::populateFuncOpTypeConversionPattern(atenPatterns,
-                                              context,
                                               typeConverter);
 
     // tablegen patterns
-    populateATenToStdPatterns(context, atenPatterns);
+    populateATenToStdPatterns(atenPatterns);
 
     // Perform aten specific lowering.
     ConversionTarget target(getContext());
@@ -1373,7 +1374,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
     target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
       return typeConverter.isSignatureLegal(op.getType());
     });
-    target.addDynamicallyLegalOp<AllocOp>([&](AllocOp op) {
+    target.addDynamicallyLegalOp<memref::AllocOp>([&](memref::AllocOp op) {
       return (op.getType().getMemorySpace() == 0);
     });
 

@@ -12,8 +12,7 @@ namespace {
 } // namespace
 
 namespace mlir {
-void populateATenToStdPatterns(MLIRContext *context,
-                              OwningRewritePatternList &patterns) {
-  populateWithGenerated(context, patterns);
+void populateATenToStdPatterns(OwningRewritePatternList &patterns) {
+  populateWithGenerated(patterns);
 }
 }

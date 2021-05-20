@@ -64,7 +64,7 @@ public:
                                                 tensorResultTy.getElementType(),
                                                 {}, 0);
 
-    auto C = rewriter.create<AllocOp>(loc, memRefResultTy);
+    auto C = rewriter.create<memref::AllocOp>(loc, memRefResultTy);
 
     SmallVector<Value, 2> inputTensors{A,B};
     SmallVector<Value, 1> outputTensors{C};
@@ -156,7 +156,7 @@ public:
                                                 tensorResultTy.getElementType(),
                                                 {}, 0);
 
-    auto C = rewriter.create<AllocOp>(loc, memRefResultTy);
+    auto C = rewriter.create<memref::AllocOp>(loc, memRefResultTy);
 
     edsc::intrinsics::linalg_matmul(ValueRange{A, B}, ValueRange{C});
 
@@ -192,7 +192,7 @@ public:
                                                 tensorResultTy.getElementType(),
                                                 {}, 0);
 
-    auto C = rewriter.create<AllocOp>(loc, memRefResultTy);
+    auto C = rewriter.create<memref::AllocOp>(loc, memRefResultTy);
 
     rewriter.create<linalg::ConvNCHWOp>(loc, ValueRange{A, B}, ValueRange{C});
 
@@ -225,7 +225,7 @@ public:
     TypeConverter typeConverter;
 
     // tablegen patterns
-    OwningRewritePatternList patterns;
+    OwningRewritePatternList patterns(&getContext());
     //populateWithGenerated(context, patterns);
 
     patterns.insert<AIRMMOpConversion,
@@ -257,7 +257,7 @@ public:
     module.walk([&](linalg::MatmulOp op) {
       op->setAttr(
         linalg::LinalgTransforms::kLinalgTransformMarker,
-        StringAttr::get("ACDC_mmult", op->getContext()));
+        StringAttr::get(op->getContext(), "ACDC_mmult"));
     });
     module.walk([&](linalg::ConvNCHWOp op) {
       op->setAttr(

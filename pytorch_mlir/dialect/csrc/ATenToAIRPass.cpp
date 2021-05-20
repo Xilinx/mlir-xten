@@ -57,8 +57,8 @@ struct ATenToAIRPass : public PassWrapper<ATenToAIRPass,
     auto context = module.getContext();
     
     // tablegen patterns
-    OwningRewritePatternList fusionPatterns;
-    populateWithGenerated(context, fusionPatterns);
+    OwningRewritePatternList fusionPatterns(&getContext());
+    populateWithGenerated(fusionPatterns);
 
     // Perform aten specific Fusion.
     ConversionTarget target(*context);

@@ -69,7 +69,7 @@ namespace xilinx {
                         }
 
                         layerName = getLayerName(type.str(), layerToName[type.str()]);
-                        auto attr = StringAttr::get(layerName, module.getContext());
+                        auto attr = StringAttr::get(module.getContext(), layerName);
                         op->setAttr(llvm::StringRef("name"), attr);
                     });
             }

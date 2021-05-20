@@ -1159,13 +1159,13 @@ std::map<std::string, uint64_t> getStatistics(ThresholdBackwardOp op) {
 }
 
 // transpose can be zero overhead
-template<>
-std::map<std::string, uint64_t> getStatistics(TransposeOp op) {
-  std::map<std::string, uint64_t> toReturn;
-  toReturn["reads"]  = toReturn["operand:0:activation_in"] = 0;
-  toReturn["writes"] = toReturn["result:0:activation_out"] = 0;
-  return toReturn;
-}
+// template<>
+// std::map<std::string, uint64_t> getStatistics(TransposeOp op) {
+//   std::map<std::string, uint64_t> toReturn;
+//   toReturn["reads"]  = toReturn["operand:0:activation_in"] = 0;
+//   toReturn["writes"] = toReturn["result:0:activation_out"] = 0;
+//   return toReturn;
+// }
 
 // unsqueeze can be zero overhead
 template<>
@@ -1219,7 +1219,7 @@ std::map<std::string, uint64_t> getATenOpStats(Operation *op)
   GET_STATS(SubUnderOp)
   GET_STATS(SumOp)
   GET_STATS(ThresholdBackwardOp)
-  GET_STATS(TransposeOp)
+//  GET_STATS(TransposeOp)
   GET_STATS(UnsqueezeOp)
   GET_STATS(aten::ViewOp)
 
