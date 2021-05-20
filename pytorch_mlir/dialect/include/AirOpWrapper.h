@@ -31,6 +31,7 @@ namespace xilinx {
             virtual Operation* getUnderlyingOperation() = 0;
             virtual Value getWeights() = 0;
             virtual Value getInput() = 0;
+            virtual Value getPartialInput() = 0;
             virtual Value getBiases() = 0;
             virtual unsigned int getKernelSize() = 0;
             virtual bool hasWeights() = 0;
@@ -53,6 +54,7 @@ namespace xilinx {
             Operation* getUnderlyingOperation();
             Value getWeights();
             Value getInput();
+            Value getPartialInput();
             Value getBiases();
             unsigned int getKernelSize();
             bool hasWeights();
@@ -72,6 +74,7 @@ namespace xilinx {
             Operation* getUnderlyingOperation();
             Value getWeights();
             Value getInput();
+            Value getPartialInput();
             Value getBiases();
             unsigned int getKernelSize();
             bool hasWeights();
@@ -91,6 +94,7 @@ namespace xilinx {
             Operation* getUnderlyingOperation();
             Value getWeights();
             Value getInput();
+            Value getPartialInput();
             Value getBiases();
             unsigned int getKernelSize();
             bool hasWeights();
@@ -110,6 +114,7 @@ namespace xilinx {
             Operation* getUnderlyingOperation();
             Value getWeights();
             Value getInput();
+            Value getPartialInput();
             Value getBiases();
             unsigned int getKernelSize();
             bool hasWeights();
@@ -129,6 +134,7 @@ namespace xilinx {
             Operation* getUnderlyingOperation();
             Value getWeights();
             Value getInput();
+            Value getPartialInput();
             Value getBiases();
             unsigned int getKernelSize();
             bool hasWeights();

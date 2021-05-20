@@ -455,10 +455,11 @@ namespace xilinx {
                         OpBuilder builder(op);
 
                         if(op->getAttr("locL") != nullptr) { // Responsible for handling only one line
-                            auto locL = op->getAttr("locL").dyn_cast<IntegerAttr>().getValue();
+                            unsigned int locL = op->getAttr("locL").dyn_cast<IntegerAttr>().getValue().getZExtValue();
+                            unsigned int L = this->layerNameToParams[it->first].L;
                             //auto ty = IntegerType::get(op->getContext(), 32);
                             //auto attr = IntegerAttr::get(ty, locL);
-                            auto attr = builder.getI32ArrayAttr({static_cast<int>(locL.getZExtValue())});
+                            auto attr = builder.getI32ArrayAttr({static_cast<int>(L - locL - 1)});
 
                             op->setAttr(llvm::StringRef("line"), attr);
                         } else { // Responsible for any number (only one tile produced, default to 0)
@@ -491,9 +492,9 @@ namespace xilinx {
                 std::vector<AbsOpWrapper*> layerOps = layerNameToOps[layerName];
 
                 // duplicate graph into times
-                for(uint64_t i = 0; i < into; i++) {
+                for(int64_t i = into-1; i >= 0; i--) {
                     OpBuilder builder(layerNameToOps[layerName].at(0)->getUnderlyingOperation());
-
+                    std::map<std::string, AbsOpWrapper*> paramsToLayer;
                     for(AbsOpWrapper* absOp : layerNameToOps[layerName]) {
                         if(i == 0) {
                             auto ty = IntegerType::get(builder.getContext(), 32);
@@ -506,7 +507,49 @@ namespace xilinx {
                             auto attr = IntegerAttr::get(ty, i);
                             op->setAttr(llvm::StringRef("locW"), attr);
 
-                            layerOps.push_back(opToWrapper(op));
+                            AbsOpWrapper* locAbsOp = opToWrapper(op);
+                            layerOps.push_back(locAbsOp);
+
+                            unsigned int locCa = getAttrOrDefault(absOp->getUnderlyingOperation(), "locCa", 0);
+                            unsigned int locL = getAttrOrDefault(absOp->getUnderlyingOperation(), "locL", 0);
+                            unsigned int locP = getAttrOrDefault(absOp->getUnderlyingOperation(), "locP", 0);
+                            std::string hashString = "P" + std::to_string(locP) +
+                                "Ca" + std::to_string(locCa) +
+                                "L" + std::to_string(locL);
+
+                            paramsToLayer[hashString] = locAbsOp;
+                        }
+                    }
+
+                    std::map<std::string, AbsOpWrapper*>::iterator it;
+                    for(it = paramsToLayer.begin(); it != paramsToLayer.end(); it++) {
+                        AbsOpWrapper* absOp = it->second;
+                        Operation* op = absOp->getUnderlyingOperation();
+
+                        unsigned int locCa = getAttrOrDefault(absOp->getUnderlyingOperation(), "locCa", 0);
+                        unsigned int locL = getAttrOrDefault(absOp->getUnderlyingOperation(), "locL", 0);
+                        unsigned int locP = getAttrOrDefault(absOp->getUnderlyingOperation(), "locP", 0);
+
+                        unsigned int Ca = this->layerNameToParams[layerName].Ca;
+                        unsigned int P = this->layerNameToParams[layerName].P;
+                        unsigned int L = this->layerNameToParams[layerName].L;
+
+                        if(locL != 0) {
+                            std::string hashString = "P" + std::to_string(locP)
+                                + "Ca" + std::to_string(locCa)
+                                + "L" + std::to_string(locL - 1);
+                            AbsOpWrapper* prevAbsOp = paramsToLayer[hashString];
+
+                            op->replaceUsesOfWith(absOp->getInput(), prevAbsOp->getUnderlyingOperation()->getResult(1));
+                            op->replaceUsesOfWith(absOp->getPartialInput(), prevAbsOp->getUnderlyingOperation()->getResult(0));
+                        } else if(locCa != 0  && locL == 0) {
+                            std::string hashString = "P" + std::to_string(locP)
+                                + "Ca" + std::to_string(locCa-1)
+                                + "L" + std::to_string(L-1);
+                            AbsOpWrapper* prevAbsOp = paramsToLayer[hashString];
+
+                            //op->replaceUsesOfWith(absOp->getInput(), prevAbsOp->getUnderlyingOperation()->getResult(1));
+                            op->replaceUsesOfWith(absOp->getPartialInput(), prevAbsOp->getUnderlyingOperation()->getResult(0));
                         }
                     }
                 }
@@ -583,7 +626,6 @@ namespace xilinx {
                 }
 
                 llvm::outs() << "Found prev lines\n";
-                return success();
 
                 // really re-wire from reconstructed info
                 for(AbsOpWrapper* absOp : layerOps) {
@@ -688,6 +730,13 @@ namespace xilinx {
                         exit(1);
                     }
                     }*/
+
+                this->layerNameToParams["conv2d_relu0"] = ModelParams(1,1,1,1);
+                this->layerNameToParams["conv2d_relu1"] = ModelParams(1,1,3,3);
+                this->layerNameToParams["conv2d_relu2"] = ModelParams(1,1,3,1);
+
+                this->layerNameToParams["max_pool2d_with_indices0"] = ModelParams(1,1,1,1);
+                this->layerNameToParams["max_pool2d_with_indices1"] = ModelParams(1,1,1,1);
 
                 //PTransform("conv2d_relu1", 4);
                 //PTransform("max_pool2d_with_indices1", 4);

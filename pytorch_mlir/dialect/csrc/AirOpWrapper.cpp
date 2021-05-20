@@ -42,6 +42,10 @@ namespace xilinx {
             return this->conv.input();
         }
 
+        Value Conv2dOpWrapper::getPartialInput() {
+            return Value();
+        }
+
         unsigned int Conv2dOpWrapper::getKernelSize() {
             return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
         }
@@ -160,6 +164,10 @@ namespace xilinx {
             return this->conv.input();
         }
 
+        Value PartialConv2dOpWrapper::getPartialInput() {
+            return this->conv.PartialIn();
+        }
+
         unsigned int PartialConv2dOpWrapper::getKernelSize() {
             return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
         }
@@ -266,6 +274,10 @@ namespace xilinx {
 
         Value Conv2dReLUOpWrapper::getInput() {
             return this->conv.input();
+        }
+
+        Value Conv2dReLUOpWrapper::getPartialInput() {
+            return Value();
         }
 
         unsigned int Conv2dReLUOpWrapper::getKernelSize() {
@@ -385,6 +397,10 @@ namespace xilinx {
             return this->conv.input();
         }
 
+        Value PartialConv2dReLUOpWrapper::getPartialInput() {
+            return this->conv.PartialIn();
+        }
+
         unsigned int PartialConv2dReLUOpWrapper::getKernelSize() {
             return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
         }
@@ -501,6 +517,10 @@ namespace xilinx {
 
         Value MaxPool2dWithIndicesOpWrapper::getInput() {
             return this->maxpool.self();
+        }
+
+        Value MaxPool2dWithIndicesOpWrapper::getPartialInput() {
+            return Value();
         }
 
         bool MaxPool2dWithIndicesOpWrapper::hasWeights() {
