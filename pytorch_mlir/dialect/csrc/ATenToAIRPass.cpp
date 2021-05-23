@@ -9,6 +9,7 @@
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/Dialect/StandardOps/EDSC/Builders.h"
 #include "mlir/Dialect/StandardOps/EDSC/Intrinsics.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/SCF/EDSC/Builders.h"
 #include "mlir/EDSC/Builders.h"
@@ -49,6 +50,7 @@ struct ATenToAIRPass : public PassWrapper<ATenToAIRPass,
 
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
      registry.insert<xilinx::air::airDialect>();
+     registry.insert<memref::MemRefDialect>();
   }
 
   void runOnOperation() override {

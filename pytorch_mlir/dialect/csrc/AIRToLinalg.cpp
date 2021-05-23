@@ -7,6 +7,7 @@
 #include "mlir/Dialect/Linalg/EDSC/Intrinsics.h"
 #include "mlir/Dialect/Linalg/IR/LinalgOps.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
@@ -214,6 +215,7 @@ public:
 
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
      registry.insert<NPCOMP::aten::ATenDialect>();
+     registry.insert<memref::MemRefDialect>();
      registry.insert<linalg::LinalgDialect>();
   }
 
@@ -240,6 +242,7 @@ public:
     ConversionTarget target(*context);
 
     target.addLegalDialect<AffineDialect, linalg::LinalgDialect,
+                           memref::MemRefDialect,
                            StandardOpsDialect, scf::SCFDialect>();
 
     target.addLegalOp<NPCOMP::aten::TypeCastOp>();
