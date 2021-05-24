@@ -526,37 +526,6 @@ namespace xilinx {
                 return success();
             }
 
-            // TODO probably remove that
-            void annotateLines() {
-                std::map<std::string, std::vector<AbsOpWrapper*>>::iterator it;
-
-                // set line
-                for(it = this->layerNameToOps.begin(); it != this->layerNameToOps.end(); it++) {
-                    for(AbsOpWrapper* absOp : it->second) {
-                        Operation* op = absOp->getUnderlyingOperation();
-                        OpBuilder builder(op);
-
-                        if(op->getAttr("locL") != nullptr) { // Responsible for handling only one line
-                            unsigned int locL = op->getAttr("locL").dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                            unsigned int L = this->layerNameToParams[it->first].L;
-                            //auto ty = IntegerType::get(op->getContext(), 32);
-                            //auto attr = IntegerAttr::get(ty, locL);
-                            auto attr = builder.getI32ArrayAttr({static_cast<int>(L - locL - 1)});
-
-                            op->setAttr(llvm::StringRef("line"), attr);
-                        } else { // Responsible for any number (only one tile produced, default to 0)
-                            //auto ty = IntegerType::get(op->getContext(), 32);
-                            //auto attr = IntegerAttr::get(ty, 0);
-
-                            unsigned int F = absOp->getKernelSize();
-                            auto attr = builder.getI32ArrayAttr({0, static_cast<int>(F)-1});
-
-                            op->setAttr(llvm::StringRef("line"), attr);
-                        }
-                    }
-                }
-            }
-
             unsigned int getAttrOrDefault(Operation* op, std::string attrName, unsigned int defVal) {
                 if(op->getAttr(attrName) != nullptr) {
                     return op->getAttr(attrName).dyn_cast<IntegerAttr>().getValue().getZExtValue();
@@ -742,34 +711,6 @@ namespace xilinx {
                 layerNameToOps[layerName] = layerOps;
             }
 
-            // TODO probably remove that
-            void wWantAnnotate(std::string layerName, unsigned int into) {
-                std::vector<AbsOpWrapper*> ops = this->layerNameToOps[layerName];
-                for(AbsOpWrapper* absOp : ops) {
-                    Operation* op = absOp->getUnderlyingOperation();
-                    OpBuilder builder(op);
-
-                    auto lines = op->getAttr("line").dyn_cast<ArrayAttr>().getValue();
-                    if(lines.size() == 1) {
-                        unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                        auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into)});
-                        op->setAttr(llvm::StringRef("wantLine"), attr);
-                    } else {
-                        unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                        unsigned int lines1 = lines[1].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                        auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into), static_cast<int>(lines1 + into)});
-                        op->setAttr(llvm::StringRef("wantLine"), attr);
-                    }
-                }
-            }
-
-            // find corresponding lines from previous layer and link to layerName
-            void reWire(std::string layerName, unsigned int into) {
-                // TODO
-            }
-
             // TODO at the moment force work at line grannularity, need to later generalize to tile grannularity possibly
             LogicalResult WTransform(std::string layerName, unsigned int into, DataflowExplorer &expl) {
                 if(into == 1) {
@@ -781,106 +722,6 @@ namespace xilinx {
 
                 // set wantLine
                 //wWantAnnotate(layerName, into);
-
-
-                // find lines locations from local layer
-                /*std::map<uint64_t, std::vector<AbsOpWrapper*>> lineToOp;
-                for(AbsOpWrapper* absOp : layerNameToOps[layerName]) {
-                    auto lines = absOp->getUnderlyingOperation()->getAttr("line").dyn_cast<ArrayAttr>().getValue();
-                    if(lines.size() == 1) {
-                        unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                        lineToOp[lines0].push_back(absOp);
-                    } else {
-                        unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                        unsigned int lines1 = lines[1].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                        for(unsigned int i = lines0; i < lines1; i++) {
-                            lineToOp[i].push_back(absOp);
-                        }
-                    }
-                    }*/
-
-                // Find lines locations from previous layer
-                /*std::map<std::string, Value> producedLineToOp;
-                  std::vector<std::string>::iterator layerLoc;
-                  layerLoc = std::find(this->layerOrdering.begin(), this->layerOrdering.end(), layerName);
-
-                // preserve all mappings as if not from that layer is from NN input so we are fine if first layer
-                if(layerLoc != this->layerOrdering.begin()) {
-                    layerLoc--;
-                    producedLineToOp = this->findProducedLines(*layerLoc);
-                }
-
-                unsigned int currW = this->layerNameToParams[layerName].W;
-                unsigned int prevW = this->layerNameToParams[*layerLoc].W;
-
-                if(currW == prevW) {
-                    std::vector<Operation*> inConcats;
-                    unsigned int prevP = this->layerNameToParams[*layerLoc].P;
-                    for(unsigned int i = 0; i < prevP; i++) {
-                        std::string hashString = "P" + i + "W0";
-                        for(auto u : producedLineToOp[hashString]) {
-                            if(auto concatOp = llvm::dyn_cast<ConcatOp>(u)) {
-                                inConcats.push_back(concatOp.getOperation());
-                            }
-                        }
-                    }
-
-                    deleteOpsFrom(inConcats);
-                } else {
-                    // TODO rewrite concats
-                    }*/
-
-                                /*for(AbsOpWrapper* absOp : layerOps) {
-                    Operation* op = absOp->getUnderlyingOperation();
-                    //auto wantLines = op->getAttr("wantLine").dyn_cast<ArrayAttr>().getValue();
-                    auto locW = op->getAttr("locW").dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                    unsigned int want0 = wantLines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                    unsigned int want1 = (wantLines.size() == 1) ? want0 + 1 : wantLines[1].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                    for(unsigned int i = want0; i < want1; i++) {
-                        if(lineToOp.find(i) == lineToOp.end()) {
-                            llvm::outs() << "Found something from the previous layer...\n";
-                            // Need to find producer in previous layer
-                            unsigned int F = absOp->getKernelSize();
-                            unsigned int locW = op->getAttr("locW").dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                            unsigned int locCa = getAttrOrDefault(op, "locCa", 0);
-
-                            std::string hashString = "P" + std::to_string(locCa) + "W" + std::to_string(locW -(into + F - 1));
-                            if(producedLineToOp.find(hashString) != producedLineToOp.end()) {
-                                llvm::outs() << "found with same P\n";
-                                //AbsOpWrapper* producer = producedLineToOp[hashString];
-                                op->replaceUsesOfWith(absOp->getInput(), producedLineToOp[hashString]);
-                            } else {
-                                llvm::outs() << "found with different P\n";
-                                hashString = "P" + std::to_string(locCa) + "W0"; // TODO this is too simplistic
-                                llvm::outs()<< "Querrying: " << hashString << "\n";
-                                //AbsOpWrapper* producer = producedLineToOp[hashString];
-                                op->replaceUsesOfWith(absOp->getInput(), producedLineToOp[hashString]);
-                            }
-                        } else {
-                            llvm::outs() << "Found something from the current layer...\n";
-                            // prefer from same W group and then closest W group
-                            std::vector<AbsOpWrapper*> ops = lineToOp[i];
-                            unsigned int closest = (unsigned int)-1;
-                            AbsOpWrapper* closestOp;
-                            for(AbsOpWrapper* lineAbsOp : ops) {
-                                Operation* lineOperation = lineAbsOp->getUnderlyingOperation();
-                                unsigned int nLocW = lineOperation->getAttr("locW").dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                                unsigned int locW = op->getAttr("locW").dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                                unsigned int diff = (unsigned int)abs((float)nLocW - locW);
-                                if(diff < closest) {
-                                    closest = diff;
-                                    closestOp = lineAbsOp;
-                                }
-                            }
-
-                            op->replaceUsesOfWith(absOp->getInput(), closestOp->getUnderlyingOperation()->getResult(0));
-                        }
-                    }
-                    } */
 
                 // Re-wire
 
@@ -915,27 +756,6 @@ namespace xilinx {
                         }
                     }
                 }
-
-
-                /*if(layerLoc+1 == this->layerNameToParams.end()) {
-                    return success();
-                }
-
-                unsigned int nextW = this->layerNameToParams[*(layerLoc + 2)].W;
-                unsigned int nextL = this->layerNameToParams[*(layerLoc + 2)].L;
-
-                std::map<std::string, Value> producedLinelayer = this->findProducedLines(layerName);
-                std::map<std::string, Value> consumedLineNextLayer = this->findConsumedLines(layerName);
-
-                if(nextW == currW) { // rewrite input to next
-                    
-                } else if(nextW == 1 && nextL == 1) { // Insert concats
-                    
-                } else if(nextW == 1 && nextL == currW) { // link to F inputs
-                    
-                } else {
-                    // TODO not supported yet
-                    }*/
 
                 return success();
             }
