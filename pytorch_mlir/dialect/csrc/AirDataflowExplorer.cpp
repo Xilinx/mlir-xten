@@ -26,7 +26,8 @@
 // TODO also implement generic one without any architecture restructions?
 // TODO Double check W == W
 
-// TODO Add proper line analysis
+// TODO Add proper line analysis -> probably not necessary, double check
+// TODO Check that tile bring time is correct when need to bring multiple tiles at once
 
 namespace xilinx {
     namespace air {
@@ -70,6 +71,20 @@ namespace xilinx {
             return linesPerBanks;
         }
 
+        uint64_t DataflowExplorer::getTilesPerCore(uint64_t layerId, ModelParams &params) {
+            uint64_t linesPerTile = this->getLinesPerTile(layerId, params);
+            uint64_t banksPerLine = this->getBanksPerLine(layerId, params);
+            uint64_t F0 = this->layerNameToOps[layerId]->getKernelSize();
+
+            uint64_t F0OverF = ceil((float)F0 / params.L);
+
+            if(linesPerTile != 0) {
+                return 1 + ceil((float)(F0OverF-1) / linesPerTile);
+            } else {
+                return ceil((float)F0 / params.L) * banksPerLine;
+            }
+        }
+
         uint64_t DataflowExplorer::getBanksPerLine(uint64_t layerId, ModelParams& params) {
             ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
 
@@ -107,12 +122,7 @@ namespace xilinx {
             int64_t N = aShapeAR[N_LOC];
             bool allLinesIn = (N <= linesPerBanks);
 
-            uint64_t banksForFilter = 0;
-            if(linesPerBanks != 0) {
-                banksForFilter = ceil(ceil((float)F0 / params.L) / linesPerBanks);
-            } else {
-                banksForFilter = ceil((float)F0 / params.L) * banksPerLine;
-            }
+            uint64_t banksForFilter = this->getTilesPerCore(layerId, params);
 
             uint64_t minBanksForFilter = (F0 == 1) ? 1 : (allLinesIn ? 1 : 2);
             return std::max(minBanksForFilter, banksForFilter) + banksPerLine;

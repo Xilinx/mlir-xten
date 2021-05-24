@@ -55,7 +55,7 @@ namespace xilinx {
         // TODO build destructors for graphs
 
         class DataflowExplorer {
-        private:
+        public:
             std::vector<AbsOpWrapper*> layerNameToOps;
             std::map<std::string, uint64_t> layerNameToID;
             std::map<uint64_t, std::string> layerIdToName;
@@ -69,6 +69,7 @@ namespace xilinx {
             uint64_t getK(uint64_t layerId, ModelParams &params);
             uint64_t getMissmatchChannels(int64_t dim, uint64_t params);
             uint64_t getMissmatchLines(int64_t dim, uint64_t params);
+            uint64_t getTilesPerCore(uint64_t layerId, ModelParams &params);
 
             uint64_t getComputeTimePerTile(uint64_t layerId, ModelParams &params);
             uint64_t getComputeTime(uint64_t layerId, ModelParams &params);
@@ -104,7 +105,6 @@ namespace xilinx {
             void enumeratePaths();
             void getParetoFrontierAndCleanGraph();
 
-        public:
             // Pareto stuff found at the end of exploration
             std::vector<PathInfo_t> paretoThroughput;
             std::vector<PathInfo_t> paretoLatency;

@@ -26,17 +26,10 @@
 
 using namespace mlir;
 
-// TODO make the patterns generic
-//   - Restriction from architectural constraints
-//   - Support all convolution types
-
-// TODO Make sure that the communication is not shuffled somehow
-// TODO make sure that dim of split is correct one
 // TODO write verifiers
-
-// TODO re add the wrapper when generating stuff
-// TODO make sure that the location annotation is added
-// TODO Define rules to setup connections
+// TODO make sure it works when no weights or no biases but still called on it
+// TODO separate hasWeights and hasBias?
+// TODO Need a generic WTransform implementation
 
 // General idea: because it is easy to know from the analytical model what do we do with everything:
 // That analytical model part is responsible for finding an optimal solution, and then it communicates it here
@@ -125,6 +118,7 @@ namespace xilinx {
                     std::vector<Value> nBiases;
                     std::vector<Value> nConvs;
                     std::vector<Value> nInputs;
+                    std::vector<ArrayRef<Value>> nBN;
 
                     // Split weights
                     Operation* weights;
@@ -134,6 +128,7 @@ namespace xilinx {
                             splitConstantInto(constOp, nConsts, builder, PSplit, wSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
+                            return failure();
                         }
                     }
 
@@ -145,8 +140,37 @@ namespace xilinx {
                             splitConstantInto(constOp, nBiases, builder, PSplit, bSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
+                            return failure();
                         }
                     }
+
+                    if(genOp->hasBN()) {
+                        ArrayRef<Value> bnParams = genOp->getBN();
+                        std::vector<std::vector<Value>> nBnVect;
+                        for(unsigned int i = 0; i < 4; i++) {
+                            Operation* bnParam = bnParams[i].getDefiningOp();
+                            std::vector<Value> nBnLoc;
+                            if(auto constOp = llvm::dyn_cast<ConstantOp>(bnParam)) {
+                                splitConstantInto(constOp, nBnLoc, builder, PSplit, bSplitType, into);
+                            } else {
+                                llvm::outs() << "Cannot convert to ConstOp!\n";
+                                return failure();
+                            }
+
+                            for(unsigned int j = 0; j < nBnLoc.size(); j++) {
+                                if(j == nBnVect.size()) {
+                                    nBnVect.push_back(std::vector<Value>({nBnLoc.at(j)}));
+                                } else {
+                                    nBnVect.at(j).push_back(nBnLoc.at(j));
+                                }
+                            }
+                        }
+
+                        for(auto vect : nBnVect) {
+                            nBN.push_back(ArrayRef<Value>({vect.at(0), vect.at(1), vect.at(2), vect.at(3)}));
+                        }
+                    }
+
 
                     // Split Return Type shape
                     // TODO for Maxpool2d with indices, check other return types and check that assumption
@@ -179,25 +203,17 @@ namespace xilinx {
                             input = genOp->getInput();
                         }
 
-                        if(genOp->hasWeights()) {
-                            conv = genOp->buildOp(builder,
-                                                  TypeRange({nReturnType}),
-                                                  input,
-                                                  llvm::Optional<Value>(nConsts.at(i)),
-                                                  llvm::Optional<Value>(nBiases.at(i)),
-                                                  llvm::Optional<Value>(), false);
+                        auto nW = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(i)) : llvm::Optional<Value>();
+                        auto nB = genOp->hasWeights() ? llvm::Optional<Value>(nBiases.at(i)) : llvm::Optional<Value>();
+                        auto nBn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(i)) : llvm::Optional<ArrayRef<Value>>();
+                        conv = genOp->buildOp(builder,
+                                              TypeRange({nReturnType}),
+                                              input,
+                                              nW,
+                                              nB,
+                                              llvm::Optional<Value>(), false, nBn);
 
-                            assert(conv != nullptr);
-                        } else {
-                            conv = genOp->buildOp(builder,
-                                                  TypeRange({nReturnType}),
-                                                  input,
-                                                  llvm::Optional<Value>(),
-                                                  llvm::Optional<Value>(),
-                                                  llvm::Optional<Value>(), false);
-
-                            assert(conv != nullptr);
-                        }
+                        assert(conv != nullptr);
 
                         // set location attribute
                         if(op->getAttr("locP") != nullptr) {
@@ -256,7 +272,7 @@ namespace xilinx {
                     std::vector<Value> nConsts;
                     std::vector<Value> nBiases;
                     std::vector<Value> nInputs;
-                    //std::vector<Value> nConvs;
+                    std::vector<ArrayRef<Value>> nBN;
 
                     // Split weights
                     Operation* weights = genOp->getWeights().getDefiningOp();
@@ -264,17 +280,45 @@ namespace xilinx {
                         splitConstantInto(constOp, nConsts, builder, CaSplit, wSplitType, into);
                     } else {
                         llvm::outs() << "Cannot convert to ConstOp!\n";
+                        return failure();
                     }
 
                     // Split biases
-                   Operation* biases = genOp->getBiases().getDefiningOp();
+                    Operation* biases = genOp->getBiases().getDefiningOp();
                     if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
                         splitConstantInto(constOp, nBiases, builder, CaSplit, bSplitType, into);
                     } else {
                         llvm::outs() << "Cannot convert to ConstOp!\n";
+                        return failure();
                     }
 
-                    // TODO not so beautiful but potentially check here if we also have fused BN params??
+                    // Split BN params if any
+                    if(genOp->hasBN()) {
+                        ArrayRef<Value> bnParams = genOp->getBN();
+                        std::vector<std::vector<Value>> nBnVect;
+                        for(unsigned int i = 0; i < 4; i++) {
+                            Operation* bnParam = bnParams[i].getDefiningOp();
+                            std::vector<Value> nBnLoc;
+                            if(auto constOp = llvm::dyn_cast<ConstantOp>(bnParam)) {
+                                splitConstantInto(constOp, nBnLoc, builder, CaSplit, bSplitType, into);
+                            } else {
+                                llvm::outs() << "Cannot convert to ConstOp!\n";
+                                return failure();
+                            }
+
+                            for(unsigned int j = 0; j < nBnLoc.size(); j++) {
+                                if(j == nBnVect.size()) {
+                                    nBnVect.push_back(std::vector<Value>({nBnLoc.at(j)}));
+                                } else {
+                                    nBnVect.at(j).push_back(nBnLoc.at(j));
+                                }
+                            }
+                        }
+
+                        for(auto vect : nBnVect) {
+                            nBN.push_back(ArrayRef<Value>({vect.at(0), vect.at(1), vect.at(2), vect.at(3)}));
+                        }
+                    }
 
                     // split activations
                     if(auto constOp = genOp->getInput().getDefiningOp<ConstantOp>()) {
@@ -288,9 +332,10 @@ namespace xilinx {
                     }
 
                     // Generate convolutions
+                    auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(0)) : llvm::Optional<ArrayRef<Value>>();
                     Operation* conv = genOp->buildOp(builder, TypeRange({op->getResult(0).getType()}),
-                                                    nInputs.at(0), llvm::Optional<Value>(nConsts.at(0)),
-                                                    llvm::Optional<Value>(nBiases.at(0)), llvm::Optional<Value>(), true);
+                                                     nInputs.at(0), llvm::Optional<Value>(nConsts.at(0)),
+                                                     llvm::Optional<Value>(nBiases.at(0)), llvm::Optional<Value>(), true, bn);
 
                     // set location attribute
                     if(op->getAttr("locCa") != nullptr) {
@@ -307,10 +352,11 @@ namespace xilinx {
                     nLayerOps.push_back(opToWrapper(conv));
 
                     for(unsigned int i = 1; i < into; i++) {
+                        auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(i)) : llvm::Optional<ArrayRef<Value>>();
                         Operation* nConv = genOp->buildOp(builder, TypeRange({op->getResult(0).getType()}),
-                                                         nInputs.at(i), llvm::Optional<Value>(nConsts.at(i)),
-                                                         llvm::Optional<Value>(nBiases.at(i)),
-                                                         llvm::Optional<Value>(conv->getResult(0)), true);
+                                                          nInputs.at(i), llvm::Optional<Value>(nConsts.at(i)),
+                                                          llvm::Optional<Value>(nBiases.at(i)),
+                                                          llvm::Optional<Value>(conv->getResult(0)), true, bn);
 
                         // set location attribute
                         if(op->getAttr("locCa") != nullptr) {
@@ -360,6 +406,7 @@ namespace xilinx {
                     std::vector<Value> nConsts;
                     std::vector<Value> nBiases;
                     std::vector<Value> nConvs;
+                    std::vector<ArrayRef<Value>> nBN;
 
                     // Split weights
                     Operation* weights = genOp->getWeights().getDefiningOp();//->getName();
@@ -367,6 +414,7 @@ namespace xilinx {
                         splitConstantInto(constOp, nConsts, builder, LSplit, wSplitType, into);
                     } else {
                         llvm::outs() << "Cannot convert to ConstOp!\n";
+                        return failure();
                     }
 
                     // Split biases
@@ -375,15 +423,46 @@ namespace xilinx {
                         splitConstantInto(constOp, nBiases, builder, LSplit, bSplitType, into);
                     } else {
                         llvm::outs() << "Cannot convert to ConstOp!\n";
+                        return failure();
+                    }
+
+                    // Split BN params if present
+                    if(genOp->hasBN()) {
+                        ArrayRef<Value> bnParams = genOp->getBN();
+                        std::vector<std::vector<Value>> nBnVect;
+                        for(unsigned int i = 0; i < 4; i++) {
+                            Operation* bnParam = bnParams[i].getDefiningOp();
+                            std::vector<Value> nBnLoc;
+                            if(auto constOp = llvm::dyn_cast<ConstantOp>(bnParam)) {
+                                splitConstantInto(constOp, nBnLoc, builder, LSplit, bSplitType, into);
+                            } else {
+                                llvm::outs() << "Cannot convert to ConstOp!\n";
+                                return failure();
+                            }
+
+                            for(unsigned int j = 0; j < nBnLoc.size(); j++) {
+                                if(j == nBnVect.size()) {
+                                    nBnVect.push_back(std::vector<Value>({nBnLoc.at(j)}));
+                                } else {
+                                    nBnVect.at(j).push_back(nBnLoc.at(j));
+                                }
+                            }
+                        }
+
+                        for(auto vect : nBnVect) {
+                            nBN.push_back(ArrayRef<Value>({vect.at(0), vect.at(1), vect.at(2), vect.at(3)}));
+                        }
                     }
 
                     // Same return type here
                     ShapedType retType = op->getResult(0).getType().dyn_cast<ShapedType>();
 
                     // Generate new convs
+                    auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(0)) : llvm::Optional<ArrayRef<Value>>();
                     Operation* nConv = genOp->buildOp(builder, TypeRange({retType, retType}),
-                                                     genOp->getInput(), llvm::Optional<Value>(nConsts.at(0)),
-                                                     llvm::Optional<Value>(nBiases.at(0)), llvm::Optional<Value>(), true);
+                                                      genOp->getInput(), llvm::Optional<Value>(nConsts.at(0)),
+                                                      llvm::Optional<Value>(nBiases.at(0)), llvm::Optional<Value>(), true,
+                                                      bn);
 
                     // set location attribute
                     if(op->getAttr("locL") != nullptr) {
@@ -402,11 +481,13 @@ namespace xilinx {
                     nLayerOps.push_back(opToWrapper(nConv));
 
                     for(unsigned int i = 1; i < into; i++) {
+                        auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(i)) : llvm::Optional<ArrayRef<Value>>();
                         nConv = genOp->buildOp(builder,
                                                (i == (into-1)) ? TypeRange({retType}) : TypeRange({retType, retType}),
                                                forward, llvm::Optional<Value>(nConsts.at(i)),
                                                llvm::Optional<Value>(nBiases.at(i)),
-                                               llvm::Optional<Value>(partial), false);
+                                               llvm::Optional<Value>(partial), false,
+                                               bn);
 
                         // set location attribute
                         if(op->getAttr("locL") != nullptr) {
@@ -445,6 +526,7 @@ namespace xilinx {
                 return success();
             }
 
+            // TODO probably remove that
             void annotateLines() {
                 std::map<std::string, std::vector<AbsOpWrapper*>>::iterator it;
 
@@ -483,15 +565,116 @@ namespace xilinx {
                 }
             }
 
-            // TODO at the moment force work at line grannularity, need to later generalize to tile grannularity possibly
-            LogicalResult WTransform(std::string layerName, unsigned int into) {
-                if(into == 1) {
-                    return success();
+            // TODO take into account depthwise layers
+            // TODO work at the tile grannularity
+            // TODO probably do not care of the line stuff even: show this better
+            std::vector<std::string> workOn(Operation* op, DataflowExplorer &expl) {
+                unsigned int locCa = getAttrOrDefault(op, "locCa", 0);
+                unsigned int locL = getAttrOrDefault(op, "locL", 0);
+                unsigned int locW = getAttrOrDefault(op, "locW", 0);
+                unsigned int locP = getAttrOrDefault(op, "locP", 0);
+
+                std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
+                uint64_t tilesPerCore = expl.getTilesPerCore(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
+
+                std::vector<std::string> locLines;
+                for(uint64_t i = 0; i < tilesPerCore; i++) {
+                    locLines.push_back("tile" + std::to_string(locL + locW + i) + "C" + std::to_string(locCa));
                 }
 
+                return locLines;
+            }
+
+            std::vector<std::string> wantLoc(Operation* op, DataflowExplorer &expl) {
+                unsigned int locCa = getAttrOrDefault(op, "locCa", 0);
+                unsigned int locL = getAttrOrDefault(op, "locL", 0);
+                unsigned int locW = getAttrOrDefault(op, "locW", 0);
+                unsigned int locP = getAttrOrDefault(op, "locP", 0);
+
+                std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
+
+                uint64_t tilesPerCore = expl.getTilesPerCore(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
+                unsigned int W = this->layerNameToParams[layerName].W;
+
+                uint64_t startLine = locL + locW;
+                uint64_t endLine = locL + locW + tilesPerCore - 1;
+
+                std::vector<std::string> wantLines;
+                for(uint64_t i = 0; i < tilesPerCore; i++) {
+                    uint64_t wantLine = locL + locW + W + i;
+                    if((wantLine < startLine) || (wantLine > endLine)) {
+                        wantLines.push_back("tile" + std::to_string(locL + locW + W) + "C" + std::to_string(locCa));
+                    }
+                }
+
+                return wantLines;
+            }
+
+            std::vector<std::string> wantPrev(Operation* op, DataflowExplorer &expl) {
+                std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
+                unsigned int W = this->layerNameToParams[layerName].W;
+                unsigned int L = this->layerNameToParams[layerName].L;
+
+                uint64_t tilesPerCore = expl.getTilesPerCore(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
+                unsigned int highestLoc = (W-1) + (L-1);
+
+                unsigned int locCa = getAttrOrDefault(op, "locCa", 0);
+                unsigned int locL = getAttrOrDefault(op, "locL", 0);
+                unsigned int locW = getAttrOrDefault(op, "locW", 0);
+                unsigned int locP = getAttrOrDefault(op, "locP", 0);
+
+                uint64_t startLine = locL + locW;
+                uint64_t endLine = locL + locW + tilesPerCore - 1;
+
+                std::vector<std::string> wantLines;
+                for(uint64_t i = 0; i < tilesPerCore; i++) {
+                    uint64_t wantLine = locL + locW + W + i;
+                    if((wantLine < startLine) || (wantLine > endLine)) {
+                        wantLines.push_back("tile" + std::to_string(locL + locW + W + i - highestLoc) + "C" + std::to_string(locCa));
+                    }
+                }
+
+                return wantLines;
+                //unsigned int wantLine = locL + locW + W - highestLoc;
+                //return "tile" + std::to_string(wantLine) + "C" + std::to_string(locCa);
+            }
+
+            std::map<std::string, Value> findProducedTiles(std::string layerName) {
+                std::map<std::string, Value> producedLineToOp;
+                ModelParams params = this->layerNameToParams[layerName];
+                for(AbsOpWrapper* prevAbsOp : this->layerNameToOps[layerName]) {
+                    unsigned int locCa = getAttrOrDefault(prevAbsOp->getUnderlyingOperation(), "locCa", 0);
+                    unsigned int locL = getAttrOrDefault(prevAbsOp->getUnderlyingOperation(), "locL", 0);
+                    unsigned int locW = getAttrOrDefault(prevAbsOp->getUnderlyingOperation(), "locW", 0);
+                    unsigned int locP = getAttrOrDefault(prevAbsOp->getUnderlyingOperation(), "locP", 0);
+
+                    if(locCa == (params.Ca-1) && locL == (params.L-1)) { // is a producer
+                        std::string hashString = "tile" + std::to_string(locW) + "P" + std::to_string(locP);
+                        llvm::outs() << "hs: " << hashString << "\n";
+                        producedLineToOp[hashString] = prevAbsOp->getUnderlyingOperation()->getResult(0);
+                    }
+                }
+
+                return producedLineToOp;
+            }
+
+            // TODO for now select arbitrary line from any core that has it, might change that
+            std::map<std::string, Value> findLocalTiles(std::string layerName, DataflowExplorer &expl) {
+                std::map<std::string, Value> localLines;
+                ModelParams params = this->layerNameToParams[layerName];
+                for(AbsOpWrapper* absOp : this->layerNameToOps[layerName]) {
+                    std::vector<std::string> linesLoc = this->workOn(absOp->getUnderlyingOperation(), expl);
+                    for(std::string s : linesLoc) {
+                        localLines[s] = absOp->getUnderlyingOperation()->getResult(1);
+                    }
+                }
+
+                return localLines;
+            }
+
+            void wDuplicate(std::string layerName, unsigned int into) {
                 std::vector<AbsOpWrapper*> layerOps = layerNameToOps[layerName];
 
-                // duplicate graph into times
                 for(int64_t i = into-1; i >= 0; i--) {
                     OpBuilder builder(layerNameToOps[layerName].at(0)->getUnderlyingOperation());
                     std::map<std::string, AbsOpWrapper*> paramsToLayer;
@@ -521,6 +704,7 @@ namespace xilinx {
                         }
                     }
 
+                    // Re-wire duplicated one with inputs from same W group
                     std::map<std::string, AbsOpWrapper*>::iterator it;
                     for(it = paramsToLayer.begin(); it != paramsToLayer.end(); it++) {
                         AbsOpWrapper* absOp = it->second;
@@ -554,38 +738,53 @@ namespace xilinx {
                     }
                 }
 
+                // Assign new layer
                 layerNameToOps[layerName] = layerOps;
+            }
 
-                // rewire loc forward and cascades
+            // TODO probably remove that
+            void wWantAnnotate(std::string layerName, unsigned int into) {
+                std::vector<AbsOpWrapper*> ops = this->layerNameToOps[layerName];
+                for(AbsOpWrapper* absOp : ops) {
+                    Operation* op = absOp->getUnderlyingOperation();
+                    OpBuilder builder(op);
 
-                // set wantLine
-                // TODO double check when only one want if still correct operation in following function
-                std::map<std::string, std::vector<AbsOpWrapper*>>::iterator it;
-                for(it = this->layerNameToOps.begin(); it != this->layerNameToOps.end(); it++) {
-                    for(AbsOpWrapper* absOp : it->second) {
-                        Operation* op = absOp->getUnderlyingOperation();
-                        OpBuilder builder(op);
+                    auto lines = op->getAttr("line").dyn_cast<ArrayAttr>().getValue();
+                    if(lines.size() == 1) {
+                        unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
 
-                        auto lines = op->getAttr("line").dyn_cast<ArrayAttr>().getValue();
-                        if(lines.size() == 1) {
-                            unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
+                        auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into)});
+                        op->setAttr(llvm::StringRef("wantLine"), attr);
+                    } else {
+                        unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
+                        unsigned int lines1 = lines[1].dyn_cast<IntegerAttr>().getValue().getZExtValue();
 
-                            auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into)});
-                            op->setAttr(llvm::StringRef("wantLine"), attr);
-                        } else {
-                            unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                            unsigned int lines1 = lines[1].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                            auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into), static_cast<int>(lines1 + into)});
-                            op->setAttr(llvm::StringRef("wantLine"), attr);
-                        }
+                        auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into), static_cast<int>(lines1 + into)});
+                        op->setAttr(llvm::StringRef("wantLine"), attr);
                     }
                 }
+            }
 
-                // Re-wire
+            // find corresponding lines from previous layer and link to layerName
+            void reWire(std::string layerName, unsigned int into) {
+                // TODO
+            }
+
+            // TODO at the moment force work at line grannularity, need to later generalize to tile grannularity possibly
+            LogicalResult WTransform(std::string layerName, unsigned int into, DataflowExplorer &expl) {
+                if(into == 1) {
+                    return success();
+                }
+
+                // duplicate graph into times
+                wDuplicate(layerName, into);
+
+                // set wantLine
+                //wWantAnnotate(layerName, into);
+
 
                 // find lines locations from local layer
-                std::map<uint64_t, std::vector<AbsOpWrapper*>> lineToOp;
+                /*std::map<uint64_t, std::vector<AbsOpWrapper*>> lineToOp;
                 for(AbsOpWrapper* absOp : layerNameToOps[layerName]) {
                     auto lines = absOp->getUnderlyingOperation()->getAttr("line").dyn_cast<ArrayAttr>().getValue();
                     if(lines.size() == 1) {
@@ -600,37 +799,42 @@ namespace xilinx {
                             lineToOp[i].push_back(absOp);
                         }
                     }
-                }
+                    }*/
 
                 // Find lines locations from previous layer
-                std::map<std::string, AbsOpWrapper*> producedLineToOp;
-                std::vector<std::string>::iterator layerLoc;
-                layerLoc = std::find(this->layerOrdering.begin(), this->layerOrdering.end(), layerName);
+                /*std::map<std::string, Value> producedLineToOp;
+                  std::vector<std::string>::iterator layerLoc;
+                  layerLoc = std::find(this->layerOrdering.begin(), this->layerOrdering.end(), layerName);
 
                 // preserve all mappings as if not from that layer is from NN input so we are fine if first layer
                 if(layerLoc != this->layerOrdering.begin()) {
                     layerLoc--;
-                    ModelParams prevParams = this->layerNameToParams[*layerLoc];
-                    for(AbsOpWrapper* prevAbsOp : this->layerNameToOps[*layerLoc]) {
-                        unsigned int locCa = getAttrOrDefault(prevAbsOp->getUnderlyingOperation(), "locCa", 0);
-                        unsigned int locL = getAttrOrDefault(prevAbsOp->getUnderlyingOperation(), "locL", 0);
-                        unsigned int locW = getAttrOrDefault(prevAbsOp->getUnderlyingOperation(), "locW", 0);
-                        unsigned int locP = getAttrOrDefault(prevAbsOp->getUnderlyingOperation(), "locP", 0);
-
-                        if(locCa == (prevParams.Ca-1) && locL == (prevParams.L-1)) { // is a producer
-                            std::string hashString = "P"+ std::to_string(locP)+ "W" + std::to_string(locW);
-                            llvm::outs() << "hs: " << hashString << "\n";
-                            producedLineToOp[hashString] = prevAbsOp;
-                        }
-                    }
+                    producedLineToOp = this->findProducedLines(*layerLoc);
                 }
 
-                llvm::outs() << "Found prev lines\n";
+                unsigned int currW = this->layerNameToParams[layerName].W;
+                unsigned int prevW = this->layerNameToParams[*layerLoc].W;
 
-                // really re-wire from reconstructed info
-                for(AbsOpWrapper* absOp : layerOps) {
+                if(currW == prevW) {
+                    std::vector<Operation*> inConcats;
+                    unsigned int prevP = this->layerNameToParams[*layerLoc].P;
+                    for(unsigned int i = 0; i < prevP; i++) {
+                        std::string hashString = "P" + i + "W0";
+                        for(auto u : producedLineToOp[hashString]) {
+                            if(auto concatOp = llvm::dyn_cast<ConcatOp>(u)) {
+                                inConcats.push_back(concatOp.getOperation());
+                            }
+                        }
+                    }
+
+                    deleteOpsFrom(inConcats);
+                } else {
+                    // TODO rewrite concats
+                    }*/
+
+                                /*for(AbsOpWrapper* absOp : layerOps) {
                     Operation* op = absOp->getUnderlyingOperation();
-                    auto wantLines = op->getAttr("wantLine").dyn_cast<ArrayAttr>().getValue();
+                    //auto wantLines = op->getAttr("wantLine").dyn_cast<ArrayAttr>().getValue();
                     auto locW = op->getAttr("locW").dyn_cast<IntegerAttr>().getValue().getZExtValue();
 
                     unsigned int want0 = wantLines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
@@ -646,14 +850,14 @@ namespace xilinx {
                             std::string hashString = "P" + std::to_string(locCa) + "W" + std::to_string(locW -(into + F - 1));
                             if(producedLineToOp.find(hashString) != producedLineToOp.end()) {
                                 llvm::outs() << "found with same P\n";
-                                AbsOpWrapper* producer = producedLineToOp[hashString];
-                                op->replaceUsesOfWith(absOp->getInput(), producer->getUnderlyingOperation()->getResult(0));
+                                //AbsOpWrapper* producer = producedLineToOp[hashString];
+                                op->replaceUsesOfWith(absOp->getInput(), producedLineToOp[hashString]);
                             } else {
                                 llvm::outs() << "found with different P\n";
-                                hashString = "P" + std::to_string(locCa) + "W0";
+                                hashString = "P" + std::to_string(locCa) + "W0"; // TODO this is too simplistic
                                 llvm::outs()<< "Querrying: " << hashString << "\n";
-                                AbsOpWrapper* producer = producedLineToOp[hashString];
-                                op->replaceUsesOfWith(absOp->getInput(), producer->getUnderlyingOperation()->getResult(0));
+                                //AbsOpWrapper* producer = producedLineToOp[hashString];
+                                op->replaceUsesOfWith(absOp->getInput(), producedLineToOp[hashString]);
                             }
                         } else {
                             llvm::outs() << "Found something from the current layer...\n";
@@ -676,11 +880,62 @@ namespace xilinx {
                             op->replaceUsesOfWith(absOp->getInput(), closestOp->getUnderlyingOperation()->getResult(0));
                         }
                     }
+                    } */
+
+                // Re-wire
+
+                // construct line location
+                std::vector<std::string>::iterator layerLoc;
+                layerLoc = std::find(this->layerOrdering.begin(), this->layerOrdering.end(), layerName);
+                bool firstLayer = layerLoc == this->layerOrdering.begin();
+
+                std::map<std::string, Value> producedTiles;
+                if(!firstLayer) {
+                    producedTiles = this->findProducedTiles(*(layerLoc-1));
                 }
 
-                // TODO remove concat ops if W prev == W curr and rewrite it otherwise
+                std::map<std::string, Value> locTiles = this->findLocalTiles(layerName, expl);
 
-                // TODO insert concat ops when required
+                // really re-wire from reconstructed info
+                for(AbsOpWrapper* absOp : this->layerNameToOps[layerName]) {
+                    Operation* op = absOp->getUnderlyingOperation();
+                    if(firstLayer) {
+                        // TODO link to input of network
+                    } else {
+                        std::vector<std::string> wantLoc = this->wantLoc(op, expl);
+
+                        for(std::string s : wantLoc) { // TODO add to a vector and if size is bigger than 1 instantiate a concat
+                            if(locTiles.find(s) != locTiles.end()) {
+                                op->replaceUsesOfWith(absOp->getInput(), locTiles[s]);
+                            } else if(producedTiles.find(s) != producedTiles.end()) {
+                                op->replaceUsesOfWith(absOp->getInput(), locTiles[s]);
+                            } else { // means that there is a tile broadcast here
+                                // TODO insert concats and stuff here
+                            }
+                        }
+                    }
+                }
+
+
+                /*if(layerLoc+1 == this->layerNameToParams.end()) {
+                    return success();
+                }
+
+                unsigned int nextW = this->layerNameToParams[*(layerLoc + 2)].W;
+                unsigned int nextL = this->layerNameToParams[*(layerLoc + 2)].L;
+
+                std::map<std::string, Value> producedLinelayer = this->findProducedLines(layerName);
+                std::map<std::string, Value> consumedLineNextLayer = this->findConsumedLines(layerName);
+
+                if(nextW == currW) { // rewrite input to next
+                    
+                } else if(nextW == 1 && nextL == 1) { // Insert concats
+                    
+                } else if(nextW == 1 && nextL == currW) { // link to F inputs
+                    
+                } else {
+                    // TODO not supported yet
+                    }*/
 
                 return success();
             }
@@ -729,7 +984,7 @@ namespace xilinx {
                         llvm::outs() << "Failed to apply LTransform\n";
                         exit(1);
                     }
-                    }*/
+                    }
 
                 this->layerNameToParams["conv2d_relu0"] = ModelParams(1,1,1,1);
                 this->layerNameToParams["conv2d_relu1"] = ModelParams(1,1,3,3);
@@ -748,7 +1003,7 @@ namespace xilinx {
                 annotateLines();
 
                 // W expand
-                WTransform("conv2d_relu1", 3);
+                WTransform("conv2d_relu1", 3);*/
 
                 // Verify graph
 

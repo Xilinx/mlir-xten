@@ -33,15 +33,18 @@ namespace xilinx {
             virtual Value getInput() = 0;
             virtual Value getPartialInput() = 0;
             virtual Value getBiases() = 0;
+            virtual ArrayRef<Value> getBN() = 0;
             virtual unsigned int getKernelSize() = 0;
             virtual bool hasWeights() = 0;
+            virtual bool hasBN() = 0;
             virtual bool isDepthWise() = 0;
             virtual double getKernelEfficiency(AbsArchitecture* arch) = 0;
             //virtual bool hasFusedBN(); // TODO
             //virtual Value getBNWeights();
             //virtual Value getBNBias();
             virtual Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                                       llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain) = 0;
+                                       llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain,
+                                       llvm::Optional<ArrayRef<Value>> bn) = 0;
             virtual Operation* wCopy(OpBuilder &builder, unsigned int into) = 0;
         };
 
@@ -56,12 +59,15 @@ namespace xilinx {
             Value getInput();
             Value getPartialInput();
             Value getBiases();
+            ArrayRef<Value> getBN();
             unsigned int getKernelSize();
             bool hasWeights();
+            bool hasBN();
             bool isDepthWise();
             double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
+                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
+                               llvm::Optional<ArrayRef<Value>> bn);
             Operation* wCopy(OpBuilder &builder, unsigned int into);
         };
 
@@ -76,12 +82,15 @@ namespace xilinx {
             Value getInput();
             Value getPartialInput();
             Value getBiases();
+            ArrayRef<Value> getBN();
             unsigned int getKernelSize();
             bool hasWeights();
+            bool hasBN();
             bool isDepthWise();
             double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
+                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
+                               llvm::Optional<ArrayRef<Value>> bn);
             Operation* wCopy(OpBuilder &builder, unsigned int into);
         };
 
@@ -96,12 +105,15 @@ namespace xilinx {
             Value getInput();
             Value getPartialInput();
             Value getBiases();
+            ArrayRef<Value> getBN();
             unsigned int getKernelSize();
             bool hasWeights();
+            bool hasBN();
             bool isDepthWise();
             double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
+                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
+                               llvm::Optional<ArrayRef<Value>> bn);
             Operation* wCopy(OpBuilder &builder, unsigned int into);
         };
 
@@ -116,14 +128,64 @@ namespace xilinx {
             Value getInput();
             Value getPartialInput();
             Value getBiases();
+            ArrayRef<Value> getBN();
             unsigned int getKernelSize();
             bool hasWeights();
+            bool hasBN();
             bool isDepthWise();
             double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
+                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
+                               llvm::Optional<ArrayRef<Value>> bn);
             Operation* wCopy(OpBuilder &builder, unsigned int into);
         };
+
+        class Conv2dBatchNormReLUOpWrapper : public AbsOpWrapper {
+        private:
+            Conv2dBatchNormReLUOp conv;
+        public:
+            Conv2dBatchNormReLUOpWrapper(Conv2dBatchNormReLUOp c);
+            ~Conv2dBatchNormReLUOpWrapper();
+            Operation* getUnderlyingOperation();
+            Value getWeights();
+            Value getInput();
+            Value getPartialInput();
+            Value getBiases();
+            ArrayRef<Value> getBN();
+            unsigned int getKernelSize();
+            bool hasWeights();
+            bool hasBN();
+            bool isDepthWise();
+            double getKernelEfficiency(AbsArchitecture* arch);
+            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
+                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
+                               llvm::Optional<ArrayRef<Value>> bn);
+            Operation* wCopy(OpBuilder &builder, unsigned int into);
+        };
+
+        class PartialConv2dBatchNormReLUOpWrapper : public AbsOpWrapper {
+        private:
+            PartialConv2dBatchNormReLUOp conv;
+        public:
+            PartialConv2dBatchNormReLUOpWrapper(PartialConv2dBatchNormReLUOp c);
+            ~PartialConv2dBatchNormReLUOpWrapper();
+            Operation* getUnderlyingOperation();
+            Value getWeights();
+            Value getInput();
+            Value getPartialInput();
+            Value getBiases();
+            ArrayRef<Value> getBN();
+            unsigned int getKernelSize();
+            bool hasWeights();
+            bool hasBN();
+            bool isDepthWise();
+            double getKernelEfficiency(AbsArchitecture* arch);
+            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
+                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
+                               llvm::Optional<ArrayRef<Value>> bn);
+            Operation* wCopy(OpBuilder &builder, unsigned int into);
+        };
+
 
         class MaxPool2dWithIndicesOpWrapper : public AbsOpWrapper {
         private:
@@ -136,12 +198,15 @@ namespace xilinx {
             Value getInput();
             Value getPartialInput();
             Value getBiases();
+            ArrayRef<Value> getBN();
             unsigned int getKernelSize();
             bool hasWeights();
+            bool hasBN();
             bool isDepthWise();
             double getKernelEfficiency(AbsArchitecture* arch);
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain);
+                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
+                               llvm::Optional<ArrayRef<Value>> bn);
             Operation* wCopy(OpBuilder &builder, unsigned int into);
         };
     }
