@@ -23,6 +23,7 @@ set(LLVM_OPTIONAL_SOURCES
   AIRLinalgCodegen.cpp
   AIRToAIEPass.cpp
   Util.cpp
+  LowerToLibATenPass.cpp
   )
 
 add_mlir_library(ATen
@@ -49,6 +50,7 @@ add_mlir_library(ATen
   AIRLinalgCodegen.cpp
   AIRToAIEPass.cpp
   Util.cpp
+  LowerToLibATenPass.cpp
   AirDataflowUtils.cpp
   AirDataflowPass.cpp
   AirNamePass.cpp
