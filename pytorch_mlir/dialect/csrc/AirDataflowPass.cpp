@@ -598,8 +598,8 @@ namespace xilinx {
                 std::vector<std::string> wantLines;
                 for(uint64_t i = 0; i < tilesPerCore; i++) {
                     uint64_t wantLine = locL + locW + W + i;
-                    if((wantLine < startLine) || (wantLine > endLine)) {
-                        wantLines.push_back("tile" + std::to_string(locL + locW + W + i - highestLoc) + "C" + std::to_string(locCa));
+                    if(((wantLine < startLine) || (wantLine > endLine)) && (wantLine - highestLoc >= 0)) {
+                        wantLines.push_back("tile" + std::to_string(wantLine - highestLoc) + "C" + std::to_string(locCa));
                     }
                 }
 
@@ -608,19 +608,78 @@ namespace xilinx {
                 //return "tile" + std::to_string(wantLine) + "C" + std::to_string(locCa);
             }
 
+            // TODO Double check depth wise handling
             std::map<std::string, Value> findProducedTiles(std::string layerName) {
                 std::map<std::string, Value> producedLineToOp;
                 ModelParams params = this->layerNameToParams[layerName];
                 for(AbsOpWrapper* prevAbsOp : this->layerNameToOps[layerName]) {
-                    unsigned int locCa = getAttrOrDefault(prevAbsOp->getUnderlyingOperation(), "locCa", 0);
-                    unsigned int locL = getAttrOrDefault(prevAbsOp->getUnderlyingOperation(), "locL", 0);
-                    unsigned int locW = getAttrOrDefault(prevAbsOp->getUnderlyingOperation(), "locW", 0);
-                    unsigned int locP = getAttrOrDefault(prevAbsOp->getUnderlyingOperation(), "locP", 0);
+                    Operation* op = prevAbsOp->getUnderlyingOperation();
+                    unsigned int locCa = getAttrOrDefault(op, "locCa", 0);
+                    unsigned int locL = getAttrOrDefault(op, "locL", 0);
+                    unsigned int locW = getAttrOrDefault(op, "locW", 0);
+                    unsigned int locP = getAttrOrDefault(op, "locP", 0);
 
                     if(locCa == (params.Ca-1) && locL == (params.L-1)) { // is a producer
-                        std::string hashString = "tile" + std::to_string(locW) + "P" + std::to_string(locP);
-                        llvm::outs() << "hs: " << hashString << "\n";
-                        producedLineToOp[hashString] = prevAbsOp->getUnderlyingOperation()->getResult(0);
+                        if(op->getResult(0).hasOneUse() && llvm::dyn_cast<ConcatOp>(*(op->getResult(0).getUsers().begin()))) {
+                            ConcatOp concat = llvm::dyn_cast<ConcatOp>(*(op->getResult(0).getUsers().begin()));
+
+                            // check if is a concat from P and not from W
+                            unsigned int concatW = (unsigned int)-1;
+                            unsigned int concatP = (unsigned int)-1;
+                            bool isPConcat = true;
+                            for(auto o : concat.getOperands()) {
+                                Operation* concatArg = o.getDefiningOp();
+                                unsigned int locW = getAttrOrDefault(op, "locW", 0);
+                                unsigned int locP = getAttrOrDefault(op, "locP", 0);
+
+                                if(locP < concatP) {
+                                    concatP = locP;
+                                }
+
+                                if(locW == (unsigned int)-1) {
+                                    concatW = locW;
+                                } else if(locW != concatW) {
+                                    isPConcat = false;
+                                    break;
+                                }
+                            }
+
+                            unsigned int concatSize = concat.getNumOperands();
+                            if(isPConcat) {
+                                std::string hashString = "tile" + std::to_string(concatW) + "P" + std::to_string(concatP / concatSize);
+                                producedLineToOp[hashString] = concat.getResult();
+                            }
+                        } else if(op->getResult(0).hasOneUse() && llvm::dyn_cast<SplitOp>(*(op->getResult(0).getUsers().begin()))) {
+                            SplitOp split = llvm::dyn_cast<SplitOp>(*(op->getResult(0).getUsers().begin()));
+
+                            // Check if this split is from a P not from W
+                            unsigned int splitW = (unsigned int)-1;
+                            bool isPSplit = true;
+                            for(auto u : split->getUsers()) { // TODO double check this
+                                unsigned int locW = getAttrOrDefault(u, "locW", 0);
+
+                                if(locW == (unsigned int)-1) {
+                                    splitW = locW;
+                                } else if(locW != splitW) {
+                                    isPSplit = false;
+                                    break;
+                                }
+                            }
+
+                            unsigned int splitSize = split.getNumResults();
+                            unsigned int locP = getAttrOrDefault(split.getOperation(), "locP", 0);
+                            if(isPSplit) {
+                                for(unsigned int i = 0; i < splitSize; i++) {
+                                    unsigned int pLoc = locP * splitSize + i;
+                                    std::string hashString = "tile" + std::to_string(splitW) + "P" + std::to_string(pLoc);
+                                    producedLineToOp[hashString] = split.getResult(i);
+                                }
+                            }
+                        } else {
+                            std::string hashString = "tile" + std::to_string(locW) + "P" + std::to_string(locP);
+                            llvm::outs() << "hs: " << hashString << "\n";
+                            producedLineToOp[hashString] = prevAbsOp->getUnderlyingOperation()->getResult(0);
+                        }
                     }
                 }
 
@@ -641,6 +700,7 @@ namespace xilinx {
                 return localLines;
             }
 
+            // TODO also duplicate concat and splits
             void wDuplicate(std::string layerName, unsigned int into) {
                 std::vector<AbsOpWrapper*> layerOps = layerNameToOps[layerName];
 
@@ -711,7 +771,8 @@ namespace xilinx {
                 layerNameToOps[layerName] = layerOps;
             }
 
-            // TODO at the moment force work at line grannularity, need to later generalize to tile grannularity possibly
+            // TODO might generate chains of concat, or concat and then split on a different dim
+            // TODO either need a simplify pass of handle things better
             LogicalResult WTransform(std::string layerName, unsigned int into, DataflowExplorer &expl) {
                 if(into == 1) {
                     return success();
@@ -720,10 +781,8 @@ namespace xilinx {
                 // duplicate graph into times
                 wDuplicate(layerName, into);
 
-                // set wantLine
-                //wWantAnnotate(layerName, into);
-
                 // Re-wire
+                OpBuilder builder(layerNameToOps[layerName].at(0)->getUnderlyingOperation());
 
                 // construct line location
                 std::vector<std::string>::iterator layerLoc;
@@ -733,27 +792,92 @@ namespace xilinx {
                 std::map<std::string, Value> producedTiles;
                 if(!firstLayer) {
                     producedTiles = this->findProducedTiles(*(layerLoc-1));
+
+                    // Makes sure producedTile Shape matches with the one of the current layer
+                    ModelParams paramsCurr = this->layerNameToParams[layerName];
+                    ModelParams paramsPrev = this->layerNameToParams[expl.layerIdToName[expl.layerNameToID[layerName]-1]];
+
+                    if(paramsCurr.W > paramsPrev.W) { // Duplicate so that matches next
+                        unsigned int ratio = ceil((float)paramsCurr.W / paramsPrev.W);
+
+                        for(unsigned int p = 0; p < paramsPrev.P; p++) {
+                            for(unsigned int i = 0; i < ratio; i++) {
+                                for(unsigned int w = 0; w < paramsPrev.W; w++) {
+                                    std::string hashString = "tile" + std::to_string(w) + "P" + std::to_string(p);
+                                    std::string dupHashString = "tile" + std::to_string(w + i * ratio) + "P" + std::to_string(p);
+
+                                    producedTiles[dupHashString] = producedTiles[hashString];
+                                }
+                            }
+                        }
+                    } else if(paramsCurr.W < paramsPrev.W) { // Insert concat on parallel tiles produced
+                        unsigned int ratio = ceil((float)paramsPrev.W / paramsCurr.W);
+
+                        std::vector<Value> concats;
+                        std::vector<Value> concatsArgs;
+
+                        for(unsigned int p = 0; p < paramsPrev.P; p++) {
+                            for(unsigned int i = 0; i < paramsPrev.W; i++) {
+                                if((i != 0) && ((i % ratio) == 0)) {
+                                    concats.push_back(insertConcat(builder, concatsArgs.at(0), concatsArgs, N_LOC)->getResult(0));
+                                    concatsArgs.clear();
+                                } else {
+                                    std::string hashString = "tile" + std::to_string(i) + "P" + std::to_string(p);
+                                    concatsArgs.push_back(producedTiles[hashString]);
+                                }
+                            }
+
+                            if(concatsArgs.size() != 0) {
+                                concats.push_back(insertConcat(builder, concatsArgs.at(0), concatsArgs, N_LOC)->getResult(0));
+                                concatsArgs.clear();
+                            }
+
+                            for(unsigned int i = 0; i < concats.size(); i++) {
+                                std::string hashString = "tile" + std::to_string(i) + "P" + std::to_string(p);
+                                producedTiles[hashString] = concats.at(i);
+                            }
+
+                            for(unsigned int i = concats.size(); i < paramsPrev.W; i++) {
+                                std::string hashString = "tile" + std::to_string(i) + "P" + std::to_string(p);
+                                producedTiles.erase(hashString);
+                            }
+                        }
+                    }
+
+                    // TODO we should be able to ensure re-using of these guys
+                    // Now we have from producer W = consumer W in the map
+                    unsigned int W = std::max(paramsPrev.W, paramsCurr.W);
+                    if(paramsCurr.Ca > paramsPrev.P) { // insert splits
+                        unsigned int ratio = ceil((float)paramsCurr.Ca / paramsPrev.P);
+
+                        for(unsigned int w = 0; w < W; w++) {
+                            
+                        }
+                    } else if(paramsCurr.Ca < paramsPrev.P) {
+                        // insert concats
+                    }
+
+                    // TODO remove potential concat stuff that was there before
+                    // TODO or leave it to a potential clean pass
                 }
 
                 std::map<std::string, Value> locTiles = this->findLocalTiles(layerName, expl);
 
                 // really re-wire from reconstructed info
+                // Now easy because guarantee to find exactly what we need
                 for(AbsOpWrapper* absOp : this->layerNameToOps[layerName]) {
                     Operation* op = absOp->getUnderlyingOperation();
                     if(firstLayer) {
                         // TODO link to input of network
                     } else {
                         std::vector<std::string> wantLoc = this->wantLoc(op, expl);
-
                         for(std::string s : wantLoc) { // TODO add to a vector and if size is bigger than 1 instantiate a concat
                             if(locTiles.find(s) != locTiles.end()) {
                                 op->replaceUsesOfWith(absOp->getInput(), locTiles[s]);
-                            } else if(producedTiles.find(s) != producedTiles.end()) {
-                                op->replaceUsesOfWith(absOp->getInput(), locTiles[s]);
-                            } else { // means that there is a tile broadcast here
-                                // TODO insert concats and stuff here
                             }
                         }
+
+                        std::vector<std::string> wantPrev = this->wantPrev(op, expl);
                     }
                 }
 
@@ -785,45 +909,45 @@ namespace xilinx {
 
                 // Expand P, Ca, L for all layers
                 /*std::map<std::string, ModelParams>::iterator it;
-                for(it = layerNameToParams.begin(); it != layerNameToParams.end(); it++) {
-                    unsigned int P = it->second.P;
-                    unsigned int Ca = it->second.Ca;
-                    unsigned int L = it->second.L;
+                  for(it = layerNameToParams.begin(); it != layerNameToParams.end(); it++) {
+                  unsigned int P = it->second.P;
+                  unsigned int Ca = it->second.Ca;
+                  unsigned int L = it->second.L;
 
-                    if(!PTransform(it->first, P).succeeded()) {
-                        llvm::outs() << "Failed to apply PTransform\n";
-                        exit(1);
-                    }
+                  if(!PTransform(it->first, P).succeeded()) {
+                  llvm::outs() << "Failed to apply PTransform\n";
+                  exit(1);
+                  }
 
-                    if(!CaTransform(it->first, Ca).succeeded()) {
-                        llvm::outs() << "Failed to apply CaTransform\n";
-                        exit(1);
-                    }
+                  if(!CaTransform(it->first, Ca).succeeded()) {
+                  llvm::outs() << "Failed to apply CaTransform\n";
+                  exit(1);
+                  }
 
-                    if(!LTransform(it->first, L).succeeded()) {
-                        llvm::outs() << "Failed to apply LTransform\n";
-                        exit(1);
-                    }
-                    }
+                  if(!LTransform(it->first, L).succeeded()) {
+                  llvm::outs() << "Failed to apply LTransform\n";
+                  exit(1);
+                  }
+                  }
 
-                this->layerNameToParams["conv2d_relu0"] = ModelParams(1,1,1,1);
-                this->layerNameToParams["conv2d_relu1"] = ModelParams(1,1,3,3);
-                this->layerNameToParams["conv2d_relu2"] = ModelParams(1,1,3,1);
+                  this->layerNameToParams["conv2d_relu0"] = ModelParams(1,1,1,1);
+                  this->layerNameToParams["conv2d_relu1"] = ModelParams(1,1,3,3);
+                  this->layerNameToParams["conv2d_relu2"] = ModelParams(1,1,3,1);
 
-                this->layerNameToParams["max_pool2d_with_indices0"] = ModelParams(1,1,1,1);
-                this->layerNameToParams["max_pool2d_with_indices1"] = ModelParams(1,1,1,1);
+                  this->layerNameToParams["max_pool2d_with_indices0"] = ModelParams(1,1,1,1);
+                  this->layerNameToParams["max_pool2d_with_indices1"] = ModelParams(1,1,1,1);
 
-                //PTransform("conv2d_relu1", 4);
-                //PTransform("max_pool2d_with_indices1", 4);
-                //CaTransform("conv2d_relu2", 4);
-                LTransform("conv2d_relu1", 3);
-                LTransform("conv2d_relu2", 3);
+                  //PTransform("conv2d_relu1", 4);
+                  //PTransform("max_pool2d_with_indices1", 4);
+                  //CaTransform("conv2d_relu2", 4);
+                  LTransform("conv2d_relu1", 3);
+                  LTransform("conv2d_relu2", 3);
 
-                // annotate lines
-                annotateLines();
+                  // annotate lines
+                  annotateLines();
 
-                // W expand
-                WTransform("conv2d_relu1", 3);*/
+                  // W expand
+                  WTransform("conv2d_relu1", 3);*/
 
                 // Verify graph
 

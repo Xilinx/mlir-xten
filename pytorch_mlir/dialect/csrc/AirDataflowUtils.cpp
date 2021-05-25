@@ -272,7 +272,7 @@ namespace xilinx {
         }
 
         // TODO double check shape propagation here
-        void insertConcat(OpBuilder &builder, Value prevRes, std::vector<Value> &values, unsigned int dim) {
+        Operation* insertConcat(OpBuilder &builder, Value prevRes, std::vector<Value> &values, unsigned int dim) {
             ShapedType prevResType = prevRes.getType().dyn_cast<ShapedType>();
 
             ArrayRef<Value> valuesRef = ArrayRef<Value>(values);
@@ -283,6 +283,8 @@ namespace xilinx {
 
             // Replace output of old convolution usage by concat value
             prevRes.replaceAllUsesWith(res->getResult(0));
+
+            return res;
         }
 
         void insertSplit(OpBuilder &builder, Value prevInput, std::vector<Value> &nInputs, unsigned int dim, unsigned int into) {

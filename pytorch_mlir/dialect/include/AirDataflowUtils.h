@@ -62,7 +62,7 @@ namespace xilinx {
         void deleteOpsFrom(std::vector<Operation*> &ops);
         void deleteOpsFrom(std::vector<AbsOpWrapper*> &ops);
 
-        void insertConcat(OpBuilder &builder, Value prevRes, std::vector<Value> &values, unsigned int dim);
+        Operation* insertConcat(OpBuilder &builder, Value prevRes, std::vector<Value> &values, unsigned int dim);
         void replaceConcat(OpBuilder &builder, xilinx::air::ConcatOp concat, std::vector<Value> &nInputs,
                            std::vector<Operation*> &toDelete, unsigned int dim, unsigned int into);
 
