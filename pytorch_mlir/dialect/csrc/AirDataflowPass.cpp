@@ -76,7 +76,7 @@ namespace xilinx {
                             if(layerNameToOps.count(opName.str()) == 0) {
                                 layerNameToOps[opName.str()] = std::vector<AbsOpWrapper*>({wrappedOp});
                                 explorerInit.push_back(std::make_pair(opName.str(), wrappedOp));
-                                this->layerNameToParams[opName.str()] = ModelParams(0,0,0,0);
+                                this->layerNameToParams[opName.str()] = ModelParams(0,0,0,0,false);
                                 this->layerOrdering.push_back(opName.str());
                             } else {
                                 llvm::outs() << "Cannot have multiple layer with the same name during initizalization\n";
@@ -536,7 +536,7 @@ namespace xilinx {
 
             // TODO take into account depthwise layers
             // TODO work at the tile grannularity
-            // TODO probably do not care of the line stuff even: show this better
+            // TODO Support correct line stuff
             std::vector<std::string> workOn(Operation* op, DataflowExplorer &expl) {
                 unsigned int locCa = getAttrOrDefault(op, "locCa", 0);
                 unsigned int locL = getAttrOrDefault(op, "locL", 0);
@@ -977,28 +977,27 @@ namespace xilinx {
                   llvm::outs() << "Failed to apply LTransform\n";
                   exit(1);
                   }
-                  }
+                  }*/
 
-                  this->layerNameToParams["conv2d_relu0"] = ModelParams(1,1,1,1);
-                  this->layerNameToParams["conv2d_relu1"] = ModelParams(1,1,3,3);
-                  this->layerNameToParams["conv2d_relu2"] = ModelParams(1,1,3,1);
+                this->layerNameToParams["conv2d_relu0"] = ModelParams(1,1,1,1,false);
+                this->layerNameToParams["conv2d_relu1"] = ModelParams(1,1,3,3,false);
+                this->layerNameToParams["conv2d_relu2"] = ModelParams(1,1,3,1,false);
 
-                  this->layerNameToParams["max_pool2d_with_indices0"] = ModelParams(1,1,1,1);
-                  this->layerNameToParams["max_pool2d_with_indices1"] = ModelParams(1,1,1,1);
+                this->layerNameToParams["max_pool2d_with_indices0"] = ModelParams(1,1,1,1,false);
+                this->layerNameToParams["max_pool2d_with_indices1"] = ModelParams(1,1,1,1,false);
 
-                  //PTransform("conv2d_relu1", 4);
-                  //PTransform("max_pool2d_with_indices1", 4);
-                  //CaTransform("conv2d_relu2", 4);
-                  LTransform("conv2d_relu1", 3);
-                  LTransform("conv2d_relu2", 3);
+                //PTransform("conv2d_relu1", 4);
+                //PTransform("max_pool2d_with_indices1", 4);
+                //CaTransform("conv2d_relu2", 4);
 
-                  // annotate lines
-                  annotateLines();
+                LTransform("conv2d_relu1", 3);
+                LTransform("conv2d_relu2", 3);
 
-                  // W expand
-                  WTransform("conv2d_relu1", 3);*/
+                // W expand
+                WTransform("conv2d_relu1", 3, dataflowExplorer);
 
                 // Verify graph
+                // TODO
 
                 clearLayerNameToOps();
             }

@@ -24,21 +24,22 @@ namespace xilinx {
             unsigned int L;
             unsigned int W;
             // unsigned int K; // Probably enough as an implicit parameter
-            // unsigned int lineGrannularity; // TODO add this?
-            // TODO is false then should disabel W optimisation? Or should we find something more detailed for it?
+            bool lineGranularity;
 
             ModelParams() {
                 P = 1;
                 Ca = 1;
                 W = 1;
                 L = 1;
+                lineGranularity = false;
             }
 
-            ModelParams(unsigned int defP, unsigned int defCa, unsigned int defL, unsigned int defW) {
+            ModelParams(unsigned int defP, unsigned int defCa, unsigned int defL, unsigned int defW, bool lineGranularity) {
                 this->P = defP;
                 this->Ca = defCa;
                 this->L = defL;
                 this->W = defW;
+                this->lineGranularity = lineGranularity;
             }
 
             unsigned int cores() {
@@ -50,7 +51,8 @@ namespace xilinx {
             }
 
             void print() {
-                llvm::outs() << "P: " << this->P << ", Ca: " << this->Ca << ", L: " << this->L << ", W: " << this->W << "\n";
+                llvm::outs() << "P: " << this->P << ", Ca: " << this->Ca << ", L: " << this->L << ", W: " << this->W <<
+                    ", lineGranularity: " << this->lineGranularity << "\n";
             }
         };
 

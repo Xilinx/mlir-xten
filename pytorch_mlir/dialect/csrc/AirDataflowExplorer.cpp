@@ -26,7 +26,7 @@
 // TODO also implement generic one without any architecture restructions?
 // TODO Double check W == W
 
-// TODO Add proper line analysis -> probably not necessary, double check
+// TODO Add proper line handling capabilities
 // TODO Check that tile bring time is correct when need to bring multiple tiles at once
 
 namespace xilinx {
@@ -53,7 +53,6 @@ namespace xilinx {
 
         // Analytical model functions
 
-        // TODO lines per tile need to agree with K ? Or no? Is it better to save on memory or save on compute potentially?
         uint64_t DataflowExplorer::getLinesPerTile(uint64_t layerId, ModelParams &params) {
             if(params.P == 0 || params.Ca == 0 || params.L == 0 || params.W == 0) {
                 llvm::outs() << "params was 0 in getLinesPerTile...\n";
@@ -71,15 +70,22 @@ namespace xilinx {
             return linesPerBanks;
         }
 
+        // TODO Double check that function
         uint64_t DataflowExplorer::getTilesPerCore(uint64_t layerId, ModelParams &params) {
             uint64_t linesPerTile = this->getLinesPerTile(layerId, params);
             uint64_t banksPerLine = this->getBanksPerLine(layerId, params);
             uint64_t F0 = this->layerNameToOps[layerId]->getKernelSize();
 
             uint64_t F0OverF = ceil((float)F0 / params.L);
+            uint64_t producedLines = linesPerTile;
+            uint64_t worstLocLines = (F0OverF - 1) + producedLines;
 
             if(linesPerTile != 0) {
-                return 1 + ceil((float)(F0OverF-1) / linesPerTile);
+                if(params.lineGranularity) {
+                    return 1 + ceil((float)(F0OverF-1) / linesPerTile);
+                } else {
+                    return 1 + ceil((float)(worstLocLines - 1) / linesPerTile);
+                }
             } else {
                 return ceil((float)F0 / params.L) * banksPerLine;
             }
@@ -94,6 +100,7 @@ namespace xilinx {
 
             int64_t lineSize = (ceil(C / params.Ca) * M) * getElementWidth(aShape, FORCE_INT8);
             int64_t banksPerLine = (int64_t)ceil((float)lineSize / this->arch->getBankSize());
+
             return banksPerLine;
         }
 
@@ -141,6 +148,7 @@ namespace xilinx {
 
         // either 2 or 4
         // TODO check that not in F duplication case
+        // TODO how do we handle biases?
         uint64_t DataflowExplorer::getWeightBanks(uint64_t layerId, ModelParams &params) {
             if(!this->layerNameToOps[layerId]->hasWeights()) {
                 return 0;
@@ -190,8 +198,17 @@ namespace xilinx {
         }
 
         uint64_t DataflowExplorer::getComputeTimePerTile(uint64_t layerId, ModelParams &params) {
-            uint64_t K = this->getK(layerId, params);
-            return this->getComputeTime(layerId, params) / K;
+            if(params.lineGranularity) {
+                AbsOpWrapper* layer = this->layerNameToOps[layerId];
+                ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
+                ArrayRef<int64_t> aShapeAR = aShape.getShape();
+                uint64_t N = aShapeAR[N_LOC];
+
+                return this->getComputeTime(layerId, params) / N;
+            } else {
+                uint64_t K = this->getK(layerId, params);
+                return this->getComputeTime(layerId, params) / K;
+            }
         }
 
         std::map<std::string, uint64_t> getStats(Operation* op) {
@@ -245,8 +262,20 @@ namespace xilinx {
         }
 
         uint64_t DataflowExplorer::getActCommunicationTimePerTile(uint64_t layerId, ModelParams &params) {
-            uint64_t K = this->getK(layerId, params);
-            return this->getActCommunicationTime(layerId, params) / K;
+            uint64_t comTime = this->getActCommunicationTime(layerId, params);
+
+            if(params.lineGranularity) {
+                AbsOpWrapper* layer = this->layerNameToOps[layerId];
+                ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
+                ArrayRef<int64_t> aShapeAR = aShape.getShape();
+                uint64_t N = aShapeAR[N_LOC];
+
+                return comTime / N;
+            } else {
+                uint64_t K = this->getK(layerId, params);
+                return comTime / K;
+            }
+
         }
 
         uint64_t DataflowExplorer::getActCommunicationTime(uint64_t layerId, ModelParams &params) {
@@ -298,8 +327,18 @@ namespace xilinx {
 
         uint64_t DataflowExplorer::getWeightCommunicationTime(uint64_t layerId, ModelParams &params) {
             uint64_t comPerTile = this->getWeightCommunicationTimePerTile(layerId, params);
-            uint64_t K = this->getK(layerId, params);
-            return comPerTile * K;
+
+            if(params.lineGranularity) {
+                AbsOpWrapper* layer = this->layerNameToOps[layerId];
+                ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
+                ArrayRef<int64_t> aShapeAR = aShape.getShape();
+                uint64_t N = aShapeAR[N_LOC];
+
+                return comPerTile * N;
+            } else {
+                uint64_t K = this->getK(layerId, params);
+                return comPerTile * K;
+            }
         }
 
         uint64_t DataflowExplorer::getTotalTimePerTile(uint64_t layerId, ModelParams &params) {
@@ -311,12 +350,22 @@ namespace xilinx {
             return std::max(std::max(actComTile, weightComTile), computeTile);
         }
 
-        // TODO make sure that this works for W (and L when we take into account line movement but should be OK from shared memory)
         uint64_t DataflowExplorer::getTotalTime(uint64_t layerId, ModelParams &params) {
-            uint64_t totalTimeTile = this->getTotalTimePerTile(layerId, params);
-            uint64_t K = this->getK(layerId, params);
+            if(params.lineGranularity) {
+                AbsOpWrapper* layer = this->layerNameToOps[layerId];
+                ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
+                ArrayRef<int64_t> aShapeAR = aShape.getShape();
+                uint64_t N = aShapeAR[N_LOC];
 
-            return K * totalTimeTile;
+                uint64_t totalTimeTile = this->getTotalTimePerTile(layerId, params);
+
+                return N * totalTimeTile;
+            } else {
+                uint64_t totalTimeTile = this->getTotalTimePerTile(layerId, params);
+                uint64_t K = this->getK(layerId, params);
+
+                return K * totalTimeTile;
+            }
         }
 
         uint64_t DataflowExplorer::getTotalCompute() {
@@ -445,6 +494,7 @@ namespace xilinx {
         }
 
         // Is not valid if does not fit under the memory constraints
+        // TODO check with line stuff
         bool DataflowExplorer::isValid(uint64_t layerId, ModelParams &params) {
             AbsOpWrapper* layer = this->layerNameToOps[layerId];
 
@@ -490,6 +540,7 @@ namespace xilinx {
             //return memFit && enoughCIn && enoughCOut && enoughF;
         }
 
+        // In favor of tile handling when compute time is the same and both fits (same result if F == 1)
         void DataflowExplorer::generateValidTopologies() {
             std::vector<uint64_t> bounds = this->generateExplorationBounds();
 
@@ -504,9 +555,21 @@ namespace xilinx {
                     for(uint64_t ca = 1; ca <= (layerCores - (p-1)); ca++) {
                         for(uint64_t f = 1; f <= (std::min(layerCores - (p-1) - (ca-1), F0)); f++) {
                             for(uint64_t w = 1; w <= layerCores - (p-1) - (f-1) - (ca-1); w++) {
-                                ModelParams params(p, ca, f, w);
-                                if(this->isValid(layerId, params)) {
-                                    this->validTopologies.at(layerId).push_back(params);
+                                ModelParams paramsLine(p, ca, f, w, true);
+                                ModelParams paramsTile(p, ca, f, w, false);
+
+                                bool lineValid = this->isValid(layerId, paramsLine);
+                                bool tileValid = this->isValid(layerId, paramsTile);
+                                if(lineValid && tileValid) {
+                                    if(this->getTotalTime(layerId, paramsLine) >= this->getTotalTime(layerId, paramsTile)) {
+                                        this->validTopologies.at(layerId).push_back(paramsTile);
+                                    } else {
+                                        this->validTopologies.at(layerId).push_back(paramsLine);
+                                    }
+                                } else if(tileValid) {
+                                    this->validTopologies.at(layerId).push_back(paramsTile);
+                                } else if(lineValid) {
+                                    this->validTopologies.at(layerId).push_back(paramsLine);
                                 }
                             }
                         }
@@ -520,13 +583,13 @@ namespace xilinx {
         void DataflowExplorer::generatePathGraph() {
             this->pathGraph = std::vector<std::vector<Node_t*>>(this->validTopologies.size() + 2, std::vector<Node_t*>());
 
-            Node_t* root = new Node_t(ModelParams(0,0,0,0));
+            Node_t* root = new Node_t(ModelParams(0,0,0,0,false));
             root->areaToThroughput = std::vector<PathInfo_t>(this->arch->getNumCores() + 2, PathInfo_t((uint64_t)0));
             root->areaToLatency = std::vector<PathInfo_t>(this->arch->getNumCores() + 2, PathInfo_t((uint64_t)-1));
 
             // Init paths of size
-            root->areaToThroughput[0].path = std::vector<ModelParams>(1, ModelParams(0,0,0,0));
-            root->areaToLatency[0].path = std::vector<ModelParams>(1, ModelParams(0,0,0,0));
+            root->areaToThroughput[0].path = std::vector<ModelParams>(1, ModelParams(0,0,0,0,false));
+            root->areaToLatency[0].path = std::vector<ModelParams>(1, ModelParams(0,0,0,0,false));
 
             this->pathGraph.at(0).push_back(root);
 
@@ -571,7 +634,7 @@ namespace xilinx {
                 }
             }
 
-            Node_t* sink = new Node_t(ModelParams(0,0,0,0));
+            Node_t* sink = new Node_t(ModelParams(0,0,0,0,false));
             for(Node_t* n : this->pathGraph.at(this->pathGraph.size() - 2)) {
                 //llvm::outs() << "Extending the sink...\n";
                 sink->ins.push_back(n);
