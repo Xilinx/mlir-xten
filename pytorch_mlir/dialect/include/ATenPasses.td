@@ -13,4 +13,9 @@ def ATenToAIR : Pass<"aten-to-air", "ModuleOp"> {
   let constructor = "xilinx::aten::createATenToAIRPass()";
 }
 
+def LowerToLibATen : Pass<"lower-to-libaten", "ModuleOp"> {
+  let summary = "Lower ATen Ops to library calls";
+  let constructor = "xilinx::aten::createLowerToLibATenPass()";
+}
+
 #endif // ATEN_CONVERSION_PASSES
