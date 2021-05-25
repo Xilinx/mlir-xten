@@ -608,7 +608,7 @@ namespace xilinx {
                 //return "tile" + std::to_string(wantLine) + "C" + std::to_string(locCa);
             }
 
-            // TODO Double check depth wise handling
+            // TODO Double check depth-wise handling
             std::map<std::string, Value> findProducedTiles(std::string layerName) {
                 std::map<std::string, Value> producedLineToOp;
                 ModelParams params = this->layerNameToParams[layerName];
@@ -707,6 +707,8 @@ namespace xilinx {
                 for(int64_t i = into-1; i >= 0; i--) {
                     OpBuilder builder(layerNameToOps[layerName].at(0)->getUnderlyingOperation());
                     std::map<std::string, AbsOpWrapper*> paramsToLayer;
+                    std::map<std::string, std::vector<Value>> concatLocToArg;
+                    std::map<std::string, Value> concatLocToRes;
                     for(AbsOpWrapper* absOp : layerNameToOps[layerName]) {
                         if(i == 0) {
                             auto ty = IntegerType::get(builder.getContext(), 32);
@@ -721,6 +723,49 @@ namespace xilinx {
 
                             AbsOpWrapper* locAbsOp = opToWrapper(op);
                             layerOps.push_back(locAbsOp);
+
+                            Value opRes = absOp->getUnderlyingOperation()->getResult(0);
+                            if(opRes.hasOneUse() && llvm::dyn_cast<SplitOp>(*(opRes.getUsers().begin()))) {
+                                // Do not link back splits as will be done later?
+                                SplitOp split = llvm::dyn_cast<SplitOp>(*(opRes.getUsers().begin()));
+                                std::vector<Value> tmp;
+                                insertSplit(builder, opRes, tmp, C_LOC, split.getNumResults());
+                            }
+
+                            if(opRes.hasOneUse() && llvm::dyn_cast<ConcatOp>(*opRes.getUsers().begin())) {
+                                ConcatOp concat = llvm::dyn_cast<ConcatOp>(*opRes.getUsers().begin());
+                                unsigned int concatP = (unsigned int)-1;
+                                unsigned int concatW = (unsigned int)-1;
+
+                                for(auto v : concat.getOperands()) {
+                                    unsigned int locP = getAttrOrDefault(v.getDefiningOp(), "locP", 0);
+                                    if(concatP > locP) {
+                                        concatP = locP;
+                                    }
+
+                                    concatW = getAttrOrDefault(v.getDefiningOp(), "locW", 0);
+                                }
+
+                                unsigned int locP = getAttrOrDefault(op, "locP", 0);
+                                unsigned int vectorLoc = locP - concatP;
+
+                                std::string hashString = "tile" + std::to_string(concatW) + "P" + std::to_string(concatP);
+                                unsigned int concatLocToArgSize = concatLocToArg[hashString].size();
+
+                                if(concatLocToArgSize == vectorLoc) {
+                                    concatLocToArg[hashString].push_back(op->getResult(0));
+                                } else if(concatLocToArgSize < vectorLoc) {
+                                    for(unsigned int i = concatLocToArgSize; i < vectorLoc; i++) {
+                                        concatLocToArg[hashString].push_back(Value());
+                                    }
+
+                                    concatLocToArg[hashString].push_back(op->getResult(0));
+                                } else {
+                                    concatLocToArg[hashString][vectorLoc] = op->getResult(0);
+                                }
+
+                                concatLocToRes[hashString] = concat.getResult();
+                            }
 
                             unsigned int locCa = getAttrOrDefault(absOp->getUnderlyingOperation(), "locCa", 0);
                             unsigned int locL = getAttrOrDefault(absOp->getUnderlyingOperation(), "locL", 0);
@@ -765,23 +810,19 @@ namespace xilinx {
                             op->replaceUsesOfWith(absOp->getPartialInput(), prevAbsOp->getUnderlyingOperation()->getResult(0));
                         }
                     }
+
+                    // Instantiate the duplicated concats
+                    std::map<std::string, std::vector<Value>>:: iterator concatIt;
+                    for(concatIt = concatLocToArg.begin(); concatIt != concatLocToArg.end(); concatIt++) {
+                        insertConcat(builder, concatLocToRes[it->first], concatIt->second, C_LOC);
+                    }
                 }
 
                 // Assign new layer
                 layerNameToOps[layerName] = layerOps;
             }
 
-            // TODO might generate chains of concat, or concat and then split on a different dim
-            // TODO either need a simplify pass of handle things better
-            LogicalResult WTransform(std::string layerName, unsigned int into, DataflowExplorer &expl) {
-                if(into == 1) {
-                    return success();
-                }
-
-                // duplicate graph into times
-                wDuplicate(layerName, into);
-
-                // Re-wire
+            void reWire(std::string layerName, DataflowExplorer &expl) {
                 OpBuilder builder(layerNameToOps[layerName].at(0)->getUnderlyingOperation());
 
                 // construct line location
@@ -844,20 +885,7 @@ namespace xilinx {
                         }
                     }
 
-                    // TODO we should be able to ensure re-using of these guys
-                    // Now we have from producer W = consumer W in the map
-                    unsigned int W = std::max(paramsPrev.W, paramsCurr.W);
-                    if(paramsCurr.Ca > paramsPrev.P) { // insert splits
-                        unsigned int ratio = ceil((float)paramsCurr.Ca / paramsPrev.P);
-
-                        for(unsigned int w = 0; w < W; w++) {
-                            
-                        }
-                    } else if(paramsCurr.Ca < paramsPrev.P) {
-                        // insert concats
-                    }
-
-                    // TODO remove potential concat stuff that was there before
+                    // TODO remove potential Wconcat stuff that was there before
                     // TODO or leave it to a potential clean pass
                 }
 
@@ -871,14 +899,35 @@ namespace xilinx {
                         // TODO link to input of network
                     } else {
                         std::vector<std::string> wantLoc = this->wantLoc(op, expl);
-                        for(std::string s : wantLoc) { // TODO add to a vector and if size is bigger than 1 instantiate a concat
+                        for(std::string s : wantLoc) {
                             if(locTiles.find(s) != locTiles.end()) {
                                 op->replaceUsesOfWith(absOp->getInput(), locTiles[s]);
                             }
                         }
 
                         std::vector<std::string> wantPrev = this->wantPrev(op, expl);
+                        for(std::string s : wantPrev) {
+                            op->replaceUsesOfWith(absOp->getInput(), producedTiles[s]);
+                        }
                     }
+                }
+
+            }
+
+            // TODO might generate chains of concat, or concat and then split on a different dim
+            // TODO either need a simplify pass of handle things better
+            LogicalResult WTransform(std::string layerName, unsigned int into, DataflowExplorer &expl) {
+                if(into == 1) {
+                    return success();
+                }
+
+                // duplicate graph into times
+                wDuplicate(layerName, into);
+
+                // Re-wire
+                reWire(layerName, expl);
+                if(expl.layerNameToID[layerName] != (expl.layerNameToID.size()-1)) {
+                    reWire(expl.layerIdToName[expl.layerNameToID[layerName]+1], expl);
                 }
 
                 return success();
