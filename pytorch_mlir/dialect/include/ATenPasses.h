@@ -13,6 +13,7 @@
 #include "ATenSimpleAllocatePass.h"
 #include "ATenOpReport.h"
 #include "ReturnEliminationPass.h"
+#include "LowerToLibATenPass.h"
 
 namespace xilinx {
   namespace aten {
