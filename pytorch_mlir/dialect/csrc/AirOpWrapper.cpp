@@ -124,35 +124,42 @@ namespace xilinx {
             }
         }
 
-        Operation* Conv2dOpWrapper::wCopy(OpBuilder &builder, unsigned int into) {
-            Operation* op = builder.create<Conv2dOp>(builder.getUnknownLoc(),
-                                                     this->getUnderlyingOperation()->getResultTypes(),
-                                                     this->getInput(),
-                                                     this->getWeights(),
-                                                     this->getBiases(),
-                                                     this->conv.stride(),
-                                                     this->conv.padding(),
-                                                     this->conv.dilation(),
-                                                     this->conv.transposed(),
-                                                     this->conv.output_padding(),
-                                                     this->conv.groups());
+        Operation* Conv2dOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) {
+            Operation* op;
+
+            if(resTypes.hasValue()) {
+                op =  builder.create<PartialConv2dOp>(builder.getUnknownLoc(),
+                                                      resTypes.getValue(),
+                                                      this->getInput(),
+                                                      Value(),
+                                                      this->getWeights(),
+                                                      this->getBiases(),
+                                                      this->conv.stride(),
+                                                      this->conv.padding(),
+                                                      this->conv.dilation(),
+                                                      this->conv.transposed(),
+                                                      this->conv.output_padding(),
+                                                      this->conv.groups());
+
+            } else {
+                op = builder.create<Conv2dOp>(builder.getUnknownLoc(),
+                                              this->getUnderlyingOperation()->getResultTypes(),
+                                              this->getInput(),
+                                              this->getWeights(),
+                                              this->getBiases(),
+                                              this->conv.stride(),
+                                              this->conv.padding(),
+                                              this->conv.dilation(),
+                                              this->conv.transposed(),
+                                              this->conv.output_padding(),
+                                              this->conv.groups());
+            }
 
             op->setAttrs(this->getUnderlyingOperation()->getAttrs());
 
-            auto lines = op->getAttr("line").dyn_cast<ArrayAttr>().getValue();
-
-            if(lines.size() == 1) {
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-            } else {
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                unsigned int lines1 = lines[1].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into), static_cast<int>(lines1 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-            }
+            auto ty = IntegerType::get(builder.getContext(), 32);
+            auto attr = IntegerAttr::get(ty, into);
+            op->setAttr(llvm::StringRef("locW"), attr);
 
             return op;
         }
@@ -250,8 +257,24 @@ namespace xilinx {
             return nOp;
         }
 
-        Operation* PartialConv2dOpWrapper::wCopy(OpBuilder &builder, unsigned int into) {
-            Operation* op = builder.create<PartialConv2dOp>(builder.getUnknownLoc(),
+        Operation* PartialConv2dOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) {
+            Operation* op;
+
+            if(resTypes.hasValue()) {
+                op = builder.create<PartialConv2dOp>(builder.getUnknownLoc(),
+                                                     resTypes.getValue(),
+                                                     this->getInput(),
+                                                     this->conv.PartialIn(),
+                                                     this->getWeights(),
+                                                     this->getBiases(),
+                                                     this->conv.stride(),
+                                                     this->conv.padding(),
+                                                     this->conv.dilation(),
+                                                     this->conv.transposed(),
+                                                     this->conv.output_padding(),
+                                                     this->conv.groups());
+            } else {
+                op = builder.create<PartialConv2dOp>(builder.getUnknownLoc(),
                                                      this->getUnderlyingOperation()->getResultTypes(),
                                                      this->getInput(),
                                                      this->conv.PartialIn(),
@@ -263,23 +286,14 @@ namespace xilinx {
                                                      this->conv.transposed(),
                                                      this->conv.output_padding(),
                                                      this->conv.groups());
+            }
+
 
             op->setAttrs(this->getUnderlyingOperation()->getAttrs());
 
-            auto lines = op->getAttr("line").dyn_cast<ArrayAttr>().getValue();
-
-            if(lines.size() == 1) {
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-            } else {
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                unsigned int lines1 = lines[1].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into), static_cast<int>(lines1 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-            }
+            auto ty = IntegerType::get(builder.getContext(), 32);
+            auto attr = IntegerAttr::get(ty, into);
+            op->setAttr(llvm::StringRef("locW"), attr);
 
             return op;
         }
@@ -387,35 +401,42 @@ namespace xilinx {
             }
         }
 
-        Operation* Conv2dReLUOpWrapper::wCopy(OpBuilder &builder, unsigned int into) {
-            Operation* op = builder.create<Conv2dReLUOp>(builder.getUnknownLoc(),
-                                                         this->getUnderlyingOperation()->getResultTypes(),
-                                                         this->getInput(),
-                                                         this->getWeights(),
-                                                         this->getBiases(),
-                                                         this->conv.stride(),
-                                                         this->conv.padding(),
-                                                         this->conv.dilation(),
-                                                         this->conv.transposed(),
-                                                         this->conv.output_padding(),
-                                                         this->conv.groups());
+        Operation* Conv2dReLUOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) {
+            Operation* op;
+
+            if(resTypes.hasValue()) {
+                op =  builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
+                                                          resTypes.getValue(),
+                                                          this->getInput(),
+                                                          Value(),
+                                                          this->getWeights(),
+                                                          this->getBiases(),
+                                                          this->conv.stride(),
+                                                          this->conv.padding(),
+                                                          this->conv.dilation(),
+                                                          this->conv.transposed(),
+                                                          this->conv.output_padding(),
+                                                          this->conv.groups());
+            } else {
+                op = builder.create<Conv2dReLUOp>(builder.getUnknownLoc(),
+                                                  this->getUnderlyingOperation()->getResultTypes(),
+                                                  this->getInput(),
+                                                  this->getWeights(),
+                                                  this->getBiases(),
+                                                  this->conv.stride(),
+                                                  this->conv.padding(),
+                                                  this->conv.dilation(),
+                                                  this->conv.transposed(),
+                                                  this->conv.output_padding(),
+                                                  this->conv.groups());
+            }
+
 
             op->setAttrs(this->getUnderlyingOperation()->getAttrs());
 
-            auto lines = op->getAttr("line").dyn_cast<ArrayAttr>().getValue();
-
-            if(lines.size() == 1) {
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-            } else {
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                unsigned int lines1 = lines[1].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into), static_cast<int>(lines1 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-            }
+            auto ty = IntegerType::get(builder.getContext(), 32);
+            auto attr = IntegerAttr::get(ty, into);
+            op->setAttr(llvm::StringRef("locW"), attr);
 
             return op;
         }
@@ -512,38 +533,44 @@ namespace xilinx {
             return nOp;
         }
 
-        Operation* PartialConv2dReLUOpWrapper::wCopy(OpBuilder &builder, unsigned int into) {
-            Operation* op = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
-                                                                this->getUnderlyingOperation()->getResultTypes(),
-                                                                this->getInput(),
-                                                                this->conv.PartialIn(),
-                                                                this->getWeights(),
-                                                                this->getBiases(),
-                                                                this->conv.stride(),
-                                                                this->conv.padding(),
-                                                                this->conv.dilation(),
-                                                                this->conv.transposed(),
-                                                                this->conv.output_padding(),
-                                                                this->conv.groups());
+        Operation* PartialConv2dReLUOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) {
+            Operation* op;
+
+            if(resTypes.hasValue()) {
+                op = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
+                                                         resTypes.getValue(),
+                                                         this->getInput(),
+                                                         this->conv.PartialIn(),
+                                                         this->getWeights(),
+                                                         this->getBiases(),
+                                                         this->conv.stride(),
+                                                         this->conv.padding(),
+                                                         this->conv.dilation(),
+                                                         this->conv.transposed(),
+                                                         this->conv.output_padding(),
+                                                         this->conv.groups());
+            } else {
+                op = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
+                                                         this->getUnderlyingOperation()->getResultTypes(),
+                                                         this->getInput(),
+                                                         this->conv.PartialIn(),
+                                                         this->getWeights(),
+                                                         this->getBiases(),
+                                                         this->conv.stride(),
+                                                         this->conv.padding(),
+                                                         this->conv.dilation(),
+                                                         this->conv.transposed(),
+                                                         this->conv.output_padding(),
+                                                         this->conv.groups());
+            }
+
 
 
             op->setAttrs(this->getUnderlyingOperation()->getAttrs());
 
-            auto lines = op->getAttr("line").dyn_cast<ArrayAttr>().getValue();
-
-            if(lines.size() == 1) {
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-            } else {
-                llvm::outs() << "Got line size of: " << lines.size() << "\n";
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                unsigned int lines1 = lines[1].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into), static_cast<int>(lines1 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-            }
+            auto ty = IntegerType::get(builder.getContext(), 32);
+            auto attr = IntegerAttr::get(ty, into);
+            op->setAttr(llvm::StringRef("locW"), attr);
 
             return op;
         }
@@ -649,31 +676,59 @@ namespace xilinx {
             return nOp;
         }
 
-        Operation* PartialConv2dBatchNormReLUOpWrapper::wCopy(OpBuilder &builder, unsigned int into) {
-            Operation* op = builder.create<PartialConv2dBatchNormReLUOp>(builder.getUnknownLoc(),
-                                                                         this->getUnderlyingOperation()->getResultTypes(),
-                                                                         this->getInput(),
-                                                                         this->conv.PartialIn(),
-                                                                         this->getWeights(),
-                                                                         this->getBiases(),
-                                                                         this->conv.stride(),
-                                                                         this->conv.padding(),
-                                                                         this->conv.dilation(),
-                                                                         this->conv.transposed(),
-                                                                         this->conv.output_padding(),
-                                                                         this->conv.groups(),
-                                                                         this->conv.bn_weight(),
-                                                                         this->conv.bn_bias(),
-                                                                         this->conv.running_mean(),
-                                                                         this->conv.running_var(),
-                                                                         this->conv.training(),
-                                                                         this->conv.momentum(),
-                                                                         this->conv.eps());
+        Operation* PartialConv2dBatchNormReLUOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) {
+            Operation* op;
+            if(resTypes.hasValue()) {
+                op = builder.create<PartialConv2dBatchNormReLUOp>(builder.getUnknownLoc(),
+                                                                  resTypes.getValue(),
+                                                                  this->getInput(),
+                                                                  this->conv.PartialIn(),
+                                                                  this->getWeights(),
+                                                                  this->getBiases(),
+                                                                  this->conv.stride(),
+                                                                  this->conv.padding(),
+                                                                  this->conv.dilation(),
+                                                                  this->conv.transposed(),
+                                                                  this->conv.output_padding(),
+                                                                  this->conv.groups(),
+                                                                  this->conv.bn_weight(),
+                                                                  this->conv.bn_bias(),
+                                                                  this->conv.running_mean(),
+                                                                  this->conv.running_var(),
+                                                                  this->conv.training(),
+                                                                  this->conv.momentum(),
+                                                                  this->conv.eps());
+            } else {
+                op = builder.create<PartialConv2dBatchNormReLUOp>(builder.getUnknownLoc(),
+                                                                  this->getUnderlyingOperation()->getResultTypes(),
+                                                                  this->getInput(),
+                                                                  this->conv.PartialIn(),
+                                                                  this->getWeights(),
+                                                                  this->getBiases(),
+                                                                  this->conv.stride(),
+                                                                  this->conv.padding(),
+                                                                  this->conv.dilation(),
+                                                                  this->conv.transposed(),
+                                                                  this->conv.output_padding(),
+                                                                  this->conv.groups(),
+                                                                  this->conv.bn_weight(),
+                                                                  this->conv.bn_bias(),
+                                                                  this->conv.running_mean(),
+                                                                  this->conv.running_var(),
+                                                                  this->conv.training(),
+                                                                  this->conv.momentum(),
+                                                                  this->conv.eps());
+            }
+
 
 
             op->setAttrs(this->getUnderlyingOperation()->getAttrs());
 
-            auto lines = op->getAttr("line").dyn_cast<ArrayAttr>().getValue();
+            auto ty = IntegerType::get(builder.getContext(), 32);
+            auto attr = IntegerAttr::get(ty, into);
+            op->setAttr(llvm::StringRef("locW"), attr);
+
+            /*auto lines = op->getAttr("line").dyn_cast<ArrayAttr>().getValue();
 
             if(lines.size() == 1) {
                 unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
@@ -687,7 +742,7 @@ namespace xilinx {
 
                 auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into), static_cast<int>(lines1 + into)});
                 op->setAttr(llvm::StringRef("line"), attr);
-            }
+                }*/
 
             return op;
         }
@@ -812,44 +867,57 @@ namespace xilinx {
             }
         }
 
-        Operation* Conv2dBatchNormReLUOpWrapper::wCopy(OpBuilder &builder, unsigned int into) {
-            Operation* op = builder.create<Conv2dBatchNormReLUOp>(builder.getUnknownLoc(),
-                                                                  this->getUnderlyingOperation()->getResultTypes(),
-                                                                  this->getInput(),
-                                                                  this->getWeights(),
-                                                                  this->getBiases(),
-                                                                  this->conv.stride(),
-                                                                  this->conv.padding(),
-                                                                  this->conv.dilation(),
-                                                                  this->conv.transposed(),
-                                                                  this->conv.output_padding(),
-                                                                  this->conv.groups(),
-                                                                  this->conv.bn_weight(),
-                                                                  this->conv.bn_bias(),
-                                                                  this->conv.running_mean(),
-                                                                  this->conv.running_var(),
-                                                                  this->conv.training(),
-                                                                  this->conv.momentum(),
-                                                                  this->conv.eps());
+        Operation* Conv2dBatchNormReLUOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) {
+            Operation* op;
+
+            if(resTypes.hasValue()) {
+                op =  builder.create<PartialConv2dBatchNormReLUOp>(builder.getUnknownLoc(),
+                                                                   resTypes.getValue(),
+                                                                   this->getInput(),
+                                                                   Value(),
+                                                                   this->getWeights(),
+                                                                   this->getBiases(),
+                                                                   this->conv.stride(),
+                                                                   this->conv.padding(),
+                                                                   this->conv.dilation(),
+                                                                   this->conv.transposed(),
+                                                                   this->conv.output_padding(),
+                                                                   this->conv.groups(),
+                                                                   this->conv.bn_weight(),
+                                                                   this->conv.bn_bias(),
+                                                                   this->conv.running_mean(),
+                                                                   this->conv.running_var(),
+                                                                   this->conv.training(),
+                                                                   this->conv.momentum(),
+                                                                   this->conv.eps());
+            } else {
+                op = builder.create<Conv2dBatchNormReLUOp>(builder.getUnknownLoc(),
+                                                           this->getUnderlyingOperation()->getResultTypes(),
+                                                           this->getInput(),
+                                                           this->getWeights(),
+                                                           this->getBiases(),
+                                                           this->conv.stride(),
+                                                           this->conv.padding(),
+                                                           this->conv.dilation(),
+                                                           this->conv.transposed(),
+                                                           this->conv.output_padding(),
+                                                           this->conv.groups(),
+                                                           this->conv.bn_weight(),
+                                                           this->conv.bn_bias(),
+                                                           this->conv.running_mean(),
+                                                           this->conv.running_var(),
+                                                           this->conv.training(),
+                                                           this->conv.momentum(),
+                                                           this->conv.eps());
+            }
+
 
 
             op->setAttrs(this->getUnderlyingOperation()->getAttrs());
 
-            auto lines = op->getAttr("line").dyn_cast<ArrayAttr>().getValue();
-
-            if(lines.size() == 1) {
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-            } else {
-                llvm::outs() << "Got line size of: " << lines.size() << "\n";
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                unsigned int lines1 = lines[1].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into), static_cast<int>(lines1 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-            }
+            auto ty = IntegerType::get(builder.getContext(), 32);
+            auto attr = IntegerAttr::get(ty, into);
+            op->setAttr(llvm::StringRef("locW"), attr);
 
             return op;
         }
@@ -934,7 +1002,9 @@ namespace xilinx {
             return nOp;
         }
 
-        Operation* MaxPool2dWithIndicesOpWrapper::wCopy(OpBuilder &builder, unsigned int into) {
+        Operation* MaxPool2dWithIndicesOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> typeRes) {
+            assert(!typeRes.hasValue());
+
             Operation* op =  builder.create<NPCOMP::aten::MaxPool2dWithIndicesOp>(builder.getUnknownLoc(),
                                                                                   this->getUnderlyingOperation()->getResultTypes(),
                                                                                   this->getInput(),
@@ -946,20 +1016,9 @@ namespace xilinx {
 
             op->setAttrs(this->getUnderlyingOperation()->getAttrs());
 
-            auto lines = op->getAttr("line").dyn_cast<ArrayAttr>().getValue();
-
-            if(lines.size() == 1) {
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-            } else {
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                unsigned int lines1 = lines[1].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into), static_cast<int>(lines1 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-            }
+            auto ty = IntegerType::get(builder.getContext(), 32);
+            auto attr = IntegerAttr::get(ty, into);
+            op->setAttr(llvm::StringRef("locW"), attr);
 
             return op;
         }

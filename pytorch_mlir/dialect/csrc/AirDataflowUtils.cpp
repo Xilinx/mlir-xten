@@ -258,6 +258,7 @@ namespace xilinx {
 
         void deleteOpsFrom(std::vector<Operation*> &ops) {
             for(unsigned int i = 0; i < ops.size(); i++) {
+                llvm::outs() << "Deleting.. " << i << "\n";
                 ops.at(i)->erase();
             }
             ops.clear();
@@ -272,7 +273,7 @@ namespace xilinx {
         }
 
         // TODO double check shape propagation here
-        Operation* insertConcat(OpBuilder &builder, Value prevRes, std::vector<Value> &values, unsigned int dim) {
+        Operation* insertConcat(OpBuilder &builder, Value prevRes, std::vector<Value> &values, unsigned int dim, bool clearPrev) {
             ShapedType prevResType = prevRes.getType().dyn_cast<ShapedType>();
 
             ArrayRef<Value> valuesRef = ArrayRef<Value>(values);
@@ -280,9 +281,10 @@ namespace xilinx {
 
             Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
             Operation* res = builder.create<xilinx::air::ConcatOp>(builder.getUnknownLoc(), prevResType, valuesRange, cstDim->getResult(0));
-
-            // Replace output of old convolution usage by concat value
-            prevRes.replaceAllUsesWith(res->getResult(0));
+            if(clearPrev) {
+                // Replace output of old convolution usage by concat value
+                prevRes.replaceAllUsesWith(res->getResult(0));
+            }
 
             return res;
         }
@@ -376,6 +378,23 @@ namespace xilinx {
                     }
                 }
             }
+        }
+
+        unsigned int getAttrOrDefault(Operation* op, std::string attrName, unsigned int defVal) {
+            if(op->getAttr(attrName) != nullptr) {
+                return op->getAttr(attrName).dyn_cast<IntegerAttr>().getValue().getZExtValue();
+            } else {
+                return defVal;
+            }
+        }
+
+        void printOperationLoc(Operation* op) {
+            unsigned int locCa = getAttrOrDefault(op, "locCa", 0);
+            unsigned int locL = getAttrOrDefault(op, "locL", 0);
+            unsigned int locW = getAttrOrDefault(op, "locW", 0);
+            unsigned int locP = getAttrOrDefault(op, "locP", 0);
+
+            llvm::outs() << "Op is at: P: " << locP << ", Ca: " << locCa << ", W: " << locW << ", L: " << locL << "\n";
         }
     }
 }

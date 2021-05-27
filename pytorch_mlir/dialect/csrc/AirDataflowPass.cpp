@@ -236,7 +236,7 @@ namespace xilinx {
                         SplitOp split = llvm::dyn_cast<SplitOp>(*(op->getUsers().begin()));
                         replaceSplit(builder, split, nConvs, toDelete, C_LOC);
                     } else {
-                        insertConcat(builder, op->getResult(0), nConvs, C_LOC);
+                        insertConcat(builder, op->getResult(0), nConvs, C_LOC, true);
                     }
 
                     // Delete previous Csts and ConvolutionOp
@@ -249,9 +249,8 @@ namespace xilinx {
                 layerNameToOps[layerName] = nLayerOps;
 
                 // cleanup
-                deleteOpsFrom(toDelete);
                 deleteOpsFrom(layerOps);
-
+                deleteOpsFrom(toDelete);
 
                 return success();
             }
@@ -385,8 +384,8 @@ namespace xilinx {
                 layerNameToOps[layerName] = nLayerOps;
 
                 // cleanup
-                deleteOpsFrom(toDelete);
                 deleteOpsFrom(layerOps);
+                deleteOpsFrom(toDelete);
 
                 return success();
             }
@@ -398,6 +397,8 @@ namespace xilinx {
                 std::vector<AbsOpWrapper*> layerOps = layerNameToOps[layerName];
                 std::vector<Operation*> toDelete;
                 std::vector<AbsOpWrapper*> nLayerOps;
+
+                llvm::outs() << "LayerOps size: " << layerOps.size();
 
                 for(AbsOpWrapper* genOp : layerOps) {
                     Operation* op = genOp->getUnderlyingOperation();
@@ -455,11 +456,12 @@ namespace xilinx {
                     }
 
                     // Same return type here
-                    ShapedType retType = op->getResult(0).getType().dyn_cast<ShapedType>();
+                    ShapedType retTypePartial = op->getResult(0).getType().dyn_cast<ShapedType>();
+                    ShapedType retTypeForward = genOp->getInput().getType().dyn_cast<ShapedType>();
 
                     // Generate new convs
                     auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(0)) : llvm::Optional<ArrayRef<Value>>();
-                    Operation* nConv = genOp->buildOp(builder, TypeRange({retType, retType}),
+                    Operation* nConv = genOp->buildOp(builder, TypeRange({retTypePartial, retTypeForward}),
                                                       genOp->getInput(), llvm::Optional<Value>(nConsts.at(0)),
                                                       llvm::Optional<Value>(nBiases.at(0)), llvm::Optional<Value>(), true,
                                                       bn);
@@ -482,8 +484,9 @@ namespace xilinx {
 
                     for(unsigned int i = 1; i < into; i++) {
                         auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(i)) : llvm::Optional<ArrayRef<Value>>();
+                        // Same return type here
                         nConv = genOp->buildOp(builder,
-                                               (i == (into-1)) ? TypeRange({retType}) : TypeRange({retType, retType}),
+                                               (i == (into-1)) ? TypeRange({retTypePartial}) : TypeRange({retTypePartial, retTypeForward}),
                                                forward, llvm::Optional<Value>(nConsts.at(i)),
                                                llvm::Optional<Value>(nBiases.at(i)),
                                                llvm::Optional<Value>(partial), false,
@@ -514,47 +517,63 @@ namespace xilinx {
 
                     toDelete.push_back(weights);
                     toDelete.push_back(biases);
+                    if(genOp->hasBN()) {
+                        ArrayRef<Value> bnParams = genOp->getBN();
+                        for(unsigned int i = 0; i < 4; i++) {
+                            toDelete.push_back(bnParams[i].getDefiningOp());
+                        }
+                    }
                 }
 
                 // Delete previous Csts and ConvolutionOp
                 layerNameToOps[layerName] = nLayerOps;
 
                 // cleanup
-                deleteOpsFrom(toDelete);
                 deleteOpsFrom(layerOps);
+                deleteOpsFrom(toDelete);
 
                 return success();
-            }
-
-            unsigned int getAttrOrDefault(Operation* op, std::string attrName, unsigned int defVal) {
-                if(op->getAttr(attrName) != nullptr) {
-                    return op->getAttr(attrName).dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                } else {
-                    return defVal;
-                }
             }
 
             // TODO take into account depthwise layers
             // TODO work at the tile grannularity
             // TODO Support correct line stuff
-            std::vector<std::string> workOn(Operation* op, DataflowExplorer &expl) {
+            std::vector<std::string> workOn(AbsOpWrapper* absOp, DataflowExplorer &expl) {
+                Operation* op = absOp->getUnderlyingOperation();
+
                 unsigned int locCa = getAttrOrDefault(op, "locCa", 0);
                 unsigned int locL = getAttrOrDefault(op, "locL", 0);
                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
                 unsigned int locP = getAttrOrDefault(op, "locP", 0);
 
                 std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
-                uint64_t tilesPerCore = expl.getTilesPerCore(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
+
+                ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
+                uint64_t F0 = absOp->getKernelSize();
+
+                uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName],
+                                                             llvm::Optional<ShapedType>(aShapeIn));
+
+                uint64_t startLine = locL + locW * linesPerTile;
+                uint64_t endLine = startLine + linesPerTile - 1 + F0 - 1;
 
                 std::vector<std::string> locLines;
-                for(uint64_t i = 0; i < tilesPerCore; i++) {
-                    locLines.push_back("tile" + std::to_string(locL + locW + i) + "C" + std::to_string(locCa));
+                uint64_t startTile = startLine / linesPerTile;
+                uint64_t endTile = endLine / linesPerTile;
+
+                llvm::outs() << "StartLine " << startLine << ", startTile: " << startTile << "\n";
+                llvm::outs() << "EndLIne: " << endLine << ", endTile: " << endLine / linesPerTile << "\n";
+
+                for(uint64_t i = startTile; i <= endTile; i++) {
+                    locLines.push_back("tile" + std::to_string(i) + "C" + std::to_string(locCa));
                 }
 
                 return locLines;
             }
 
-            std::vector<std::string> wantLoc(Operation* op, DataflowExplorer &expl) {
+            std::vector<std::string> wantLoc(AbsOpWrapper* absOp, DataflowExplorer &expl) {
+                Operation* op = absOp->getUnderlyingOperation();
+
                 unsigned int locCa = getAttrOrDefault(op, "locCa", 0);
                 unsigned int locL = getAttrOrDefault(op, "locL", 0);
                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
@@ -562,50 +581,94 @@ namespace xilinx {
 
                 std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
 
-                uint64_t tilesPerCore = expl.getTilesPerCore(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
+                ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
+                uint64_t F0 = absOp->getKernelSize();
+
+                uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName],
+                                                             llvm::Optional<ShapedType>(aShapeIn));
+
+                //llvm::outs() << "LinesPertile:  " << linesPerTile << "\n";
+
                 unsigned int W = this->layerNameToParams[layerName].W;
 
-                uint64_t startLine = locL + locW;
-                uint64_t endLine = locL + locW + tilesPerCore - 1;
+                uint64_t startLine = locL + locW * linesPerTile;
+                uint64_t endLine = startLine + linesPerTile - 1 + F0 - 1;
+
+                uint64_t nStartLine = startLine + W * linesPerTile;
+                uint64_t nEndLine = endLine + W * linesPerTile;
+
+                uint64_t endLineTile = endLine / linesPerTile;
+                uint64_t nStartLineTile = nStartLine / linesPerTile;
+                uint64_t nEndLineTile = nEndLine / linesPerTile;
+
+                //llvm::outs() << "startLine = " << startLine << ", endLine: " << endLine << "\n";
+                llvm::outs() << "start = " << startLine / linesPerTile << ", end: " << endLine / linesPerTile << "\n";
+                llvm::outs() << "nStart = " << nStartLineTile << ", nEnd: " << nEndLineTile << "\n";
 
                 std::vector<std::string> wantLines;
-                for(uint64_t i = 0; i < tilesPerCore; i++) {
-                    uint64_t wantLine = locL + locW + W + i;
-                    if((wantLine < startLine) || (wantLine > endLine)) {
-                        wantLines.push_back("tile" + std::to_string(locL + locW + W) + "C" + std::to_string(locCa));
-                    }
+                for(uint64_t i = std::max(endLineTile+1, nStartLineTile); i <= nEndLineTile; i++) {
+                    wantLines.push_back("tile" + std::to_string(i) + "C" + std::to_string(locCa));
                 }
 
                 return wantLines;
             }
 
-            std::vector<std::string> wantPrev(Operation* op, DataflowExplorer &expl) {
-                std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
-                unsigned int W = this->layerNameToParams[layerName].W;
-                unsigned int L = this->layerNameToParams[layerName].L;
-
-                uint64_t tilesPerCore = expl.getTilesPerCore(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
-                unsigned int highestLoc = (W-1) + (L-1);
-
+            std::vector<std::string> wantPrev(AbsOpWrapper* absOp, DataflowExplorer &expl) {
+                Operation* op = absOp->getUnderlyingOperation();
                 unsigned int locCa = getAttrOrDefault(op, "locCa", 0);
                 unsigned int locL = getAttrOrDefault(op, "locL", 0);
                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
                 unsigned int locP = getAttrOrDefault(op, "locP", 0);
 
-                uint64_t startLine = locL + locW;
-                uint64_t endLine = locL + locW + tilesPerCore - 1;
+                std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
+                unsigned int W = this->layerNameToParams[layerName].W;
+                unsigned int L = this->layerNameToParams[layerName].L;
+
+                unsigned int WPrev;
+                if(expl.layerNameToID[layerName] == 0) {
+                    WPrev = W;
+                } else {
+                    WPrev = this->layerNameToParams[expl.layerIdToName[expl.layerNameToID[layerName]-1]].W;
+                }
+
+                ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
+                uint64_t F0 = absOp->getKernelSize();
+
+                uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName],
+                                                             llvm::Optional<ShapedType>(aShapeIn));
+
+                //llvm::outs() << "LinesPertile:  " << linesPerTile << "\n";
+
+                // TODO double check that formula
+                unsigned int highestLocTile = ((W * linesPerTile - 1) + (L-1) + F0 - 1) / linesPerTile;
+
+                //llvm::outs() << "highestLocTile:  " << highestLocTile  << "\n";
+
+
+                uint64_t startLine = locL + locW * linesPerTile;
+                uint64_t endLine = startLine + linesPerTile - 1 + F0 - 1;
+
+                uint64_t nStartLine = startLine + W * linesPerTile;
+                uint64_t nEndLine = endLine + W * linesPerTile;
+
+                uint64_t endLineTile = endLine / linesPerTile;
+                uint64_t nStartLineTile = nStartLine / linesPerTile;
+                uint64_t nEndLineTile = nEndLine / linesPerTile;
+
+                //llvm::outs() << "startLine = " << startLine << ", endLine: " << endLine << "\n";
+                llvm::outs() << "start = " << startLine / linesPerTile << ", end: " << endLine / linesPerTile << "\n";
+                llvm::outs() << "nStart = " << nStartLineTile << ", nEnd: " << nEndLineTile << "\n";
 
                 std::vector<std::string> wantLines;
-                for(uint64_t i = 0; i < tilesPerCore; i++) {
-                    uint64_t wantLine = locL + locW + W + i;
-                    if(((wantLine < startLine) || (wantLine > endLine)) && (wantLine - highestLoc >= 0)) {
-                        wantLines.push_back("tile" + std::to_string(wantLine - highestLoc) + "C" + std::to_string(locCa));
+                for(int64_t i = std::max(endLineTile+1, nStartLineTile); i <= nEndLineTile; i++) {
+                    if((i - highestLocTile - 1) >= 0) {
+                        unsigned int target = (i - highestLocTile - 1) % WPrev;
+                        //llvm::outs() << "want At: " << target << "\n";
+                        wantLines.push_back("tile" + std::to_string(target) + "C" + std::to_string(locCa));
                     }
                 }
 
                 return wantLines;
-                //unsigned int wantLine = locL + locW + W - highestLoc;
-                //return "tile" + std::to_string(wantLine) + "C" + std::to_string(locCa);
             }
 
             // TODO Double check depth-wise handling
@@ -646,7 +709,7 @@ namespace xilinx {
 
                             unsigned int concatSize = concat.getNumOperands();
                             if(isPConcat) {
-                                std::string hashString = "tile" + std::to_string(concatW) + "P" + std::to_string(concatP / concatSize);
+                                std::string hashString = "tile" + std::to_string(concatW) + "C" + std::to_string(concatP / concatSize);
                                 producedLineToOp[hashString] = concat.getResult();
                             }
                         } else if(op->getResult(0).hasOneUse() && llvm::dyn_cast<SplitOp>(*(op->getResult(0).getUsers().begin()))) {
@@ -671,13 +734,13 @@ namespace xilinx {
                             if(isPSplit) {
                                 for(unsigned int i = 0; i < splitSize; i++) {
                                     unsigned int pLoc = locP * splitSize + i;
-                                    std::string hashString = "tile" + std::to_string(splitW) + "P" + std::to_string(pLoc);
+                                    std::string hashString = "tile" + std::to_string(splitW) + "C" + std::to_string(pLoc);
                                     producedLineToOp[hashString] = split.getResult(i);
                                 }
                             }
                         } else {
-                            std::string hashString = "tile" + std::to_string(locW) + "P" + std::to_string(locP);
-                            llvm::outs() << "hs: " << hashString << "\n";
+                            std::string hashString = "tile" + std::to_string(locW) + "C" + std::to_string(locP);
+                            llvm::outs() << "Producing: " << hashString << "\n";
                             producedLineToOp[hashString] = prevAbsOp->getUnderlyingOperation()->getResult(0);
                         }
                     }
@@ -690,21 +753,59 @@ namespace xilinx {
             std::map<std::string, Value> findLocalTiles(std::string layerName, DataflowExplorer &expl) {
                 std::map<std::string, Value> localLines;
                 ModelParams params = this->layerNameToParams[layerName];
-                for(AbsOpWrapper* absOp : this->layerNameToOps[layerName]) {
-                    std::vector<std::string> linesLoc = this->workOn(absOp->getUnderlyingOperation(), expl);
+                std::vector<AbsOpWrapper*> absOps = this->layerNameToOps[layerName];
+                std::vector<AbsOpWrapper*> toDelete;
+
+                for(uint64_t i = 0; i < absOps.size(); i++) {
+                    printOperationLoc(this->layerNameToOps[layerName].at(i)->getUnderlyingOperation());
+                    std::vector<std::string> linesLoc = this->workOn(this->layerNameToOps[layerName].at(i), expl);
+
                     for(std::string s : linesLoc) {
-                        localLines[s] = absOp->getUnderlyingOperation()->getResult(1);
+                        AbsOpWrapper* absOp = this->layerNameToOps[layerName].at(i);
+
+                        llvm::outs() << "locTiles: " << s << "\n";
+
+                        if(absOp->getUnderlyingOperation()->getNumResults() == 2) {
+                            localLines[s] = absOp->getUnderlyingOperation()->getResult(1);
+                        } else {
+                            unsigned int locW = getAttrOrDefault(absOp->getUnderlyingOperation(), "locW", 0);
+                            ShapedType partialRes = absOp->getUnderlyingOperation()->getResult(0).getType().dyn_cast<ShapedType>();
+                            ShapedType forwardRes = absOp->getInput().getType().dyn_cast<ShapedType>();
+
+                            OpBuilder builder(absOp->getUnderlyingOperation());
+
+                            absOp->getUnderlyingOperation()->print(llvm::outs());
+                            llvm::outs() << "\n";
+
+                            Operation* nOp = absOp->wCopy(builder, locW, llvm::Optional<TypeRange>(TypeRange{partialRes, forwardRes}));
+
+                            absOp->getUnderlyingOperation()->getResult(0).replaceAllUsesWith(nOp->getResult(0));
+
+                            absOp->getUnderlyingOperation()->erase();
+                            toDelete.push_back(absOp);
+
+                            this->layerNameToOps[layerName].at(i) = opToWrapper(nOp);
+
+                            localLines[s] = nOp->getResult(1);
+                        }
                     }
                 }
+
+                for(uint64_t i = 0; i < toDelete.size(); i++) {
+                    delete toDelete.at(i);
+                }
+                toDelete.clear();
+
+                llvm::outs() << "Done\n";
 
                 return localLines;
             }
 
-            // TODO also duplicate concat and splits
             void wDuplicate(std::string layerName, unsigned int into) {
                 std::vector<AbsOpWrapper*> layerOps = layerNameToOps[layerName];
 
                 for(int64_t i = into-1; i >= 0; i--) {
+                    llvm::outs() << "IntoLoc: " << i << "\n";
                     OpBuilder builder(layerNameToOps[layerName].at(0)->getUnderlyingOperation());
                     std::map<std::string, AbsOpWrapper*> paramsToLayer;
                     std::map<std::string, std::vector<Value>> concatLocToArg;
@@ -715,11 +816,7 @@ namespace xilinx {
                             auto attr = IntegerAttr::get(ty, 0);
                             absOp->getUnderlyingOperation()->setAttr(llvm::StringRef("locW"), attr);
                         } else {
-                            Operation* op = absOp->wCopy(builder, i);
-
-                            auto ty = IntegerType::get(builder.getContext(), 32);
-                            auto attr = IntegerAttr::get(ty, i);
-                            op->setAttr(llvm::StringRef("locW"), attr);
+                            Operation* op = absOp->wCopy(builder, i, llvm::Optional<TypeRange>());
 
                             AbsOpWrapper* locAbsOp = opToWrapper(op);
                             layerOps.push_back(locAbsOp);
@@ -749,7 +846,7 @@ namespace xilinx {
                                 unsigned int locP = getAttrOrDefault(op, "locP", 0);
                                 unsigned int vectorLoc = locP - concatP;
 
-                                std::string hashString = "tile" + std::to_string(concatW) + "P" + std::to_string(concatP);
+                                std::string hashString = "tile" + std::to_string(concatW) + "C" + std::to_string(concatP);
                                 unsigned int concatLocToArgSize = concatLocToArg[hashString].size();
 
                                 if(concatLocToArgSize == vectorLoc) {
@@ -777,6 +874,8 @@ namespace xilinx {
                             paramsToLayer[hashString] = locAbsOp;
                         }
                     }
+
+                    llvm::outs() << "Generated stuff now re-wire..\n";
 
                     // Re-wire duplicated one with inputs from same W group
                     std::map<std::string, AbsOpWrapper*>::iterator it;
@@ -811,10 +910,12 @@ namespace xilinx {
                         }
                     }
 
+                    llvm::outs() << "And finally instantiate the concats\n";
+
                     // Instantiate the duplicated concats
                     std::map<std::string, std::vector<Value>>:: iterator concatIt;
                     for(concatIt = concatLocToArg.begin(); concatIt != concatLocToArg.end(); concatIt++) {
-                        insertConcat(builder, concatLocToRes[it->first], concatIt->second, C_LOC);
+                        insertConcat(builder, concatLocToRes[it->first], concatIt->second, C_LOC, true);
                     }
                 }
 
@@ -823,7 +924,7 @@ namespace xilinx {
             }
 
             void reWire(std::string layerName, DataflowExplorer &expl) {
-                OpBuilder builder(layerNameToOps[layerName].at(0)->getUnderlyingOperation());
+                //OpBuilder builder(layerNameToOps[layerName].at(0)->getUnderlyingOperation());
 
                 // construct line location
                 std::vector<std::string>::iterator layerLoc;
@@ -844,8 +945,8 @@ namespace xilinx {
                         for(unsigned int p = 0; p < paramsPrev.P; p++) {
                             for(unsigned int i = 0; i < ratio; i++) {
                                 for(unsigned int w = 0; w < paramsPrev.W; w++) {
-                                    std::string hashString = "tile" + std::to_string(w) + "P" + std::to_string(p);
-                                    std::string dupHashString = "tile" + std::to_string(w + i * ratio) + "P" + std::to_string(p);
+                                    std::string hashString = "tile" + std::to_string(w) + "C" + std::to_string(p);
+                                    std::string dupHashString = "tile" + std::to_string(w + i * ratio) + "C" + std::to_string(p);
 
                                     producedTiles[dupHashString] = producedTiles[hashString];
                                 }
@@ -854,32 +955,40 @@ namespace xilinx {
                     } else if(paramsCurr.W < paramsPrev.W) { // Insert concat on parallel tiles produced
                         unsigned int ratio = ceil((float)paramsPrev.W / paramsCurr.W);
 
+                        llvm::outs() << "Ratio: " << ratio << "\n";
+
                         std::vector<Value> concats;
                         std::vector<Value> concatsArgs;
 
+                        OpBuilder builder(this->layerNameToOps[layerName].at(0)->getUnderlyingOperation());
                         for(unsigned int p = 0; p < paramsPrev.P; p++) {
                             for(unsigned int i = 0; i < paramsPrev.W; i++) {
                                 if((i != 0) && ((i % ratio) == 0)) {
-                                    concats.push_back(insertConcat(builder, concatsArgs.at(0), concatsArgs, N_LOC)->getResult(0));
+                                    //OpBuilder builder(concatsArgs.at(concatsArgs.size()-1).getDefiningOp());
+                                    concats.push_back(insertConcat(builder, concatsArgs.at(0), concatsArgs, N_LOC, false)->getResult(0));
                                     concatsArgs.clear();
                                 } else {
-                                    std::string hashString = "tile" + std::to_string(i) + "P" + std::to_string(p);
+                                    std::string hashString = "tile" + std::to_string(i) + "C" + std::to_string(p);
+                                    llvm::outs() << "PushBack: " << hashString << "\n";
                                     concatsArgs.push_back(producedTiles[hashString]);
                                 }
                             }
 
                             if(concatsArgs.size() != 0) {
-                                concats.push_back(insertConcat(builder, concatsArgs.at(0), concatsArgs, N_LOC)->getResult(0));
+                                //OpBuilder builder(concatsArgs.at(concatsArgs.size()-1).getDefiningOp());
+                                concats.push_back(insertConcat(builder, concatsArgs.at(0), concatsArgs, N_LOC, false)->getResult(0));
                                 concatsArgs.clear();
                             }
 
                             for(unsigned int i = 0; i < concats.size(); i++) {
-                                std::string hashString = "tile" + std::to_string(i) + "P" + std::to_string(p);
+                                std::string hashString = "tile" + std::to_string(i) + "C" + std::to_string(p);
+                                llvm::outs() << "Keep: "  << hashString << "\n";
                                 producedTiles[hashString] = concats.at(i);
                             }
 
                             for(unsigned int i = concats.size(); i < paramsPrev.W; i++) {
-                                std::string hashString = "tile" + std::to_string(i) + "P" + std::to_string(p);
+                                std::string hashString = "tile" + std::to_string(i) + "C" + std::to_string(p);
+                                llvm::outs() << "remove: "  << hashString << "\n";
                                 producedTiles.erase(hashString);
                             }
                         }
@@ -891,23 +1000,56 @@ namespace xilinx {
 
                 std::map<std::string, Value> locTiles = this->findLocalTiles(layerName, expl);
 
+                llvm::outs() << "\n\nReplacing things..\n\n";
+
                 // really re-wire from reconstructed info
                 // Now easy because guarantee to find exactly what we need
                 for(AbsOpWrapper* absOp : this->layerNameToOps[layerName]) {
                     Operation* op = absOp->getUnderlyingOperation();
+
+                    printOperationLoc(op);
                     if(firstLayer) {
                         // TODO link to input of network
                     } else {
-                        std::vector<std::string> wantLoc = this->wantLoc(op, expl);
+                        std::vector<std::string> wantLoc = this->wantLoc(absOp, expl);
+                        llvm::outs() << "WantLoSize: " << wantLoc.size() << "\n";
+
+                        std::vector<Value> ins;
+
                         for(std::string s : wantLoc) {
+                            llvm::outs() << "wantLoc: " << s << "\n";
                             if(locTiles.find(s) != locTiles.end()) {
-                                op->replaceUsesOfWith(absOp->getInput(), locTiles[s]);
+                                llvm::outs() << "wantLoc found locally: " << s << "\n";
+                                //locTiles[s].print(llvm::outs());
+                                assert(absOp->getInput() != Value());
+                                assert(locTiles[s] != Value());
+
+                                llvm::outs() << "Replacing: ";
+                                absOp->getInput().print(llvm::outs());
+                                llvm::outs() << "\n with ";
+                                locTiles[s].print(llvm::outs());
+                                llvm::outs() << "\n";
+
+                                ins.push_back(locTiles[s]);
+                                //op->replaceUsesOfWith(absOp->getInput(), locTiles[s]);
                             }
                         }
 
-                        std::vector<std::string> wantPrev = this->wantPrev(op, expl);
+                        std::vector<std::string> wantPrev = this->wantPrev(absOp, expl);
+                        llvm::outs() << "WantPrevSize: " << wantPrev.size() << "\n";
                         for(std::string s : wantPrev) {
-                            op->replaceUsesOfWith(absOp->getInput(), producedTiles[s]);
+                            llvm::outs() << "wantPrev: " << s << "\n";
+                            ins.push_back(producedTiles[s]);
+                            //op->replaceUsesOfWith(absOp->getInput(), producedTiles[s]);
+                        }
+
+                        assert(ins.size() >= 1);
+                        if(ins.size() > 1) {
+                            OpBuilder builder(op);
+                            Operation* concatOp = insertConcat(builder, ins.at(0), ins, N_LOC, false);
+                            op->replaceUsesOfWith(absOp->getInput(), concatOp->getResult(0));
+                        } else {
+                            op->replaceUsesOfWith(absOp->getInput(), ins.at(0));
                         }
                     }
                 }
@@ -921,11 +1063,18 @@ namespace xilinx {
                     return success();
                 }
 
+                llvm::outs() << "wDuplicate\n";
+
                 // duplicate graph into times
                 wDuplicate(layerName, into);
 
+                llvm::outs() << "reWrire\n";
+
                 // Re-wire
                 reWire(layerName, expl);
+
+                llvm::outs() << "reWrire 2 \n\n\n";
+
                 if(expl.layerNameToID[layerName] != (expl.layerNameToID.size()-1)) {
                     reWire(expl.layerIdToName[expl.layerNameToID[layerName]+1], expl);
                 }
@@ -947,14 +1096,14 @@ namespace xilinx {
                 //initializeLayerNameToParams(graph);
 
                 // Explore topology space
-                dataflowExplorer.enumerate();
+                //dataflowExplorer.enumerate();
                 //dataflowExplorer.printValidTopologies();
-                dataflowExplorer.dumpValidTopologies();
-                dataflowExplorer.dumpParetoFrontiers();
-                dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoThroughput, "./output/throughput");
-                dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoLatency, "./output/latency");
+                //dataflowExplorer.dumpValidTopologies();
+                //dataflowExplorer.dumpParetoFrontiers();
+                //dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoThroughput, "./output/throughput");
+                //dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoLatency, "./output/latency");
 
-                this->layerNameToParams = dataflowExplorer.getMaxThroughput();
+                //this->layerNameToParams = dataflowExplorer.getMaxThroughput();
 
                 // Expand P, Ca, L for all layers
                 /*std::map<std::string, ModelParams>::iterator it;
@@ -993,11 +1142,15 @@ namespace xilinx {
                 LTransform("conv2d_relu1", 3);
                 LTransform("conv2d_relu2", 3);
 
+                llvm::outs() << "WTransform\n";
+
                 // W expand
                 WTransform("conv2d_relu1", 3, dataflowExplorer);
 
                 // Verify graph
-                // TODO
+                // TODO probably a simple sanitizer here
+
+                llvm::outs() << "Cleaning..\n";
 
                 clearLayerNameToOps();
             }

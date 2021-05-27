@@ -45,7 +45,7 @@ namespace xilinx {
             virtual Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                        llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                        llvm::Optional<ArrayRef<Value>> bn) = 0;
-            virtual Operation* wCopy(OpBuilder &builder, unsigned int into) = 0;
+            virtual Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) = 0;
         };
 
         class Conv2dOpWrapper : public AbsOpWrapper {
@@ -68,7 +68,7 @@ namespace xilinx {
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
-            Operation* wCopy(OpBuilder &builder, unsigned int into);
+            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes);
         };
 
         class PartialConv2dOpWrapper : public AbsOpWrapper {
@@ -91,7 +91,7 @@ namespace xilinx {
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
-            Operation* wCopy(OpBuilder &builder, unsigned int into);
+            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes);
         };
 
         class Conv2dReLUOpWrapper : public AbsOpWrapper {
@@ -114,7 +114,7 @@ namespace xilinx {
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
-            Operation* wCopy(OpBuilder &builder, unsigned int into);
+            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes);
         };
 
         class PartialConv2dReLUOpWrapper : public AbsOpWrapper {
@@ -137,7 +137,7 @@ namespace xilinx {
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
-            Operation* wCopy(OpBuilder &builder, unsigned int into);
+            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes);
         };
 
         class Conv2dBatchNormReLUOpWrapper : public AbsOpWrapper {
@@ -160,7 +160,7 @@ namespace xilinx {
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
-            Operation* wCopy(OpBuilder &builder, unsigned int into);
+            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes);
         };
 
         class PartialConv2dBatchNormReLUOpWrapper : public AbsOpWrapper {
@@ -183,7 +183,7 @@ namespace xilinx {
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
-            Operation* wCopy(OpBuilder &builder, unsigned int into);
+            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes);
         };
 
 
@@ -207,7 +207,7 @@ namespace xilinx {
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
-            Operation* wCopy(OpBuilder &builder, unsigned int into);
+            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes);
         };
     }
 }

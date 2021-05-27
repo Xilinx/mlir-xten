@@ -26,8 +26,8 @@
 // TODO also implement generic one without any architecture restructions?
 // TODO Double check W == W
 
-// TODO Add proper line handling capabilities
 // TODO Check that tile bring time is correct when need to bring multiple tiles at once
+// TODO always ensure that the forwarded tile can be sent without any trouble
 
 namespace xilinx {
     namespace air {
@@ -53,59 +53,111 @@ namespace xilinx {
 
         // Analytical model functions
 
-        uint64_t DataflowExplorer::getLinesPerTile(uint64_t layerId, ModelParams &params) {
+        // If aShapeIn has been provided, then work from there but assume split already occured
+        // TODO this is not ideal, clean that up with proper pre / post transformation
+        uint64_t DataflowExplorer::getLinesPerTile(uint64_t layerId, ModelParams &params, llvm::Optional<ShapedType> aShapeIn) {
             if(params.P == 0 || params.Ca == 0 || params.L == 0 || params.W == 0) {
                 llvm::outs() << "params was 0 in getLinesPerTile...\n";
             }
-            ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
 
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
-            int64_t C = aShapeAR[C_LOC];
-            int64_t M = aShapeAR[M_LOC];
-            //int64_t N = aShapeAR[N_LOC];
+            if(aShapeIn.hasValue()) {
+                ShapedType aShape = aShapeIn.getValue();
 
-            int64_t lineSize = (ceil(C / params.Ca) * M) * getElementWidth(aShape, FORCE_INT8);
-            int64_t linesPerBanks = (int64_t)floor(this->arch->getBankSize() / (float)lineSize);
+                ArrayRef<int64_t> aShapeAR = aShape.getShape();
+                int64_t C = aShapeAR[C_LOC];
+                int64_t M = aShapeAR[M_LOC];
+                //int64_t N = aShapeAR[N_LOC];
 
-            return linesPerBanks;
+                int64_t lineSize = (C * M) * getElementWidth(aShape, FORCE_INT8);
+                int64_t linesPerBanks = (int64_t)floor(this->arch->getBankSize() / (float)lineSize);
+
+                if(params.lineGranularity) {
+                    return linesPerBanks >= 1 ? 1 : 0;
+                } else {
+                    return linesPerBanks;
+                }
+            } else {
+                ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
+
+                ArrayRef<int64_t> aShapeAR = aShape.getShape();
+                int64_t C = aShapeAR[C_LOC];
+                int64_t M = aShapeAR[M_LOC];
+                //int64_t N = aShapeAR[N_LOC];
+
+                int64_t lineSize = (ceil(C / params.Ca) * M) * getElementWidth(aShape, FORCE_INT8);
+                int64_t linesPerBanks = (int64_t)floor(this->arch->getBankSize() / (float)lineSize);
+
+                if(params.lineGranularity) {
+                    return linesPerBanks >= 1 ? 1 : 0;
+                } else {
+                    return linesPerBanks;
+                }
+            }
+
         }
 
         // TODO Double check that function
-        uint64_t DataflowExplorer::getTilesPerCore(uint64_t layerId, ModelParams &params) {
-            uint64_t linesPerTile = this->getLinesPerTile(layerId, params);
-            uint64_t banksPerLine = this->getBanksPerLine(layerId, params);
-            uint64_t F0 = this->layerNameToOps[layerId]->getKernelSize();
+        // TODO maybe add one for the tail of a Cascade chain
+        // TODO rename to getMaxTilesPerCore
+        uint64_t DataflowExplorer::getTilesPerCore(uint64_t layerId, ModelParams &params, llvm::Optional<ShapedType> aShapeIn,
+                                                   llvm::Optional<uint64_t> F0In) {
+            uint64_t linesPerTile = this->getLinesPerTile(layerId, params, aShapeIn);
+            uint64_t banksPerLine = this->getBanksPerLine(layerId, params, aShapeIn);
 
-            uint64_t F0OverF = ceil((float)F0 / params.L);
+            uint64_t F0OverF;
+            uint64_t F0;
+            if(F0In.hasValue()) {
+                // Used in WSplit only so has already only the part of weight of interest
+                assert(aShapeIn.hasValue());
+                F0 = F0In.getValue();
+                F0OverF = F0;
+            } else {
+                F0 = this->layerNameToOps[layerId]->getKernelSize();
+                F0OverF = ceil((float)F0 / params.L);
+            }
+
             uint64_t producedLines = linesPerTile;
             uint64_t worstLocLines = (F0OverF - 1) + producedLines;
 
             if(linesPerTile != 0) {
                 if(params.lineGranularity) {
-                    return 1 + ceil((float)(F0OverF-1) / linesPerTile);
+                    return F0OverF;
                 } else {
                     return 1 + ceil((float)(worstLocLines - 1) / linesPerTile);
                 }
             } else {
-                return ceil((float)F0 / params.L) * banksPerLine;
+                return F0OverF * banksPerLine;
             }
         }
 
-        uint64_t DataflowExplorer::getBanksPerLine(uint64_t layerId, ModelParams& params) {
-            ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
+        uint64_t DataflowExplorer::getBanksPerLine(uint64_t layerId, ModelParams& params, llvm::Optional<ShapedType> aShapeIn) {
+            if(aShapeIn.hasValue()) {
+                ShapedType aShape = aShapeIn.getValue();
 
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
-            int64_t C = aShapeAR[C_LOC];
-            int64_t M = aShapeAR[M_LOC];
+                ArrayRef<int64_t> aShapeAR = aShape.getShape();
+                int64_t C = aShapeAR[C_LOC];
+                int64_t M = aShapeAR[M_LOC];
 
-            int64_t lineSize = (ceil(C / params.Ca) * M) * getElementWidth(aShape, FORCE_INT8);
-            int64_t banksPerLine = (int64_t)ceil((float)lineSize / this->arch->getBankSize());
+                int64_t lineSize = (C * M) * getElementWidth(aShape, FORCE_INT8);
+                int64_t banksPerLine = (int64_t)ceil((float)lineSize / this->arch->getBankSize());
 
-            return banksPerLine;
+                return banksPerLine;
+            } else {
+                ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
+
+                ArrayRef<int64_t> aShapeAR = aShape.getShape();
+                int64_t C = aShapeAR[C_LOC];
+                int64_t M = aShapeAR[M_LOC];
+
+                int64_t lineSize = (ceil(C / params.Ca) * M) * getElementWidth(aShape, FORCE_INT8);
+                int64_t banksPerLine = (int64_t)ceil((float)lineSize / this->arch->getBankSize());
+
+                return banksPerLine;
+            }
         }
 
         uint64_t DataflowExplorer::getK(uint64_t layerId, ModelParams &params) {
-            uint64_t linesPerTile = this->getLinesPerTile(layerId, params);
+            uint64_t linesPerTile = this->getLinesPerTile(layerId, params, llvm::Optional<ShapedType>());
 
             ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
             ArrayRef<int64_t> aShapeAR = aShape.getShape();
@@ -120,8 +172,8 @@ namespace xilinx {
         // Analytical model functions
         uint64_t DataflowExplorer::getActivationInBanks(uint64_t layerId, ModelParams &params) {
             uint64_t F0 = this->layerNameToOps[layerId]->getKernelSize();
-            int64_t linesPerBanks = this->getLinesPerTile(layerId, params);
-            uint64_t banksPerLine = this->getBanksPerLine(layerId, params);
+            int64_t linesPerBanks = this->getLinesPerTile(layerId, params, llvm::Optional<ShapedType>());
+            uint64_t banksPerLine = this->getBanksPerLine(layerId, params, llvm::Optional<ShapedType>());
 
             ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
 
@@ -129,7 +181,8 @@ namespace xilinx {
             int64_t N = aShapeAR[N_LOC];
             bool allLinesIn = (N <= linesPerBanks);
 
-            uint64_t banksForFilter = this->getTilesPerCore(layerId, params);
+            uint64_t banksForFilter = this->getTilesPerCore(layerId, params, llvm::Optional<ShapedType>(),
+                                                            llvm::Optional<uint64_t>());
 
             uint64_t minBanksForFilter = (F0 == 1) ? 1 : (allLinesIn ? 1 : 2);
             return std::max(minBanksForFilter, banksForFilter) + banksPerLine;

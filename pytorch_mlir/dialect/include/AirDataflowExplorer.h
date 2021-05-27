@@ -64,12 +64,13 @@ namespace xilinx {
             AbsArchitecture* arch;
 
             // Analytical model functions
-            uint64_t getLinesPerTile(uint64_t layerId, ModelParams &params);
-            uint64_t getBanksPerLine(uint64_t layerId, ModelParams &params);
+            uint64_t getLinesPerTile(uint64_t layerId, ModelParams &params, llvm::Optional<ShapedType> aShapeIn);
+            uint64_t getBanksPerLine(uint64_t layerId, ModelParams &params, llvm::Optional<ShapedType> aShapeIn);
             uint64_t getK(uint64_t layerId, ModelParams &params);
             uint64_t getMissmatchChannels(int64_t dim, uint64_t params);
             uint64_t getMissmatchLines(int64_t dim, uint64_t params);
-            uint64_t getTilesPerCore(uint64_t layerId, ModelParams &params);
+            uint64_t getTilesPerCore(uint64_t layerId, ModelParams &params, llvm::Optional<ShapedType> aShapeIn,
+                                     llvm::Optional<uint64_t> F0In);
 
             uint64_t getComputeTimePerTile(uint64_t layerId, ModelParams &params);
             uint64_t getComputeTime(uint64_t layerId, ModelParams &params);
