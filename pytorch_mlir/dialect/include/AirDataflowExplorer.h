@@ -92,6 +92,7 @@ namespace xilinx {
             double getLayerUtilization(uint64_t layerId, ModelParams &params);
 
             uint64_t getTotalCompute();
+            std::vector<uint64_t> getMemWeightPerLayer();
 
             uint64_t getEndToEndLatency(std::vector<ModelParams> &params);
             uint64_t getThroughput(std::vector<ModelParams> &params);

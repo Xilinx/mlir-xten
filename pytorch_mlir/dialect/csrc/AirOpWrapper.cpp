@@ -75,7 +75,7 @@ namespace xilinx {
 
             int64_t C = aShapeAR[C_LOC];
 
-            return groups != C;
+            return groups == C;
         }
 
         double Conv2dOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
@@ -223,7 +223,7 @@ namespace xilinx {
 
             int64_t C = aShapeAR[C_LOC];
 
-            return groups != C;
+            return groups == C;
         }
 
         double PartialConv2dOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
@@ -361,7 +361,7 @@ namespace xilinx {
 
             int64_t C = aShapeAR[C_LOC];
 
-            return groups != C;
+            return groups == C;
         }
 
         double Conv2dReLUOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
@@ -502,13 +502,13 @@ namespace xilinx {
         }
 
         bool PartialConv2dReLUOpWrapper::isDepthWise() {
-            unsigned int groups = this->conv.groups().getDefiningOp<ConstantOp>();
+            unsigned int groups = this->conv.groups().getDefiningOp<ConstantIntOp>().getValue();
             ShapedType aShape = this->conv.input().getType().dyn_cast<ShapedType>();
             ArrayRef<int64_t> aShapeAR = aShape.getShape();
 
             int64_t C = aShapeAR[C_LOC];
 
-            return groups != C;
+            return groups == C;
         }
 
         double PartialConv2dReLUOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
@@ -640,13 +640,13 @@ namespace xilinx {
         }
 
         bool PartialConv2dBatchNormReLUOpWrapper::isDepthWise() {
-            unsigned int groups = this->conv.groups().getDefiningOp<ConstantOp>();
+            unsigned int groups = this->conv.groups().getDefiningOp<ConstantIntOp>().getValue();
             ShapedType aShape = this->conv.input().getType().dyn_cast<ShapedType>();
             ArrayRef<int64_t> aShapeAR = aShape.getShape();
 
             int64_t C = aShapeAR[C_LOC];
 
-            return groups != C;
+            return groups == C;
         }
 
         double PartialConv2dBatchNormReLUOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
@@ -801,13 +801,13 @@ namespace xilinx {
         }
 
         bool Conv2dBatchNormReLUOpWrapper::isDepthWise() {
-            unsigned int groups = this->conv.groups().getDefiningOp<ConstantOp>();
+            unsigned int groups = this->conv.groups().getDefiningOp<ConstantIntOp>().getValue();
             ShapedType aShape = this->conv.input().getType().dyn_cast<ShapedType>();
             ArrayRef<int64_t> aShapeAR = aShape.getShape();
 
             int64_t C = aShapeAR[C_LOC];
 
-            return groups != C;
+            return groups == C;
         }
 
         double Conv2dBatchNormReLUOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {

@@ -15,9 +15,12 @@
 
 #define DEBUG_TYPE "air-dataflow-explorer"
 
-#define MARGIN 1.5
+#define MARGIN 2
 #define DW_SHARED true
 #define MIN_BOUND 8
+
+#define DW_TRUE 1
+#define DW_FALSE 0
 
 // TODO also take into account kernel efficiency?
 // TODO Need to take into account kernel fusion at some point, either here or afterwards
@@ -48,6 +51,10 @@ namespace xilinx {
             return layerStatsMap;
         }
 
+        int64_t getMult8(int64_t x) {
+            return ((x+7)/8) * 8;
+        }
+
         // TODO for now both types are the same elementType
         DataflowExplorer::DataflowExplorer(std::vector<std::pair<std::string, AbsOpWrapper*>> &nameToOps) {
             uint64_t id = 0;
@@ -67,6 +74,7 @@ namespace xilinx {
                 int64_t CIn;
                 int64_t F0;
                 int64_t F1;
+                bool dw = pair.second->isDepthWise();
                 if(pair.second->hasWeights()) {
                     ShapedType wShape = pair.second->getWeights().getType().dyn_cast<ShapedType>();
                     ArrayRef<int64_t> wShapeAR = wShape.getShape();
@@ -76,7 +84,7 @@ namespace xilinx {
                     F1 = wShapeAR[F1_LOC];
                 } else {
                     COut = C;
-                    CIn = C;
+                    CIn = 1;
                     F0 = pair.second->getKernelSize(); // TODO support non squared kernels
                     F1 = pair.second->getKernelSize();
                 }
@@ -96,7 +104,7 @@ namespace xilinx {
                 sizes["F1"] = F1;
 
                 sizes["width"] = getElementWidth(aShape, FORCE_INT8);
-                sizes["DW"] = pair.second->isDepthWise();
+                sizes["DW"] = dw ? DW_TRUE : DW_FALSE;
                 sizes["macs"] = macs;
 
                 this->layerNameToSize.push_back(sizes);
@@ -125,9 +133,11 @@ namespace xilinx {
 
             int64_t C = this->layerNameToSize[layerId]["C"];
             int64_t M = this->layerNameToSize[layerId]["M"];
-            //int64_t N = this->layerNameToSize[layerId]["N"];
+            int64_t dw = this->layerNameToSize[layerId]["DW"];
 
-            int64_t lineSize = (ceil(C / params.Ca) * M) * this->layerNameToSize[layerId]["width"];
+            int64_t divider = (dw == DW_TRUE) ? params.P : params.Ca;
+
+            int64_t lineSize = (getMult8(ceil((float)C / divider)) * M) * this->layerNameToSize[layerId]["width"];
             int64_t linesPerBanks = (int64_t)floor(this->arch->getBankSize() / (float)lineSize);
 
             if(params.lineGranularity) {
@@ -146,7 +156,7 @@ namespace xilinx {
             uint64_t banksPerLine = this->getBanksPerLine(layerId, params);
 
             uint64_t F0 = this->layerNameToSize[layerId]["F0"];
-            uint64_t F0OverF = ceil((float)F0 / params.L);
+            uint64_t F0OverF = ceil((float)(F0 / params.L));
 
             uint64_t producedLines = linesPerTile;
             uint64_t worstLocLines = (F0OverF - 1) + producedLines;
@@ -165,8 +175,11 @@ namespace xilinx {
         uint64_t DataflowExplorer::getBanksPerLine(uint64_t layerId, ModelParams& params) {
             int64_t C = this->layerNameToSize[layerId]["C"];
             int64_t M = this->layerNameToSize[layerId]["M"];
+            int64_t dw = this->layerNameToSize[layerId]["DW"];
 
-            int64_t lineSize = (ceil(C / params.Ca) * M) * this->layerNameToSize[layerId]["width"];
+            int64_t divider = (dw == DW_TRUE) ? params.P : params.Ca;
+
+            int64_t lineSize = (getMult8(ceil((float)C / divider)) * M) * this->layerNameToSize[layerId]["width"];
             int64_t banksPerLine = (int64_t)ceil((float)lineSize / this->arch->getBankSize());
 
             return banksPerLine;
@@ -202,7 +215,9 @@ namespace xilinx {
         // If Cascade is there can use the shared memory between the cores to share output space
         // NOTE this is architecture specific
         uint64_t DataflowExplorer::getActivationOutBanks(uint64_t layerId, ModelParams &params) {
-            if(params.Ca == 1 && params.L == 1) {
+            if((layerId < (this->layerNameToSize.size()-1)) && (this->layerNameToSize.at(layerId+1)["DW"] == DW_TRUE)) {
+                return 0;
+            } else if(params.Ca == 1 && params.L == 1) {
                 return 2;
             } else {
                 return 1;
@@ -224,14 +239,14 @@ namespace xilinx {
 
             //int64_t weightSize = COut * CIn * F0 * F1 * getElementWidth(wShape, FORCE_INT8);
 
-            int64_t locCout = ceil((float)COut / params.P);
-            int64_t locCin = ceil((float)CIn / params.Ca);
+            int64_t locCout = getMult8(ceil((float)COut / params.P));
+            int64_t locCin = getMult8(ceil((float)CIn / params.Ca));
             int64_t locF0 = ceil((float)F0 / params.L);
             int64_t locWeightSize = locCout * locCin * locF0 * F1 * this->layerNameToSize[layerId]["width"];
 
             int64_t weightBanks = ceil(locWeightSize / this->arch->getBankSize());
 
-            if((weightBanks > 4) || (weightBanks == 3)) {
+            if((weightBanks >= 4) || (weightBanks == 3)) {
                 return 4;
             } else {
                 return 2;
@@ -308,14 +323,16 @@ namespace xilinx {
             uint64_t M = this->layerNameToSize[layerId]["M"];
             uint64_t N = this->layerNameToSize[layerId]["N"];
 
-            int64_t actSize = (C / params.Ca) * M * N * this->layerNameToSize[layerId]["width"];
+            int64_t actSize = getMult8(ceil((float)C / params.Ca)) * M * N * this->layerNameToSize[layerId]["width"];
 
-            if(DW_SHARED &&
-               ((this->layerNameToSize[layerId]["DW"] && (layerId > 0) && !this->layerNameToSize[layerId-1]["DW"]))) {
+            if(DW_SHARED && ((this->layerNameToSize[layerId]["DW"] == DW_TRUE)
+                             && (layerId > 0) && (this->layerNameToSize[layerId-1]["DW"] == DW_FALSE))) {
                 actSize = 0; // make com 0 because assume shared memory
             }
 
-            return actSize / this->arch->getComSpeed();
+            int64_t multiplier = params.lineGranularity ? params.W : 1;
+
+            return actSize / (multiplier * this->arch->getComSpeed());
         }
 
         uint64_t DataflowExplorer::getWeightCommunicationTimePerTile(uint64_t layerId, ModelParams &params) {
@@ -330,8 +347,8 @@ namespace xilinx {
 
             //int64_t weightSize = COut * CIn * F0 * F1 * getElementWidth(wShape, FORCE_INT8);
 
-            int64_t locCout = ceil((float)COut / params.P);
-            int64_t locCin = ceil((float)CIn / params.Ca);
+            int64_t locCout = getMult8(ceil((float)COut / params.P));
+            int64_t locCin = getMult8(ceil((float)CIn / params.Ca));
             int64_t locF0 = ceil((float)F0 / params.L);
             int64_t locWeightSize = locCout * locCin * locF0 * F1 * this->layerNameToSize[layerId]["width"];
 
@@ -486,23 +503,52 @@ namespace xilinx {
             return numCores;
         }
 
+        std::vector<uint64_t> DataflowExplorer::getMemWeightPerLayer() {
+            std::vector<uint64_t> memPerLayer;
+
+            for(uint64_t i = 0; i < this->layerNameToOps.size(); i++) {
+                if(this->layerNameToOps.at(i)->hasWeights()) {
+                    int64_t COut = this->layerNameToSize.at(i)["COut"];
+                    int64_t CIn = this->layerNameToSize.at(i)["CIn"];
+                    int64_t F0 = this->layerNameToSize.at(i)["F0"];
+                    int64_t F1 = this->layerNameToSize.at(i)["F1"];
+
+                    memPerLayer.push_back(COut * CIn * F0 * F1);
+                } else {
+                    memPerLayer.push_back(0);
+                }
+            }
+
+            return memPerLayer;
+        }
+
         // Explore functions
         std::vector<uint64_t>  DataflowExplorer::generateExplorationBounds() {
             std::vector<uint64_t> macsPerLayer;
+            std::vector<uint64_t> memPerLayer = this->getMemWeightPerLayer();
 
             uint64_t sum = 0;
+            uint64_t sumMem = 0;
+            uint64_t i = 0;
             for(AbsOpWrapper* elem : this->layerNameToOps) {
-                std::map<std::string, uint64_t> stats = getStats(elem->getUnderlyingOperation());
-                uint64_t macs = (stats.count("ops:MAC") == 0) ? stats["ops:>"] : stats["ops:MAC"];
+                uint64_t macs = this->layerNameToSize.at(i)["macs"];
+
                 llvm::outs() << "macs were: " << macs << "\n";
 
                 macsPerLayer.push_back(macs);
                 sum += macs;
+                sumMem += memPerLayer.at(i);
+
+                i++;
             }
 
             uint64_t numCores = this->arch->getNumCores();
             for(uint64_t i = 0; i < macsPerLayer.size(); i++) {
-                macsPerLayer[i] = std::min((uint64_t)(((double)macsPerLayer[i] * MARGIN / sum) * numCores), numCores);
+                double fCompute = (double)macsPerLayer[i] * MARGIN / sum;
+                double fMem = (double)memPerLayer[i] / sumMem;
+
+                double f = std::max(fCompute, fMem);
+                macsPerLayer[i] = std::min((uint64_t)(f * numCores), numCores);
                 macsPerLayer[i] = std::max(macsPerLayer[i], (uint64_t)MIN_BOUND);
             }
 
@@ -515,22 +561,27 @@ namespace xilinx {
         // Is not valid if does not fit under the memory constraints
         // TODO check with line stuff
         bool DataflowExplorer::isValid(uint64_t layerId, ModelParams &params) {
+            //if(params.W == 1 && params.P == 4 && layerId == 11) {
+            //    params.print();
+            //}
             AbsOpWrapper* layer = this->layerNameToOps[layerId];
 
             int64_t CIn = this->layerNameToSize[layerId]["CIn"];
             int64_t N = this->layerNameToSize[layerId]["N"];
             int64_t COut = this->layerNameToSize[layerId]["COut"];
-            uint64_t F0 = this->layerNameToSize[layerId]["F0"];
+            int64_t F0 = this->layerNameToSize[layerId]["F0"];
+            int64_t dw = this->layerNameToSize[layerId]["DW"];
 
-            bool enoughCIn = (CIn / params.Ca) >= 8;
+            bool enoughCIn = ((CIn / params.Ca) >= 8) || (dw == DW_TRUE);
             bool enoughCOut = (COut / params.P) >= 8;
             bool enoughF = (F0 / params.L) >= 1;
             bool enoughW = (N / params.W) >= 1;
-            bool notTooMuchW = params.W <= 4; // TODO arbitrary, tune this
+            bool notTooMuchW = params.W <= 6; // TODO arbitrary, tune this
+            bool noCaIfDW = (dw == DW_TRUE) ? (params.Ca == 1) : true;
 
             //double layerUtilization = this->getLayerUtilization(layerId, params);
 
-            if(enoughCIn && enoughCOut && enoughF && enoughW && notTooMuchW) {
+            if(enoughCIn && enoughCOut && enoughF && enoughW && notTooMuchW && noCaIfDW) {
                 bool memFit = this->getTotalMemBanks(layerId, params) <= this->arch->getNumBanks();
                 return memFit;
             } else {
@@ -557,7 +608,7 @@ namespace xilinx {
                                 ModelParams paramsLine(p, ca, f, w, true);
                                 ModelParams paramsTile(p, ca, f, w, false);
 
-                                bool lineValid = this->isValid(layerId, paramsLine);
+                                bool lineValid = this->isValid(layerId, paramsLine) && (f != 1);
                                 bool tileValid = this->isValid(layerId, paramsTile);
                                 if(lineValid && tileValid) {
                                     if(this->getTotalTime(layerId, paramsLine) >= this->getTotalTime(layerId, paramsTile)) {
@@ -626,7 +677,7 @@ namespace xilinx {
                                 unsigned int W = p.W;
 
                                 // Take into account communication constraints
-                                if(nP == Ca && ((nW == 1) || (nW == L) || (nW == W))) {
+                                if(nP == Ca && ((nW == 1) || ((nW % L) == 0) || (nW == W))) {
                                     node->ins.push_back(n);
                                     unitOps++;
                                 }

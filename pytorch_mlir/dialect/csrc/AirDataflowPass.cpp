@@ -1147,11 +1147,11 @@ namespace xilinx {
 
                 // Explore topology space
                 dataflowExplorer.enumerate();
-                /*dataflowExplorer.printValidTopologies();
+                //dataflowExplorer.printValidTopologies();
                 dataflowExplorer.dumpValidTopologies();
                 dataflowExplorer.dumpParetoFrontiers();
                 dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoThroughput, "./output/throughput");
-                dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoLatency, "./output/latency");*/
+                dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoLatency, "./output/latency");
 
                 //this->layerNameToParams = dataflowExplorer.getMaxThroughput();
 
