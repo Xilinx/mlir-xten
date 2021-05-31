@@ -11,10 +11,11 @@
 
 #include <iostream>
 #include <fstream>
+//#include <omp.h>
 
 #define DEBUG_TYPE "air-dataflow-explorer"
 
-#define MARGIN 2
+#define MARGIN 1.5
 #define DW_SHARED true
 #define MIN_BOUND 8
 
@@ -31,6 +32,22 @@
 
 namespace xilinx {
     namespace air {
+        std::map<std::string, uint64_t> getStats(Operation* op) {
+            std::map<std::string, uint64_t> layerStatsMap;
+            if (auto stats = llvm::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
+                layerStatsMap = stats.getStatistics();
+            } else {
+                layerStatsMap = xilinx::aten::getATenOpStats(op);
+            }
+
+            if(!layerStatsMap.size()) {
+                llvm::outs() << "No statistics provided for that op!!\n";
+                exit(1);
+            }
+
+            return layerStatsMap;
+        }
+
         // TODO for now both types are the same elementType
         DataflowExplorer::DataflowExplorer(std::vector<std::pair<std::string, AbsOpWrapper*>> &nameToOps) {
             uint64_t id = 0;
@@ -38,6 +55,52 @@ namespace xilinx {
                 this->layerNameToID[pair.first] = id;
                 this->layerIdToName[id] = pair.first;
                 this->layerNameToOps.push_back(pair.second);
+
+                ShapedType aShape = pair.second->getInput().getType().dyn_cast<ShapedType>();
+                ArrayRef<int64_t> aShapeAR = aShape.getShape();
+
+                int64_t C = aShapeAR[C_LOC];
+                int64_t M = aShapeAR[M_LOC];
+                int64_t N = aShapeAR[N_LOC];
+
+                int64_t COut;
+                int64_t CIn;
+                int64_t F0;
+                int64_t F1;
+                if(pair.second->hasWeights()) {
+                    ShapedType wShape = pair.second->getWeights().getType().dyn_cast<ShapedType>();
+                    ArrayRef<int64_t> wShapeAR = wShape.getShape();
+                    COut = wShapeAR[COUT_LOC];
+                    CIn = wShapeAR[CIN_LOC];
+                    F0 = wShapeAR[F0_LOC];
+                    F1 = wShapeAR[F1_LOC];
+                } else {
+                    COut = C;
+                    CIn = C;
+                    F0 = pair.second->getKernelSize(); // TODO support non squared kernels
+                    F1 = pair.second->getKernelSize();
+                }
+
+                std::map<std::string, uint64_t> stats = getStats(pair.second->getUnderlyingOperation());
+                uint64_t macs = (stats.count("ops:MAC") == 0) ? stats["ops:>"] : stats["ops:MAC"];
+
+                std::map<std::string, int64_t> sizes;
+
+                sizes["C"] = C;
+                sizes["M"] = M;
+                sizes["N"] = N;
+
+                sizes["COut"] = COut;
+                sizes["CIn"] = CIn;
+                sizes["F0"] = F0;
+                sizes["F1"] = F1;
+
+                sizes["width"] = getElementWidth(aShape, FORCE_INT8);
+                sizes["DW"] = pair.second->isDepthWise();
+                sizes["macs"] = macs;
+
+                this->layerNameToSize.push_back(sizes);
+
                 id++;
             }
 
@@ -55,43 +118,22 @@ namespace xilinx {
 
         // If aShapeIn has been provided, then work from there but assume split already occured
         // TODO this is not ideal, clean that up with proper pre / post transformation
-        uint64_t DataflowExplorer::getLinesPerTile(uint64_t layerId, ModelParams &params, llvm::Optional<ShapedType> aShapeIn) {
+        uint64_t DataflowExplorer::getLinesPerTile(uint64_t layerId, ModelParams &params) {
             if(params.P == 0 || params.Ca == 0 || params.L == 0 || params.W == 0) {
                 llvm::outs() << "params was 0 in getLinesPerTile...\n";
             }
 
-            if(aShapeIn.hasValue()) {
-                ShapedType aShape = aShapeIn.getValue();
+            int64_t C = this->layerNameToSize[layerId]["C"];
+            int64_t M = this->layerNameToSize[layerId]["M"];
+            //int64_t N = this->layerNameToSize[layerId]["N"];
 
-                ArrayRef<int64_t> aShapeAR = aShape.getShape();
-                int64_t C = aShapeAR[C_LOC];
-                int64_t M = aShapeAR[M_LOC];
-                //int64_t N = aShapeAR[N_LOC];
+            int64_t lineSize = (ceil(C / params.Ca) * M) * this->layerNameToSize[layerId]["width"];
+            int64_t linesPerBanks = (int64_t)floor(this->arch->getBankSize() / (float)lineSize);
 
-                int64_t lineSize = (C * M) * getElementWidth(aShape, FORCE_INT8);
-                int64_t linesPerBanks = (int64_t)floor(this->arch->getBankSize() / (float)lineSize);
-
-                if(params.lineGranularity) {
-                    return linesPerBanks >= 1 ? 1 : 0;
-                } else {
-                    return linesPerBanks;
-                }
+            if(params.lineGranularity) {
+                return linesPerBanks >= 1 ? 1 : 0;
             } else {
-                ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
-
-                ArrayRef<int64_t> aShapeAR = aShape.getShape();
-                int64_t C = aShapeAR[C_LOC];
-                int64_t M = aShapeAR[M_LOC];
-                //int64_t N = aShapeAR[N_LOC];
-
-                int64_t lineSize = (ceil(C / params.Ca) * M) * getElementWidth(aShape, FORCE_INT8);
-                int64_t linesPerBanks = (int64_t)floor(this->arch->getBankSize() / (float)lineSize);
-
-                if(params.lineGranularity) {
-                    return linesPerBanks >= 1 ? 1 : 0;
-                } else {
-                    return linesPerBanks;
-                }
+                return linesPerBanks;
             }
 
         }
@@ -99,22 +141,12 @@ namespace xilinx {
         // TODO Double check that function
         // TODO maybe add one for the tail of a Cascade chain
         // TODO rename to getMaxTilesPerCore
-        uint64_t DataflowExplorer::getTilesPerCore(uint64_t layerId, ModelParams &params, llvm::Optional<ShapedType> aShapeIn,
-                                                   llvm::Optional<uint64_t> F0In) {
-            uint64_t linesPerTile = this->getLinesPerTile(layerId, params, aShapeIn);
-            uint64_t banksPerLine = this->getBanksPerLine(layerId, params, aShapeIn);
+        uint64_t DataflowExplorer::getTilesPerCore(uint64_t layerId, ModelParams &params) {
+            uint64_t linesPerTile = this->getLinesPerTile(layerId, params);
+            uint64_t banksPerLine = this->getBanksPerLine(layerId, params);
 
-            uint64_t F0OverF;
-            uint64_t F0;
-            if(F0In.hasValue()) {
-                // Used in WSplit only so has already only the part of weight of interest
-                assert(aShapeIn.hasValue());
-                F0 = F0In.getValue();
-                F0OverF = F0;
-            } else {
-                F0 = this->layerNameToOps[layerId]->getKernelSize();
-                F0OverF = ceil((float)F0 / params.L);
-            }
+            uint64_t F0 = this->layerNameToSize[layerId]["F0"];
+            uint64_t F0OverF = ceil((float)F0 / params.L);
 
             uint64_t producedLines = linesPerTile;
             uint64_t worstLocLines = (F0OverF - 1) + producedLines;
@@ -130,39 +162,20 @@ namespace xilinx {
             }
         }
 
-        uint64_t DataflowExplorer::getBanksPerLine(uint64_t layerId, ModelParams& params, llvm::Optional<ShapedType> aShapeIn) {
-            if(aShapeIn.hasValue()) {
-                ShapedType aShape = aShapeIn.getValue();
+        uint64_t DataflowExplorer::getBanksPerLine(uint64_t layerId, ModelParams& params) {
+            int64_t C = this->layerNameToSize[layerId]["C"];
+            int64_t M = this->layerNameToSize[layerId]["M"];
 
-                ArrayRef<int64_t> aShapeAR = aShape.getShape();
-                int64_t C = aShapeAR[C_LOC];
-                int64_t M = aShapeAR[M_LOC];
+            int64_t lineSize = (ceil(C / params.Ca) * M) * this->layerNameToSize[layerId]["width"];
+            int64_t banksPerLine = (int64_t)ceil((float)lineSize / this->arch->getBankSize());
 
-                int64_t lineSize = (C * M) * getElementWidth(aShape, FORCE_INT8);
-                int64_t banksPerLine = (int64_t)ceil((float)lineSize / this->arch->getBankSize());
-
-                return banksPerLine;
-            } else {
-                ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
-
-                ArrayRef<int64_t> aShapeAR = aShape.getShape();
-                int64_t C = aShapeAR[C_LOC];
-                int64_t M = aShapeAR[M_LOC];
-
-                int64_t lineSize = (ceil(C / params.Ca) * M) * getElementWidth(aShape, FORCE_INT8);
-                int64_t banksPerLine = (int64_t)ceil((float)lineSize / this->arch->getBankSize());
-
-                return banksPerLine;
-            }
+            return banksPerLine;
         }
 
         uint64_t DataflowExplorer::getK(uint64_t layerId, ModelParams &params) {
-            uint64_t linesPerTile = this->getLinesPerTile(layerId, params, llvm::Optional<ShapedType>());
+            uint64_t linesPerTile = this->getLinesPerTile(layerId, params);
 
-            ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
-            int64_t N = aShapeAR[N_LOC];
-
+            int64_t N = this->layerNameToSize[layerId]["N"];
             uint64_t K = std::max((uint64_t)1, (uint64_t)ceil((float)N / linesPerTile));
 
             //llvm::outs() << "N= " << N << " K = " << K << " linesPerTile = " << linesPerTile <<"\n";
@@ -171,18 +184,15 @@ namespace xilinx {
 
         // Analytical model functions
         uint64_t DataflowExplorer::getActivationInBanks(uint64_t layerId, ModelParams &params) {
-            uint64_t F0 = this->layerNameToOps[layerId]->getKernelSize();
-            int64_t linesPerBanks = this->getLinesPerTile(layerId, params, llvm::Optional<ShapedType>());
-            uint64_t banksPerLine = this->getBanksPerLine(layerId, params, llvm::Optional<ShapedType>());
+            int64_t linesPerBanks = this->getLinesPerTile(layerId, params);
+            uint64_t banksPerLine = this->getBanksPerLine(layerId, params);
 
-            ShapedType aShape = this->layerNameToOps[layerId]->getInput().getType().dyn_cast<ShapedType>();
+            int64_t N = this->layerNameToSize[layerId]["N"];
+            uint64_t F0 = this->layerNameToSize[layerId]["F0"];
 
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
-            int64_t N = aShapeAR[N_LOC];
             bool allLinesIn = (N <= linesPerBanks);
 
-            uint64_t banksForFilter = this->getTilesPerCore(layerId, params, llvm::Optional<ShapedType>(),
-                                                            llvm::Optional<uint64_t>());
+            uint64_t banksForFilter = this->getTilesPerCore(layerId, params);
 
             uint64_t minBanksForFilter = (F0 == 1) ? 1 : (allLinesIn ? 1 : 2);
             return std::max(minBanksForFilter, banksForFilter) + banksPerLine;
@@ -190,7 +200,7 @@ namespace xilinx {
 
         // PingPong 4KB buffers
         // If Cascade is there can use the shared memory between the cores to share output space
-        // TODO this is architecture specific, make that more generic
+        // NOTE this is architecture specific
         uint64_t DataflowExplorer::getActivationOutBanks(uint64_t layerId, ModelParams &params) {
             if(params.Ca == 1 && params.L == 1) {
                 return 2;
@@ -207,19 +217,17 @@ namespace xilinx {
                 return 0;
             }
 
-            ShapedType wShape = this->layerNameToOps[layerId]->getWeights().getType().dyn_cast<ShapedType>();
-            ArrayRef<int64_t> wShapeAR = wShape.getShape();
-            int64_t COut = wShapeAR[COUT_LOC];
-            int64_t CIn = wShapeAR[CIN_LOC];
-            int64_t F0 = wShapeAR[F0_LOC];
-            int64_t F1 = wShapeAR[F1_LOC];
+            int64_t COut = this->layerNameToSize[layerId]["COut"];
+            int64_t CIn = this->layerNameToSize[layerId]["CIn"];
+            int64_t F0 = this->layerNameToSize[layerId]["F0"];
+            int64_t F1 = this->layerNameToSize[layerId]["F1"];
 
             //int64_t weightSize = COut * CIn * F0 * F1 * getElementWidth(wShape, FORCE_INT8);
 
             int64_t locCout = ceil((float)COut / params.P);
             int64_t locCin = ceil((float)CIn / params.Ca);
             int64_t locF0 = ceil((float)F0 / params.L);
-            int64_t locWeightSize = locCout * locCin * locF0 * F1 * getElementWidth(wShape, FORCE_INT8);
+            int64_t locWeightSize = locCout * locCin * locF0 * F1 * this->layerNameToSize[layerId]["width"];
 
             int64_t weightBanks = ceil(locWeightSize / this->arch->getBankSize());
 
@@ -253,9 +261,7 @@ namespace xilinx {
         uint64_t DataflowExplorer::getComputeTimePerTile(uint64_t layerId, ModelParams &params) {
             if(params.lineGranularity) {
                 AbsOpWrapper* layer = this->layerNameToOps[layerId];
-                ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
-                ArrayRef<int64_t> aShapeAR = aShape.getShape();
-                uint64_t N = aShapeAR[N_LOC];
+                uint64_t N = this->layerNameToSize[layerId]["N"];;
 
                 return this->getComputeTime(layerId, params) / N;
             } else {
@@ -264,42 +270,12 @@ namespace xilinx {
             }
         }
 
-        std::map<std::string, uint64_t> getStats(Operation* op) {
-            std::map<std::string, uint64_t> layerStatsMap;
-            if (auto stats = llvm::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
-                layerStatsMap = stats.getStatistics();
-            } else {
-                layerStatsMap = xilinx::aten::getATenOpStats(op);
-            }
-
-            if(!layerStatsMap.size()) {
-                llvm::outs() << "No statistics provided for that op!!\n";
-                exit(1);
-            }
-
-            return layerStatsMap;
-        }
-
         uint64_t DataflowExplorer::getComputeTime(uint64_t layerId, ModelParams &params) {
-            std::map<std::string, uint64_t> stats = getStats(this->layerNameToOps[layerId]->getUnderlyingOperation());
-            uint64_t macs = (stats.count("ops:MAC") == 0) ? stats["ops:>"] : stats["ops:MAC"];
+            uint64_t macs = this->layerNameToSize[layerId]["macs"];
 
-            AbsOpWrapper* layer = this->layerNameToOps[layerId];
-            ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
-
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
-            int64_t CIn = aShapeAR[C_LOC];
-            int64_t COut;
-
-            if(layer->hasWeights()) {
-                ShapedType wShape = layer->getWeights().getType().dyn_cast<ShapedType>();
-                ArrayRef<int64_t> wShapeAR = wShape.getShape();
-                COut = wShapeAR[COUT_LOC];
-            } else {
-                COut = CIn;
-            }
-
-            int64_t F = layer->getKernelSize();
+            int64_t CIn = this->layerNameToSize[layerId]["C"];
+            int64_t COut = this->layerNameToSize[layerId]["COut"];
+            int64_t F = this->layerNameToSize[layerId]["F0"];
 
             uint64_t missmatchCa = getMissmatchChannels(CIn, params.Ca);
             uint64_t missmatchP = getMissmatchChannels(COut, params.P);
@@ -318,11 +294,7 @@ namespace xilinx {
             uint64_t comTime = this->getActCommunicationTime(layerId, params);
 
             if(params.lineGranularity) {
-                AbsOpWrapper* layer = this->layerNameToOps[layerId];
-                ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
-                ArrayRef<int64_t> aShapeAR = aShape.getShape();
-                uint64_t N = aShapeAR[N_LOC];
-
+                uint64_t N = this->layerNameToSize[layerId]["N"];
                 return comTime / N;
             } else {
                 uint64_t K = this->getK(layerId, params);
@@ -332,19 +304,15 @@ namespace xilinx {
         }
 
         uint64_t DataflowExplorer::getActCommunicationTime(uint64_t layerId, ModelParams &params) {
-            AbsOpWrapper* layer = this->layerNameToOps[layerId];
-            ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
-            uint64_t C = aShapeAR[C_LOC];
-            uint64_t M = aShapeAR[M_LOC];
-            uint64_t N = aShapeAR[N_LOC];
+            uint64_t C = this->layerNameToSize[layerId]["C"];
+            uint64_t M = this->layerNameToSize[layerId]["M"];
+            uint64_t N = this->layerNameToSize[layerId]["N"];
 
-            int64_t actSize = C * M * N * getElementWidth(aShape, FORCE_INT8);
+            int64_t actSize = (C / params.Ca) * M * N * this->layerNameToSize[layerId]["width"];
 
             if(DW_SHARED &&
-               ((this->layerNameToOps[layerId]->isDepthWise() && (layerId > 0) && !this->layerNameToOps[layerId-1]->isDepthWise())
-                || ((layerId == 0) && this->layerNameToOps[layerId]->isDepthWise()))) {
-                actSize = 0; // TODO make better, to make com 0 because assume shared memory
+               ((this->layerNameToSize[layerId]["DW"] && (layerId > 0) && !this->layerNameToSize[layerId-1]["DW"]))) {
+                actSize = 0; // make com 0 because assume shared memory
             }
 
             return actSize / this->arch->getComSpeed();
@@ -355,19 +323,17 @@ namespace xilinx {
                 return 0;
             }
 
-            ShapedType wShape = this->layerNameToOps[layerId]->getWeights().getType().dyn_cast<ShapedType>();
-            ArrayRef<int64_t> wShapeAR = wShape.getShape();
-            int64_t COut = wShapeAR[COUT_LOC];
-            int64_t CIn = wShapeAR[CIN_LOC];
-            int64_t F0 = wShapeAR[F0_LOC];
-            int64_t F1 = wShapeAR[F1_LOC];
+            int64_t COut = this->layerNameToSize[layerId]["COut"];
+            int64_t CIn = this->layerNameToSize[layerId]["CIn"];
+            int64_t F0 = this->layerNameToSize[layerId]["F0"];
+            int64_t F1 = this->layerNameToSize[layerId]["F1"];
 
             //int64_t weightSize = COut * CIn * F0 * F1 * getElementWidth(wShape, FORCE_INT8);
 
             int64_t locCout = ceil((float)COut / params.P);
             int64_t locCin = ceil((float)CIn / params.Ca);
             int64_t locF0 = ceil((float)F0 / params.L);
-            int64_t locWeightSize = locCout * locCin * locF0 * F1 * getElementWidth(wShape, FORCE_INT8);
+            int64_t locWeightSize = locCout * locCin * locF0 * F1 * this->layerNameToSize[layerId]["width"];
 
             int64_t weightBanks = ceil(locWeightSize / this->arch->getBankSize());
 
@@ -382,11 +348,7 @@ namespace xilinx {
             uint64_t comPerTile = this->getWeightCommunicationTimePerTile(layerId, params);
 
             if(params.lineGranularity) {
-                AbsOpWrapper* layer = this->layerNameToOps[layerId];
-                ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
-                ArrayRef<int64_t> aShapeAR = aShape.getShape();
-                uint64_t N = aShapeAR[N_LOC];
-
+                uint64_t N = this->layerNameToSize[layerId]["N"];
                 return comPerTile * N;
             } else {
                 uint64_t K = this->getK(layerId, params);
@@ -405,11 +367,7 @@ namespace xilinx {
 
         uint64_t DataflowExplorer::getTotalTime(uint64_t layerId, ModelParams &params) {
             if(params.lineGranularity) {
-                AbsOpWrapper* layer = this->layerNameToOps[layerId];
-                ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
-                ArrayRef<int64_t> aShapeAR = aShape.getShape();
-                uint64_t N = aShapeAR[N_LOC];
-
+                uint64_t N = this->layerNameToSize[layerId]["N"];
                 uint64_t totalTimeTile = this->getTotalTimePerTile(layerId, params);
 
                 return N * totalTimeTile;
@@ -423,11 +381,12 @@ namespace xilinx {
 
         uint64_t DataflowExplorer::getTotalCompute() {
             uint64_t totalCompute = 0;
+            uint64_t layerId = 0;
             for(AbsOpWrapper* wrapped : this->layerNameToOps) {
                 Operation* op = wrapped->getUnderlyingOperation();
-                std::map<std::string, uint64_t> stats = getStats(op);
-                uint64_t macs = (stats.count("ops:MAC") == 0) ? stats["ops:>"] : stats["ops:MAC"];
+                uint64_t macs = this->layerNameToSize[layerId]["macs"];
                 totalCompute += macs;
+                layerId++;
             }
 
             return totalCompute;
@@ -511,6 +470,13 @@ namespace xilinx {
             return (double)workDone / maxWorkDone;
         }
 
+        double DataflowExplorer::getLayerUtilization(uint64_t layerId, ModelParams &params) {
+            uint64_t computeTime = this->getComputeTime(layerId, params);
+            uint64_t totalTime = this->getTotalTime(layerId, params);
+
+            return (double)computeTime / totalTime;
+        }
+
         uint64_t DataflowExplorer::getArea(std::vector<ModelParams> &params) {
             uint64_t numCores = 0;
             for(ModelParams p : params) {
@@ -551,46 +517,25 @@ namespace xilinx {
         bool DataflowExplorer::isValid(uint64_t layerId, ModelParams &params) {
             AbsOpWrapper* layer = this->layerNameToOps[layerId];
 
-            ShapedType aShape = layer->getInput().getType().dyn_cast<ShapedType>();
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
-
-            int64_t CIn = aShapeAR[C_LOC];
-            int64_t N = aShapeAR[N_LOC];
-            int64_t COut;
-            if(layer->hasWeights()) {
-                ShapedType wShape = layer->getWeights().getType().dyn_cast<ShapedType>();
-                ArrayRef<int64_t> wShapeAR = wShape.getShape();
-                COut = wShapeAR[COUT_LOC];
-            } else {
-                COut = CIn;
-            }
-
-            uint64_t F0 = layer->getKernelSize();
+            int64_t CIn = this->layerNameToSize[layerId]["CIn"];
+            int64_t N = this->layerNameToSize[layerId]["N"];
+            int64_t COut = this->layerNameToSize[layerId]["COut"];
+            uint64_t F0 = this->layerNameToSize[layerId]["F0"];
 
             bool enoughCIn = (CIn / params.Ca) >= 8;
             bool enoughCOut = (COut / params.P) >= 8;
             bool enoughF = (F0 / params.L) >= 1;
             bool enoughW = (N / params.W) >= 1;
+            bool notTooMuchW = params.W <= 4; // TODO arbitrary, tune this
 
-            if(enoughCIn && enoughCOut && enoughF && enoughW) {
+            //double layerUtilization = this->getLayerUtilization(layerId, params);
+
+            if(enoughCIn && enoughCOut && enoughF && enoughW && notTooMuchW) {
                 bool memFit = this->getTotalMemBanks(layerId, params) <= this->arch->getNumBanks();
                 return memFit;
             } else {
                 return false;
             }
-
-            // TODO also check that W is rate balanced ?
-
-            /*if(layerId == 4) {
-                llvm::outs() << "MemFit: " << memFit << " Cin: " << enoughCIn << " COut " << enoughCOut << " F " << enoughF << "\n";
-                llvm::outs() << "For params: (P=" << params.P << ", Ca=" << params.Ca << ", F=" << params.L << ", W=" << params.W << "\n";
-                llvm::outs() << "MemFit is: " << this->getTotalMemBanks(layerId, params) << "with: " <<
-                    this->getActivationInBanks(layerId, params) << ", " <<
-                    this->getActivationOutBanks(layerId, params) << ", " <<
-                    this->getWeightBanks(layerId, params) << "\n";
-                    }*/
-
-            //return memFit && enoughCIn && enoughCOut && enoughF;
         }
 
         // In favor of tile handling when compute time is the same and both fits (same result if F == 1)
@@ -602,6 +547,7 @@ namespace xilinx {
             }
 
             for(uint64_t layerId = 0; layerId < bounds.size(); layerId++) {
+                llvm::outs() << "generating nodes for layer: " << layerId << "\n";
                 uint64_t layerCores = bounds.at(layerId);
                 uint64_t F0 = this->layerNameToOps[layerId]->getKernelSize();
                 for(uint64_t p = 1; p <= layerCores; p++) {
@@ -634,6 +580,7 @@ namespace xilinx {
         // take valid topologies and build a graph with ins set to all nodes, areaToNode left empty
         // Also take into account communication characteristics of the underlying architecture
         void DataflowExplorer::generatePathGraph() {
+            llvm::outs() << "Generate graph\n";
             this->pathGraph = std::vector<std::vector<Node_t*>>(this->validTopologies.size() + 2, std::vector<Node_t*>());
 
             Node_t* root = new Node_t(ModelParams(0,0,0,0,false));
@@ -646,7 +593,9 @@ namespace xilinx {
 
             this->pathGraph.at(0).push_back(root);
 
+            uint64_t unitOps = 0;
             for(unsigned int i = 0; i < this->validTopologies.size(); i++) {
+                llvm::outs() << "Generating graph for layer: " << i << "\n";
                 for(ModelParams p : this->validTopologies.at(i)) {
                     if(i == 0) {
                         Node_t* node = new Node_t(p);
@@ -655,9 +604,9 @@ namespace xilinx {
                     } else {
                         Node_t* node = new Node_t(p);
 
-                        // TODO check ins append constraints in more details
+                        // Iterate over previous layer nodes
                         for(Node_t* n : this->pathGraph.at(i)) {
-                            if(this->layerNameToOps.at(i)->isDepthWise()) {
+                            if(this->layerNameToSize.at(i)["DW"]) {
                                 unsigned int nP = n->params.P;
                                 unsigned int nW = n->params.W;
                                 unsigned int P = p.P;
@@ -667,6 +616,7 @@ namespace xilinx {
                                 // Take into account communication constraints
                                 if(nP == P && ((nW == 1) || (nW == L) || (nW == W))) {
                                     node->ins.push_back(n);
+                                    unitOps++;
                                 }
                             } else {
                                 unsigned int nP = n->params.P;
@@ -678,6 +628,7 @@ namespace xilinx {
                                 // Take into account communication constraints
                                 if(nP == Ca && ((nW == 1) || (nW == L) || (nW == W))) {
                                     node->ins.push_back(n);
+                                    unitOps++;
                                 }
                             }
                         }
@@ -691,21 +642,29 @@ namespace xilinx {
             for(Node_t* n : this->pathGraph.at(this->pathGraph.size() - 2)) {
                 //llvm::outs() << "Extending the sink...\n";
                 sink->ins.push_back(n);
+                unitOps++;
             }
 
             this->pathGraph.at(this->pathGraph.size() - 1).push_back(sink);
+
+            llvm::outs() << "UnitOps = " << 400 * unitOps * 2 << "\n";
         }
 
         // Uses the ins generated by previous function to build the areaToNode for all functions
         // TODO make that function look better
         // TODO could potentially parallelize that stuf..
-        // TODO maybe we should also remove some of the copies and replace with more pointers?
+        // TODO maybe we should also remove some of the copies / cleanup layers when we are done with them?
         void DataflowExplorer::enumeratePaths() {
             llvm::outs() << "Path Graph.size() = " << this->pathGraph.size() << "\n";
 
+            //llvm::outs() << omp_get_num_threads();
+
             for(uint64_t layer = 1; layer < this->pathGraph.size(); layer++) {
                 llvm::outs() << "Handling layer: " << layer << "\n";
-                for(Node_t* layerNode : this->pathGraph.at(layer)) {
+
+                //#pragma omp parallel for
+                for(uint64_t n = 0; n < this->pathGraph.at(layer).size(); n++) {
+                    Node_t* layerNode = this->pathGraph.at(layer).at(n);
                     layerNode->areaToThroughput = std::vector<PathInfo_t>(this->arch->getNumCores() + 2, PathInfo_t((uint64_t)0));
                     layerNode->areaToLatency = std::vector<PathInfo_t>(this->arch->getNumCores() + 2, PathInfo_t((uint64_t)-1));
 

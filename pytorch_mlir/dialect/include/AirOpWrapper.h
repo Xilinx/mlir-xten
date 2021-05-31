@@ -36,6 +36,7 @@ namespace xilinx {
             virtual ArrayRef<Value> getBN() = 0;
             virtual unsigned int getKernelSize() = 0;
             virtual bool hasWeights() = 0;
+            virtual bool hasBias() = 0;
             virtual bool hasBN() = 0;
             virtual bool isDepthWise() = 0;
             virtual double getKernelEfficiency(AbsArchitecture* arch) = 0;
@@ -62,6 +63,7 @@ namespace xilinx {
             ArrayRef<Value> getBN();
             unsigned int getKernelSize();
             bool hasWeights();
+            bool hasBias();
             bool hasBN();
             bool isDepthWise();
             double getKernelEfficiency(AbsArchitecture* arch);
@@ -85,6 +87,7 @@ namespace xilinx {
             ArrayRef<Value> getBN();
             unsigned int getKernelSize();
             bool hasWeights();
+            bool hasBias();
             bool hasBN();
             bool isDepthWise();
             double getKernelEfficiency(AbsArchitecture* arch);
@@ -108,6 +111,7 @@ namespace xilinx {
             ArrayRef<Value> getBN();
             unsigned int getKernelSize();
             bool hasWeights();
+            bool hasBias();
             bool hasBN();
             bool isDepthWise();
             double getKernelEfficiency(AbsArchitecture* arch);
@@ -131,6 +135,7 @@ namespace xilinx {
             ArrayRef<Value> getBN();
             unsigned int getKernelSize();
             bool hasWeights();
+            bool hasBias();
             bool hasBN();
             bool isDepthWise();
             double getKernelEfficiency(AbsArchitecture* arch);
@@ -154,6 +159,7 @@ namespace xilinx {
             ArrayRef<Value> getBN();
             unsigned int getKernelSize();
             bool hasWeights();
+            bool hasBias();
             bool hasBN();
             bool isDepthWise();
             double getKernelEfficiency(AbsArchitecture* arch);
@@ -177,6 +183,7 @@ namespace xilinx {
             ArrayRef<Value> getBN();
             unsigned int getKernelSize();
             bool hasWeights();
+            bool hasBias();
             bool hasBN();
             bool isDepthWise();
             double getKernelEfficiency(AbsArchitecture* arch);
@@ -201,6 +208,7 @@ namespace xilinx {
             ArrayRef<Value> getBN();
             unsigned int getKernelSize();
             bool hasWeights();
+            bool hasBias();
             bool hasBN();
             bool isDepthWise();
             double getKernelEfficiency(AbsArchitecture* arch);

@@ -37,7 +37,11 @@ std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, TensorType resu
 
     TensorType inputTy = o.input().getType().template cast<TensorType>();
     TensorType weightTy = o.weight().getType().template cast<TensorType>();
-    TensorType biasTy = o.bias().getType().template cast<TensorType>();
+    TensorType biasTy;
+    if(!o.bias().template getDefiningOp<NPCOMP::Basicpy::SingletonOp>()) {
+        biasTy = o.bias().getType().template cast<TensorType>();
+    }
+
 
     uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
     //uint64_t ofm_depth = resultTy.getShape()[1];
@@ -56,7 +60,12 @@ std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, TensorType resu
 
     uint64_t ifm_volume = xilinx::air::getTensorVolume(inputTy);
     uint64_t weight_volume = xilinx::air::getTensorVolume(weightTy);
-    uint64_t bias_volume = xilinx::air::getTensorVolume(biasTy);
+    uint64_t bias_volume;
+    if(!o.bias().template getDefiningOp<NPCOMP::Basicpy::SingletonOp>()) {
+        bias_volume = xilinx::air::getTensorVolume(biasTy);
+    } else {
+        bias_volume = 0;
+    }
 
     // Should be gated on whether there is bias at all
     toReturn["ops:+"] = ofm_volume;

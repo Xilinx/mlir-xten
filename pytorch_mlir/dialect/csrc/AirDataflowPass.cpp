@@ -43,7 +43,7 @@ namespace xilinx {
             // TODO make the second thing here a map from id based on model params to AbsOpWrapper
             std::map<std::string, std::vector<AbsOpWrapper*>> layerNameToOps;
             std::map<std::string, ModelParams> layerNameToParams;
-            std::vector<std::string> layerOrdering;
+            std::vector<std::string> layerOrdering; // TODO remove this field
 
         public:
             AirDataflowPass() {}
@@ -59,8 +59,12 @@ namespace xilinx {
                     return new Conv2dOpWrapper(conv);
                 } else if(auto conv = llvm::dyn_cast<PartialConv2dOp>(op)) {
                     return new PartialConv2dOpWrapper(conv);
-                } else if(llvm::dyn_cast<Conv2dReLUOp>(op)) {
-                    llvm::outs() << "Unimplemented errror\n";
+                } else if(auto conv = llvm::dyn_cast<Conv2dBatchNormReLUOp>(op)) {
+                    return new Conv2dBatchNormReLUOpWrapper(conv);
+                } else if(auto conv = llvm::dyn_cast<PartialConv2dBatchNormReLUOp>(op)) {
+                    return new PartialConv2dBatchNormReLUOpWrapper(conv);
+                } else {
+                    llvm::outs() << "Unsupported operation was used!\n";
                     exit(1);
                 }
             }
@@ -134,7 +138,7 @@ namespace xilinx {
 
                     // Split biases
                     Operation* biases;
-                    if(genOp->hasWeights()) {
+                    if(genOp->hasBias()) {
                         biases = genOp->getBiases().getDefiningOp();
                         if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
                             splitConstantInto(constOp, nBiases, builder, PSplit, bSplitType, into);
@@ -204,7 +208,7 @@ namespace xilinx {
                         }
 
                         auto nW = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(i)) : llvm::Optional<Value>();
-                        auto nB = genOp->hasWeights() ? llvm::Optional<Value>(nBiases.at(i)) : llvm::Optional<Value>();
+                        auto nB = genOp->hasBias() ? llvm::Optional<Value>(nBiases.at(i)) : llvm::Optional<Value>();
                         auto nBn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(i)) : llvm::Optional<ArrayRef<Value>>();
                         conv = genOp->buildOp(builder,
                                               TypeRange({nReturnType}),
@@ -242,7 +246,17 @@ namespace xilinx {
                     // Delete previous Csts and ConvolutionOp
                     if(genOp->hasWeights()) {
                         toDelete.push_back(weights);
+                    }
+
+                    if(genOp->hasBias()) {
                         toDelete.push_back(biases);
+                    }
+
+                    if(genOp->hasBN()) {
+                        ArrayRef<Value> bnParams = genOp->getBN();
+                        for(unsigned int i = 0; i < 4; i++) {
+                            toDelete.push_back(bnParams[i].getDefiningOp());
+                        }
                     }
                 }
 
@@ -274,22 +288,30 @@ namespace xilinx {
                     std::vector<ArrayRef<Value>> nBN;
 
                     // Split weights
-                    Operation* weights = genOp->getWeights().getDefiningOp();
-                    if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
-                        splitConstantInto(constOp, nConsts, builder, CaSplit, wSplitType, into);
-                    } else {
-                        llvm::outs() << "Cannot convert to ConstOp!\n";
-                        return failure();
+                    Operation* weights;
+                    if(genOp->hasWeights()) {
+                         weights = genOp->getWeights().getDefiningOp();
+                        if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
+                            splitConstantInto(constOp, nConsts, builder, CaSplit, wSplitType, into);
+                        } else {
+                            llvm::outs() << "Cannot convert to ConstOp!\n";
+                            return failure();
+                        }
                     }
 
+
                     // Split biases
-                    Operation* biases = genOp->getBiases().getDefiningOp();
-                    if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
-                        splitConstantInto(constOp, nBiases, builder, CaSplit, bSplitType, into);
-                    } else {
-                        llvm::outs() << "Cannot convert to ConstOp!\n";
-                        return failure();
+                    Operation* biases;
+                    if(genOp->hasBias()) {
+                        biases = genOp->getBiases().getDefiningOp();
+                        if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
+                            splitConstantInto(constOp, nBiases, builder, CaSplit, bSplitType, into);
+                        } else {
+                            llvm::outs() << "Cannot convert to ConstOp!\n";
+                            return failure();
+                        }
                     }
+
 
                     // Split BN params if any
                     if(genOp->hasBN()) {
@@ -331,10 +353,11 @@ namespace xilinx {
                     }
 
                     // Generate convolutions
+                    auto w = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(0)) : llvm::Optional<Value>();
+                    auto bias = genOp->hasBias() ? llvm::Optional<Value>(nBiases.at(0)) : llvm::Optional<Value>();
                     auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(0)) : llvm::Optional<ArrayRef<Value>>();
                     Operation* conv = genOp->buildOp(builder, TypeRange({op->getResult(0).getType()}),
-                                                     nInputs.at(0), llvm::Optional<Value>(nConsts.at(0)),
-                                                     llvm::Optional<Value>(nBiases.at(0)), llvm::Optional<Value>(), true, bn);
+                                                     nInputs.at(0), w, bias, llvm::Optional<Value>(), true, bn);
 
                     // set location attribute
                     if(op->getAttr("locCa") != nullptr) {
@@ -351,11 +374,11 @@ namespace xilinx {
                     nLayerOps.push_back(opToWrapper(conv));
 
                     for(unsigned int i = 1; i < into; i++) {
+                        auto w = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(i)) : llvm::Optional<Value>();
+                        auto bias = genOp->hasBias() ? llvm::Optional<Value>(nBiases.at(i)) : llvm::Optional<Value>();
                         auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(i)) : llvm::Optional<ArrayRef<Value>>();
                         Operation* nConv = genOp->buildOp(builder, TypeRange({op->getResult(0).getType()}),
-                                                          nInputs.at(i), llvm::Optional<Value>(nConsts.at(i)),
-                                                          llvm::Optional<Value>(nBiases.at(i)),
-                                                          llvm::Optional<Value>(conv->getResult(0)), true, bn);
+                                                          nInputs.at(i), w, bias, llvm::Optional<Value>(conv->getResult(0)), true, bn);
 
                         // set location attribute
                         if(op->getAttr("locCa") != nullptr) {
@@ -377,8 +400,20 @@ namespace xilinx {
                     op->getResult(0).replaceAllUsesWith(conv->getResult(0));
 
                     // Prepare to delete
-                    toDelete.push_back(weights);
-                    toDelete.push_back(biases);
+                    if(genOp->hasWeights()) {
+                        toDelete.push_back(weights);
+                    }
+
+                    if(genOp->hasBias()) {
+                        toDelete.push_back(biases);
+                    }
+
+                    if(genOp->hasBN()) {
+                        ArrayRef<Value> bnParams = genOp->getBN();
+                        for(unsigned int i = 0; i < 4; i++) {
+                            toDelete.push_back(bnParams[i].getDefiningOp());
+                        }
+                    }
                 }
 
                 layerNameToOps[layerName] = nLayerOps;
@@ -410,21 +445,28 @@ namespace xilinx {
                     std::vector<ArrayRef<Value>> nBN;
 
                     // Split weights
-                    Operation* weights = genOp->getWeights().getDefiningOp();//->getName();
-                    if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
-                        splitConstantInto(constOp, nConsts, builder, LSplit, wSplitType, into);
-                    } else {
-                        llvm::outs() << "Cannot convert to ConstOp!\n";
-                        return failure();
+                    Operation* weights;
+                    if(genOp->hasWeights()) {
+                        weights = genOp->getWeights().getDefiningOp();//->getName();
+                        if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
+                            splitConstantInto(constOp, nConsts, builder, LSplit, wSplitType, into);
+                        } else {
+                            llvm::outs() << "Cannot convert to ConstOp!\n";
+                            return failure();
+                        }
                     }
 
+
                     // Split biases
-                    Operation* biases = genOp->getBiases().getDefiningOp();
-                    if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
-                        splitConstantInto(constOp, nBiases, builder, LSplit, bSplitType, into);
-                    } else {
-                        llvm::outs() << "Cannot convert to ConstOp!\n";
-                        return failure();
+                    Operation* biases;
+                    if(genOp->hasBias()) {
+                        biases = genOp->getBiases().getDefiningOp();
+                        if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
+                            splitConstantInto(constOp, nBiases, builder, LSplit, bSplitType, into);
+                        } else {
+                            llvm::outs() << "Cannot convert to ConstOp!\n";
+                            return failure();
+                        }
                     }
 
                     // Split BN params if present
@@ -460,11 +502,11 @@ namespace xilinx {
                     ShapedType retTypeForward = genOp->getInput().getType().dyn_cast<ShapedType>();
 
                     // Generate new convs
+                    auto w = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(0)) : llvm::Optional<Value>();
+                    auto bias = genOp->hasBias() ? llvm::Optional<Value>(nBiases.at(0)) : llvm::Optional<Value>();
                     auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(0)) : llvm::Optional<ArrayRef<Value>>();
                     Operation* nConv = genOp->buildOp(builder, TypeRange({retTypePartial, retTypeForward}),
-                                                      genOp->getInput(), llvm::Optional<Value>(nConsts.at(0)),
-                                                      llvm::Optional<Value>(nBiases.at(0)), llvm::Optional<Value>(), true,
-                                                      bn);
+                                                      genOp->getInput(), w, bias, llvm::Optional<Value>(), true, bn);
 
                     // set location attribute
                     if(op->getAttr("locL") != nullptr) {
@@ -483,14 +525,13 @@ namespace xilinx {
                     nLayerOps.push_back(opToWrapper(nConv));
 
                     for(unsigned int i = 1; i < into; i++) {
+                        auto w = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(i)) : llvm::Optional<Value>();
+                        auto bias = genOp->hasBias() ? llvm::Optional<Value>(nBiases.at(i)) : llvm::Optional<Value>();
                         auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(i)) : llvm::Optional<ArrayRef<Value>>();
                         // Same return type here
                         nConv = genOp->buildOp(builder,
                                                (i == (into-1)) ? TypeRange({retTypePartial}) : TypeRange({retTypePartial, retTypeForward}),
-                                               forward, llvm::Optional<Value>(nConsts.at(i)),
-                                               llvm::Optional<Value>(nBiases.at(i)),
-                                               llvm::Optional<Value>(partial), false,
-                                               bn);
+                                               forward, w, bias, llvm::Optional<Value>(partial), false, bn);
 
                         // set location attribute
                         if(op->getAttr("locL") != nullptr) {
@@ -515,8 +556,14 @@ namespace xilinx {
                     // Replace output of old convolution usage by concat value
                     op->getResult(0).replaceAllUsesWith(nConv->getResult(0));
 
-                    toDelete.push_back(weights);
-                    toDelete.push_back(biases);
+                    if(genOp->hasWeights()) {
+                        toDelete.push_back(weights);
+                    }
+
+                    if(genOp->hasBias()) {
+                        toDelete.push_back(biases);
+                    }
+
                     if(genOp->hasBN()) {
                         ArrayRef<Value> bnParams = genOp->getBN();
                         for(unsigned int i = 0; i < 4; i++) {
@@ -551,8 +598,7 @@ namespace xilinx {
                 ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
                 uint64_t F0 = absOp->getKernelSize();
 
-                uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName],
-                                                             llvm::Optional<ShapedType>(aShapeIn));
+                uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
 
                 uint64_t startLine = locL + locW * linesPerTile;
                 uint64_t endLine = startLine + linesPerTile - 1 + F0 - 1;
@@ -584,8 +630,7 @@ namespace xilinx {
                 ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
                 uint64_t F0 = absOp->getKernelSize();
 
-                uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName],
-                                                             llvm::Optional<ShapedType>(aShapeIn));
+                uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
 
                 //llvm::outs() << "LinesPertile:  " << linesPerTile << "\n";
 
@@ -634,8 +679,7 @@ namespace xilinx {
                 ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
                 uint64_t F0 = absOp->getKernelSize();
 
-                uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName],
-                                                             llvm::Optional<ShapedType>(aShapeIn));
+                uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
 
                 //llvm::outs() << "LinesPertile:  " << linesPerTile << "\n";
 
@@ -1030,7 +1074,10 @@ namespace xilinx {
                                 locTiles[s].print(llvm::outs());
                                 llvm::outs() << "\n";
 
-                                ins.push_back(locTiles[s]);
+                                if(std::find(ins.begin(), ins.end(), locTiles[s]) == ins.end()) {
+                                    ins.push_back(locTiles[s]);
+                                }
+
                                 //op->replaceUsesOfWith(absOp->getInput(), locTiles[s]);
                             }
                         }
@@ -1039,7 +1086,10 @@ namespace xilinx {
                         llvm::outs() << "WantPrevSize: " << wantPrev.size() << "\n";
                         for(std::string s : wantPrev) {
                             llvm::outs() << "wantPrev: " << s << "\n";
-                            ins.push_back(producedTiles[s]);
+                            if(std::find(ins.begin(), ins.end(), producedTiles[s]) == ins.end()) {
+                                ins.push_back(producedTiles[s]);
+                            }
+
                             //op->replaceUsesOfWith(absOp->getInput(), producedTiles[s]);
                         }
 
@@ -1096,12 +1146,12 @@ namespace xilinx {
                 //initializeLayerNameToParams(graph);
 
                 // Explore topology space
-                //dataflowExplorer.enumerate();
-                //dataflowExplorer.printValidTopologies();
-                //dataflowExplorer.dumpValidTopologies();
-                //dataflowExplorer.dumpParetoFrontiers();
-                //dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoThroughput, "./output/throughput");
-                //dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoLatency, "./output/latency");
+                dataflowExplorer.enumerate();
+                /*dataflowExplorer.printValidTopologies();
+                dataflowExplorer.dumpValidTopologies();
+                dataflowExplorer.dumpParetoFrontiers();
+                dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoThroughput, "./output/throughput");
+                dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoLatency, "./output/latency");*/
 
                 //this->layerNameToParams = dataflowExplorer.getMaxThroughput();
 
@@ -1126,7 +1176,7 @@ namespace xilinx {
                   llvm::outs() << "Failed to apply LTransform\n";
                   exit(1);
                   }
-                  }*/
+                  }
 
                 this->layerNameToParams["conv2d_relu0"] = ModelParams(1,1,1,1,false);
                 this->layerNameToParams["conv2d_relu1"] = ModelParams(1,1,3,3,false);
@@ -1148,11 +1198,13 @@ namespace xilinx {
                 WTransform("conv2d_relu1", 3, dataflowExplorer);
 
                 // Verify graph
-                // TODO probably a simple sanitizer here
+                // TODO probably a simple sanitizer here*/
 
                 llvm::outs() << "Cleaning..\n";
 
                 clearLayerNameToOps();
+
+                exit(1);
             }
         };
     }

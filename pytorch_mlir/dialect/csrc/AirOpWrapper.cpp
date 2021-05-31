@@ -3,6 +3,8 @@
 
 #include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
 
+// TODO generate this file automatically
+
 namespace xilinx {
     namespace air {
 
@@ -56,6 +58,10 @@ namespace xilinx {
 
         bool Conv2dOpWrapper::hasWeights() {
             return true;
+        }
+
+        bool Conv2dOpWrapper::hasBias() {
+            return (this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>() != nullptr);
         }
 
         bool Conv2dOpWrapper::hasBN() {
@@ -202,6 +208,10 @@ namespace xilinx {
             return true;
         }
 
+        bool PartialConv2dOpWrapper::hasBias() {
+            return (this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>() != nullptr);
+        }
+
         bool PartialConv2dOpWrapper::hasBN() {
             return false;
         }
@@ -334,6 +344,10 @@ namespace xilinx {
 
         bool Conv2dReLUOpWrapper::hasWeights() {
             return true;
+        }
+
+        bool Conv2dReLUOpWrapper::hasBias() {
+            return (this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>() != nullptr);
         }
 
         bool Conv2dReLUOpWrapper::hasBN() {
@@ -479,6 +493,10 @@ namespace xilinx {
             return true;
         }
 
+        bool PartialConv2dReLUOpWrapper::hasBias() {
+            return (this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>() != nullptr);
+        }
+
         bool PartialConv2dReLUOpWrapper::hasBN() {
             return false;
         }
@@ -613,6 +631,10 @@ namespace xilinx {
             return true;
         }
 
+        bool PartialConv2dBatchNormReLUOpWrapper::hasBias() {
+            return (this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>() != nullptr);
+        }
+
         bool PartialConv2dBatchNormReLUOpWrapper::hasBN() {
             return true;
         }
@@ -728,22 +750,6 @@ namespace xilinx {
             auto attr = IntegerAttr::get(ty, into);
             op->setAttr(llvm::StringRef("locW"), attr);
 
-            /*auto lines = op->getAttr("line").dyn_cast<ArrayAttr>().getValue();
-
-            if(lines.size() == 1) {
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-            } else {
-                llvm::outs() << "Got line size of: " << lines.size() << "\n";
-                unsigned int lines0 = lines[0].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-                unsigned int lines1 = lines[1].dyn_cast<IntegerAttr>().getValue().getZExtValue();
-
-                auto attr = builder.getI32ArrayAttr({static_cast<int>(lines0 + into), static_cast<int>(lines1 + into)});
-                op->setAttr(llvm::StringRef("line"), attr);
-                }*/
-
             return op;
         }
 
@@ -784,6 +790,10 @@ namespace xilinx {
 
         bool Conv2dBatchNormReLUOpWrapper::hasWeights() {
             return true;
+        }
+
+        bool Conv2dBatchNormReLUOpWrapper::hasBias() {
+            return (this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>() != nullptr);
         }
 
         bool Conv2dBatchNormReLUOpWrapper::hasBN() {
@@ -962,6 +972,10 @@ namespace xilinx {
         }
 
         bool MaxPool2dWithIndicesOpWrapper::hasWeights() {
+            return false;
+        }
+
+        bool MaxPool2dWithIndicesOpWrapper::hasBias() {
             return false;
         }
 
