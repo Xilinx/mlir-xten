@@ -78,11 +78,11 @@ namespace xilinx {
             return groups == C;
         }
 
-        double Conv2dOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
-            if(dynamic_cast<AIEv1*>(arch)) {
-                return 0.95;
+        double Conv2dOpWrapper::getKernelEfficiency() {
+            if(this->isDepthWise()) {
+                return 0.30;
             } else {
-                return 0.8; // If not traced then return estimate
+                return 0.90;
             }
         }
 
@@ -226,11 +226,11 @@ namespace xilinx {
             return groups == C;
         }
 
-        double PartialConv2dOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
-            if(dynamic_cast<AIEv1*>(arch)) {
-                return 0.95;
+        double PartialConv2dOpWrapper::getKernelEfficiency() {
+            if(this->isDepthWise()) {
+                return 0.30;
             } else {
-                return 0.8; // If not traced then return estimate
+                return 0.90;
             }
         }
 
@@ -364,11 +364,11 @@ namespace xilinx {
             return groups == C;
         }
 
-        double Conv2dReLUOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
-            if(dynamic_cast<AIEv1*>(arch)) {
-                return 0.95;
+        double Conv2dReLUOpWrapper::getKernelEfficiency() {
+            if(this->isDepthWise()) {
+                return 0.30;
             } else {
-                return 0.8; // If not traced then return estimate
+                return 0.90;
             }
         }
 
@@ -511,11 +511,11 @@ namespace xilinx {
             return groups == C;
         }
 
-        double PartialConv2dReLUOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
-            if(dynamic_cast<AIEv1*>(arch)) {
-                return 0.95;
+        double PartialConv2dReLUOpWrapper::getKernelEfficiency() {
+            if(this->isDepthWise()) {
+                return 0.30;
             } else {
-                return 0.8; // If not traced then return estimate
+                return 0.90;
             }
         }
 
@@ -649,11 +649,11 @@ namespace xilinx {
             return groups == C;
         }
 
-        double PartialConv2dBatchNormReLUOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
-            if(dynamic_cast<AIEv1*>(arch)) {
-                return 0.95;
+        double PartialConv2dBatchNormReLUOpWrapper::getKernelEfficiency() {
+            if(this->isDepthWise()) {
+                return 0.30;
             } else {
-                return 0.8; // If not traced then return estimate
+                return 0.90;
             }
         }
 
@@ -810,11 +810,11 @@ namespace xilinx {
             return groups == C;
         }
 
-        double Conv2dBatchNormReLUOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
-            if(dynamic_cast<AIEv1*>(arch)) {
-                return 0.95;
+        double Conv2dBatchNormReLUOpWrapper::getKernelEfficiency() {
+            if(this->isDepthWise()) {
+                return 0.30;
             } else {
-                return 0.8; // If not traced then return estimate
+                return 0.90;
             }
         }
 
@@ -987,12 +987,8 @@ namespace xilinx {
             return false;
         }
 
-        double MaxPool2dWithIndicesOpWrapper::getKernelEfficiency(AbsArchitecture* arch) {
-            if(dynamic_cast<AIEv1*>(arch)) {
-                return 0.15;
-            } else {
-                return 0.8; // If not traced then return estimate
-            }
+        double MaxPool2dWithIndicesOpWrapper::getKernelEfficiency() {
+            return 0.25;
         }
 
         Operation* MaxPool2dWithIndicesOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input,

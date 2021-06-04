@@ -46,9 +46,11 @@ namespace xilinx {
             // area is in # of cores and is the index
             std::vector<PathInfo_t> areaToThroughput;
             std::vector<PathInfo_t> areaToLatency;
+            uint64_t totalTime;
 
-            Node_t(ModelParams p) {
+            Node_t(ModelParams p, uint64_t totalT) {
                 params = p;
+                totalTime = totalT;
             }
         };
 
@@ -99,8 +101,12 @@ namespace xilinx {
             double getUtilization(std::vector<ModelParams> &Params);
             uint64_t getArea(std::vector<ModelParams> &params);
 
+            bool allWeightsIn(uint64_t layerId, ModelParams &params);
+            bool checkPath(std::vector<ModelParams> &params);
+
             // Explore functions
             bool isValid(uint64_t layerId, ModelParams &params);
+            bool prune(Node_t* locNode, uint64_t locLayerId, Node_t* prevNode, uint64_t locBound, uint64_t prevBound, float maxDist);
             bool wMatches(Node_t* layerNode, Node_t* inNode, uint64_t layerId);
             std::vector<uint64_t> generateExplorationBounds();
 
@@ -108,6 +114,9 @@ namespace xilinx {
             void generatePathGraph();
             void enumeratePaths();
             void getParetoFrontierAndCleanGraph();
+            void dfsRec(Node_t* node, std::vector<ModelParams> path, uint64_t loc,
+                        std::ofstream &throughput, std::ofstream &latency);
+            void dfs();
 
             // Pareto stuff found at the end of exploration
             std::vector<PathInfo_t> paretoThroughput;

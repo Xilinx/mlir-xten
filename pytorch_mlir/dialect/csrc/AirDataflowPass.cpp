@@ -1146,6 +1146,7 @@ namespace xilinx {
                 //initializeLayerNameToParams(graph);
 
                 // Explore topology space
+                llvm::outs() << "Total Compute is: " << dataflowExplorer.getTotalCompute() << "\n";
                 dataflowExplorer.enumerate();
                 //dataflowExplorer.printValidTopologies();
                 dataflowExplorer.dumpValidTopologies();
@@ -1157,28 +1158,37 @@ namespace xilinx {
 
                 // Expand P, Ca, L for all layers
                 /*std::map<std::string, ModelParams>::iterator it;
-                  for(it = layerNameToParams.begin(); it != layerNameToParams.end(); it++) {
-                  unsigned int P = it->second.P;
-                  unsigned int Ca = it->second.Ca;
-                  unsigned int L = it->second.L;
+                for(it = layerNameToParams.begin(); it != layerNameToParams.end(); it++) {
+                    unsigned int P = it->second.P;
+                    unsigned int Ca = it->second.Ca;
+                    unsigned int L = it->second.L;
 
-                  if(!PTransform(it->first, P).succeeded()) {
-                  llvm::outs() << "Failed to apply PTransform\n";
-                  exit(1);
-                  }
+                    if(!PTransform(it->first, P).succeeded()) {
+                        llvm::outs() << "Failed to apply PTransform\n";
+                        exit(1);
+                    }
 
-                  if(!CaTransform(it->first, Ca).succeeded()) {
-                  llvm::outs() << "Failed to apply CaTransform\n";
-                  exit(1);
-                  }
+                    if(!CaTransform(it->first, Ca).succeeded()) {
+                        llvm::outs() << "Failed to apply CaTransform\n";
+                        exit(1);
+                    }
 
-                  if(!LTransform(it->first, L).succeeded()) {
-                  llvm::outs() << "Failed to apply LTransform\n";
-                  exit(1);
-                  }
-                  }
+                    if(!LTransform(it->first, L).succeeded()) {
+                        llvm::outs() << "Failed to apply LTransform\n";
+                        exit(1);
+                    }
+                }
 
-                this->layerNameToParams["conv2d_relu0"] = ModelParams(1,1,1,1,false);
+                // And then W
+               for(it = layerNameToParams.begin(); it != layerNameToParams.end(); it++) {
+                    unsigned int W = it->second.W;
+                    if(!WTransform(it->first, W, dataflowExplorer).succeeded()) {
+                        llvm::outs() << "Failed to apply WTransform\n";
+                        exit(1);
+                    }
+                    }*/
+
+                /*this->layerNameToParams["conv2d_relu0"] = ModelParams(1,1,1,1,false);
                 this->layerNameToParams["conv2d_relu1"] = ModelParams(1,1,3,3,false);
                 this->layerNameToParams["conv2d_relu2"] = ModelParams(1,1,3,1,false);
 
@@ -1195,10 +1205,10 @@ namespace xilinx {
                 llvm::outs() << "WTransform\n";
 
                 // W expand
-                WTransform("conv2d_relu1", 3, dataflowExplorer);
+                WTransform("conv2d_relu1", 3, dataflowExplorer);*/
 
                 // Verify graph
-                // TODO probably a simple sanitizer here*/
+                // TODO probably a simple sanitizer here
 
                 llvm::outs() << "Cleaning..\n";
 

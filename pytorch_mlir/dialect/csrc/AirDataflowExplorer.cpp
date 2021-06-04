@@ -17,21 +17,20 @@
 
 #define MARGIN 2
 #define DW_SHARED true
-#define MIN_BOUND 8
+#define MIN_BOUND 16
 
 #define DW_TRUE 1
 #define DW_FALSE 0
 
+#define MAX_DIST 0.05
+
 // TODO also take into account kernel efficiency?
 // TODO Need to take into account kernel fusion at some point, either here or afterwards
 // TODO Need to incorporate external bandwdith at some point
-// TODO take into account parallel line handling when memory or no?
-// TODO Check that utilization is computed correctly, or latency etc..
 // TODO also implement generic one without any architecture restructions?
-// TODO Double check W == W
-
-// TODO Check that tile bring time is correct when need to bring multiple tiles at once
-// TODO always ensure that the forwarded tile can be sent without any trouble
+// TODO implement shared memory between cascade chain and DW layer also from DW to Cascade chain
+// TODO fix padding assumption for first layer when channels are not 8
+// TODO Many to one communication and memory when W is there is not taken into account too well
 
 namespace xilinx {
     namespace air {
@@ -106,6 +105,7 @@ namespace xilinx {
                 sizes["width"] = getElementWidth(aShape, FORCE_INT8);
                 sizes["DW"] = dw ? DW_TRUE : DW_FALSE;
                 sizes["macs"] = macs;
+                sizes["eff"] = 100 * pair.second->getKernelEfficiency();
 
                 this->layerNameToSize.push_back(sizes);
 
@@ -207,8 +207,18 @@ namespace xilinx {
 
             uint64_t banksForFilter = this->getTilesPerCore(layerId, params);
 
+            uint64_t forwardTileSize = 0;
+            if(params.W > 1) { // then we might have to do forwarding and might need one additional bank
+                // Assume one tile will be used for duplication
+                if(linesPerBanks == 0) {
+                    forwardTileSize = banksPerLine;
+                } else {
+                    forwardTileSize = 1;
+                }
+            }
+
             uint64_t minBanksForFilter = (F0 == 1) ? 1 : (allLinesIn ? 1 : 2);
-            return std::max(minBanksForFilter, banksForFilter) + banksPerLine;
+            return std::max(minBanksForFilter, banksForFilter) + banksPerLine + forwardTileSize;
         }
 
         // PingPong 4KB buffers
@@ -251,6 +261,33 @@ namespace xilinx {
             } else {
                 return 2;
             }
+        }
+
+        bool DataflowExplorer::allWeightsIn(uint64_t layerId, ModelParams &params) {
+            if(!this->layerNameToOps[layerId]->hasWeights()) {
+                return true;
+            }
+
+            int64_t COut = this->layerNameToSize[layerId]["COut"];
+            int64_t CIn = this->layerNameToSize[layerId]["CIn"];
+            int64_t F0 = this->layerNameToSize[layerId]["F0"];
+            int64_t F1 = this->layerNameToSize[layerId]["F1"];
+
+            //int64_t weightSize = COut * CIn * F0 * F1 * getElementWidth(wShape, FORCE_INT8);
+
+            int64_t locCout = getMult8(ceil((float)COut / params.P));
+            int64_t locCin = getMult8(ceil((float)CIn / params.Ca));
+            int64_t locF0 = ceil((float)F0 / params.L);
+            int64_t locWeightSize = locCout * locCin * locF0 * F1 * this->layerNameToSize[layerId]["width"];
+
+            int64_t weightBanks = ceil(locWeightSize / this->arch->getBankSize());
+
+            if(weightBanks > 4) {
+                return false;
+            } else {
+                return true;
+            }
+
         }
 
         uint64_t DataflowExplorer::getTotalMemBanks(uint64_t layerId, ModelParams &params) {
@@ -299,10 +336,9 @@ namespace xilinx {
             // TODO double check this expression
             // TODO what about efficicency here?
             uint64_t time  = macs / ((params.P - missmatchP) * (params.Ca - missmatchCa) * (params.L - missmatchL) * params.W);
-            //llvm::outs() << "macs should be: " << macs << "and time is: " << time <<"\n";
-            //uint64_t kernelEfficiency = this->layerNameToOps[layerId]->getKernelEfficiency(this->arch);
-            uint64_t kernelEfficiency = 1; // TODO fix function call..
-            return time / (this->arch->getVectSize() * kernelEfficiency);
+
+            float kernelEfficiency = (float)this->layerNameToSize[layerId]["eff"] / 100;
+            return (uint64_t)ceil(time / (this->arch->getVectSize() * kernelEfficiency));
         }
 
         uint64_t DataflowExplorer::getActCommunicationTimePerTile(uint64_t layerId, ModelParams &params) {
@@ -330,9 +366,7 @@ namespace xilinx {
                 actSize = 0; // make com 0 because assume shared memory
             }
 
-            int64_t multiplier = params.lineGranularity ? params.W : 1;
-
-            return actSize / (multiplier * this->arch->getComSpeed());
+            return actSize / (params.W * this->arch->getComSpeed());
         }
 
         uint64_t DataflowExplorer::getWeightCommunicationTimePerTile(uint64_t layerId, ModelParams &params) {
@@ -579,11 +613,22 @@ namespace xilinx {
             bool notTooMuchW = params.W <= 6; // TODO arbitrary, tune this
             bool noCaIfDW = (dw == DW_TRUE) ? (params.Ca == 1) : true;
 
+            //unsigned int p0 = std::max(params.P, params.Ca);
+            //unsigned int p1 = std::min(params.P, params.Ca);
+
+            //bool wOk = this->allWeightsIn(layerId, params) || (params.W == 1);
+
             //double layerUtilization = this->getLayerUtilization(layerId, params);
 
             if(enoughCIn && enoughCOut && enoughF && enoughW && notTooMuchW && noCaIfDW) {
-                bool memFit = this->getTotalMemBanks(layerId, params) <= this->arch->getNumBanks();
-                return memFit;
+                if(dw == DW_TRUE) {
+                    // defer memFit analysis to when we have the cascade information
+                    // TODO maybe add a defer annotation to be more generic
+                    return true;
+                } else {
+                    bool memFit = this->getTotalMemBanks(layerId, params) <= this->arch->getNumBanks();
+                    return memFit;
+                }
             } else {
                 return false;
             }
@@ -602,24 +647,27 @@ namespace xilinx {
                 uint64_t layerCores = bounds.at(layerId);
                 uint64_t F0 = this->layerNameToOps[layerId]->getKernelSize();
                 for(uint64_t p = 1; p <= layerCores; p++) {
-                    for(uint64_t ca = 1; ca <= (layerCores - (p-1)); ca++) {
-                        for(uint64_t f = 1; f <= (std::min(layerCores - (p-1) - (ca-1), F0)); f++) {
-                            for(uint64_t w = 1; w <= layerCores - (p-1) - (f-1) - (ca-1); w++) {
-                                ModelParams paramsLine(p, ca, f, w, true);
-                                ModelParams paramsTile(p, ca, f, w, false);
+                    for(uint64_t ca = 1; ca <= layerCores; ca++) {
+                        for(uint64_t f = 1; f <= F0; f++) {
+                            for(uint64_t w = 1; w <= layerCores; w++) {
+                                uint64_t area = p * ca * f * w;
+                                if(area <= layerCores) {
+                                    ModelParams paramsLine(p, ca, f, w, true);
+                                    ModelParams paramsTile(p, ca, f, w, false);
 
-                                bool lineValid = this->isValid(layerId, paramsLine) && (f != 1);
-                                bool tileValid = this->isValid(layerId, paramsTile);
-                                if(lineValid && tileValid) {
-                                    if(this->getTotalTime(layerId, paramsLine) >= this->getTotalTime(layerId, paramsTile)) {
+                                    bool lineValid = this->isValid(layerId, paramsLine) && (f != 1);
+                                    bool tileValid = this->isValid(layerId, paramsTile);
+                                    if(lineValid && tileValid) {
+                                        if(this->getTotalTime(layerId, paramsLine) >= this->getTotalTime(layerId, paramsTile)) {
+                                            this->validTopologies.at(layerId).push_back(paramsTile);
+                                        } else {
+                                            this->validTopologies.at(layerId).push_back(paramsLine);
+                                        }
+                                    } else if(tileValid) {
                                         this->validTopologies.at(layerId).push_back(paramsTile);
-                                    } else {
+                                    } else if(lineValid) {
                                         this->validTopologies.at(layerId).push_back(paramsLine);
                                     }
-                                } else if(tileValid) {
-                                    this->validTopologies.at(layerId).push_back(paramsTile);
-                                } else if(lineValid) {
-                                    this->validTopologies.at(layerId).push_back(paramsLine);
                                 }
                             }
                         }
@@ -628,13 +676,47 @@ namespace xilinx {
             }
         }
 
+        // Return true if keep the edge false otherwise
+        // TODO does not work too well at the moment
+        bool DataflowExplorer::prune(Node_t* locNode, uint64_t locLayerId, Node_t* prevNode, uint64_t locBound, uint64_t prevBound,
+                                     float maxDist) {
+            if(locLayerId == 0) {
+                return false;
+            }
+            // prune if compute  or mem ratio is too far from area ratio
+            uint64_t locArea = locNode->params.cores();
+            uint64_t prevArea = prevNode->params.cores();
+
+            //uint64_t locCompute = this->layerNameToSize.at(locLayerId)["macs"];
+            //uint64_t prevCompute = this->layerNameToSize.at(locLayerId-1)["macs"];
+
+            //uint64_t locMem = this->layerNameToSize.at(locLayerId)["mem"];
+            //uint64_t prevMem = this->layerNameToSize.at(locLayerId-1)["mem"];
+
+            //float areaRatio = (float)locArea / prevArea;
+            //float computeRatio = (float)locCompute / prevCompute;
+            //float memRatio = (float)locMem / prevMem;
+
+            //bool withinCompute = ((0.5 * computeRatio) <= areaRatio) && ((2 * computeRatio) >= areaRatio);
+            //bool withinMem = ((0.5 * memRatio) <= areaRatio) && ((2 * memRatio) >= areaRatio);
+
+            //return !(withinCompute || withinMem);
+
+            float locNorm = ((float)locArea / locBound);
+            float prevNorm = ((float)prevArea / prevBound);
+
+            return std::abs(locNorm - prevNorm) > maxDist;
+        }
+
         // take valid topologies and build a graph with ins set to all nodes, areaToNode left empty
         // Also take into account communication characteristics of the underlying architecture
         void DataflowExplorer::generatePathGraph() {
+            std::vector<uint64_t> bounds = this->generateExplorationBounds();
+
             llvm::outs() << "Generate graph\n";
             this->pathGraph = std::vector<std::vector<Node_t*>>(this->validTopologies.size() + 2, std::vector<Node_t*>());
 
-            Node_t* root = new Node_t(ModelParams(0,0,0,0,false));
+            Node_t* root = new Node_t(ModelParams(0,0,0,0,false), 0);
             root->areaToThroughput = std::vector<PathInfo_t>(this->arch->getNumCores() + 2, PathInfo_t((uint64_t)0));
             root->areaToLatency = std::vector<PathInfo_t>(this->arch->getNumCores() + 2, PathInfo_t((uint64_t)-1));
 
@@ -645,29 +727,49 @@ namespace xilinx {
             this->pathGraph.at(0).push_back(root);
 
             uint64_t unitOps = 0;
-            for(unsigned int i = 0; i < this->validTopologies.size(); i++) {
-                llvm::outs() << "Generating graph for layer: " << i << "\n";
-                for(ModelParams p : this->validTopologies.at(i)) {
-                    if(i == 0) {
-                        Node_t* node = new Node_t(p);
+            for(unsigned int layerId = 0; layerId < this->validTopologies.size(); layerId++) {
+                llvm::outs() << "Generating graph for layer: " << layerId << "\n";
+                for(ModelParams p : this->validTopologies.at(layerId)) {
+                    if(layerId == 0) {
+                        Node_t* node = new Node_t(p, 0);
                         node->ins.push_back(root);
-                        this->pathGraph.at(i+1).push_back(node);
+                        this->pathGraph.at(layerId+1).push_back(node);
                     } else {
-                        Node_t* node = new Node_t(p);
+                        Node_t* node = new Node_t(p, 0);
 
                         // Iterate over previous layer nodes
-                        for(Node_t* n : this->pathGraph.at(i)) {
-                            if(this->layerNameToSize.at(i)["DW"]) {
+                        for(Node_t* n : this->pathGraph.at(layerId)) {
+                            if(this->layerNameToSize.at(layerId)["DW"] == DW_TRUE) {
+                                bool dwFine = true;
+
+                                if((layerId > 0) && (this->layerNameToSize.at(layerId)["DW"] == DW_TRUE)) {
+                                    uint64_t memDW = this->getTotalMemBanks(layerId, p);
+                                    uint64_t memPrev = this->getTotalMemBanks(layerId-1, n->params);
+
+                                    dwFine = (memDW + memPrev) <= (2 * this->arch->getNumBanks());
+                                }
+
                                 unsigned int nP = n->params.P;
                                 unsigned int nW = n->params.W;
                                 unsigned int P = p.P;
                                 unsigned int L = p.L;
                                 unsigned int W = p.W;
 
+                                //bool pruned = this->prune(node, layerId, n);
+                                /*bool pruned;
+                                if(layerId == 0) {
+                                    pruned = false;
+                                } else {
+                                    pruned = this->prune(node, layerId, n, bounds.at(layerId), bounds.at(layerId-1), MAX_DIST);
+                                    }*/
+
+
                                 // Take into account communication constraints
-                                if(nP == P && ((nW == 1) || (nW == L) || (nW == W))) {
+                                if(dwFine && (nP == P) && ((nW == 1) || (nW == L) || (nW == W))) {
+                                    //if(!pruned) {
                                     node->ins.push_back(n);
                                     unitOps++;
+                                    //}
                                 }
                             } else {
                                 unsigned int nP = n->params.P;
@@ -676,20 +778,30 @@ namespace xilinx {
                                 unsigned int L = p.L;
                                 unsigned int W = p.W;
 
+                                //bool pruned = this->prune(node, layerId, n);
+                                /*bool pruned;
+                                if(layerId == 0) {
+                                    pruned = false;
+                                } else {
+                                    pruned = this->prune(node, layerId, n, bounds.at(layerId), bounds.at(layerId-1), MAX_DIST);
+                                    }*/
+
                                 // Take into account communication constraints
-                                if(nP == Ca && ((nW == 1) || ((nW % L) == 0) || (nW == W))) {
+                                if((nP == Ca) && ((nW == 1) || (nW == L) || (nW == W))) {
+                                    //if(!pruned) {
                                     node->ins.push_back(n);
                                     unitOps++;
+                                    //}
                                 }
                             }
                         }
 
-                        this->pathGraph.at(i+1).push_back(node);
+                        this->pathGraph.at(layerId+1).push_back(node);
                     }
                 }
             }
 
-            Node_t* sink = new Node_t(ModelParams(0,0,0,0,false));
+            Node_t* sink = new Node_t(ModelParams(0,0,0,0,false), 0);
             for(Node_t* n : this->pathGraph.at(this->pathGraph.size() - 2)) {
                 //llvm::outs() << "Extending the sink...\n";
                 sink->ins.push_back(n);
@@ -707,7 +819,6 @@ namespace xilinx {
         // TODO maybe we should also remove some of the copies / cleanup layers when we are done with them?
         void DataflowExplorer::enumeratePaths() {
             llvm::outs() << "Path Graph.size() = " << this->pathGraph.size() << "\n";
-
             //llvm::outs() << omp_get_num_threads();
 
             for(uint64_t layer = 1; layer < this->pathGraph.size(); layer++) {
@@ -728,7 +839,14 @@ namespace xilinx {
                                 uint64_t nArea = i + layerNode->params.cores();
 
                                 if(nArea <= this->arch->getNumCores()) {
-                                    uint64_t nodeTotalTime = (layer == this->pathGraph.size()-1) ? 0 : this->getTotalTime(layer-1, layerNode->params);
+                                    // TODO revert the totaltime cache: it's useless
+                                    uint64_t nodeTotalTime;
+                                    if(layer == this->pathGraph.size()-1) {
+                                        nodeTotalTime = 0;
+                                    } else {
+                                        nodeTotalTime = this->getTotalTime(layer-1, layerNode->params);
+                                    }
+
                                     uint64_t  nThroughput;
                                     if(nodeTotalTime > inNode->areaToThroughput.at(i).maxTotalTime) {
                                         nThroughput = this->getThroughput(pathHead);
@@ -810,6 +928,7 @@ namespace xilinx {
             this->generateValidTopologies();
             this->dumpValidTopologies();
             this->generatePathGraph();
+            this->dfs();
             this->enumeratePaths();
             this->getParetoFrontierAndCleanGraph();
         }
@@ -967,6 +1086,54 @@ namespace xilinx {
             }
 
             return layerNameToParams;
+        }
+
+        uint64_t pathArea(std::vector<ModelParams> &path) {
+            uint64_t area = 0;
+            for(ModelParams p : path) {
+                area += p.cores();
+            }
+
+            return area;
+        }
+
+        void DataflowExplorer::dfsRec(Node_t* node, std::vector<ModelParams> path, uint64_t loc,
+                                      std::ofstream &throughput, std::ofstream &latency) {
+            if(loc == 0) {
+                uint64_t area = pathArea(path);
+                if(area > this->arch->getNumCores()) {
+                    return;
+                } else {
+                    uint64_t th = this->getThroughput(path);
+                    uint64_t lat = this->getEndToEndLatency(path);
+
+                    throughput << area << " " << th << "\n";
+                    latency << area << " " << lat << "\n";
+                }
+            } else {
+                std::vector<ModelParams> nPath = path;
+                nPath.push_back(node->params);
+                for(Node_t* n : node->ins) {
+                    dfsRec(n, nPath, loc-1, throughput, latency);
+                }
+            }
+        }
+
+        void DataflowExplorer::dfs() {
+            std::ofstream throughput;
+            throughput.open("./output/throughputs.csv", std::ios::out);
+
+            std::ofstream latency;
+            latency.open("./output/latency.csv", std::ios::out);
+
+            assert(this->pathGraph.at(this->pathGraph.size()-1).size() == 0);
+            Node_t* sink = this->pathGraph.at(this->pathGraph.size()-1).at(0);
+            for(Node_t* node : sink->ins) {
+                dfsRec(node, std::vector<ModelParams>(), this->pathGraph.size() - 2, throughput, latency);
+            }
+
+            throughput.close();
+            latency.close();
         }
     }
 }

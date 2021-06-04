@@ -39,7 +39,7 @@ namespace xilinx {
             virtual bool hasBias() = 0;
             virtual bool hasBN() = 0;
             virtual bool isDepthWise() = 0;
-            virtual double getKernelEfficiency(AbsArchitecture* arch) = 0;
+            virtual double getKernelEfficiency() = 0;
             //virtual bool hasFusedBN(); // TODO
             //virtual Value getBNWeights();
             //virtual Value getBNBias();
@@ -66,7 +66,7 @@ namespace xilinx {
             bool hasBias();
             bool hasBN();
             bool isDepthWise();
-            double getKernelEfficiency(AbsArchitecture* arch);
+            double getKernelEfficiency();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
@@ -90,7 +90,7 @@ namespace xilinx {
             bool hasBias();
             bool hasBN();
             bool isDepthWise();
-            double getKernelEfficiency(AbsArchitecture* arch);
+            double getKernelEfficiency();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
@@ -114,7 +114,7 @@ namespace xilinx {
             bool hasBias();
             bool hasBN();
             bool isDepthWise();
-            double getKernelEfficiency(AbsArchitecture* arch);
+            double getKernelEfficiency();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
@@ -138,7 +138,7 @@ namespace xilinx {
             bool hasBias();
             bool hasBN();
             bool isDepthWise();
-            double getKernelEfficiency(AbsArchitecture* arch);
+            double getKernelEfficiency();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
@@ -162,7 +162,7 @@ namespace xilinx {
             bool hasBias();
             bool hasBN();
             bool isDepthWise();
-            double getKernelEfficiency(AbsArchitecture* arch);
+            double getKernelEfficiency();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
@@ -186,7 +186,7 @@ namespace xilinx {
             bool hasBias();
             bool hasBN();
             bool isDepthWise();
-            double getKernelEfficiency(AbsArchitecture* arch);
+            double getKernelEfficiency();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
@@ -211,7 +211,7 @@ namespace xilinx {
             bool hasBias();
             bool hasBN();
             bool isDepthWise();
-            double getKernelEfficiency(AbsArchitecture* arch);
+            double getKernelEfficiency();
             Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                llvm::Optional<ArrayRef<Value>> bn);
