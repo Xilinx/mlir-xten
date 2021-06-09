@@ -121,6 +121,9 @@ public:
       });
 
       FunctionType funcTy = graph.getType();
+      if (funcTy.getNumResults() == 0)
+        continue;
+
       std::vector<Type> newFuncInputTys;
 
       for (auto ty : funcTy.getInputs())
