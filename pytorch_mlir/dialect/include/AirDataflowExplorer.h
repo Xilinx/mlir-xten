@@ -66,6 +66,9 @@ namespace xilinx {
             std::vector<std::vector<Node_t*>> pathGraph;
             AbsArchitecture* arch;
 
+            // Plotting all paths
+            std::map<uint64_t, std::vector<bool>> perfToArea;
+
             // Analytical model functions
             uint64_t getLinesPerTile(uint64_t layerId, ModelParams &params);
             uint64_t getBanksPerLine(uint64_t layerId, ModelParams &params);
@@ -98,7 +101,7 @@ namespace xilinx {
 
             uint64_t getEndToEndLatency(std::vector<ModelParams> &params);
             uint64_t getThroughput(std::vector<ModelParams> &params);
-            double getUtilization(std::vector<ModelParams> &Params);
+            double getUtilization(std::vector<ModelParams> &Params, unsigned int numCores);
             uint64_t getArea(std::vector<ModelParams> &params);
 
             bool allWeightsIn(uint64_t layerId, ModelParams &params);
@@ -116,7 +119,9 @@ namespace xilinx {
             void getParetoFrontierAndCleanGraph();
             void dfsRec(Node_t* node, std::vector<ModelParams> path, uint64_t loc,
                         std::ofstream &throughput, std::ofstream &latency);
-            void dfs();
+            void dfsRecFast(Node_t* node, std::vector<ModelParams> path, uint64_t loc,
+                        std::ofstream &throughput, std::ofstream &latency);
+            void dfs(bool full);
 
             // Pareto stuff found at the end of exploration
             std::vector<PathInfo_t> paretoThroughput;
@@ -133,6 +138,7 @@ namespace xilinx {
             void dumpParetoFrontiers();
             void dumpPath(PathInfo_t &path, std::string fname);
             void dumpPathsFrom(std::vector<PathInfo_t> &paths, std::string prefix);
+            void dumpMacs();
 
             std::map<std::string, ModelParams> getMaxThroughput();
             std::map<std::string, ModelParams> getBestTopology();

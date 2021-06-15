@@ -346,7 +346,9 @@ namespace xilinx {
                         splitConstantInto(constOp, nInputs, builder, CaSplit, aSplitType, into);
                     } else {
                         if(ConcatOp concatOp = genOp->getInput().getDefiningOp<ConcatOp>()) {
-                            replaceConcat(builder, concatOp, nInputs, toDelete, C_LOC, into);
+                            unsigned int locP = getAttrOrDefault(genOp->getUnderlyingOperation(), "locP", 0);
+                            std::vector<Operation*> toDel = (locP == 0) ? toDelete : std::vector<Operation*>(); // TODO clean this
+                            replaceConcat(builder, concatOp, nInputs, toDel, C_LOC, into);
                         } else {
                             insertSplit(builder, genOp->getInput(), nInputs, C_LOC, into);
                         }
@@ -356,8 +358,9 @@ namespace xilinx {
                     auto w = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(0)) : llvm::Optional<Value>();
                     auto bias = genOp->hasBias() ? llvm::Optional<Value>(nBiases.at(0)) : llvm::Optional<Value>();
                     auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(0)) : llvm::Optional<ArrayRef<Value>>();
+                    auto chainIn = llvm::Optional<Value>(genOp->getPartialInput());
                     Operation* conv = genOp->buildOp(builder, TypeRange({op->getResult(0).getType()}),
-                                                     nInputs.at(0), w, bias, llvm::Optional<Value>(), true, bn);
+                                                     nInputs.at(0), w, bias, chainIn, true, bn);
 
                     // set location attribute
                     if(op->getAttr("locCa") != nullptr) {
@@ -505,8 +508,9 @@ namespace xilinx {
                     auto w = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(0)) : llvm::Optional<Value>();
                     auto bias = genOp->hasBias() ? llvm::Optional<Value>(nBiases.at(0)) : llvm::Optional<Value>();
                     auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(0)) : llvm::Optional<ArrayRef<Value>>();
+                    auto chainIn = llvm::Optional<Value>(genOp->getPartialInput());
                     Operation* nConv = genOp->buildOp(builder, TypeRange({retTypePartial, retTypeForward}),
-                                                      genOp->getInput(), w, bias, llvm::Optional<Value>(), true, bn);
+                                                      genOp->getInput(), w, bias, chainIn, true, bn);
 
                     // set location attribute
                     if(op->getAttr("locL") != nullptr) {
@@ -591,11 +595,11 @@ namespace xilinx {
                 unsigned int locCa = getAttrOrDefault(op, "locCa", 0);
                 unsigned int locL = getAttrOrDefault(op, "locL", 0);
                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
-                unsigned int locP = getAttrOrDefault(op, "locP", 0);
+                //unsigned int locP = getAttrOrDefault(op, "locP", 0);
 
                 std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
 
-                ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
+                //ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
                 uint64_t F0 = absOp->getKernelSize();
 
                 uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
@@ -623,11 +627,11 @@ namespace xilinx {
                 unsigned int locCa = getAttrOrDefault(op, "locCa", 0);
                 unsigned int locL = getAttrOrDefault(op, "locL", 0);
                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
-                unsigned int locP = getAttrOrDefault(op, "locP", 0);
+                //unsigned int locP = getAttrOrDefault(op, "locP", 0);
 
                 std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
 
-                ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
+                //ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
                 uint64_t F0 = absOp->getKernelSize();
 
                 uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
@@ -663,7 +667,7 @@ namespace xilinx {
                 unsigned int locCa = getAttrOrDefault(op, "locCa", 0);
                 unsigned int locL = getAttrOrDefault(op, "locL", 0);
                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
-                unsigned int locP = getAttrOrDefault(op, "locP", 0);
+                //unsigned int locP = getAttrOrDefault(op, "locP", 0);
 
                 std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
                 unsigned int W = this->layerNameToParams[layerName].W;
@@ -676,7 +680,7 @@ namespace xilinx {
                     WPrev = this->layerNameToParams[expl.layerIdToName[expl.layerNameToID[layerName]-1]].W;
                 }
 
-                ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
+                //ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
                 uint64_t F0 = absOp->getKernelSize();
 
                 uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
@@ -735,7 +739,7 @@ namespace xilinx {
                             unsigned int concatP = (unsigned int)-1;
                             bool isPConcat = true;
                             for(auto o : concat.getOperands()) {
-                                Operation* concatArg = o.getDefiningOp();
+                                //Operation* concatArg = o.getDefiningOp();
                                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
                                 unsigned int locP = getAttrOrDefault(op, "locP", 0);
 
@@ -796,7 +800,7 @@ namespace xilinx {
             // TODO for now select arbitrary line from any core that has it, might change that
             std::map<std::string, Value> findLocalTiles(std::string layerName, DataflowExplorer &expl) {
                 std::map<std::string, Value> localLines;
-                ModelParams params = this->layerNameToParams[layerName];
+                //ModelParams params = this->layerNameToParams[layerName];
                 std::vector<AbsOpWrapper*> absOps = this->layerNameToOps[layerName];
                 std::vector<AbsOpWrapper*> toDelete;
 
@@ -931,8 +935,8 @@ namespace xilinx {
                         unsigned int locL = getAttrOrDefault(absOp->getUnderlyingOperation(), "locL", 0);
                         unsigned int locP = getAttrOrDefault(absOp->getUnderlyingOperation(), "locP", 0);
 
-                        unsigned int Ca = this->layerNameToParams[layerName].Ca;
-                        unsigned int P = this->layerNameToParams[layerName].P;
+                        //unsigned int Ca = this->layerNameToParams[layerName].Ca;
+                        //unsigned int P = this->layerNameToParams[layerName].P;
                         unsigned int L = this->layerNameToParams[layerName].L;
 
                         if(locL != 0) {
@@ -1154,33 +1158,48 @@ namespace xilinx {
                 dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoThroughput, "./output/throughput");
                 dataflowExplorer.dumpPathsFrom(dataflowExplorer.paretoLatency, "./output/latency");
 
-                //this->layerNameToParams = dataflowExplorer.getMaxThroughput();
+                llvm::outs() << "MaxThroughput...\n";
+
+                this->layerNameToParams = dataflowExplorer.getMaxThroughput();
+
+                llvm::outs() << "Running expansion...\n";
 
                 // Expand P, Ca, L for all layers
-                /*std::map<std::string, ModelParams>::iterator it;
+                std::map<std::string, ModelParams>::iterator it;
+                unsigned int i = 0;
                 for(it = layerNameToParams.begin(); it != layerNameToParams.end(); it++) {
                     unsigned int P = it->second.P;
                     unsigned int Ca = it->second.Ca;
                     unsigned int L = it->second.L;
+
+                    llvm::outs() << "P\n";
 
                     if(!PTransform(it->first, P).succeeded()) {
                         llvm::outs() << "Failed to apply PTransform\n";
                         exit(1);
                     }
 
+                    llvm::outs() << "Ca\n";
+
                     if(!CaTransform(it->first, Ca).succeeded()) {
                         llvm::outs() << "Failed to apply CaTransform\n";
                         exit(1);
                     }
 
+                    llvm::outs() << "L\n";
+
                     if(!LTransform(it->first, L).succeeded()) {
                         llvm::outs() << "Failed to apply LTransform\n";
                         exit(1);
                     }
+
+                    i += 1;
                 }
 
+                llvm::outs() << "W;;;\n";
+
                 // And then W
-               for(it = layerNameToParams.begin(); it != layerNameToParams.end(); it++) {
+                /*for(it = layerNameToParams.begin(); it != layerNameToParams.end(); it++) {
                     unsigned int W = it->second.W;
                     if(!WTransform(it->first, W, dataflowExplorer).succeeded()) {
                         llvm::outs() << "Failed to apply WTransform\n";
@@ -1189,8 +1208,8 @@ namespace xilinx {
                     }*/
 
                 /*this->layerNameToParams["conv2d_relu0"] = ModelParams(1,1,1,1,false);
-                this->layerNameToParams["conv2d_relu1"] = ModelParams(1,1,3,3,false);
-                this->layerNameToParams["conv2d_relu2"] = ModelParams(1,1,3,1,false);
+                this->layerNameToParams["conv2d_relu1"] = ModelParams(1,1,3,3,true);
+                this->layerNameToParams["conv2d_relu2"] = ModelParams(1,1,3,1,true);
 
                 this->layerNameToParams["max_pool2d_with_indices0"] = ModelParams(1,1,1,1,false);
                 this->layerNameToParams["max_pool2d_with_indices1"] = ModelParams(1,1,1,1,false);
@@ -1207,14 +1226,11 @@ namespace xilinx {
                 // W expand
                 WTransform("conv2d_relu1", 3, dataflowExplorer);*/
 
-                // Verify graph
-                // TODO probably a simple sanitizer here
-
                 llvm::outs() << "Cleaning..\n";
 
                 clearLayerNameToOps();
 
-                exit(1);
+                //exit(1);
             }
         };
     }

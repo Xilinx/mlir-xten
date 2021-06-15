@@ -61,7 +61,7 @@ namespace xilinx {
         }
 
         bool Conv2dOpWrapper::hasBias() {
-            return (this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>() != nullptr);
+            return (!this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>());
         }
 
         bool Conv2dOpWrapper::hasBN() {
@@ -90,7 +90,12 @@ namespace xilinx {
                                             llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                             llvm::Optional<ArrayRef<Value>> bn) {
             assert(weight.hasValue());
-            assert(bias.hasValue());
+
+            if(this->hasBias()) {
+                assert(bias.hasValue());
+            }
+
+            Value biasVal = bias.hasValue() ? bias.getValue() : this->conv.bias();
 
             Operation* op = this->getUnderlyingOperation();
             if(firstInPartialChain || partialIn.hasValue()) {
@@ -100,7 +105,7 @@ namespace xilinx {
                                                                   input,
                                                                   chainIn,
                                                                   weight.getValue(),
-                                                                  bias.getValue(),
+                                                                  biasVal,
                                                                   this->conv.stride(),
                                                                   this->conv.padding(),
                                                                   this->conv.dilation(),
@@ -116,7 +121,7 @@ namespace xilinx {
                                                           returnType,
                                                           input,
                                                           weight.getValue(),
-                                                          bias.getValue(),
+                                                          biasVal,
                                                           this->conv.stride(),
                                                           this->conv.padding(),
                                                           this->conv.dilation(),
@@ -209,7 +214,7 @@ namespace xilinx {
         }
 
         bool PartialConv2dOpWrapper::hasBias() {
-            return (this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>() != nullptr);
+            return (!this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>());
         }
 
         bool PartialConv2dOpWrapper::hasBN() {
@@ -238,14 +243,19 @@ namespace xilinx {
                                                    llvm::Optional<Value> bias, llvm::Optional<Value> partialIn,
                                                    bool firstInPartialChain, llvm::Optional<ArrayRef<Value>> bn) {
             assert(weight.hasValue());
-            assert(bias.hasValue());
+            if(this->hasBias()) {
+                assert(bias.hasValue());
+            }
+
+            Value biasVal = bias.hasValue() ? bias.getValue() : this->conv.bias();
 
             Value chainIn;
-            if(this->conv.PartialIn()) {
-                assert(!partialIn.hasValue());
+            if(partialIn.hasValue()) {
+                chainIn = partialIn.getValue();
+            } else if(this->conv.PartialIn()){
                 chainIn = this->conv.PartialIn();
             } else {
-                chainIn = (partialIn.hasValue()) ? partialIn.getValue() : Value();
+                chainIn = Value();
             }
 
             Operation* op = this->getUnderlyingOperation();
@@ -255,7 +265,7 @@ namespace xilinx {
                                                               input,
                                                               chainIn,
                                                               weight.getValue(),
-                                                              bias.getValue(),
+                                                              biasVal,
                                                               this->conv.stride(),
                                                               this->conv.padding(),
                                                               this->conv.dilation(),
@@ -347,7 +357,7 @@ namespace xilinx {
         }
 
         bool Conv2dReLUOpWrapper::hasBias() {
-            return (this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>() != nullptr);
+            return !this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>();
         }
 
         bool Conv2dReLUOpWrapper::hasBN() {
@@ -376,9 +386,13 @@ namespace xilinx {
                                                 llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                                 llvm::Optional<ArrayRef<Value>> bn) {
             assert(weight.hasValue());
-            assert(bias.hasValue());
+
+            if(this->hasBias()) {
+                assert(bias.hasValue());
+            }
 
             Operation* op = this->getUnderlyingOperation();
+            Value biasVal = (bias.hasValue()) ? bias.getValue() : this->conv.bias();
 
             if(firstInPartialChain || partialIn.hasValue()) {
                 Value chainIn = (partialIn.hasValue()) ? partialIn.getValue() : Value();
@@ -387,7 +401,7 @@ namespace xilinx {
                                                                       input,
                                                                       chainIn,
                                                                       weight.getValue(),
-                                                                      bias.getValue(),
+                                                                      biasVal,
                                                                       this->conv.stride(),
                                                                       this->conv.padding(),
                                                                       this->conv.dilation(),
@@ -402,7 +416,7 @@ namespace xilinx {
                                                               returnType,
                                                               input,
                                                               weight.getValue(),
-                                                              bias.getValue(),
+                                                              biasVal,
                                                               this->conv.stride(),
                                                               this->conv.padding(),
                                                               this->conv.dilation(),
@@ -494,7 +508,7 @@ namespace xilinx {
         }
 
         bool PartialConv2dReLUOpWrapper::hasBias() {
-            return (this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>() != nullptr);
+            return (!this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>());
         }
 
         bool PartialConv2dReLUOpWrapper::hasBN() {
@@ -524,15 +538,21 @@ namespace xilinx {
                                                        llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                                        llvm::Optional<ArrayRef<Value>> bn) {
             assert(weight.hasValue());
-            assert(bias.hasValue());
+
+            if(this->hasBias()) {
+                assert(bias.hasValue());
+            }
 
             Value chainIn;
-            if(this->conv.PartialIn()) {
-                assert(!partialIn.hasValue());
+            if(partialIn.hasValue()) {
+                chainIn = partialIn.getValue();
+            } else if(this->conv.PartialIn()){
                 chainIn = this->conv.PartialIn();
             } else {
-                chainIn = (partialIn.hasValue()) ? partialIn.getValue() : Value();
+                chainIn = Value();
             }
+
+            Value biasVal = bias.hasValue() ? bias.getValue() : this->conv.bias();
 
             Operation* op = this->getUnderlyingOperation();
             Operation* nOp = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
@@ -540,7 +560,7 @@ namespace xilinx {
                                                                  input,
                                                                  chainIn,
                                                                  weight.getValue(),
-                                                                 bias.getValue(),
+                                                                 biasVal,
                                                                  this->conv.stride(),
                                                                  this->conv.padding(),
                                                                  this->conv.dilation(),
@@ -632,7 +652,7 @@ namespace xilinx {
         }
 
         bool PartialConv2dBatchNormReLUOpWrapper::hasBias() {
-            return (this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>() != nullptr);
+            return (!this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>());
         }
 
         bool PartialConv2dBatchNormReLUOpWrapper::hasBN() {
@@ -662,16 +682,22 @@ namespace xilinx {
                                                                 llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                                                 llvm::Optional<ArrayRef<Value>> bn) {
             assert(weight.hasValue());
-            assert(bias.hasValue());
             assert(bn.hasValue());
 
+            if(this->hasBias()) {
+                assert(bias.hasValue());
+            }
+
             Value chainIn;
-            if(this->conv.PartialIn()) {
-                assert(!partialIn.hasValue());
+            if(partialIn.hasValue()) {
+                chainIn = partialIn.getValue();
+            } else if(this->conv.PartialIn()){
                 chainIn = this->conv.PartialIn();
             } else {
-                chainIn = (partialIn.hasValue()) ? partialIn.getValue() : Value();
+                chainIn = Value();
             }
+
+            Value biasVal = bias.hasValue() ? bias.getValue() : this->conv.bias();
 
             Operation* op = this->getUnderlyingOperation();
             Operation* nOp = builder.create<PartialConv2dBatchNormReLUOp>(builder.getUnknownLoc(),
@@ -679,7 +705,7 @@ namespace xilinx {
                                                                           input,
                                                                           chainIn,
                                                                           weight.getValue(),
-                                                                          bias.getValue(),
+                                                                          biasVal,
                                                                           this->conv.stride(),
                                                                           this->conv.padding(),
                                                                           this->conv.dilation(),
@@ -793,7 +819,7 @@ namespace xilinx {
         }
 
         bool Conv2dBatchNormReLUOpWrapper::hasBias() {
-            return (this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>() != nullptr);
+            return (!this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>());
         }
 
         bool Conv2dBatchNormReLUOpWrapper::hasBN() {
@@ -823,8 +849,13 @@ namespace xilinx {
                                                                 llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                                                 llvm::Optional<ArrayRef<Value>> bn) {
             assert(weight.hasValue());
-            assert(bias.hasValue());
             assert(bn.hasValue());
+
+            if(this->hasBias()) {
+                assert(bias.hasValue());
+            }
+
+            Value biasVal = bias.hasValue() ? bias.getValue() : this->conv.bias();
 
             Operation* op = this->getUnderlyingOperation();
             if(firstInPartialChain || partialIn.hasValue()) {
@@ -834,7 +865,7 @@ namespace xilinx {
                                                                                input,
                                                                                chainIn,
                                                                                weight.getValue(),
-                                                                               bias.getValue(),
+                                                                               biasVal,
                                                                                this->conv.stride(),
                                                                                this->conv.padding(),
                                                                                this->conv.dilation(),
@@ -856,7 +887,7 @@ namespace xilinx {
                                                                        returnType,
                                                                        input,
                                                                        weight.getValue(),
-                                                                       bias.getValue(),
+                                                                       biasVal,
                                                                        this->conv.stride(),
                                                                        this->conv.padding(),
                                                                        this->conv.dilation(),

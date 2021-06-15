@@ -312,7 +312,7 @@ namespace xilinx {
 
         uint64_t DataflowExplorer::getComputeTimePerTile(uint64_t layerId, ModelParams &params) {
             if(params.lineGranularity) {
-                AbsOpWrapper* layer = this->layerNameToOps[layerId];
+                //AbsOpWrapper* layer = this->layerNameToOps[layerId];
                 uint64_t N = this->layerNameToSize[layerId]["N"];;
 
                 return this->getComputeTime(layerId, params) / N;
@@ -359,7 +359,12 @@ namespace xilinx {
             uint64_t M = this->layerNameToSize[layerId]["M"];
             uint64_t N = this->layerNameToSize[layerId]["N"];
 
-            int64_t actSize = getMult8(ceil((float)C / params.Ca)) * M * N * this->layerNameToSize[layerId]["width"];
+            uint64_t actSize;
+            if(C <= 8) { // spetial trick for the first layer, at the moment assume just send what's necessary
+                actSize = C * M * N * this->layerNameToSize[layerId]["width"];
+            } else {
+                actSize = getMult8(ceil((float)C / params.Ca)) * M * N * this->layerNameToSize[layerId]["width"];
+            }
 
             if(DW_SHARED && ((this->layerNameToSize[layerId]["DW"] == DW_TRUE)
                              && (layerId > 0) && (this->layerNameToSize[layerId-1]["DW"] == DW_FALSE))) {
@@ -413,7 +418,7 @@ namespace xilinx {
             uint64_t computeTile = this->getComputeTimePerTile(layerId, params);
 
             // finds the bottleneck
-            return std::max(std::max(actComTile, weightComTile), computeTile);
+            return std::max((uint64_t)1, std::max(std::max(actComTile, weightComTile), computeTile));
         }
 
         uint64_t DataflowExplorer::getTotalTime(uint64_t layerId, ModelParams &params) {
@@ -434,7 +439,7 @@ namespace xilinx {
             uint64_t totalCompute = 0;
             uint64_t layerId = 0;
             for(AbsOpWrapper* wrapped : this->layerNameToOps) {
-                Operation* op = wrapped->getUnderlyingOperation();
+                //Operation* op = wrapped->getUnderlyingOperation();
                 uint64_t macs = this->layerNameToSize[layerId]["macs"];
                 totalCompute += macs;
                 layerId++;
@@ -513,8 +518,8 @@ namespace xilinx {
         }
 
         // Computes utilizaton of whole array
-        double DataflowExplorer::getUtilization(std::vector<ModelParams> &params) {
-            uint64_t maxWorkDone = this->arch->getNumCores() * this->arch->getClockFrequency() * this->arch->getVectSize();
+        double DataflowExplorer::getUtilization(std::vector<ModelParams> &params, unsigned int numCores) {
+            uint64_t maxWorkDone = numCores * this->arch->getClockFrequency() * this->arch->getVectSize();
             uint64_t throughput = this->getThroughput(params);
             uint64_t computePerSample = this->getTotalCompute();
             uint64_t workDone = throughput * computePerSample;
@@ -563,8 +568,7 @@ namespace xilinx {
 
             uint64_t sum = 0;
             uint64_t sumMem = 0;
-            uint64_t i = 0;
-            for(AbsOpWrapper* elem : this->layerNameToOps) {
+            for(uint64_t i = 0; i < this->layerNameToOps.size(); i++) {
                 uint64_t macs = this->layerNameToSize.at(i)["macs"];
 
                 llvm::outs() << "macs were: " << macs << "\n";
@@ -573,7 +577,7 @@ namespace xilinx {
                 sum += macs;
                 sumMem += memPerLayer.at(i);
 
-                i++;
+                //i++;
             }
 
             uint64_t numCores = this->arch->getNumCores();
@@ -598,7 +602,7 @@ namespace xilinx {
             //if(params.W == 1 && params.P == 4 && layerId == 11) {
             //    params.print();
             //}
-            AbsOpWrapper* layer = this->layerNameToOps[layerId];
+            //AbsOpWrapper* layer = this->layerNameToOps[layerId];
 
             int64_t CIn = this->layerNameToSize[layerId]["CIn"];
             int64_t N = this->layerNameToSize[layerId]["N"];
@@ -606,11 +610,11 @@ namespace xilinx {
             int64_t F0 = this->layerNameToSize[layerId]["F0"];
             int64_t dw = this->layerNameToSize[layerId]["DW"];
 
-            bool enoughCIn = ((CIn / params.Ca) >= 8) || (dw == DW_TRUE);
+            bool enoughCIn = ((CIn / params.Ca) >= 8) || (dw == DW_TRUE) || ((CIn <= 8) && params.Ca == 1);
             bool enoughCOut = (COut / params.P) >= 8;
             bool enoughF = (F0 / params.L) >= 1;
             bool enoughW = (N / params.W) >= 1;
-            bool notTooMuchW = params.W <= 6; // TODO arbitrary, tune this
+            bool notTooMuchW = params.W <= 12; // TODO arbitrary, tune this
             bool noCaIfDW = (dw == DW_TRUE) ? (params.Ca == 1) : true;
 
             //unsigned int p0 = std::max(params.P, params.Ca);
@@ -928,7 +932,7 @@ namespace xilinx {
             this->generateValidTopologies();
             this->dumpValidTopologies();
             this->generatePathGraph();
-            this->dfs();
+            //this->dfs(false);
             this->enumeratePaths();
             this->getParetoFrontierAndCleanGraph();
         }
@@ -1001,8 +1005,11 @@ namespace xilinx {
                     //for(uint64_t j = 0; j < this->paretoThroughput.at(i).size(); j++) {
                     //    this->paretoThroughput.at(i).at(j).print();
                     //}
+                    double totUtilization = this->getUtilization(this->paretoThroughput.at(i).path, this->arch->getNumCores());
+                    double usedUtilization = this->getUtilization(this->paretoThroughput.at(i).path, i);
+
                     pareto << i << " " << this->paretoThroughput.at(i).value << " "
-                           << this->getUtilization(this->paretoThroughput.at(i).path) << "\n";
+                           << totUtilization << " " << usedUtilization << "\n";
                 }
             }
 
@@ -1017,8 +1024,11 @@ namespace xilinx {
                     //for(uint64_t j = 0; j < this->paretoLatency.at(i).size(); j++) {
                     //    this->paretoLatency.at(i).at(j).print();
                     //}
+                    double totUtilization = this->getUtilization(this->paretoLatency.at(i).path, this->arch->getNumCores());
+                    uint64_t usedUtilization = this->getUtilization(this->paretoLatency.at(i).path, i);
+
                     pareto << i << " " << paretoLatency.at(i).value << " "
-                           << this->getUtilization(this->paretoLatency.at(i).path) << "\n";
+                           << totUtilization << " " << usedUtilization << "\n";
                 }
             }
 
@@ -1097,6 +1107,50 @@ namespace xilinx {
             return area;
         }
 
+        void DataflowExplorer::dumpMacs() {
+            std::ofstream macs;
+            macs.open("./output/macs.csv", std::ios::out);
+
+            macs << this->layerNameToSize.at(0)["macs"];
+            for(uint64_t i = 1; i < this->layerNameToSize.size(); i++) {
+                macs << ", " << this->layerNameToSize.at(i)["macs"];
+
+            }
+
+            macs << "\n";
+
+            macs.close();
+        }
+
+        void DataflowExplorer::dfsRecFast(Node_t* node, std::vector<ModelParams> path, uint64_t loc,
+                                          std::ofstream &throughput, std::ofstream &latency) {
+            if(loc == 0) {
+                uint64_t area = pathArea(path);
+                if(area > this->arch->getNumCores()) {
+                    return;
+                } else {
+                    std::reverse(path.begin(), path.end());
+                    uint64_t th = this->getThroughput(path);
+
+                    if(this->perfToArea.find(th) == this->perfToArea.end()) {
+                        this->perfToArea[th] = std::vector<bool>(this->arch->getNumCores(), false);
+                    }
+
+                    this->perfToArea[th].at(area-1) = true;
+
+
+                    //throughput << area << " " << th << "\n";
+                    //latency << area << " " << lat << "\n";
+                }
+            } else {
+                std::vector<ModelParams> nPath = path;
+                nPath.push_back(node->params);
+                for(Node_t* n : node->ins) {
+                    dfsRecFast(n, nPath, loc-1, throughput, latency);
+                }
+            }
+        }
+
         void DataflowExplorer::dfsRec(Node_t* node, std::vector<ModelParams> path, uint64_t loc,
                                       std::ofstream &throughput, std::ofstream &latency) {
             if(loc == 0) {
@@ -1104,8 +1158,16 @@ namespace xilinx {
                 if(area > this->arch->getNumCores()) {
                     return;
                 } else {
+                    std::reverse(path.begin(), path.end());
                     uint64_t th = this->getThroughput(path);
                     uint64_t lat = this->getEndToEndLatency(path);
+
+                    llvm::outs() << "\n======================\n";
+                    llvm::outs() << "Size: " << pathArea(path) << "\n";
+                    llvm::outs() << "Throughput: " << th << "\n";
+                    for(ModelParams p: path) {
+                        p.print();
+                    }
 
                     throughput << area << " " << th << "\n";
                     latency << area << " " << lat << "\n";
@@ -1119,21 +1181,46 @@ namespace xilinx {
             }
         }
 
-        void DataflowExplorer::dfs() {
+        void DataflowExplorer::dfs(bool full) {
+            this->dumpMacs();
+
             std::ofstream throughput;
             throughput.open("./output/throughputs.csv", std::ios::out);
 
             std::ofstream latency;
             latency.open("./output/latency.csv", std::ios::out);
 
-            assert(this->pathGraph.at(this->pathGraph.size()-1).size() == 0);
+            throughput << "Area Throughput\n";
+            latency << "Area Latency\n";
+
+            llvm::outs() << "PathGraphSize! " << this->pathGraph.size() << "\n";
+
+            assert(this->pathGraph.at(this->pathGraph.size()-1).size() == 1);
             Node_t* sink = this->pathGraph.at(this->pathGraph.size()-1).at(0);
             for(Node_t* node : sink->ins) {
-                dfsRec(node, std::vector<ModelParams>(), this->pathGraph.size() - 2, throughput, latency);
+                node->params.print();
+                if(full) {
+                    dfsRec(node, std::vector<ModelParams>(), this->pathGraph.size() - 2, throughput, latency);
+                } else {
+                    dfsRecFast(node, std::vector<ModelParams>(), this->pathGraph.size() - 2, throughput, latency);
+                }
+            }
+
+            if(!full) {
+                std::map<uint64_t, std::vector<bool>>::iterator it;
+
+                for(it = this->perfToArea.begin(); it != this->perfToArea.end(); it++) {
+                    for(unsigned int i = 0; i < this->arch->getNumCores(); i++) {
+                        if(it->second.at(i)) {
+                            throughput << i << " " << it->first+1 << "\n";
+                        }
+                    }
+                }
             }
 
             throughput.close();
             latency.close();
+
         }
     }
 }
