@@ -66,7 +66,6 @@ class LinalgCopyToAIRDmaConversion : public OpRewritePattern<linalg::CopyOp> {
     auto src = op.input();
     auto dst = op.output();
     auto src_type = src.getType().cast<MemRefType>();
-    auto dst_type = src.getType().cast<MemRefType>();
     auto dims = src_type.getShape().size();
 
     SmallVector<Value, 4> src_indices;
@@ -402,7 +401,9 @@ public:
 
   LogicalResult matchAndRewrite(scf::ParallelOp op,
                                 PatternRewriter &rewriter) const override {
-    normalizeScfParallel(op, rewriter);
+    if (failed(normalizeScfParallel(op, rewriter)))
+      return failure();
+  
     if (op.getNumLoops() == 2) {
       auto loc = op.getLoc();
       auto lb0 = dyn_cast<ConstantIndexOp>(op.lowerBound()[0].getDefiningOp());
@@ -599,7 +600,8 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
       f.walk([&](Operation *op) {
         if (auto co = dyn_cast<CallOp>(op)) {
           if (co.getCallee().startswith("air_dma_copy")) {
-            lowerDma(co.getCallee(), co);
+            if (failed(lowerDma(co.getCallee(), co)))
+              LLVM_DEBUG(llvm::outs() << "Failed to lower 'air_dma_copy'\n");
           }
         }
       });

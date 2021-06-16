@@ -83,7 +83,7 @@ namespace xilinx {
                 }
 
                 for(uint64_t i = 0; i < into; i++) {
-                    assert(vects.at(i).size() == (at.getType().getNumElements() / into));
+                    assert(vects.at(i).size() == (size_t)(at.getType().getNumElements() / into));
                 }
 
                 ShapedType ttype = breakShapeInto(initialShape, loc, into);
@@ -146,7 +146,7 @@ namespace xilinx {
                 }
 
                 for(uint64_t i = 0; i < into; i++) {
-                    assert(vects.at(i).size() == (at.getType().getNumElements() / into));
+                    assert(vects.at(i).size() == (size_t)(at.getType().getNumElements() / into));
                 }
 
                 ShapedType ttype = breakShapeInto(initialShape, loc, into);
@@ -186,7 +186,7 @@ namespace xilinx {
                 }
 
                 for(uint64_t i = 0; i < vects.size(); i++) {
-                    assert(vects.at(i).size() == ((loc == 0) ? at.getType().getNumElements() / into : at.getType().getNumElements()));
+                    assert(vects.at(i).size() == (size_t)((loc == 0) ? at.getType().getNumElements() / into : at.getType().getNumElements()));
                 }
 
                 // now splitted the dense in into parts, need to regenerate it
@@ -229,6 +229,7 @@ namespace xilinx {
                     return 2;
                 }
             }
+            return (unsigned int )-1;
         }
 
         void splitConstantInto(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into) {

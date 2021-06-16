@@ -73,7 +73,7 @@ public:
     auto identMap = rewriter.getMultiDimIdentityMap(rank);
     SmallVector<AffineMap, 4> indexMap(3, identMap);
 
-    auto linalgOp = rewriter.create<linalg::GenericOp>(
+    /*auto linalgOp =*/ rewriter.create<linalg::GenericOp>(
       loc, ArrayRef<Type>(), inputTensors, outputTensors, indexMap,
       SmallVector<StringRef>(rank, getParallelIteratorTypeName()),
       "", static_cast<const T*>(this)->getDefaultLibraryFunc(),

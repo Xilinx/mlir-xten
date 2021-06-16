@@ -708,7 +708,7 @@ namespace xilinx {
                 llvm::outs() << "nStart = " << nStartLineTile << ", nEnd: " << nEndLineTile << "\n";
 
                 std::vector<std::string> wantLines;
-                for(int64_t i = std::max(endLineTile+1, nStartLineTile); i <= nEndLineTile; i++) {
+                for(uint64_t i = std::max(endLineTile+1, nStartLineTile); i <= nEndLineTile; i++) {
                     if((i - highestLocTile - 1) >= 0) {
                         unsigned int target = (i - highestLocTile - 1) % WPrev;
                         //llvm::outs() << "want At: " << target << "\n";
@@ -739,6 +739,7 @@ namespace xilinx {
                             unsigned int concatP = (unsigned int)-1;
                             bool isPConcat = true;
                             for(auto o : concat.getOperands()) {
+                                (void)o;
                                 //Operation* concatArg = o.getDefiningOp();
                                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
                                 unsigned int locP = getAttrOrDefault(op, "locP", 0);

@@ -20,7 +20,7 @@ using namespace mlir;
 
 namespace {
 
-LogicalResult CpuLibDemangle(ModuleOp op)
+void CpuLibDemangle(ModuleOp op)
 {
   std::map<std::string, std::string> nameMap;
   for (auto function : op.getOps<mlir::LLVM::LLVMFuncOp>()) {
@@ -87,7 +87,6 @@ LogicalResult CpuLibDemangle(ModuleOp op)
       }
     });
   }
-  return success();
 }
 
 //#include "LowerToLibATen.cpp.inc"

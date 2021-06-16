@@ -439,6 +439,7 @@ namespace xilinx {
             uint64_t totalCompute = 0;
             uint64_t layerId = 0;
             for(AbsOpWrapper* wrapped : this->layerNameToOps) {
+                (void)wrapped;
                 //Operation* op = wrapped->getUnderlyingOperation();
                 uint64_t macs = this->layerNameToSize[layerId]["macs"];
                 totalCompute += macs;

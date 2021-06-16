@@ -277,8 +277,6 @@ public:
     Value dVal(MemRefTypeCast(rewriter, operands[3]));
     Value eVal(MemRefTypeCast(rewriter, operands[4]));
 
-    auto f32Ty = FloatType::getF32(op->getContext());
-
     std::vector<Value> callops{aVal, bVal, cVal, dVal, eVal,
                              operands[5], operands[6], operands[7], operands[8]};
 
