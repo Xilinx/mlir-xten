@@ -206,6 +206,50 @@ public:
     return success();
   }
 };
+class AIRPartialConv2dReLUOpConversion : public ConversionPattern {
+public:
+  explicit AIRPartialConv2dReLUOpConversion(MLIRContext *context)
+      : ConversionPattern(air::PartialConv2dReLUOp::getOperationName(), 1, context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value > operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto mmult = cast<air::PartialConv2dReLUOp>(op);
+    auto loc = mmult.getLoc();
+
+    edsc::ScopedContext scope(rewriter, loc);
+
+    auto A = MemRefTypeCast(rewriter, operands[0]);
+    auto B = MemRefTypeCast(rewriter, mmult.weight());
+
+    auto resultTy = op->getResult(0).getType();
+    auto tensorResultTy = resultTy.cast<TensorType>();
+    auto memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
+                                                tensorResultTy.getElementType(),
+                                                {}, 0);
+
+    Value C;
+    if(mmult.PartialIn()) {
+      C = mmult.PartialIn();
+    } else {
+      C = rewriter.create<memref::AllocOp>(loc, memRefResultTy).getResult();
+    }
+
+    rewriter.create<linalg::ConvNCHWOp>(loc, ValueRange{A, B}, ValueRange{C});
+
+    auto tensor_cast
+      = rewriter.create<NPCOMP::aten::TypeCastOp>(loc,
+                                                  tensorResultTy,
+                                                  C);
+
+    if(mmult.getNumResults() == 1)
+      rewriter.replaceOp(op, tensor_cast.getResult());
+    else
+      rewriter.replaceOp(op, {tensor_cast.getResult(), operands[0]});
+
+    return success();
+  }
+};
 
 class AIRToLinalgPass : public PassWrapper<AIRToLinalgPass,
                                            OperationPass<ModuleOp>> {
@@ -233,7 +277,8 @@ public:
     patterns.insert<AIRMMOpConversion,
                     AIRAddOpConversion,
                     AIRMulOpConversion,
-                    AIRConv2dOpConversion>(context);
+                    AIRConv2dOpConversion,
+                    AIRPartialConv2dReLUOpConversion>(context);
 
     // populateFuncOpTypeConversionPattern(patterns,
     //                                     context,
