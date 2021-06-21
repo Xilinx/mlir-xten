@@ -8,6 +8,7 @@
 #include "mlir/Dialect/Affine/EDSC/Builders.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Linalg/IR/LinalgOps.h"
+#include "mlir/Dialect/Linalg/Transforms/CodegenStrategy.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/SCF/EDSC/Builders.h"
@@ -23,6 +24,7 @@
 #include "mlir/Parser.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/Transforms/RegionUtils.h"
 
 #include "llvm/ADT/DenseSet.h"
@@ -608,10 +610,8 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
     }
 
     // tablegen patterns
-    OwningRewritePatternList patterns(&getContext());
+    OwningRewritePatternList patterns(context);
     patterns.insert<AffineParToHerdLaunchConversion,
-                    AffineCopyToAIRDMAConversion,
-                    LinalgCopyToAIRDmaConversion,
                     ScfParToHerdLaunchConversion>(context);
 
     populateWithGenerated(patterns);
@@ -635,6 +635,22 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
     DmaMemcpyOpID = 0;
 
     if (failed(applyPartialConversion(module, target, std::move(patterns)))) {
+      emitError(UnknownLoc::get(context), "error\n");
+      signalPassFailure();
+      assert(0);
+    }
+
+    // Simplify all the subviews so we can rewrite them easily.
+    // Mostly this is propagating constant sizes into dimensioned memref types.
+    OwningRewritePatternList stage2Patterns =
+      linalg::getLinalgTilingCanonicalizationPatterns(context);
+    memref::AllocOp::getCanonicalizationPatterns(stage2Patterns, context);
+    (void)applyPatternsAndFoldGreedily(module, std::move(stage2Patterns));
+
+    OwningRewritePatternList stage3Patterns(context);
+    stage3Patterns.insert<AffineCopyToAIRDMAConversion,
+                   LinalgCopyToAIRDmaConversion>(context);
+    if (failed(applyPartialConversion(module, target, std::move(stage3Patterns)))) {
       emitError(UnknownLoc::get(context), "error\n");
       signalPassFailure();
       assert(0);
