@@ -176,6 +176,15 @@ public:
     SmallVector<Type,1> tys;
     SmallVector<Value,1> deps;
     Operation *dma = nullptr;
+    Value stride;
+    Value elem_per_stride;
+    if (affine_dma_start.isStrided()) {
+      stride = affine_dma_start.getStride();
+      elem_per_stride = affine_dma_start.getNumElementsPerStride();
+    }
+    else {
+      stride = elem_per_stride = affine_dma_start.getNumElements();
+    }
     if (dims == 1) {
       dma = rewriter.create<air::DmaMemcpyOp>(op->getLoc(), tys,
                                               deps, dst, src,
@@ -184,22 +193,25 @@ public:
                                               affine_dma_start.getNumElements());
     }
     else if (dims == 2) {
-      Value stride;
-      Value elem_per_stride;
-      if (affine_dma_start.isStrided()) {
-        stride = affine_dma_start.getStride();
-        elem_per_stride = affine_dma_start.getNumElementsPerStride();
-      }
-      else {
-        stride = elem_per_stride = affine_dma_start.getNumElements();
-      }
-
       dma = rewriter.create<air::DmaMemcpy2dOp>(op->getLoc(), tys,
                                                 deps, dst, src,
                                                 dst_applies[0], dst_applies[1],
                                                 src_applies[0], src_applies[1],
                                                 affine_dma_start.getNumElements(),
                                                 stride, elem_per_stride);
+    }
+    else if (dims == 4) {
+      dma = rewriter.create<air::DmaMemcpy4dOp>(op->getLoc(), tys,
+                                                deps, dst, src,
+                                                dst_applies[0], dst_applies[1], dst_applies[2], dst_applies[3],
+                                                src_applies[0], src_applies[1], src_applies[2], src_applies[3],
+                                                affine_dma_start.getNumElements(),
+                                                stride, elem_per_stride);
+    }
+    else {
+      llvm::outs() << "unsupported memcpy in affine-to-air";
+      op->print(llvm::outs());
+      return failure();
     }
     dma->setAttr("id",
                  mlir::IntegerAttr::get(mlir::IntegerType::get(op->getContext(), 32),
@@ -624,6 +636,7 @@ struct AffineToAIRPass : public PassWrapper<AffineToAIRPass,
 
     target.addLegalOp<xilinx::air::DmaMemcpyOp>();
     target.addLegalOp<xilinx::air::DmaMemcpy2dOp>();
+    target.addLegalOp<xilinx::air::DmaMemcpy4dOp>();
     target.addLegalOp<xilinx::air::HerdLaunchOp>();
 
     target.addLegalOp<AffineApplyOp,
