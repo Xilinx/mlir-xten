@@ -32,6 +32,14 @@
 // TODO fix padding assumption for first layer when channels are not 8
 // TODO Many to one communication and memory when W is there is not taken into account too well
 
+static unsigned int getElementWidth(ShapedType tensorType, bool forceINT8) {
+    if(forceINT8) {
+        return 1;
+    } else {
+        return (tensorType.getElementTypeBitWidth() / 8);
+    }
+}
+
 namespace xilinx {
     namespace air {
         std::map<std::string, uint64_t> getStats(Operation* op) {

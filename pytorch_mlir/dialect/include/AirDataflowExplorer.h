@@ -16,14 +16,6 @@ namespace mlir {
 
 namespace xilinx {
     namespace air {
-        static unsigned int getElementWidth(ShapedType tensorType, bool forceINT8) {
-            if(forceINT8) {
-                return 1;
-            } else {
-                return (tensorType.getElementTypeBitWidth() / 8);
-            }
-        }
-
         class PathInfo_t {
         public:
             std::vector<ModelParams> path;
