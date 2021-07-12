@@ -8,7 +8,7 @@
 #include "mlir/IR/PatternMatch.h"
 
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "AirName.h"
+#include "AIRName.h"
 
 #include <iostream>
 
@@ -79,14 +79,14 @@ namespace xilinx {
 
 namespace xilinx {
     namespace air {
-        std::unique_ptr<mlir::Pass> createAirNamePass() {
+        std::unique_ptr<mlir::Pass> createAIRNamePass() {
             return std::make_unique<AIRNamePass>();
         }
 
     } // namespace aten
 } // namespace xilinx
 
-void xilinx::air::registerAirNamePass() {
+void xilinx::air::registerAIRNamePass() {
     PassRegistration<AIRNamePass>("air-name-layers",
                                   "Give a unique name to all compute layers of a NN");
 }

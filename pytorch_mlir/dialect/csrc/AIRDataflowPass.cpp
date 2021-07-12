@@ -8,10 +8,10 @@
 #include "mlir/IR/PatternMatch.h"
 
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "AirDataflow.h"
+#include "AIRDataflow.h"
 #include "AIRDialect.h"
-#include "AirDataflowUtils.h"
-#include "AirDataflowExplorer.h"
+#include "AIRDataflowUtils.h"
+#include "AIRDataflowExplorer.h"
 
 #include <iostream>
 #include <vector>
@@ -38,7 +38,7 @@ using namespace mlir;
 namespace xilinx {
     namespace air {
 
-        struct AirDataflowPass : public PassWrapper<AirDataflowPass, OperationPass<ModuleOp>> {
+        struct AIRDataflowPass : public PassWrapper<AIRDataflowPass, OperationPass<ModuleOp>> {
         private:
             // TODO make the second thing here a map from id based on model params to AbsOpWrapper
             std::map<std::string, std::vector<AbsOpWrapper*>> layerNameToOps;
@@ -46,7 +46,7 @@ namespace xilinx {
             std::vector<std::string> layerOrdering; // TODO remove this field
 
         public:
-            AirDataflowPass() {}
+            AIRDataflowPass() {}
 
             AbsOpWrapper* opToWrapper(Operation* op) {
                 if(auto conv = llvm::dyn_cast<Conv2dReLUOp>(op)) {
@@ -1239,15 +1239,15 @@ namespace xilinx {
 
 namespace xilinx {
     namespace air {
-        std::unique_ptr<mlir::Pass> createAirDataflowPass() {
-            return std::make_unique<AirDataflowPass>();
+        std::unique_ptr<mlir::Pass> createAIRDataflowPass() {
+            return std::make_unique<AIRDataflowPass>();
         }
 
     } // namespace aten
 } // namespace xilinx
 
-void xilinx::air::registerAirDataflowPass() {
-    PassRegistration<AirDataflowPass>("air-expand-graph",
+void xilinx::air::registerAIRDataflowPass() {
+    PassRegistration<AIRDataflowPass>("air-expand-graph",
                                       "Dataflow expansion of ATen NN graph towards AIE implementation");
 }
 

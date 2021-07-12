@@ -1,5 +1,5 @@
-#include "AirOpWrapper.h"
-#include "AirDataflowConsts.h"
+#include "AIROpWrapper.h"
+#include "AIRDataflowConsts.h"
 
 #include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
 

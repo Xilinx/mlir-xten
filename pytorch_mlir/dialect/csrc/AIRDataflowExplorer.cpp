@@ -3,7 +3,7 @@
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/Pass/Pass.h"
 
-#include "AirDataflowExplorer.h"
+#include "AIRDataflowExplorer.h"
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "AIRDialect.h"
 

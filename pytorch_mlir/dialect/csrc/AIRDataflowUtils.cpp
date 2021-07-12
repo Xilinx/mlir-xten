@@ -2,8 +2,8 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OperationSupport.h"
 
-#include "AirDataflowUtils.h"
-#include "AirDataflowConsts.h"
+#include "AIRDataflowUtils.h"
+#include "AIRDataflowConsts.h"
 
 #define DEBUG_TYPE "air-dataflow-utils"
 

@@ -10,8 +10,8 @@ namespace mlir {
 namespace xilinx {
     namespace air {
 
-        std::unique_ptr<mlir::Pass> createAirDataflowPass();
-        void registerAirDataflowPass();
+        std::unique_ptr<mlir::Pass> createAIRDataflowPass();
+        void registerAIRDataflowPass();
 
     }
 }

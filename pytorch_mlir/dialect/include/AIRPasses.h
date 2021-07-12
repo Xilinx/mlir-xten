@@ -10,8 +10,8 @@
 #include "AIRToAIEPass.h"
 #include "AIRToLinalgPass.h"
 #include "AIRLinalgCodegen.h"
-#include "AirDataflow.h"
-#include "AirName.h"
+#include "AIRDataflow.h"
+#include "AIRName.h"
 
 namespace xilinx {
   namespace air {

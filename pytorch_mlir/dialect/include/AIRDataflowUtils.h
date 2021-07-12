@@ -6,8 +6,8 @@
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 
 #include "AIRDialect.h"
-#include "AirOpWrapper.h"
-#include "AirDataflowConsts.h"
+#include "AIROpWrapper.h"
+#include "AIRDataflowConsts.h"
 
 using namespace mlir;
 
