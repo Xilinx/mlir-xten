@@ -12,6 +12,9 @@
 #include "AIRLinalgCodegen.h"
 #include "AIRDataflow.h"
 #include "AIRName.h"
+#include "AIRAutomaticTilingPass.h"
+#include "AIRRegularizeLoopPass.h"
+#include "AIRLoopPermutationPass.h"
 
 namespace xilinx {
   namespace air {

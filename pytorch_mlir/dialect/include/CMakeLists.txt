@@ -42,6 +42,7 @@ mlir_tablegen(ATenPasses.h.inc -gen-pass-decls)
 add_public_tablegen_target(MLIRATenPassIncGen)
 
 add_mlir_doc(ATenPasses ConversionPasses ./ -gen-pass-doc)
+add_mlir_doc(AIRPasses AIRPasses ./ -gen-pass-doc)
 
 set(LLVM_TARGET_DEFINITIONS AIRToLinalg.td)
 mlir_tablegen(AIRToLinalg.cpp.inc -gen-rewriters)

@@ -8,6 +8,8 @@ set(LLVM_OPTIONAL_SOURCES
   AcapOutliner.cpp
   AffineLoopOptPass.cpp
   AIRAutomaticTilingPass.cpp
+  AIRRegularizeLoopPass.cpp
+  AIRLoopPermutationPass.cpp
   ATenDialect.cpp
   AIRDialect.cpp
   AIRLoweringPass.cpp
@@ -39,6 +41,8 @@ add_mlir_library(ATen
   AcapOutliner.cpp
   AffineLoopOptPass.cpp
   AIRAutomaticTilingPass.cpp
+  AIRRegularizeLoopPass.cpp
+  AIRLoopPermutationPass.cpp
   ATenDialect.cpp
   AIRDialect.cpp
   AIRRtDialect.cpp
