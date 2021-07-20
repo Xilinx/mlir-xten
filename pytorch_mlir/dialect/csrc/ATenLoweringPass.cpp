@@ -1404,8 +1404,13 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
         auto tc = dyn_cast<NPCOMP::aten::TypeCastOp>(op);
         if (!tc)
           return;
+        // remove noop casts
         if (tc.getType() == tc.getOperand().getType())
           tc.replaceAllUsesWith(tc.getOperand());
+        // remove cast if the tensor was the load of a memref
+        else if (auto o = tc.getOperand().getDefiningOp())
+          if (auto tl = dyn_cast<memref::TensorLoadOp>(o))
+            tc.replaceAllUsesWith(tl.getOperand());
         if (op->use_empty())
           op->erase();
       });

@@ -70,6 +70,8 @@ void CpuLibDemangle(ModuleOp op)
       new_name = name + "_" + new_name;
 
     nameMap[old_name] = new_name;
+    while (op.lookupSymbol(new_name))
+      new_name = new_name + "_";
     function.setName(new_name);
   }
 
