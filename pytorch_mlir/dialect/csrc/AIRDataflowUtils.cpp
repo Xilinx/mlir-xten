@@ -281,7 +281,7 @@ namespace xilinx {
             ValueRange valuesRange(valuesRef);
 
             Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
-            Operation* res = builder.create<xilinx::air::ConcatOp>(builder.getUnknownLoc(), prevResType, valuesRange, cstDim->getResult(0));
+            Operation* res = builder.create<xilinx::xten::ConcatOp>(builder.getUnknownLoc(), prevResType, valuesRange, cstDim->getResult(0));
             if(clearPrev) {
                 // Replace output of old convolution usage by concat value
                 prevRes.replaceAllUsesWith(res->getResult(0));
@@ -303,7 +303,7 @@ namespace xilinx {
             }
         }
 
-        void replaceSplit(OpBuilder &builder, xilinx::air::SplitOp split, std::vector<Value> &values,
+        void replaceSplit(OpBuilder &builder, xilinx::xten::SplitOp split, std::vector<Value> &values,
                           std::vector<Operation*> &toDelete, unsigned int dim) {
             unsigned int into = values.size();
             llvm::outs() << "Split number of operands: " << split.getNumOperands() << "\n";
@@ -328,7 +328,7 @@ namespace xilinx {
                     } else {
                         ArrayRef<Value> af = ArrayRef<Value>(values);
                         Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
-                        Operation* splitOp = builder.create<xilinx::air::SplitOp>(builder.getUnknownLoc(), TypeRange(af), values.at(i), cstDim->getResult(0));
+                        Operation* splitOp = builder.create<xilinx::xten::SplitOp>(builder.getUnknownLoc(), TypeRange(af), values.at(i), cstDim->getResult(0));
                         for(unsigned int j = 0; j < shouldHandle; j++) {
                             split.getResult(consumed).replaceAllUsesWith(splitOp->getResult(j));
                             consumed++;
@@ -341,7 +341,7 @@ namespace xilinx {
 
         }
 
-        void replaceConcat(OpBuilder &builder, xilinx::air::ConcatOp concat, std::vector<Value> &nInputs,
+        void replaceConcat(OpBuilder &builder, xilinx::xten::ConcatOp concat, std::vector<Value> &nInputs,
                            std::vector<Operation*> &toDelete, unsigned int dim, unsigned int into) {
             if(into == (concat.getNumOperands() - 1)) { // because there is the dim argument as well
                 for(unsigned int i = 0; i < into; i++) {
@@ -373,7 +373,7 @@ namespace xilinx {
                         ArrayRef<Value> af = ArrayRef<Value>(values);
 
                         Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
-                        Operation* res = builder.create<xilinx::air::ConcatOp>(builder.getUnknownLoc(), nShape, ValueRange(af), cstDim->getResult(0));
+                        Operation* res = builder.create<xilinx::xten::ConcatOp>(builder.getUnknownLoc(), nShape, ValueRange(af), cstDim->getResult(0));
 
                         nInputs.push_back(res->getResult(0));
                     }

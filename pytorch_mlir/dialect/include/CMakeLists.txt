@@ -11,6 +11,10 @@ add_mlir_dialect(AIRRtOps airrt)
 set(LLVM_TARGET_DEFINITIONS AIRRtOps.td)
 add_public_tablegen_target(MLIRAIRRtIncGen)
 
+add_mlir_dialect(XTenOps xten)
+set(LLVM_TARGET_DEFINITIONS XTenOps.td)
+add_public_tablegen_target(MLIRXTenIncGen)
+
 set(LLVM_TARGET_DEFINITIONS AIROpBase.td)
 mlir_tablegen(AIROpInterfaces.h.inc -gen-op-interface-decls)
 mlir_tablegen(AIROpInterfaces.cpp.inc -gen-op-interface-defs)
@@ -51,7 +55,6 @@ add_public_tablegen_target(MLIRAIRToLinalgIncGen)
 set(LLVM_TARGET_DEFINITIONS AIRPasses.td)
 mlir_tablegen(AIRPasses.h.inc -gen-pass-decls)
 add_public_tablegen_target(MLIRAIRPassIncGen)
-
 
 set(LLVM_TARGET_DEFINITIONS AIRRtPasses.td)
 mlir_tablegen(AIRRtPasses.h.inc -gen-pass-decls)

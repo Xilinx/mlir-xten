@@ -1,6 +1,9 @@
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
 #include "AIRDialect.h"
+#include "XTenDialect.h"
+#include "XTenOps.h"
+
 #include "Util.h"
 
 #include "llvm/Support/Debug.h"
@@ -194,19 +197,19 @@ std::map<std::string, uint64_t> getConv2dStatistics(T o) {
 }
 
 template<>
-std::map<std::string, uint64_t> getConv2dStatistics<xilinx::air::PartialConv2dOp>(xilinx::air::PartialConv2dOp o) {
+std::map<std::string, uint64_t> getConv2dStatistics<xilinx::xten::PartialConv2dOp>(xilinx::xten::PartialConv2dOp o) {
     TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
     return getConv2dStatisticsWithType(o, resultType);
 }
 
 template<>
-std::map<std::string, uint64_t> getConv2dStatistics<xilinx::air::PartialConv2dReLUOp>(xilinx::air::PartialConv2dReLUOp o) {
+std::map<std::string, uint64_t> getConv2dStatistics<xilinx::xten::PartialConv2dReLUOp>(xilinx::xten::PartialConv2dReLUOp o) {
     TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
     return getConv2dStatisticsWithType(o, resultType);
 }
 
 template<>
-std::map<std::string, uint64_t> getConv2dStatistics<xilinx::air::PartialConv2dBatchNormReLUOp>(xilinx::air::PartialConv2dBatchNormReLUOp o) {
+std::map<std::string, uint64_t> getConv2dStatistics<xilinx::xten::PartialConv2dBatchNormReLUOp>(xilinx::xten::PartialConv2dBatchNormReLUOp o) {
     TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
     return getConv2dStatisticsWithType(o, resultType);
 }
@@ -220,19 +223,19 @@ uint64_t getConv2dOperandTransferVolume(T o, unsigned int idx, bool read) {
 }
 
 template<>
-uint64_t getConv2dOperandTransferVolume<xilinx::air::PartialConv2dOp>(xilinx::air::PartialConv2dOp o, unsigned int idx, bool read) {
+uint64_t getConv2dOperandTransferVolume<xilinx::xten::PartialConv2dOp>(xilinx::xten::PartialConv2dOp o, unsigned int idx, bool read) {
     TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
     return getConv2dOperandTransferVolumeWithType(o, idx, read, resultType);
 }
 
 template<>
-uint64_t getConv2dOperandTransferVolume<xilinx::air::PartialConv2dReLUOp>(xilinx::air::PartialConv2dReLUOp o, unsigned int idx, bool read) {
+uint64_t getConv2dOperandTransferVolume<xilinx::xten::PartialConv2dReLUOp>(xilinx::xten::PartialConv2dReLUOp o, unsigned int idx, bool read) {
     TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
     return getConv2dOperandTransferVolumeWithType(o, idx, read, resultType);
 }
 
 template<>
-uint64_t getConv2dOperandTransferVolume<xilinx::air::PartialConv2dBatchNormReLUOp>(xilinx::air::PartialConv2dBatchNormReLUOp o, unsigned int idx, bool read) {
+uint64_t getConv2dOperandTransferVolume<xilinx::xten::PartialConv2dBatchNormReLUOp>(xilinx::xten::PartialConv2dBatchNormReLUOp o, unsigned int idx, bool read) {
     TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
     return getConv2dOperandTransferVolumeWithType(o, idx, read, resultType);
 }
@@ -245,19 +248,19 @@ uint64_t  getConv2dResultTransferVolume(T o, unsigned int idx, bool write) {
 }
 
 template<>
-uint64_t getConv2dResultTransferVolume<xilinx::air::PartialConv2dOp>(xilinx::air::PartialConv2dOp o, unsigned int idx, bool write) {
+uint64_t getConv2dResultTransferVolume<xilinx::xten::PartialConv2dOp>(xilinx::xten::PartialConv2dOp o, unsigned int idx, bool write) {
     TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
     return getConv2dResultTransferVolumeWithType(o, idx, write, resultType);
 }
 
 template<>
-uint64_t getConv2dResultTransferVolume<xilinx::air::PartialConv2dReLUOp>(xilinx::air::PartialConv2dReLUOp o, unsigned int idx, bool write) {
+uint64_t getConv2dResultTransferVolume<xilinx::xten::PartialConv2dReLUOp>(xilinx::xten::PartialConv2dReLUOp o, unsigned int idx, bool write) {
     TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
     return getConv2dResultTransferVolumeWithType(o, idx, write, resultType);
 }
 
 template<>
-uint64_t getConv2dResultTransferVolume<xilinx::air::PartialConv2dBatchNormReLUOp>(xilinx::air::PartialConv2dBatchNormReLUOp o, unsigned int idx, bool write) {
+uint64_t getConv2dResultTransferVolume<xilinx::xten::PartialConv2dBatchNormReLUOp>(xilinx::xten::PartialConv2dBatchNormReLUOp o, unsigned int idx, bool write) {
     TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
     return getConv2dResultTransferVolumeWithType(o, idx, write, resultType);
 }
@@ -266,7 +269,7 @@ uint64_t getConv2dResultTransferVolume<xilinx::air::PartialConv2dBatchNormReLUOp
 } // namespace
 
 namespace xilinx {
-namespace air {
+namespace xten {
 
 // acap conv2d bn relu
 

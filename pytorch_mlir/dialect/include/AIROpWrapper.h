@@ -8,7 +8,7 @@
 
 #include "mlir/IR/PatternMatch.h"
 
-#include "AIRDialect.h"
+#include "XTenOps.h"
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 
 #include "Arch.h"
@@ -21,6 +21,9 @@
 // NOTE this may also be an easy to use that on top of ONNX or ATen transparently
 
 // TODO whenever we generate something it will always be generating the partial version of the corresponding convolution?
+
+using namespace mlir;
+using namespace xilinx::xten;
 
 namespace xilinx {
     namespace air {

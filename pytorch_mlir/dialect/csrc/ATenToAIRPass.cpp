@@ -1,6 +1,8 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "AIRDialect.h"
+#include "XTenDialect.h"
+#include "XTenOps.h"
+
 #include "ATenToAIRPass.h"
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
@@ -49,7 +51,7 @@ struct ATenToAIRPass : public PassWrapper<ATenToAIRPass,
                                           OperationPass<ModuleOp>> {
 
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
-     registry.insert<xilinx::air::airDialect>();
+     registry.insert<xilinx::xten::XTenDialect>();
      registry.insert<memref::MemRefDialect>();
   }
 
@@ -68,10 +70,10 @@ struct ATenToAIRPass : public PassWrapper<ATenToAIRPass,
     target.addLegalDialect<AffineDialect, LLVM::LLVMDialect,
                            StandardOpsDialect, scf::SCFDialect>();
 
-    target.addLegalOp<xilinx::air::Conv2dBatchNormReLUOp>();
-    target.addLegalOp<xilinx::air::Conv2dReLUOp>();
-    target.addLegalOp<xilinx::air::Conv2dOp>();
-    target.addLegalOp<xilinx::air::NoOp>();
+    target.addLegalOp<xilinx::xten::Conv2dBatchNormReLUOp>();
+    target.addLegalOp<xilinx::xten::Conv2dReLUOp>();
+    target.addLegalOp<xilinx::xten::Conv2dOp>();
+    target.addLegalOp<xilinx::xten::NoOp>();
     if (failed(applyPatternsAndFoldGreedily(module, /*target,*/ std::move(fusionPatterns)))) {
       emitError(UnknownLoc::get(context), "error fusing ATen\n");
       signalPassFailure();

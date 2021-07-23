@@ -1,23 +1,16 @@
-//===----------------------------------------------------------------------===//
-//
-// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-//
-//===----------------------------------------------------------------------===//
+// (c) Copyright 2021 Xilinx Inc. All Rights Reserved.
 
-#include "AIRRtDialect.h"
+#include "XTenDialect.h"
 #include "mlir/IR/DialectImplementation.h"
-#include "AIRRtOps.h"
+#include "XTenOps.h"
 #include "llvm/ADT/TypeSwitch.h"
 
 using namespace mlir;
-using namespace xilinx::airrt;
+using namespace xilinx::xten;
 
-void AIRRtDialect::initialize() {
+void XTenDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
-#include "AIRRtOps.cpp.inc"
+#include "XTenOps.cpp.inc"
       >();
-  addTypes<TensorType>();
 }

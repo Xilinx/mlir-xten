@@ -30,6 +30,9 @@ set(LLVM_OPTIONAL_SOURCES
   AIRRtDialect.cpp
   AIRRtOps.cpp
   AIRRtToLLVMPass.cpp
+  XTenDialect.cpp
+  XTenOps.cpp
+
   )
 
 add_mlir_library(ATen
@@ -45,8 +48,6 @@ add_mlir_library(ATen
   AIRLoopPermutationPass.cpp
   ATenDialect.cpp
   AIRDialect.cpp
-  AIRRtDialect.cpp
-  AIRRtOps.cpp
   AIRLoweringPass.cpp
   ATenDialectOpStats.cpp
   ATenLoweringPass.cpp
@@ -70,6 +71,8 @@ add_mlir_library(ATen
   AIRRtDialect.cpp
   AIRRtOps.cpp
   AIRRtToLLVMPass.cpp
+  XTenDialect.cpp
+  XTenOps.cpp
 
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/dialect/include

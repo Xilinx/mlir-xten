@@ -2,8 +2,6 @@
 
 #include "AIRToLinalgPass.h"
 
-#include "AIRDialect.h"
-
 #include "mlir/Dialect/Linalg/EDSC/Intrinsics.h"
 #include "mlir/Dialect/Linalg/IR/LinalgOps.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
@@ -15,6 +13,9 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
+
+#include "XTenDialect.h"
+#include "XTenOps.h"
 
 #define DEBUG_TYPE "air-to-affine-pass"
 
@@ -44,9 +45,9 @@ Value MemRefTypeCast(PatternRewriter &builder, Value val) {
 }
 
 template <class T>
-class AIRBinaryOpConversion : public ConversionPattern {
+class XTenBinaryOpConversion : public ConversionPattern {
 public:
-  AIRBinaryOpConversion(StringRef rootName, PatternBenefit benefit, MLIRContext *ctx)
+  XTenBinaryOpConversion(StringRef rootName, PatternBenefit benefit, MLIRContext *ctx)
       : ConversionPattern(rootName, benefit, ctx) {}
 
   LogicalResult
@@ -97,10 +98,10 @@ public:
   }
 };
 
-class AIRAddOpConversion : public AIRBinaryOpConversion<AIRAddOpConversion> {
+class XTenAddOpConversion : public XTenBinaryOpConversion<XTenAddOpConversion> {
 public:
-  explicit AIRAddOpConversion(MLIRContext *context)
-      : AIRBinaryOpConversion(air::AddOp::getOperationName(), 1, context) {}
+  explicit XTenAddOpConversion(MLIRContext *context)
+      : XTenBinaryOpConversion(xten::AddOp::getOperationName(), 1, context) {}
 
   StringRef getDefaultLibraryFunc() const {
       return "air_add_op";
@@ -116,10 +117,10 @@ public:
   }
 };
 
-class AIRMulOpConversion : public AIRBinaryOpConversion<AIRMulOpConversion> {
+class XTenMulOpConversion : public XTenBinaryOpConversion<XTenMulOpConversion> {
 public:
-  explicit AIRMulOpConversion(MLIRContext *context)
-      : AIRBinaryOpConversion(air::MulOp::getOperationName(), 1, context) {}
+  explicit XTenMulOpConversion(MLIRContext *context)
+      : XTenBinaryOpConversion(xten::MulOp::getOperationName(), 1, context) {}
 
   StringRef getDefaultLibraryFunc() const {
       return "air_mul_op";
@@ -135,15 +136,15 @@ public:
   }
 };
 
-class AIRMMOpConversion : public ConversionPattern {
+class XTenMMOpConversion : public ConversionPattern {
 public:
-  explicit AIRMMOpConversion(MLIRContext *context)
-      : ConversionPattern(air::MMOp::getOperationName(), 1, context) {}
+  explicit XTenMMOpConversion(MLIRContext *context)
+      : ConversionPattern(xten::MMOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
-    auto mmult = cast<air::MMOp>(op);
+    auto mmult = cast<xten::MMOp>(op);
     auto loc = mmult.getLoc();
 
     edsc::ScopedContext scope(rewriter, loc);
@@ -171,15 +172,15 @@ public:
   }
 };
 
-class AIRConv2dOpConversion : public ConversionPattern {
+class XTenConv2dOpConversion : public ConversionPattern {
 public:
-  explicit AIRConv2dOpConversion(MLIRContext *context)
-      : ConversionPattern(air::Conv2dOp::getOperationName(), 1, context) {}
+  explicit XTenConv2dOpConversion(MLIRContext *context)
+      : ConversionPattern(xten::Conv2dOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
-    auto mmult = cast<air::Conv2dOp>(op);
+    auto mmult = cast<xten::Conv2dOp>(op);
     auto loc = mmult.getLoc();
 
     edsc::ScopedContext scope(rewriter, loc);
@@ -206,15 +207,16 @@ public:
     return success();
   }
 };
-class AIRPartialConv2dReLUOpConversion : public ConversionPattern {
+
+class XTenPartialConv2dReLUOpConversion : public ConversionPattern {
 public:
-  explicit AIRPartialConv2dReLUOpConversion(MLIRContext *context)
-      : ConversionPattern(air::PartialConv2dReLUOp::getOperationName(), 1, context) {}
+  explicit XTenPartialConv2dReLUOpConversion(MLIRContext *context)
+      : ConversionPattern(xten::PartialConv2dReLUOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
-    auto mmult = cast<air::PartialConv2dReLUOp>(op);
+    auto mmult = cast<xten::PartialConv2dReLUOp>(op);
     auto loc = mmult.getLoc();
 
     edsc::ScopedContext scope(rewriter, loc);
@@ -274,11 +276,11 @@ public:
     OwningRewritePatternList patterns(&getContext());
     //populateWithGenerated(context, patterns);
 
-    patterns.insert<AIRMMOpConversion,
-                    AIRAddOpConversion,
-                    AIRMulOpConversion,
-                    AIRConv2dOpConversion,
-                    AIRPartialConv2dReLUOpConversion>(context);
+    patterns.insert<XTenMMOpConversion,
+                    XTenAddOpConversion,
+                    XTenMulOpConversion,
+                    XTenConv2dOpConversion,
+                    XTenPartialConv2dReLUOpConversion>(context);
 
     // populateFuncOpTypeConversionPattern(patterns,
     //                                     context,
