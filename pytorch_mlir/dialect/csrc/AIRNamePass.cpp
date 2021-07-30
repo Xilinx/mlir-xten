@@ -42,11 +42,11 @@ namespace xilinx {
                 graph.walk([&](Operation *op) {
                         llvm::StringRef opName = op->getName().getStringRef();
 
-                        if(!opName.startswith(llvm::StringRef("aten.")) && !opName.startswith(llvm::StringRef("air."))) {
+                        if(!opName.startswith(llvm::StringRef("aten.")) && !opName.startswith(llvm::StringRef("xten."))) {
                             return; // skips basicpy constant generation and similar
                         }
 
-                        if(opName.startswith("air.") && !opName.find("conv")) {
+                        if(opName.startswith("xten.") && !opName.find("conv")) {//if(opName.startswith("air.") && !opName.find("conv")) {
                             return; // Only interested about actual layers of the NN
                         }
 
@@ -54,7 +54,7 @@ namespace xilinx {
                         if(opName.startswith("aten.")) {
                             type = opName.split("aten.").second;
                         } else {
-                            type = opName.split("air.").second;
+                            type = opName.split("xten.").second;
                         }
 
                         if(type.equals("constant")) {
