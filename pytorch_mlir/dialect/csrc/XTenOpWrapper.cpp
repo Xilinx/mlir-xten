@@ -1,12 +1,12 @@
-#include "AirOpWrapper.h"
-#include "AirDataflowConsts.h"
+#include "XTenOpWrapper.h"
+#include "XTenDataflowConsts.h"
 
 #include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
 
 // TODO generate this file automatically
 
 namespace xilinx {
-    namespace air {
+    namespace xten {
 
         void unpack_int_list(const Value &op, std::vector<int64_t> &v) {
             if (auto co = op.getDefiningOp<NPCOMP::aten::ConstantOp>()) {

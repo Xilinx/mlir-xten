@@ -6,14 +6,14 @@
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 
 //#include "AIRDialect.h"
-#include "AirOpWrapper.h"
-#include "AirDataflowConsts.h"
+#include "XTenOpWrapper.h"
+#include "XTenDataflowConsts.h"
 #include "XTenOps.h"
 
 using namespace mlir;
 
 namespace xilinx {
-    namespace air {
+    namespace xten {
 
         enum Split {PSplit, CaSplit, LSplit, WSplit};
         enum SplitType {wSplitType, aSplitType, bSplitType};

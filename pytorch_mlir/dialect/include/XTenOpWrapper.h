@@ -27,7 +27,7 @@ using namespace mlir;
 using namespace xilinx::xten;
 
 namespace xilinx {
-    namespace air {
+    namespace xten {
 
         class AbsOpWrapper {
         public:

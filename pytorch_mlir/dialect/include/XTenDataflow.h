@@ -8,10 +8,10 @@ namespace mlir {
 }
 
 namespace xilinx {
-    namespace air {
+    namespace xten {
 
-        std::unique_ptr<mlir::Pass> createAirDataflowPass();
-        void registerAirDataflowPass();
+        std::unique_ptr<mlir::Pass> createXTenDataflowPass();
+        void registerXTenDataflowPass();
 
     }
 }

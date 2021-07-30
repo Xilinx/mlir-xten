@@ -3,7 +3,7 @@
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/Pass/Pass.h"
 
-#include "AirDataflowExplorer.h"
+#include "XTenDataflowExplorer.h"
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "AIRDialect.h"
 
@@ -13,7 +13,7 @@
 #include <fstream>
 //#include <omp.h>
 
-#define DEBUG_TYPE "air-dataflow-explorer"
+#define DEBUG_TYPE "xten-dataflow-explorer"
 
 #define MARGIN 2
 #define DW_SHARED true
@@ -43,7 +43,7 @@ static unsigned int getElementWidth(ShapedType tensorType, bool forceINT8) {
 
 
 namespace xilinx {
-    namespace air {
+    namespace xten {
         std::map<std::string, uint64_t> getStats(Operation* op) {
             std::map<std::string, uint64_t> layerStatsMap;
             if (auto stats = llvm::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {

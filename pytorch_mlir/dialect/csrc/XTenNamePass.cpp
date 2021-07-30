@@ -8,19 +8,19 @@
 #include "mlir/IR/PatternMatch.h"
 
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "AIRName.h"
+#include "XTenNamePass.h"
 
 #include <iostream>
 
-#define DEBUG_TYPE "air-name-pass"
+#define DEBUG_TYPE "xten-name-pass"
 
 using namespace mlir;
 
 // heavily inspired from naming pass in ATenNamePass
 
 namespace xilinx {
-    namespace air {
-        struct AIRNamePass : public PassWrapper<AIRNamePass, OperationPass<ModuleOp>> {
+    namespace xten {
+        struct XTenNamePass : public PassWrapper<XTenNamePass, OperationPass<ModuleOp>> {
         public:
             std::string getLayerName(std::string layerPrefix, uint64_t id) {
                 return layerPrefix + std::to_string(id);
@@ -78,16 +78,16 @@ namespace xilinx {
 }
 
 namespace xilinx {
-    namespace air {
-        std::unique_ptr<mlir::Pass> createAIRNamePass() {
-            return std::make_unique<AIRNamePass>();
+    namespace xten {
+        std::unique_ptr<mlir::Pass> createXTenNamePass() {
+            return std::make_unique<XTenNamePass>();
         }
 
-    } // namespace aten
+    } // namespace xten
 } // namespace xilinx
 
-void xilinx::air::registerAIRNamePass() {
-    PassRegistration<AIRNamePass>("air-name-layers",
+void xilinx::xten::registerXTenNamePass() {
+    PassRegistration<XTenNamePass>("xten-name-layers",
                                   "Give a unique name to all compute layers of a NN");
 }
 

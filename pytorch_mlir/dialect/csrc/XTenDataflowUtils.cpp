@@ -2,15 +2,15 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OperationSupport.h"
 
-#include "AirDataflowUtils.h"
-#include "AirDataflowConsts.h"
+#include "XTenDataflowUtils.h"
+#include "XTenDataflowConsts.h"
 
-#define DEBUG_TYPE "air-dataflow-utils"
+#define DEBUG_TYPE "xten-dataflow-utils"
 
 using namespace mlir;
 
 namespace xilinx {
-    namespace air {
+    namespace xten {
         ShapedType baseShapeManupulation(ShapedType initShape, unsigned int at, unsigned int into, bool manipulationType) {
             auto shape = initShape.getShape();
             std::vector<long> newShape = std::vector<long>(shape);

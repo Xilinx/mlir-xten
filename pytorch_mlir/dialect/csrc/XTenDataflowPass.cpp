@@ -8,10 +8,10 @@
 #include "mlir/IR/PatternMatch.h"
 
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "AirDataflow.h"
+#include "XTenDataflow.h"
 #include "AIRDialect.h"
-#include "AirDataflowUtils.h"
-#include "AirDataflowExplorer.h"
+#include "XTenDataflowUtils.h"
+#include "XTenDataflowExplorer.h"
 
 #include <iostream>
 #include <vector>
@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <string>
 
-#define DEBUG_TYPE "air-dataflow-pass"
+#define DEBUG_TYPE "xten-dataflow-pass"
 
 #define AInAttr "AIn"
 #define AOutAttr "AOut"
@@ -34,9 +34,9 @@ using namespace mlir;
 // Hence in that class we only try to make sure it is easy to generate a graph for any given input
 
 namespace xilinx {
-    namespace air {
+    namespace xten {
 
-        struct AirDataflowPass : public PassWrapper<AirDataflowPass, OperationPass<ModuleOp>> {
+        struct XTenDataflowPass : public PassWrapper<XTenDataflowPass, OperationPass<ModuleOp>> {
         private:
             // TODO make the second thing here a map from id based on model params to AbsOpWrapper
             std::map<std::string, std::vector<AbsOpWrapper*>> layerNameToOps;
@@ -44,7 +44,7 @@ namespace xilinx {
             std::vector<std::string> layerOrdering; // TODO remove this field
 
         public:
-            AirDataflowPass() {}
+            XTenDataflowPass() {}
 
             AbsOpWrapper* opToWrapper(Operation* op) {
                 if(auto conv = llvm::dyn_cast<Conv2dReLUOp>(op)) {
@@ -1239,16 +1239,16 @@ namespace xilinx {
 }
 
 namespace xilinx {
-    namespace air {
-        std::unique_ptr<mlir::Pass> createAirDataflowPass() {
-            return std::make_unique<AirDataflowPass>();
+    namespace xten {
+        std::unique_ptr<mlir::Pass> createXTenDataflowPass() {
+            return std::make_unique<XTenDataflowPass>();
         }
 
-    } // namespace aten
+    } // namespace xten
 } // namespace xilinx
 
-void xilinx::air::registerAirDataflowPass() {
-    PassRegistration<AirDataflowPass>("air-expand-graph",
-                                      "Dataflow expansion of ATen NN graph towards AIE implementation");
+void xilinx::xten::registerXTenDataflowPass() {
+    PassRegistration<XTenDataflowPass>("xten-expand-graph",
+                                      "Dataflow expansion of XTen NN graph towards AIE implementation");
 }
 

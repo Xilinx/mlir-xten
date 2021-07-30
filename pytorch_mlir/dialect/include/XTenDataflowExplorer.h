@@ -1,8 +1,8 @@
 // (c) Copyright 2021 Xilinx Inc. All Rights Reserved.
 #pragma once
 
-#include "AirDataflowUtils.h"
-#include "AirOpWrapper.h"
+#include "XTenDataflowUtils.h"
+#include "XTenOpWrapper.h"
 #include "Arch.h"
 
 #define FORCE_INT8 1
@@ -15,7 +15,7 @@ namespace mlir {
 }
 
 namespace xilinx {
-    namespace air {
+    namespace xten {
         class PathInfo_t {
         public:
             std::vector<ModelParams> path;
