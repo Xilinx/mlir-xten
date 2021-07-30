@@ -8,10 +8,10 @@
 #include "mlir/IR/PatternMatch.h"
 
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "AIRDataflow.h"
+#include "AirDataflow.h"
 #include "AIRDialect.h"
-#include "AIRDataflowUtils.h"
-#include "AIRDataflowExplorer.h"
+#include "AirDataflowUtils.h"
+#include "AirDataflowExplorer.h"
 
 #include <iostream>
 #include <vector>
@@ -27,9 +27,7 @@
 using namespace mlir;
 
 // TODO write verifiers
-// TODO make sure it works when no weights or no biases but still called on it
-// TODO separate hasWeights and hasBias?
-// TODO Need a generic WTransform implementation
+// TODO properly take stride into account when building the graph, especially for W
 
 // General idea: because it is easy to know from the analytical model what do we do with everything:
 // That analytical model part is responsible for finding an optimal solution, and then it communicates it here
@@ -38,7 +36,7 @@ using namespace mlir;
 namespace xilinx {
     namespace air {
 
-        struct AIRDataflowPass : public PassWrapper<AIRDataflowPass, OperationPass<ModuleOp>> {
+        struct AirDataflowPass : public PassWrapper<AirDataflowPass, OperationPass<ModuleOp>> {
         private:
             // TODO make the second thing here a map from id based on model params to AbsOpWrapper
             std::map<std::string, std::vector<AbsOpWrapper*>> layerNameToOps;
@@ -46,7 +44,7 @@ namespace xilinx {
             std::vector<std::string> layerOrdering; // TODO remove this field
 
         public:
-            AIRDataflowPass() {}
+            AirDataflowPass() {}
 
             AbsOpWrapper* opToWrapper(Operation* op) {
                 if(auto conv = llvm::dyn_cast<Conv2dReLUOp>(op)) {
@@ -600,7 +598,8 @@ namespace xilinx {
                 std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
 
                 //ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
-                uint64_t F0 = absOp->getKernelSize();
+                uint64_t F0 = absOp->getF0();
+                // TODO fix for F1
 
                 uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
 
@@ -632,7 +631,8 @@ namespace xilinx {
                 std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
 
                 //ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
-                uint64_t F0 = absOp->getKernelSize();
+                uint64_t F0 = absOp->getF0();
+                // TODO fix for F1
 
                 uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
 
@@ -681,7 +681,8 @@ namespace xilinx {
                 }
 
                 //ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
-                uint64_t F0 = absOp->getKernelSize();
+                uint64_t F0 = absOp->getF0();
+                // TODO fix for F1
 
                 uint64_t linesPerTile = expl.getLinesPerTile(expl.layerNameToID[layerName], this->layerNameToParams[layerName]);
 
@@ -1239,15 +1240,15 @@ namespace xilinx {
 
 namespace xilinx {
     namespace air {
-        std::unique_ptr<mlir::Pass> createAIRDataflowPass() {
-            return std::make_unique<AIRDataflowPass>();
+        std::unique_ptr<mlir::Pass> createAirDataflowPass() {
+            return std::make_unique<AirDataflowPass>();
         }
 
     } // namespace aten
 } // namespace xilinx
 
-void xilinx::air::registerAIRDataflowPass() {
-    PassRegistration<AIRDataflowPass>("air-expand-graph",
+void xilinx::air::registerAirDataflowPass() {
+    PassRegistration<AirDataflowPass>("air-expand-graph",
                                       "Dataflow expansion of ATen NN graph towards AIE implementation");
 }
 

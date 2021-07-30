@@ -1,5 +1,5 @@
-#include "AIROpWrapper.h"
-#include "AIRDataflowConsts.h"
+#include "AirOpWrapper.h"
+#include "AirDataflowConsts.h"
 
 #include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
 
@@ -52,9 +52,22 @@ namespace xilinx {
             return Value();
         }
 
-        unsigned int Conv2dOpWrapper::getKernelSize() {
+        unsigned int Conv2dOpWrapper::getF0() {
             return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
         }
+
+        unsigned int Conv2dOpWrapper::getF1() {
+            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F1_LOC];
+        }
+
+        unsigned int Conv2dOpWrapper::getStride() {
+            Value s = this->conv.stride();
+            std::vector<int64_t> stride;
+            unpack_int_list(s, stride);
+
+            return stride.at(0);
+        }
+
 
         bool Conv2dOpWrapper::hasWeights() {
             return true;
@@ -205,8 +218,20 @@ namespace xilinx {
             return this->conv.PartialIn();
         }
 
-        unsigned int PartialConv2dOpWrapper::getKernelSize() {
+        unsigned int PartialConv2dOpWrapper::getF0() {
             return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
+        }
+
+        unsigned int PartialConv2dOpWrapper::getF1() {
+            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F1_LOC];
+        }
+
+        unsigned int PartialConv2dOpWrapper::getStride() {
+            Value s = this->conv.stride();
+            std::vector<int64_t> stride;
+            unpack_int_list(s, stride);
+
+            return stride.at(0);
         }
 
         bool PartialConv2dOpWrapper::hasWeights() {
@@ -348,8 +373,20 @@ namespace xilinx {
             return Value();
         }
 
-        unsigned int Conv2dReLUOpWrapper::getKernelSize() {
+        unsigned int Conv2dReLUOpWrapper::getF0() {
             return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
+        }
+
+        unsigned int Conv2dReLUOpWrapper::getF1() {
+            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F1_LOC];
+        }
+
+        unsigned int Conv2dReLUOpWrapper::getStride() {
+            Value s = this->conv.stride();
+            std::vector<int64_t> stride;
+            unpack_int_list(s, stride);
+
+            return stride.at(0);
         }
 
         bool Conv2dReLUOpWrapper::hasWeights() {
@@ -499,8 +536,20 @@ namespace xilinx {
             return this->conv.PartialIn();
         }
 
-        unsigned int PartialConv2dReLUOpWrapper::getKernelSize() {
+        unsigned int PartialConv2dReLUOpWrapper::getF0() {
             return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
+        }
+
+        unsigned int PartialConv2dReLUOpWrapper::getF1() {
+            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F1_LOC];
+        }
+
+        unsigned int PartialConv2dReLUOpWrapper::getStride() {
+            Value s = this->conv.stride();
+            std::vector<int64_t> stride;
+            unpack_int_list(s, stride);
+
+            return stride.at(0);
         }
 
         bool PartialConv2dReLUOpWrapper::hasWeights() {
@@ -643,8 +692,20 @@ namespace xilinx {
             return this->conv.PartialIn();
         }
 
-        unsigned int PartialConv2dBatchNormReLUOpWrapper::getKernelSize() {
+        unsigned int PartialConv2dBatchNormReLUOpWrapper::getF0() {
             return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
+        }
+
+        unsigned int PartialConv2dBatchNormReLUOpWrapper::getF1() {
+            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F1_LOC];
+        }
+
+        unsigned int PartialConv2dBatchNormReLUOpWrapper::getStride() {
+            Value s = this->conv.stride();
+            std::vector<int64_t> stride;
+            unpack_int_list(s, stride);
+
+            return stride.at(0);
         }
 
         bool PartialConv2dBatchNormReLUOpWrapper::hasWeights() {
@@ -810,8 +871,20 @@ namespace xilinx {
             return Value();
         }
 
-        unsigned int Conv2dBatchNormReLUOpWrapper::getKernelSize() {
+        unsigned int Conv2dBatchNormReLUOpWrapper::getF0() {
             return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
+        }
+
+        unsigned int Conv2dBatchNormReLUOpWrapper::getF1() {
+            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F1_LOC];
+        }
+
+        unsigned int Conv2dBatchNormReLUOpWrapper::getStride() {
+            Value s = this->conv.stride();
+            std::vector<int64_t> stride;
+            unpack_int_list(s, stride);
+
+            return stride.at(0);
         }
 
         bool Conv2dBatchNormReLUOpWrapper::hasWeights() {
@@ -982,12 +1055,28 @@ namespace xilinx {
             return Value();
         }
 
-        unsigned int MaxPool2dWithIndicesOpWrapper::getKernelSize() {
+        unsigned int MaxPool2dWithIndicesOpWrapper::getF0() {
             Value ks = this->maxpool.kernel_size();
             std::vector<int64_t> kernel_size;
             unpack_int_list(ks, kernel_size);
 
             return kernel_size.at(0);
+        }
+
+        unsigned int MaxPool2dWithIndicesOpWrapper::getF1() {
+            Value ks = this->maxpool.kernel_size();
+            std::vector<int64_t> kernel_size;
+            unpack_int_list(ks, kernel_size);
+
+            return kernel_size.at(1);
+        }
+
+        unsigned int MaxPool2dWithIndicesOpWrapper::getStride() {
+            Value s = this->maxpool.stride();
+            std::vector<int64_t> stride;
+            unpack_int_list(s, stride);
+
+            return stride.at(0);
         }
 
         Value MaxPool2dWithIndicesOpWrapper::getInput() {

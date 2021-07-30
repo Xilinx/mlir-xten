@@ -5,9 +5,9 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 
-#include "AIRDialect.h"
-#include "AIROpWrapper.h"
-#include "AIRDataflowConsts.h"
+//#include "AIRDialect.h"
+#include "AirOpWrapper.h"
+#include "AirDataflowConsts.h"
 #include "XTenOps.h"
 
 using namespace mlir;

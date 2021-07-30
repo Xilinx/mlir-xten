@@ -3,7 +3,7 @@
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/Pass/Pass.h"
 
-#include "AIRDataflowExplorer.h"
+#include "AirDataflowExplorer.h"
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "AIRDialect.h"
 
@@ -32,6 +32,7 @@
 // TODO fix padding assumption for first layer when channels are not 8
 // TODO Many to one communication and memory when W is there is not taken into account too well
 
+// NOLF: ask Louis why getElementWidht removed from code put on slack on July 30th
 static unsigned int getElementWidth(ShapedType tensorType, bool forceINT8) {
     if(forceINT8) {
         return 1;
@@ -39,6 +40,7 @@ static unsigned int getElementWidth(ShapedType tensorType, bool forceINT8) {
         return (tensorType.getElementTypeBitWidth() / 8);
     }
 }
+
 
 namespace xilinx {
     namespace air {
@@ -92,8 +94,8 @@ namespace xilinx {
                 } else {
                     COut = C;
                     CIn = 1;
-                    F0 = pair.second->getKernelSize(); // TODO support non squared kernels
-                    F1 = pair.second->getKernelSize();
+                    F0 = pair.second->getF0();
+                    F1 = pair.second->getF1();
                 }
 
                 std::map<std::string, uint64_t> stats = getStats(pair.second->getUnderlyingOperation());
@@ -114,6 +116,8 @@ namespace xilinx {
                 sizes["DW"] = dw ? DW_TRUE : DW_FALSE;
                 sizes["macs"] = macs;
                 sizes["eff"] = 100 * pair.second->getKernelEfficiency();
+
+                sizes["stride"] = pair.second->getStride();
 
                 this->layerNameToSize.push_back(sizes);
 
@@ -204,16 +208,19 @@ namespace xilinx {
         }
 
         // Analytical model functions
+        // TODO Support strided layers as well here
         uint64_t DataflowExplorer::getActivationInBanks(uint64_t layerId, ModelParams &params) {
             int64_t linesPerBanks = this->getLinesPerTile(layerId, params);
             uint64_t banksPerLine = this->getBanksPerLine(layerId, params);
 
             int64_t N = this->layerNameToSize[layerId]["N"];
             uint64_t F0 = this->layerNameToSize[layerId]["F0"];
+            int64_t stride = this->layerNameToSize[layerId]["stride"];
 
             bool allLinesIn = (N <= linesPerBanks);
 
-            uint64_t banksForFilter = this->getTilesPerCore(layerId, params);
+            uint64_t minBanksForFilter = (F0 == 1) ? 1 : (allLinesIn ? 1 : 2);
+            uint64_t banksForFilter = std::max(minBanksForFilter, this->getTilesPerCore(layerId, params));
 
             uint64_t forwardTileSize = 0;
             if(params.W > 1) { // then we might have to do forwarding and might need one additional bank
@@ -225,8 +232,16 @@ namespace xilinx {
                 }
             }
 
-            uint64_t minBanksForFilter = (F0 == 1) ? 1 : (allLinesIn ? 1 : 2);
-            return std::max(minBanksForFilter, banksForFilter) + banksPerLine + forwardTileSize;
+            uint64_t strideAdditionalBanks = 0;
+            if((stride > 1) && (N > 1)) {
+                int64_t locLines = linesPerBanks * banksForFilter;
+                int64_t totLines = locLines + linesPerBanks;
+                if((std::floor((float)locLines / stride) * stride + F0) >= totLines) {
+                    strideAdditionalBanks = std::ceil((float)((std::floor((float)locLines / stride) * stride + F0) - totLines) / linesPerBanks);
+                }
+            }
+
+            return banksForFilter + banksPerLine + forwardTileSize + strideAdditionalBanks;
         }
 
         // PingPong 4KB buffers
@@ -335,11 +350,12 @@ namespace xilinx {
 
             int64_t CIn = this->layerNameToSize[layerId]["C"];
             int64_t COut = this->layerNameToSize[layerId]["COut"];
-            int64_t F = this->layerNameToSize[layerId]["F0"];
+            int64_t F0 = this->layerNameToSize[layerId]["F0"];
+            int64_t F1 = this->layerNameToSize[layerId]["F1"];
 
             uint64_t missmatchCa = getMissmatchChannels(CIn, params.Ca);
             uint64_t missmatchP = getMissmatchChannels(COut, params.P);
-            uint64_t missmatchL = getMissmatchLines(F, params.L);
+            uint64_t missmatchL = getMissmatchLines(F0, params.L);
 
             // TODO double check this expression
             // TODO what about efficicency here?
@@ -658,7 +674,7 @@ namespace xilinx {
             for(uint64_t layerId = 0; layerId < bounds.size(); layerId++) {
                 llvm::outs() << "generating nodes for layer: " << layerId << "\n";
                 uint64_t layerCores = bounds.at(layerId);
-                uint64_t F0 = this->layerNameToOps[layerId]->getKernelSize();
+                uint64_t F0 = this->layerNameToOps[layerId]->getF0();
                 for(uint64_t p = 1; p <= layerCores; p++) {
                     for(uint64_t ca = 1; ca <= layerCores; ca++) {
                         for(uint64_t f = 1; f <= F0; f++) {
@@ -941,7 +957,8 @@ namespace xilinx {
             this->generateValidTopologies();
             this->dumpValidTopologies();
             this->generatePathGraph();
-            //this->dfs(false);
+            //this->dfs(true);
+            this->dumpMacs();
             this->enumeratePaths();
             this->getParetoFrontierAndCleanGraph();
         }
@@ -1006,7 +1023,7 @@ namespace xilinx {
         void DataflowExplorer::dumpParetoFrontiers() {
             std::ofstream pareto;
             pareto.open("./output/pareto_throughput.csv", std::ios::out);
-            pareto << "Area Throughput Utilization\n";
+            pareto << "Area Throughput Utilization LocUtilization\n";
 
             for(uint64_t i = 0; i < this->paretoThroughput.size(); i++) {
                 if(this->paretoThroughput.at(i).path.size() != 0) {
@@ -1171,15 +1188,15 @@ namespace xilinx {
                     uint64_t th = this->getThroughput(path);
                     uint64_t lat = this->getEndToEndLatency(path);
 
-                    llvm::outs() << "\n======================\n";
+                    /*llvm::outs() << "\n======================\n";
                     llvm::outs() << "Size: " << pathArea(path) << "\n";
                     llvm::outs() << "Throughput: " << th << "\n";
                     for(ModelParams p: path) {
                         p.print();
-                    }
+                        }*/
 
-                    throughput << area << " " << th << "\n";
-                    latency << area << " " << lat << "\n";
+                    throughput << (area) << " " << th << "\n";
+                    latency << (area) << " " << lat << "\n";
                 }
             } else {
                 std::vector<ModelParams> nPath = path;
@@ -1191,7 +1208,6 @@ namespace xilinx {
         }
 
         void DataflowExplorer::dfs(bool full) {
-            this->dumpMacs();
 
             std::ofstream throughput;
             throughput.open("./output/throughputs.csv", std::ios::out);

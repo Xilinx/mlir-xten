@@ -10,7 +10,7 @@
 #include "AIRToAIEPass.h"
 #include "AIRToLinalgPass.h"
 #include "AIRLinalgCodegen.h"
-#include "AIRDataflow.h"
+#include "AirDataflow.h"
 #include "AIRName.h"
 #include "AIRAutomaticTilingPass.h"
 #include "AIRRegularizeLoopPass.h"

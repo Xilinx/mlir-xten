@@ -1,8 +1,8 @@
 // (c) Copyright 2021 Xilinx Inc. All Rights Reserved.
 #pragma once
 
-#include "AIRDataflowUtils.h"
-#include "AIROpWrapper.h"
+#include "AirDataflowUtils.h"
+#include "AirOpWrapper.h"
 #include "Arch.h"
 
 #define FORCE_INT8 1

@@ -9,6 +9,7 @@
 #include "mlir/IR/PatternMatch.h"
 
 #include "XTenOps.h"
+#include "AIRDialect.h"
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 
 #include "Arch.h"
@@ -37,7 +38,9 @@ namespace xilinx {
             virtual Value getPartialInput() = 0;
             virtual Value getBiases() = 0;
             virtual ArrayRef<Value> getBN() = 0;
-            virtual unsigned int getKernelSize() = 0;
+            virtual unsigned int getF0() = 0;
+            virtual unsigned int getF1() = 0;
+            virtual unsigned int getStride() = 0;
             virtual bool hasWeights() = 0;
             virtual bool hasBias() = 0;
             virtual bool hasBN() = 0;
@@ -64,7 +67,9 @@ namespace xilinx {
             Value getPartialInput();
             Value getBiases();
             ArrayRef<Value> getBN();
-            unsigned int getKernelSize();
+            virtual unsigned int getF0();
+            virtual unsigned int getF1();
+            unsigned int getStride();
             bool hasWeights();
             bool hasBias();
             bool hasBN();
@@ -88,7 +93,9 @@ namespace xilinx {
             Value getPartialInput();
             Value getBiases();
             ArrayRef<Value> getBN();
-            unsigned int getKernelSize();
+            virtual unsigned int getF0();
+            virtual unsigned int getF1();
+            unsigned int getStride();
             bool hasWeights();
             bool hasBias();
             bool hasBN();
@@ -112,7 +119,9 @@ namespace xilinx {
             Value getPartialInput();
             Value getBiases();
             ArrayRef<Value> getBN();
-            unsigned int getKernelSize();
+            virtual unsigned int getF0();
+            virtual unsigned int getF1();
+            unsigned int getStride();
             bool hasWeights();
             bool hasBias();
             bool hasBN();
@@ -136,7 +145,9 @@ namespace xilinx {
             Value getPartialInput();
             Value getBiases();
             ArrayRef<Value> getBN();
-            unsigned int getKernelSize();
+            virtual unsigned int getF0();
+            virtual unsigned int getF1();
+            unsigned int getStride();
             bool hasWeights();
             bool hasBias();
             bool hasBN();
@@ -160,7 +171,9 @@ namespace xilinx {
             Value getPartialInput();
             Value getBiases();
             ArrayRef<Value> getBN();
-            unsigned int getKernelSize();
+            virtual unsigned int getF0();
+            virtual unsigned int getF1();
+            unsigned int getStride();
             bool hasWeights();
             bool hasBias();
             bool hasBN();
@@ -184,7 +197,9 @@ namespace xilinx {
             Value getPartialInput();
             Value getBiases();
             ArrayRef<Value> getBN();
-            unsigned int getKernelSize();
+            virtual unsigned int getF0();
+            virtual unsigned int getF1();
+            unsigned int getStride();
             bool hasWeights();
             bool hasBias();
             bool hasBN();
@@ -209,7 +224,9 @@ namespace xilinx {
             Value getPartialInput();
             Value getBiases();
             ArrayRef<Value> getBN();
-            unsigned int getKernelSize();
+            virtual unsigned int getF0();
+            virtual unsigned int getF1();
+            unsigned int getStride();
             bool hasWeights();
             bool hasBias();
             bool hasBN();

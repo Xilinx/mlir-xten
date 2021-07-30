@@ -63,11 +63,11 @@ add_mlir_library(ATen
   AIRToAIEPass.cpp
   Util.cpp
   LowerToLibATenPass.cpp
-  AIRDataflowUtils.cpp
-  AIRDataflowPass.cpp
+  AirDataflowUtils.cpp
+  AirDataflowPass.cpp
   AIRNamePass.cpp
-  AIROpWrapper.cpp
-  AIRDataflowExplorer.cpp
+  AirOpWrapper.cpp
+  AirDataflowExplorer.cpp
   AIRRtDialect.cpp
   AIRRtOps.cpp
   AIRRtToLLVMPass.cpp
