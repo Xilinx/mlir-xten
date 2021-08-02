@@ -5,7 +5,6 @@
 #include "AIRDialect.h"
 
 #include "AIRLoweringPass.h"
-#include "AIRToAffinePass.h"
 #include "AffineToAIRPass.h"
 #include "AIRToAIEPass.h"
 #include "AIRToLinalgPass.h"

@@ -17,7 +17,7 @@
 #include "XTenDialect.h"
 #include "XTenOps.h"
 
-#define DEBUG_TYPE "air-to-affine-pass"
+#define DEBUG_TYPE "air-to-linalg"
 
 using namespace mlir;
 using namespace xilinx;
