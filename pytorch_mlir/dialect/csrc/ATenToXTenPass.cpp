@@ -3,7 +3,7 @@
 #include "XTenDialect.h"
 #include "XTenOps.h"
 
-#include "ATenToAIRPass.h"
+#include "ATenToXTenPass.h"
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
@@ -38,17 +38,17 @@
 #include <algorithm>
 #include <sstream>
 
-#define DEBUG_TYPE "aten-to-air-pass"
+#define DEBUG_TYPE "aten-to-xten-pass"
 
 using namespace mlir;
 using namespace xilinx;
 
 namespace {
 
-#include "ATenToAIR.cpp.inc"
+#include "ATenToXTen.cpp.inc"
 
-struct ATenToAIRPass : public PassWrapper<ATenToAIRPass,
-                                          OperationPass<ModuleOp>> {
+struct ATenToXTenPass : public PassWrapper<ATenToXTenPass,
+                                           OperationPass<ModuleOp>> {
 
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
      registry.insert<xilinx::xten::XTenDialect>();
@@ -75,7 +75,7 @@ struct ATenToAIRPass : public PassWrapper<ATenToAIRPass,
     target.addLegalOp<xilinx::xten::Conv2dOp>();
     target.addLegalOp<xilinx::xten::NoOp>();
     if (failed(applyPatternsAndFoldGreedily(module, /*target,*/ std::move(fusionPatterns)))) {
-      emitError(UnknownLoc::get(context), "error fusing ATen\n");
+      emitError(UnknownLoc::get(context), "error translating or fusing ATen to XTen\n");
       signalPassFailure();
       assert(0);
     }
@@ -89,8 +89,8 @@ struct ATenToAIRPass : public PassWrapper<ATenToAIRPass,
 namespace xilinx {
 namespace aten {
 
-std::unique_ptr<mlir::Pass> createATenToAIRPass() {
-  return std::make_unique<ATenToAIRPass>();
+std::unique_ptr<mlir::Pass> createATenToXTenPass() {
+  return std::make_unique<ATenToXTenPass>();
 }
 
 } // namespace aten

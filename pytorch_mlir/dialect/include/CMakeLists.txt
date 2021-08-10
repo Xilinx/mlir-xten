@@ -21,9 +21,9 @@ mlir_tablegen(AIROpInterfaces.cpp.inc -gen-op-interface-defs)
 add_public_tablegen_target(MLIRAIROpInterfacesIncGen)
 add_dependencies(mlir-generic-headers MLIRAIROpInterfacesIncGen)
 
-set(LLVM_TARGET_DEFINITIONS ATenToAIR.td)
-mlir_tablegen(ATenToAIR.cpp.inc -gen-rewriters)
-add_public_tablegen_target(MLIRATenToAIRIncGen)
+set(LLVM_TARGET_DEFINITIONS ATenToXTen.td)
+mlir_tablegen(ATenToXTen.cpp.inc -gen-rewriters)
+add_public_tablegen_target(MLIRATenToXTenIncGen)
 
 #set(LLVM_TARGET_DEFINITIONS ONNXToAIR.td)
 #mlir_tablegen(ONNXToAIR.cpp.inc -gen-rewriters)

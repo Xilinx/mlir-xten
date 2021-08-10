@@ -8,9 +8,9 @@ def AcapLoopLowering : Pass<"aten-to-affine", "ModuleOp"> {
   let constructor = "xilinx::aten::createAcapLoopLoweringPass()";
 }
 
-def ATenToAIR : Pass<"aten-to-air", "ModuleOp"> {
+def ATenToXTen : Pass<"aten-to-xten", "ModuleOp"> {
   let summary = "ATen dialect lowering to AIR operations";
-  let constructor = "xilinx::aten::createATenToAIRPass()";
+  let constructor = "xilinx::aten::createATenToXTenPass()";
 }
 
 def LowerToLibATen : Pass<"lower-to-libaten", "ModuleOp"> {

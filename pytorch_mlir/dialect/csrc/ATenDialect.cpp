@@ -15,7 +15,7 @@ void xilinx::aten::registerATenPasses() {
   xilinx::aten::registerAcapHerdLoweringPass();
   xilinx::aten::registerAcapLoopLoweringPass();
   xilinx::aten::registerAffineLoopOptPass();
-  xilinx::aten::registerATenToAIRPass();
+  xilinx::aten::registerATenToXTenPass();
   xilinx::aten::registerATenOpReportPass();
   xilinx::aten::registerATenLoweringPass();
   xilinx::aten::registerATenSimpleAllocatePass();
