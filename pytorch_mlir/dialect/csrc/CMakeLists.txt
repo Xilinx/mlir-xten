@@ -22,7 +22,7 @@ set(LLVM_OPTIONAL_SOURCES
   LivenessReport.cpp
   ReturnEliminationPass.cpp
   XTenToAffine.cpp
-  AIRToLinalg.cpp
+  XTenToLinalg.cpp
   AIRLinalgCodegen.cpp
   AIRToAIEPass.cpp
   Util.cpp
@@ -58,7 +58,7 @@ add_mlir_library(ATen
   LivenessReport.cpp
   ReturnEliminationPass.cpp
   XTenToAffine.cpp
-  AIRToLinalg.cpp
+  XTenToLinalg.cpp
   AIRLinalgCodegen.cpp
   AIRToAIEPass.cpp
   Util.cpp

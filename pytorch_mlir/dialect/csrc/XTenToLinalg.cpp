@@ -1,6 +1,6 @@
 // (c) Copyright 2021 Xilinx Inc. All Rights Reserved.
 
-#include "AIRToLinalgPass.h"
+#include "XTenToLinalgPass.h"
 
 #include "mlir/Dialect/Linalg/EDSC/Intrinsics.h"
 #include "mlir/Dialect/Linalg/IR/LinalgOps.h"
@@ -17,14 +17,14 @@
 #include "XTenDialect.h"
 #include "XTenOps.h"
 
-#define DEBUG_TYPE "air-to-linalg"
+#define DEBUG_TYPE "xten-to-linalg-pass"
 
 using namespace mlir;
 using namespace xilinx;
 
 namespace {
 
-#include "AIRToLinalg.cpp.inc"
+#include "XTenToLinalg.cpp.inc"
 
 Value typeCast(PatternRewriter &builder, Value val, Type destTy) {
   if (val.getType() == destTy)
@@ -253,11 +253,11 @@ public:
   }
 };
 
-class AIRToLinalgPass : public PassWrapper<AIRToLinalgPass,
+class XTenToLinalgPass : public PassWrapper<XTenToLinalgPass,
                                            OperationPass<ModuleOp>> {
 
 public:
-  AIRToLinalgPass() {}
+  XTenToLinalgPass() {}
 
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
      registry.insert<NPCOMP::aten::ATenDialect>();
@@ -325,15 +325,15 @@ private:
 namespace xilinx {
 namespace air {
 
-std::unique_ptr<Pass> createAIRToLinalgPass() {
-  return std::make_unique<AIRToLinalgPass>();
+std::unique_ptr<Pass> createXTenToLinalgPass() {
+  return std::make_unique<XTenToLinalgPass>();
 }
 
 } // namespace air
 } // namespace xilinx
 
-void xilinx::air::registerAIRToLinalgPass() {
-    PassRegistration<AIRToLinalgPass>(
-      "air-to-linalg",
-      "Lower AIR dialect to Linalg dialect");
+void xilinx::air::registerXTenToLinalgPass() {
+    PassRegistration<XTenToLinalgPass>(
+      "xten-to-linalg",
+      "Lower XTen dialect to Linalg dialect");
 }

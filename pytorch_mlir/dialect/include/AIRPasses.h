@@ -7,7 +7,7 @@
 #include "AIRLoweringPass.h"
 #include "AffineToAIRPass.h"
 #include "AIRToAIEPass.h"
-#include "AIRToLinalgPass.h"
+#include "XTenToLinalgPass.h"
 #include "AIRLinalgCodegen.h"
 #include "XTenDataflow.h"
 #include "XTenNamePass.h"

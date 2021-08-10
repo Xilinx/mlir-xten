@@ -13,8 +13,8 @@ class Pass;
 namespace xilinx {
 namespace air {
 
-std::unique_ptr<mlir::Pass> createAIRToLinalgPass();
-void registerAIRToLinalgPass();
+std::unique_ptr<mlir::Pass> createXTenToLinalgPass();
+void registerXTenToLinalgPass();
 
 } // namespace air
 } // namespace xilinx
