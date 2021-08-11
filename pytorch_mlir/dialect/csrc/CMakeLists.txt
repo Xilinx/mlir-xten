@@ -10,7 +10,6 @@ set(LLVM_OPTIONAL_SOURCES
   ATenSimpleAllocatePass.cpp
   ATenToStd.cpp
   LivenessReport.cpp
-  ReturnEliminationPass.cpp
   Util.cpp
   LowerToLibATenPass.cpp
   )
@@ -27,7 +26,6 @@ add_mlir_library(ATen
   ATenSimpleAllocatePass.cpp
   ATenToStd.cpp
   LivenessReport.cpp
-  ReturnEliminationPass.cpp
   Util.cpp
   LowerToLibATenPass.cpp
 
