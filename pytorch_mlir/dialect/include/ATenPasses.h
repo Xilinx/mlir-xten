@@ -4,7 +4,6 @@
 #include "mlir/Pass/Pass.h"
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 
-#include "AcapHerdAssignPass.h"
 #include "AcapHerdLoweringPass.h"
 #include "AcapLoopLoweringPass.h"
 #include "ATenLoweringPass.h"

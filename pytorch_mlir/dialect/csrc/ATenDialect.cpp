@@ -11,7 +11,6 @@ namespace aten {
 void xilinx::aten::registerATenPasses() {
 // #define GEN_PASS_REGISTRATION
 //   #include "ATenPasses.h.inc"
-  xilinx::aten::registerAcapHerdAssignPass();
   xilinx::aten::registerAcapHerdLoweringPass();
   xilinx::aten::registerAcapLoopLoweringPass();
   xilinx::aten::registerATenOpReportPass();
