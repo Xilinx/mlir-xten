@@ -42,7 +42,7 @@
 
 using namespace mlir;
 using namespace edsc::intrinsics;
-using namespace xilinx::air;
+using namespace xilinx::aten;
 
 using callOperation = edsc::OperationBuilder<mlir::CallOp>;
 using call = edsc::ValueBuilder<mlir::CallOp>;

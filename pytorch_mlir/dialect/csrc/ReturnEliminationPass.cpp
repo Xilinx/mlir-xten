@@ -5,7 +5,6 @@
 #include "ReturnEliminationPass.h"
 
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "AIRDialect.h"
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -85,8 +84,8 @@ public:
         erasedOps.insert(op);
       }
     }
-    else if ( isa<xilinx::air::AllocOp>(op) ) {
-    }
+    // else if ( isa<xilinx::air::AllocOp>(op) ) {
+    // }
     else {
       //getModule().dump();
       //op->dump();

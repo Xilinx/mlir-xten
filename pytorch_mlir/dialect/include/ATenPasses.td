@@ -3,16 +3,6 @@
 
 include "mlir/Pass/PassBase.td"
 
-def AcapLoopLowering : Pass<"aten-to-affine", "ModuleOp"> {
-  let summary = "ATen dialect lowering to Affine Loops";
-  let constructor = "xilinx::aten::createAcapLoopLoweringPass()";
-}
-
-def ATenToXTen : Pass<"aten-to-xten", "ModuleOp"> {
-  let summary = "ATen dialect lowering to AIR operations";
-  let constructor = "xilinx::aten::createATenToXTenPass()";
-}
-
 def LowerToLibATen : Pass<"lower-to-libaten", "ModuleOp"> {
   let summary = "Lower ATen Ops to library calls";
   let constructor = "xilinx::aten::createLowerToLibATenPass()";

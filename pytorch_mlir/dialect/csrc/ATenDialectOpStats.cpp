@@ -1,8 +1,5 @@
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
-#include "AIRDialect.h"
-#include "XTenDialect.h"
-#include "XTenOps.h"
 
 #include "Util.h"
 
@@ -46,7 +43,7 @@ std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, TensorType resu
     }
 
 
-    uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+    uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
     //uint64_t ofm_depth = resultTy.getShape()[1];
 
     uint64_t ifm_depth = inputTy.getShape()[1];
@@ -61,11 +58,11 @@ std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, TensorType resu
     uint64_t MACs_per_OFM = (ifm_depth/groups) * kernel_height * kernel_width;
     uint64_t total_MACs = ofm_volume * MACs_per_OFM;
 
-    uint64_t ifm_volume = xilinx::air::getTensorVolume(inputTy);
-    uint64_t weight_volume = xilinx::air::getTensorVolume(weightTy);
+    uint64_t ifm_volume = xilinx::aten::getTensorVolume(inputTy);
+    uint64_t weight_volume = xilinx::aten::getTensorVolume(weightTy);
     uint64_t bias_volume;
     if(!o.bias().template getDefiningOp<NPCOMP::Basicpy::SingletonOp>()) {
-        bias_volume = xilinx::air::getTensorVolume(biasTy);
+        bias_volume = xilinx::aten::getTensorVolume(biasTy);
     } else {
         bias_volume = 0;
     }
@@ -92,7 +89,7 @@ uint64_t getConv2dOperandTransferVolumeWithType(T o, unsigned int idx, bool read
 
   if (!read) return 0;
 
-  double vol = xilinx::air::getTensorVolume(o.getOperand(idx).getType());
+  double vol = xilinx::aten::getTensorVolume(o.getOperand(idx).getType());
   if (simple_conv2d_model)
     return vol;
 
@@ -153,7 +150,7 @@ uint64_t getConv2dResultTransferVolumeWithType(T o, unsigned int idx, bool write
 
   if (simple_conv2d_model) {
     if (write)
-      return xilinx::air::getTensorVolume(resultTy);
+      return xilinx::aten::getTensorVolume(resultTy);
     else
       return 0;
   }
@@ -175,7 +172,7 @@ uint64_t getConv2dResultTransferVolumeWithType(T o, unsigned int idx, bool write
     read_output_cost = il;
   }
 
-  double vol = xilinx::air::getTensorVolume(resultTy);
+  double vol = xilinx::aten::getTensorVolume(resultTy);
 
   if (write) {
     LLVM_DEBUG(llvm::outs() << "write_output_overhead:" << write_output_overhead << "\n");
@@ -196,47 +193,10 @@ std::map<std::string, uint64_t> getConv2dStatistics(T o) {
     return getConv2dStatisticsWithType(o, resultType);
 }
 
-template<>
-std::map<std::string, uint64_t> getConv2dStatistics<xilinx::xten::PartialConv2dOp>(xilinx::xten::PartialConv2dOp o) {
-    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
-    return getConv2dStatisticsWithType(o, resultType);
-}
-
-template<>
-std::map<std::string, uint64_t> getConv2dStatistics<xilinx::xten::PartialConv2dReLUOp>(xilinx::xten::PartialConv2dReLUOp o) {
-    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
-    return getConv2dStatisticsWithType(o, resultType);
-}
-
-template<>
-std::map<std::string, uint64_t> getConv2dStatistics<xilinx::xten::PartialConv2dBatchNormReLUOp>(xilinx::xten::PartialConv2dBatchNormReLUOp o) {
-    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
-    return getConv2dStatisticsWithType(o, resultType);
-}
-
-
 // OperandTransferVolume
 template<class T>
 uint64_t getConv2dOperandTransferVolume(T o, unsigned int idx, bool read) {
     TensorType resultType = o.getResult().getType().template cast<TensorType>();
-    return getConv2dOperandTransferVolumeWithType(o, idx, read, resultType);
-}
-
-template<>
-uint64_t getConv2dOperandTransferVolume<xilinx::xten::PartialConv2dOp>(xilinx::xten::PartialConv2dOp o, unsigned int idx, bool read) {
-    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
-    return getConv2dOperandTransferVolumeWithType(o, idx, read, resultType);
-}
-
-template<>
-uint64_t getConv2dOperandTransferVolume<xilinx::xten::PartialConv2dReLUOp>(xilinx::xten::PartialConv2dReLUOp o, unsigned int idx, bool read) {
-    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
-    return getConv2dOperandTransferVolumeWithType(o, idx, read, resultType);
-}
-
-template<>
-uint64_t getConv2dOperandTransferVolume<xilinx::xten::PartialConv2dBatchNormReLUOp>(xilinx::xten::PartialConv2dBatchNormReLUOp o, unsigned int idx, bool read) {
-    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
     return getConv2dOperandTransferVolumeWithType(o, idx, read, resultType);
 }
 
@@ -247,158 +207,7 @@ uint64_t  getConv2dResultTransferVolume(T o, unsigned int idx, bool write) {
     return getConv2dResultTransferVolumeWithType(o, idx, write, resultType);
 }
 
-template<>
-uint64_t getConv2dResultTransferVolume<xilinx::xten::PartialConv2dOp>(xilinx::xten::PartialConv2dOp o, unsigned int idx, bool write) {
-    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
-    return getConv2dResultTransferVolumeWithType(o, idx, write, resultType);
-}
-
-template<>
-uint64_t getConv2dResultTransferVolume<xilinx::xten::PartialConv2dReLUOp>(xilinx::xten::PartialConv2dReLUOp o, unsigned int idx, bool write) {
-    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
-    return getConv2dResultTransferVolumeWithType(o, idx, write, resultType);
-}
-
-template<>
-uint64_t getConv2dResultTransferVolume<xilinx::xten::PartialConv2dBatchNormReLUOp>(xilinx::xten::PartialConv2dBatchNormReLUOp o, unsigned int idx, bool write) {
-    TensorType resultType = o.getResult(0).getType().template cast<TensorType>();
-    return getConv2dResultTransferVolumeWithType(o, idx, write, resultType);
-}
-
-
 } // namespace
-
-namespace xilinx {
-namespace xten {
-
-// acap conv2d bn relu
-
-std::map<std::string, uint64_t> Conv2dBatchNormReLUOp::getStatistics() {
-  return getConv2dStatistics<Conv2dBatchNormReLUOp>(*this);
-}
-
-uint64_t Conv2dBatchNormReLUOp::getOperandTransferVolume(unsigned int idx, bool read) {
-  return getConv2dOperandTransferVolume<Conv2dBatchNormReLUOp>(*this, idx, read);
-}
-
-uint64_t Conv2dBatchNormReLUOp::getResultTransferVolume(unsigned int idx, bool write) {
-  return getConv2dResultTransferVolume<Conv2dBatchNormReLUOp>(*this, idx, write);
-}
-
-// acap conv2d relu
-
-std::map<std::string, uint64_t> Conv2dReLUOp::getStatistics() {
-  return getConv2dStatistics<Conv2dReLUOp>(*this);
-}
-
-uint64_t Conv2dReLUOp::getOperandTransferVolume(unsigned int idx, bool read) {
-  return getConv2dOperandTransferVolume<Conv2dReLUOp>(*this, idx, read);
-}
-
-uint64_t Conv2dReLUOp::getResultTransferVolume(unsigned int idx, bool write) {
-  return getConv2dResultTransferVolume<Conv2dReLUOp>(*this, idx, write);
-}
-
-// acap conv2d
-
-std::map<std::string, uint64_t> Conv2dOp::getStatistics() {
-  return getConv2dStatistics<Conv2dOp>(*this);
-}
-
-uint64_t Conv2dOp::getOperandTransferVolume(unsigned int idx, bool read) {
-  return getConv2dOperandTransferVolume<Conv2dOp>(*this, idx, read);
-}
-
-uint64_t Conv2dOp::getResultTransferVolume(unsigned int idx, bool write) {
-  return getConv2dResultTransferVolume<Conv2dOp>(*this, idx, write);
-}
-
-    // TODO verify correctness of this
-    std::map<std::string, uint64_t> PartialConv2dOp::getStatistics() {
-        return getConv2dStatistics<PartialConv2dOp>(*this);
-    }
-
-    uint64_t PartialConv2dOp::getOperandTransferVolume(unsigned int idx, bool read) {
-        return getConv2dOperandTransferVolume<PartialConv2dOp>(*this, idx, read);
-    }
-
-    uint64_t PartialConv2dOp::getResultTransferVolume(unsigned int idx, bool write) {
-        return getConv2dResultTransferVolume<PartialConv2dOp>(*this, idx, write);
-    }
-
-    std::map<std::string, uint64_t> PartialConv2dReLUOp::getStatistics() {
-        return getConv2dStatistics<PartialConv2dReLUOp>(*this);
-    }
-
-    uint64_t PartialConv2dReLUOp::getOperandTransferVolume(unsigned int idx, bool read) {
-        return getConv2dOperandTransferVolume<PartialConv2dReLUOp>(*this, idx, read);
-    }
-
-    uint64_t PartialConv2dReLUOp::getResultTransferVolume(unsigned int idx, bool write) {
-        return getConv2dResultTransferVolume<PartialConv2dReLUOp>(*this, idx, write);
-    }
-
-    std::map<std::string, uint64_t> PartialConv2dBatchNormReLUOp::getStatistics() {
-        return getConv2dStatistics<PartialConv2dBatchNormReLUOp>(*this);
-    }
-
-    uint64_t PartialConv2dBatchNormReLUOp::getOperandTransferVolume(unsigned int idx, bool read) {
-        return getConv2dOperandTransferVolume<PartialConv2dBatchNormReLUOp>(*this, idx, read);
-    }
-
-    uint64_t PartialConv2dBatchNormReLUOp::getResultTransferVolume(unsigned int idx, bool write) {
-        return getConv2dResultTransferVolume<PartialConv2dBatchNormReLUOp>(*this, idx, write);
-    }
-
-    std::map<std::string, uint64_t> ConcatOp::getStatistics() {
-        std::map<std::string, uint64_t> toReturn;
-
-        toReturn["ops:+"] = 0;
-        toReturn["ops:MAC"] = 0;
-
-        // NOTE assumes concat is a network communication step
-        toReturn["reads"] = 0;
-        toReturn["writes"] = 0;
-
-        return toReturn;
-    }
-
-    uint64_t ConcatOp::getOperandTransferVolume(unsigned int idx, bool read) {
-        // TODO
-        return 0;
-    }
-
-    uint64_t ConcatOp::getResultTransferVolume(unsigned int idx, bool write) {
-        // TODO
-        return 0;
-    }
-
-    std::map<std::string, uint64_t> SplitOp::getStatistics() {
-        std::map<std::string, uint64_t> toReturn;
-
-        toReturn["ops:+"] = 0;
-        toReturn["ops:MAC"] = 0;
-
-        // NOTE assumes concat is a network communication step
-        toReturn["reads"] = 0;
-        toReturn["writes"] = 0;
-
-        return toReturn;
-    }
-
-    uint64_t SplitOp::getOperandTransferVolume(unsigned int idx, bool read) {
-        // TODO
-        return 0;
-    }
-
-    uint64_t SplitOp::getResultTransferVolume(unsigned int idx, bool write) {
-        // TODO
-        return 0;
-    }
-
-
-}
-}
 
 #if 1
 
@@ -422,14 +231,14 @@ std::map<std::string, uint64_t> getStatistics(AddOp op) {
   TensorType aType = op.getOperand(0).getType().cast<TensorType>();
   Type bType = op.getOperand(1).getType();
 
-  uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
 
   toReturn["ops:+"] = ofm_volume;
   toReturn["result:0:activation_out"] = ofm_volume;
 
   // Find the size of the A and B operands
-  uint64_t a_volume = xilinx::air::getTensorVolume(aType);
-  uint64_t b_volume = xilinx::air::getTensorVolume(bType);
+  uint64_t a_volume = xilinx::aten::getTensorVolume(aType);
+  uint64_t b_volume = xilinx::aten::getTensorVolume(bType);
 
   toReturn["operand:0:activation_in"] = a_volume;
   toReturn["operand:1:activation_in"] = b_volume;
@@ -451,14 +260,14 @@ std::map<std::string, uint64_t> getStatistics(AddUnderOp op) {
   TensorType aType = op.getOperand(0).getType().cast<TensorType>();
   Type bType = op.getOperand(1).getType();
 
-  uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
 
   toReturn["ops:+"] = ofm_volume;
   toReturn["result:0:activation_out"] = ofm_volume;
 
   // Find the size of the A and B operands
-  uint64_t a_volume = xilinx::air::getTensorVolume(aType);
-  uint64_t b_volume = xilinx::air::getTensorVolume(bType);
+  uint64_t a_volume = xilinx::aten::getTensorVolume(aType);
+  uint64_t b_volume = xilinx::aten::getTensorVolume(bType);
 
   toReturn["operand:0:activation_in"] = a_volume;
   toReturn["operand:1:activation_in"] = b_volume;
@@ -485,20 +294,20 @@ std::map<std::string, uint64_t> getStatistics(AddmmOp op) {
   TensorType weightTy = op.getOperand(2).getType().cast<TensorType>();
 
   uint64_t num_output_neurons = resultTy.getShape()[1];
-  uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
 
   // Use the weight tensor to find the number of input neurons
   uint64_t num_input_neurons = weightTy.getShape()[0];
   uint64_t total_MACs = ofm_volume * num_input_neurons;
-  uint64_t weight_volume = xilinx::air::getTensorVolume(weightTy);
+  uint64_t weight_volume = xilinx::aten::getTensorVolume(weightTy);
 
-  uint64_t ifm_volume = xilinx::air::getTensorVolume(inputTy);
+  uint64_t ifm_volume = xilinx::aten::getTensorVolume(inputTy);
 
   toReturn["ops:MAC"] = total_MACs;
   toReturn["ops:+"] = ofm_volume;   // Should be gated on whether there is bias at all
   toReturn["operand:1:activation_in"] = ifm_volume;
   toReturn["result:0:activation_out"] = ofm_volume;
-  toReturn["operand:0:parameters_in:bias"] = xilinx::air::getTensorVolume(biasTy);
+  toReturn["operand:0:parameters_in:bias"] = xilinx::aten::getTensorVolume(biasTy);
   toReturn["operand:2:parameters_in:weight"] = weight_volume;
 
   toReturn["reads"] = ifm_volume + weight_volume + num_output_neurons;
@@ -525,9 +334,9 @@ std::map<std::string, uint64_t> getStatistics(BatchNormOp op) {
   std::map<std::string, uint64_t> toReturn;
 
   TensorType resultTy = op.getResult(0).getType().cast<TensorType>();
-  uint64_t op_volume = xilinx::air::getTensorVolume(resultTy);
-  uint64_t weight_volume = xilinx::air::getTensorVolume(op.getOperand(1).getType());
-  uint64_t bias_volume = xilinx::air::getTensorVolume(op.getOperand(2).getType());
+  uint64_t op_volume = xilinx::aten::getTensorVolume(resultTy);
+  uint64_t weight_volume = xilinx::aten::getTensorVolume(op.getOperand(1).getType());
+  uint64_t bias_volume = xilinx::aten::getTensorVolume(op.getOperand(2).getType());
   toReturn["operand:0:activation_in"] = op_volume;
   toReturn["result:0:activation_out"] = op_volume;
   toReturn["operand:1:parameters_in:weight"] = weight_volume;
@@ -579,10 +388,10 @@ std::map<std::string, uint64_t> getStatistics(ConvolutionBackwardOp op) {
 
   std::map<std::string, uint64_t> toReturn;
   TensorType dx_out_resultTy = op.getResult(0).getType().cast<TensorType>();
-  uint64_t dx_out_volume = xilinx::air::getTensorVolume(dx_out_resultTy);
+  uint64_t dx_out_volume = xilinx::aten::getTensorVolume(dx_out_resultTy);
 
   TensorType weightTy = op.getOperand(2).getType().cast<TensorType>();
-  uint64_t weight_volume = xilinx::air::getTensorVolume(weightTy);
+  uint64_t weight_volume = xilinx::aten::getTensorVolume(weightTy);
   uint64_t loss_in_depth = weightTy.getShape()[0];
   uint64_t kernel_width = weightTy.getShape()[2];
   uint64_t kernel_height = weightTy.getShape()[3];
@@ -593,14 +402,14 @@ std::map<std::string, uint64_t> getStatistics(ConvolutionBackwardOp op) {
   uint64_t total_MACs = dx_out_volume * MACs_per_loss;
 
   TensorType ifmTy = op.getOperand(1).getType().cast<TensorType>();
-  uint64_t ifm_volume = xilinx::air::getTensorVolume(ifmTy);
+  uint64_t ifm_volume = xilinx::aten::getTensorVolume(ifmTy);
   auto ifm_shape = ifmTy.getShape();
 
   uint64_t ifm_bwh = ifm_shape[0]*ifm_shape[2]*ifm_shape[3];  // Batch * height * width: the depth is in the weight shape already
   total_MACs += ifm_bwh * weight_volume;
 
   TensorType dx_inTy = op.getOperand(0).getType().cast<TensorType>();
-  uint64_t dx_in_volume = xilinx::air::getTensorVolume(dx_inTy);
+  uint64_t dx_in_volume = xilinx::aten::getTensorVolume(dx_inTy);
   toReturn["ops:+"] = dx_in_volume;
 
   // Reads: Conv_backward reads 3 tensors: the loss in, the activation in and the transposed weights
@@ -608,7 +417,7 @@ std::map<std::string, uint64_t> getStatistics(ConvolutionBackwardOp op) {
 
   // Writes: Conv_backward writes 3 tensors: the loss out, gradients for the weights, and gradients for the biases
   TensorType biasTy = op.getResult(2).getType().cast<TensorType>();
-  uint64_t bias_volume = xilinx::air::getTensorVolume(biasTy);
+  uint64_t bias_volume = xilinx::aten::getTensorVolume(biasTy);
   toReturn["writes"] = dx_out_volume + weight_volume + bias_volume;
 
   toReturn["ops:MAC"] = total_MACs;
@@ -633,14 +442,14 @@ std::map<std::string, uint64_t> getStatistics(DivOp op) {
   TensorType aType = op.getOperand(0).getType().cast<TensorType>();
   Type bType = op.getOperand(1).getType();
 
-  uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
   toReturn["ops:/"] = ofm_volume;
 
   toReturn["result:0:activation_out"] = ofm_volume;
 
   // Find the size of the A and B operands
-  uint64_t a_volume = xilinx::air::getTensorVolume(aType);
-  uint64_t b_volume = xilinx::air::getTensorVolume(bType);
+  uint64_t a_volume = xilinx::aten::getTensorVolume(aType);
+  uint64_t b_volume = xilinx::aten::getTensorVolume(bType);
 
   toReturn["operand:0:activation_in"] = a_volume;
   toReturn["operand:1:activation_in"] = b_volume;
@@ -662,13 +471,13 @@ std::map<std::string, uint64_t> getStatistics(DivUnderOp op) {
   TensorType aType = op.getOperand(0).getType().cast<TensorType>();
   Type bType = op.getOperand(1).getType();
 
-  uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
   toReturn["ops:/"] = ofm_volume;
   toReturn["result:0:activation_out"] = ofm_volume;
 
   // Find the size of the A and B operands
-  uint64_t a_volume = xilinx::air::getTensorVolume(aType);
-  uint64_t b_volume = xilinx::air::getTensorVolume(bType);
+  uint64_t a_volume = xilinx::aten::getTensorVolume(aType);
+  uint64_t b_volume = xilinx::aten::getTensorVolume(bType);
 
   toReturn["operand:0:activation_in"] = a_volume;
   toReturn["operand:1:activation_in"] = b_volume;
@@ -707,8 +516,8 @@ std::map<std::string, uint64_t> getStatistics(HardtanhOp op) {
   TensorType inputTy = op.getOperand(0).getType().cast<TensorType>();
   TensorType resultTy = op.getResult().getType().cast<TensorType>();
 
-  uint64_t in_volume = xilinx::air::getTensorVolume(inputTy);
-  uint64_t out_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t in_volume = xilinx::aten::getTensorVolume(inputTy);
+  uint64_t out_volume = xilinx::aten::getTensorVolume(resultTy);
 
   toReturn["operand:0:activation_in"] = in_volume;
   toReturn["result:0:activation_out"] = out_volume;
@@ -728,8 +537,8 @@ std::map<std::string, uint64_t> getStatistics(HardtanhUnderOp op) {
   TensorType inputTy = op.getOperand(0).getType().cast<TensorType>();
   TensorType resultTy = op.getResult().getType().cast<TensorType>();
 
-  uint64_t in_volume = xilinx::air::getTensorVolume(inputTy);
-  uint64_t out_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t in_volume = xilinx::aten::getTensorVolume(inputTy);
+  uint64_t out_volume = xilinx::aten::getTensorVolume(resultTy);
 
   toReturn["operand:0:activation_in"] = in_volume;
   toReturn["result:0:activation_out"] = out_volume;
@@ -749,10 +558,10 @@ std::map<std::string, uint64_t> getStatistics(MaxPool2dOp op) {
   // TensorType resultTy = op.getResult().getType().cast<TensorType>();
   // TensorType inputType = op.getOperand(0).getType().cast<TensorType>();
 
-  // uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+  // uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
   // toReturn["result:0:activation_out"] = ofm_volume;
 
-  // uint64_t ifm_volume = xilinx::air::getTensorVolume(inputType);
+  // uint64_t ifm_volume = xilinx::aten::getTensorVolume(inputType);
   // toReturn["input:0:activation_in"] = ifm_volume;
 
   // // To find the number of compares, we need the filter extent
@@ -774,14 +583,14 @@ std::map<std::string, uint64_t> getStatistics(MaxPool2dWithIndicesOp op) {
 
     std::map<std::string, uint64_t> toReturn;
 
-    uint64_t ofm_volume = xilinx::air::getTensorVolume(op.getResult(0).getType().cast<TensorType>());
-    uint64_t indices_volume = xilinx::air::getTensorVolume(op.getResult(1).getType().cast<TensorType>());
+    uint64_t ofm_volume = xilinx::aten::getTensorVolume(op.getResult(0).getType().cast<TensorType>());
+    uint64_t indices_volume = xilinx::aten::getTensorVolume(op.getResult(1).getType().cast<TensorType>());
 
     toReturn["writes"] = ofm_volume + indices_volume;
     toReturn["result:0:activation_out"] = ofm_volume;
     toReturn["result:1:indices_out"] = indices_volume;
 
-    uint64_t ifm_volume = xilinx::air::getTensorVolume(op.getOperand(0).getType().cast<TensorType>());
+    uint64_t ifm_volume = xilinx::aten::getTensorVolume(op.getOperand(0).getType().cast<TensorType>());
     toReturn["reads"] = ifm_volume;
     toReturn["operand:0:activation_in"] = ifm_volume;
 
@@ -803,12 +612,12 @@ std::map<std::string, uint64_t> getStatistics(MaxPool2dWithIndicesBackwardOp op)
 
   Type resultTy = op.getResult().getType();
   TensorType tensorResultTy = resultTy.cast<TensorType>();
-  uint64_t loss_out_volume = xilinx::air::getTensorVolume(tensorResultTy);
+  uint64_t loss_out_volume = xilinx::aten::getTensorVolume(tensorResultTy);
   toReturn["writes"] = loss_out_volume;
 
-  uint64_t loss_in_volume = xilinx::air::getTensorVolume(op.getOperand(0).getType().cast<TensorType>());
-  uint64_t act_in_volume  = xilinx::air::getTensorVolume(op.getOperand(1).getType().cast<TensorType>()); // TODO: Why is this needed?
-  uint64_t indices_volume  = xilinx::air::getTensorVolume(op.getOperand(7).getType().cast<TensorType>());
+  uint64_t loss_in_volume = xilinx::aten::getTensorVolume(op.getOperand(0).getType().cast<TensorType>());
+  uint64_t act_in_volume  = xilinx::aten::getTensorVolume(op.getOperand(1).getType().cast<TensorType>()); // TODO: Why is this needed?
+  uint64_t indices_volume  = xilinx::aten::getTensorVolume(op.getOperand(7).getType().cast<TensorType>());
   toReturn["reads"] = loss_in_volume + act_in_volume + indices_volume;
   toReturn["operand:0:activation_in"] = loss_in_volume;
   toReturn["operand:1:activation_in"] = act_in_volume;
@@ -827,12 +636,12 @@ std::map<std::string, uint64_t> getStatistics(MeanOp op) {
   TensorType resultTy = op.getResult().getType().cast<TensorType>();
   TensorType aType = op.getOperand().getType().cast<TensorType>();
 
-  uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
   toReturn["ops:+"] = ofm_volume;
   toReturn["result:0:activation_out"] = ofm_volume;
 
   // Find the size of the A and B operands
-  uint64_t a_volume = xilinx::air::getTensorVolume(aType);
+  uint64_t a_volume = xilinx::aten::getTensorVolume(aType);
 
   toReturn["operand:0:activation_in"] = a_volume;
 
@@ -849,7 +658,7 @@ std::map<std::string, uint64_t> getStatistics(MmOp op) {
   std::map<std::string, uint64_t> toReturn;
 
   TensorType resultTy = op.getResult().getType().cast<TensorType>();
-  uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
 
   // Use the weight tensor to find the number of input neurons
   TensorType weightTy = op.getOperand(1).getType().cast<TensorType>();
@@ -857,8 +666,8 @@ std::map<std::string, uint64_t> getStatistics(MmOp op) {
   uint64_t total_MACs = ofm_volume * num_input_neurons;
   toReturn["ops:MAC"] = total_MACs;
 
-  uint64_t loss_in_volume = xilinx::air::getTensorVolume(op.getOperand(0).getType().cast<TensorType>());
-  uint64_t weight_volume = xilinx::air::getTensorVolume(op.getOperand(1).getType().cast<TensorType>());
+  uint64_t loss_in_volume = xilinx::aten::getTensorVolume(op.getOperand(0).getType().cast<TensorType>());
+  uint64_t weight_volume = xilinx::aten::getTensorVolume(op.getOperand(1).getType().cast<TensorType>());
   toReturn["reads"] = loss_in_volume + weight_volume;
   toReturn["writes"] = ofm_volume;
 
@@ -878,13 +687,13 @@ std::map<std::string, uint64_t> getStatistics(MulOp op) {
   TensorType aType = op.getOperand(0).getType().cast<TensorType>();
   Type bType = op.getOperand(1).getType();
 
-  uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
   toReturn["ops:*"] = ofm_volume;
   toReturn["result:0:activation_out"] = ofm_volume;
 
   // Find the size of the A and B operands
-  uint64_t a_volume = xilinx::air::getTensorVolume(aType);
-  uint64_t b_volume = xilinx::air::getTensorVolume(bType);
+  uint64_t a_volume = xilinx::aten::getTensorVolume(aType);
+  uint64_t b_volume = xilinx::aten::getTensorVolume(bType);
 
   toReturn["operand:0:activation_in"] = a_volume;
   toReturn["operand:1:activation_in"] = b_volume;
@@ -905,13 +714,13 @@ std::map<std::string, uint64_t> getStatistics(MulUnderOp op) {
   TensorType aType = op.getOperand(0).getType().cast<TensorType>();
   Type bType = op.getOperand(1).getType();
 
-  uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
   toReturn["ops:*"] = ofm_volume;
   toReturn["result:0:activation_out"] = ofm_volume;
 
   // Find the size of the A and B operands
-  uint64_t a_volume = xilinx::air::getTensorVolume(aType);
-  uint64_t b_volume = xilinx::air::getTensorVolume(bType);
+  uint64_t a_volume = xilinx::aten::getTensorVolume(aType);
+  uint64_t b_volume = xilinx::aten::getTensorVolume(bType);
 
   toReturn["operand:0:activation_in"] = a_volume;
   toReturn["operand:1:activation_in"] = b_volume;
@@ -929,9 +738,9 @@ std::map<std::string, uint64_t> getStatistics(NativeBatchNormOp op) {
   std::map<std::string, uint64_t> toReturn;
 
   TensorType resultTy = op.getResult(0).getType().cast<TensorType>();
-  uint64_t op_volume = xilinx::air::getTensorVolume(resultTy);
-  uint64_t weight_volume = xilinx::air::getTensorVolume(op.getOperand(1).getType());
-  uint64_t bias_volume = xilinx::air::getTensorVolume(op.getOperand(2).getType());
+  uint64_t op_volume = xilinx::aten::getTensorVolume(resultTy);
+  uint64_t weight_volume = xilinx::aten::getTensorVolume(op.getOperand(1).getType());
+  uint64_t bias_volume = xilinx::aten::getTensorVolume(op.getOperand(2).getType());
   toReturn["operand:0:activation_in"] = op_volume;
   toReturn["result:0:activation_out"] = op_volume;
   toReturn["operand:1:parameters_in:weight"] = weight_volume;
@@ -970,7 +779,7 @@ std::map<std::string, uint64_t> getStatistics(NativeBatchNormBackwardOp op) {
   std::map<std::string, uint64_t> toReturn;
 
   ShapedType inputTy = op.getOperand(0).getType().cast<ShapedType>();
-  uint64_t input_volume = xilinx::air::getTensorVolume(inputTy);
+  uint64_t input_volume = xilinx::aten::getTensorVolume(inputTy);
   uint64_t input_channels = inputTy.getShape()[1];
 
   // from https://gitenterprise.xilinx.com/nfraser/torchscope/blob/master/torchscope/helper.py
@@ -1019,14 +828,14 @@ std::map<std::string, uint64_t> getStatistics(NativeBatchNormBackwardOp op) {
 
   uint64_t reads = 0;
   for (int i=0; i<7; i++) {
-    auto v = xilinx::air::getTensorVolume(op.getOperand(i).getType());
+    auto v = xilinx::aten::getTensorVolume(op.getOperand(i).getType());
     toReturn["operand:"+std::to_string(i)+":activation_in"] = v;
     reads += v;
   }
 
   uint64_t writes = 0;
   for (int i=0; i<3; i++) {
-    auto v = xilinx::air::getTensorVolume(op.getResult(i).getType());
+    auto v = xilinx::aten::getTensorVolume(op.getResult(i).getType());
     toReturn["result:"+std::to_string(i)+":grad"] = v;
     writes += v;
   }
@@ -1046,8 +855,8 @@ std::map<std::string, uint64_t> getStatistics(ReluOp op) {
   TensorType inputTy = op.getOperand().getType().cast<TensorType>();
   TensorType resultTy = op.getResult().getType().cast<TensorType>();
 
-  uint64_t in_volume = xilinx::air::getTensorVolume(inputTy);
-  uint64_t out_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t in_volume = xilinx::aten::getTensorVolume(inputTy);
+  uint64_t out_volume = xilinx::aten::getTensorVolume(resultTy);
 
   toReturn["operand:0:activation_in"] = in_volume;
   toReturn["result:0:activation_out"] = out_volume;
@@ -1067,8 +876,8 @@ std::map<std::string, uint64_t> getStatistics(ReluUnderOp op) {
   TensorType inputTy = op.getOperand().getType().cast<TensorType>();
   TensorType resultTy = op.getResult().getType().cast<TensorType>();
 
-  uint64_t in_volume = xilinx::air::getTensorVolume(inputTy);
-  uint64_t out_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t in_volume = xilinx::aten::getTensorVolume(inputTy);
+  uint64_t out_volume = xilinx::aten::getTensorVolume(resultTy);
 
   toReturn["operand:0:activation_in"] = in_volume;
   toReturn["result:0:activation_out"] = out_volume;
@@ -1089,14 +898,14 @@ std::map<std::string, uint64_t> getStatistics(SubOp op) {
   TensorType aType = op.getOperand(0).getType().cast<TensorType>();
   Type bType = op.getOperand(1).getType();
 
-  uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
 
   toReturn["ops:-"] = ofm_volume;
   toReturn["result:0:activation_out"] = ofm_volume;
 
   // Find the size of the A and B operands
-  uint64_t a_volume = xilinx::air::getTensorVolume(aType);
-  uint64_t b_volume = xilinx::air::getTensorVolume(bType);
+  uint64_t a_volume = xilinx::aten::getTensorVolume(aType);
+  uint64_t b_volume = xilinx::aten::getTensorVolume(bType);
 
   toReturn["operand:0:activation_in"] = a_volume;
   toReturn["operand:1:activation_in"] = b_volume;
@@ -1118,14 +927,14 @@ std::map<std::string, uint64_t> getStatistics(SubUnderOp op) {
   TensorType aType = op.getOperand(0).getType().cast<TensorType>();
   Type bType = op.getOperand(1).getType();
 
-  uint64_t ofm_volume = xilinx::air::getTensorVolume(resultTy);
+  uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
 
   toReturn["ops:-"] = ofm_volume;
   toReturn["result:0:activation_out"] = ofm_volume;
 
   // Find the size of the A and B operands
-  uint64_t a_volume = xilinx::air::getTensorVolume(aType);
-  uint64_t b_volume = xilinx::air::getTensorVolume(bType);
+  uint64_t a_volume = xilinx::aten::getTensorVolume(aType);
+  uint64_t b_volume = xilinx::aten::getTensorVolume(bType);
 
   toReturn["operand:0:activation_in"] = a_volume;
   toReturn["operand:1:activation_in"] = b_volume;
@@ -1142,7 +951,7 @@ std::map<std::string, uint64_t> getStatistics(SumOp op) {
 
   std::map<std::string, uint64_t> toReturn;
   TensorType ty = op.getOperand(0).getType().cast<TensorType>();
-  uint64_t volume = xilinx::air::getTensorVolume(ty);
+  uint64_t volume = xilinx::aten::getTensorVolume(ty);
 
   toReturn["ops:+"] = volume;
 
@@ -1160,9 +969,9 @@ template<>
 std::map<std::string, uint64_t> getStatistics(ThresholdBackwardOp op) {
 
   std::map<std::string, uint64_t> toReturn;
-  uint64_t loss_in_volume = xilinx::air::getTensorVolume(op.getOperand(0).getType().cast<TensorType>());
-  uint64_t act_in_volume  = xilinx::air::getTensorVolume(op.getOperand(1).getType().cast<TensorType>());
-  uint64_t loss_out_volume = xilinx::air::getTensorVolume(op.getResult().getType().cast<TensorType>());
+  uint64_t loss_in_volume = xilinx::aten::getTensorVolume(op.getOperand(0).getType().cast<TensorType>());
+  uint64_t act_in_volume  = xilinx::aten::getTensorVolume(op.getOperand(1).getType().cast<TensorType>());
+  uint64_t loss_out_volume = xilinx::aten::getTensorVolume(op.getResult().getType().cast<TensorType>());
 
   toReturn["reads"]  = toReturn["operand:0:activation_in"] = loss_in_volume + act_in_volume;
   toReturn["writes"] = toReturn["result:0:grad:dx"] = loss_out_volume;

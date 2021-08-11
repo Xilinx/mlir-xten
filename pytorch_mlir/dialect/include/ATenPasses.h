@@ -1,5 +1,5 @@
-#ifndef ATENPASSES_H_
-#define ATENPASSES_H_
+#ifndef ATEN_PASSES_H
+#define ATEN_PASSES_H
 
 #include "mlir/Pass/Pass.h"
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
@@ -7,8 +7,6 @@
 #include "AcapHerdAssignPass.h"
 #include "AcapHerdLoweringPass.h"
 #include "AcapLoopLoweringPass.h"
-#include "AffineLoopOptPass.h"
-#include "ATenToXTenPass.h"
 #include "ATenLoweringPass.h"
 #include "ATenSimpleAllocatePass.h"
 #include "ATenOpReport.h"
@@ -23,4 +21,4 @@ namespace xilinx {
     void registerATenPasses();
   }
 }
-#endif // ATENPASSES_H_
+#endif // ATENPASSES_H

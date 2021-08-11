@@ -1,20 +1,9 @@
 set(LLVM_OPTIONAL_SOURCES
-  test.cpp
-  ATenToXTenPass.cpp
-  AffineToAIRPass.cpp
   AcapLoopLoweringPass.cpp
   AcapHerdAssignPass.cpp
   AcapHerdLoweringPass.cpp
   AcapOutliner.cpp
-  AffineLoopOptPass.cpp
-  AIRAutomaticTilingPass.cpp
-  AIRRegularizeLoopPass.cpp
-  AIRLoopPermutationPass.cpp
-  AIRLoopMergingPass.cpp
-  AIRTilingUtils.cpp
   ATenDialect.cpp
-  AIRDialect.cpp
-  AIRLoweringPass.cpp
   ATenDialectOpStats.cpp
   ATenLoweringPass.cpp
   ATenModulePass.cpp
@@ -23,36 +12,16 @@ set(LLVM_OPTIONAL_SOURCES
   ATenToStd.cpp
   LivenessReport.cpp
   ReturnEliminationPass.cpp
-  XTenToAffine.cpp
-  XTenToLinalg.cpp
-  AIRLinalgCodegen.cpp
-  AIRToAIEPass.cpp
   Util.cpp
   LowerToLibATenPass.cpp
-  AIRRtDialect.cpp
-  AIRRtOps.cpp
-  AIRRtToLLVMPass.cpp
-  XTenDialect.cpp
-  XTenOps.cpp
-
   )
 
 add_mlir_library(ATen
-  ATenToXTenPass.cpp
-  AffineToAIRPass.cpp
   AcapLoopLoweringPass.cpp
   AcapHerdAssignPass.cpp
   AcapHerdLoweringPass.cpp
   AcapOutliner.cpp
-  AffineLoopOptPass.cpp
-  AIRAutomaticTilingPass.cpp
-  AIRRegularizeLoopPass.cpp
-  AIRLoopPermutationPass.cpp
-  AIRLoopMergingPass.cpp
-  AIRTilingUtils.cpp
   ATenDialect.cpp
-  AIRDialect.cpp
-  AIRLoweringPass.cpp
   ATenDialectOpStats.cpp
   ATenLoweringPass.cpp
   ATenModulePass.cpp
@@ -61,32 +30,14 @@ add_mlir_library(ATen
   ATenToStd.cpp
   LivenessReport.cpp
   ReturnEliminationPass.cpp
-  XTenToAffine.cpp
-  XTenToLinalg.cpp
-  AIRLinalgCodegen.cpp
-  AIRToAIEPass.cpp
   Util.cpp
   LowerToLibATenPass.cpp
-  XTenNamePass.cpp
-  XTenOpWrapper.cpp
-  XTenDataflowExplorer.cpp
-  XTenDataflowUtils.cpp
-  XTenDataflowPass.cpp
-  AIRRtDialect.cpp
-  AIRRtOps.cpp
-  AIRRtToLLVMPass.cpp
-  XTenDialect.cpp
-  XTenOps.cpp
 
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/dialect/include
   ${PROJECT_BINARY_DIR}/dialect/include
 
   DEPENDS
-  MLIRAIRIncGen
-  MLIRAIRPassIncGen
-  MLIRAIREnumsIncGen
-  MLIRAIROpInterfacesIncGen
 
   LINK_LIBS
   NPCOMPATenDialect
