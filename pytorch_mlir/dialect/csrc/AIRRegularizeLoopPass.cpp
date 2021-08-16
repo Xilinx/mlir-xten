@@ -1,4 +1,4 @@
-// (c) Copyright 2020 Xilinx Inc. All Rights Reserved.
+// (c) Copyright 2021 Xilinx Inc. All Rights Reserved.
 //
 // ===---     AIRRegularizeLoopPass.cpp - Loop Regularization Pass      ---===//
 //
@@ -17,6 +17,7 @@
 // ===---------------------------------------------------------------------===//
 
 #include "AIRRegularizeLoopPass.h"
+#include "AIRTilingUtils.h"
 
 #include "../lib/Dialect/Affine/Transforms/PassDetail.h"
 #include "mlir/Analysis/AffineAnalysis.h"
@@ -55,12 +56,20 @@ public:
   AIRRegularizeLoopPass() = default;
   AIRRegularizeLoopPass(const AIRRegularizeLoopPass &pass){};
 
+  Option<std::string> clAIROptLabel{*this, "air-label",
+                          llvm::cl::desc("Transform loops with the given \
+                              label"),
+                          llvm::cl::init("")};
+
   void runOnFunction() override;
   void runOnAffineForNest(SmallVector<AffineForOp, 6> &band);
-
+                              
+  static const char *affineOptAttrName;
 private:
 
 };
+
+const char *AIRRegularizeLoopPass::affineOptAttrName = "affine_opt_label";
 
 static bool isIndependent(Operation *op, AffineForOp forOp,
                               SmallPtrSetImpl<Operation *> &opsWithUsers,
@@ -240,7 +249,8 @@ void AIRRegularizeLoopPass::runOnFunction() {
   auto func = getFunction();
 
   std::vector<SmallVector<AffineForOp, 6>> bands;
-  getTileableBands(func, &bands);
+  xilinx::air::getTileableBands(func, bands, 
+                   AIRRegularizeLoopPass::affineOptAttrName, clAIROptLabel);
   for (auto loopBand: bands) {
     runOnAffineForNest(loopBand);
   }

@@ -10,6 +10,8 @@ set(LLVM_OPTIONAL_SOURCES
   AIRAutomaticTilingPass.cpp
   AIRRegularizeLoopPass.cpp
   AIRLoopPermutationPass.cpp
+  AIRLoopMergingPass.cpp
+  AIRTilingUtils.cpp
   ATenDialect.cpp
   AIRDialect.cpp
   AIRLoweringPass.cpp
@@ -46,6 +48,8 @@ add_mlir_library(ATen
   AIRAutomaticTilingPass.cpp
   AIRRegularizeLoopPass.cpp
   AIRLoopPermutationPass.cpp
+  AIRLoopMergingPass.cpp
+  AIRTilingUtils.cpp
   ATenDialect.cpp
   AIRDialect.cpp
   AIRLoweringPass.cpp

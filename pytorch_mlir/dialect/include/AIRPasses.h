@@ -14,6 +14,7 @@
 #include "AIRAutomaticTilingPass.h"
 #include "AIRRegularizeLoopPass.h"
 #include "AIRLoopPermutationPass.h"
+#include "AIRLoopMergingPass.h"
 
 namespace xilinx {
   namespace air {
