@@ -1023,7 +1023,7 @@ namespace xilinx {
         void DataflowExplorer::dumpParetoFrontiers() {
             std::ofstream pareto;
             pareto.open("./output/pareto_throughput.csv", std::ios::out);
-            pareto << "Area Throughput Utilization LocUtilization\n";
+            pareto << "Area Throughput Utilization LocUtilization Latency\n";
 
             for(uint64_t i = 0; i < this->paretoThroughput.size(); i++) {
                 if(this->paretoThroughput.at(i).path.size() != 0) {
@@ -1033,9 +1033,10 @@ namespace xilinx {
                     //}
                     double totUtilization = this->getUtilization(this->paretoThroughput.at(i).path, this->arch->getNumCores());
                     double usedUtilization = this->getUtilization(this->paretoThroughput.at(i).path, i);
+                    double endToEndLatency = this->getEndToEndLatency(this->paretoThroughput.at(i).path);
 
                     pareto << i << " " << this->paretoThroughput.at(i).value << " "
-                           << totUtilization << " " << usedUtilization << "\n";
+                           << totUtilization << " " << usedUtilization << " " << endToEndLatency << "\n";
                 }
             }
 
