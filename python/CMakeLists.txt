@@ -6,12 +6,12 @@ include_directories(
   ${Python3_INCLUDE_DIRS}
   ${pybind11_INCLUDE_DIR}
 )
-add_library(_acap SHARED
-  AcapModule.cpp
+add_library(_xten SHARED
+  XTenModule.cpp
 )
-set_target_properties(_acap PROPERTIES PREFIX "")
+set_target_properties(_xten PROPERTIES PREFIX "")
 
-target_link_libraries(_acap
+target_link_libraries(_xten
   PRIVATE
   XTenTransformPasses
   XTenConversionPasses
@@ -21,12 +21,12 @@ target_link_libraries(_acap
 
 )
 
-install(TARGETS _acap
+install(TARGETS _xten
 LIBRARY DESTINATION python COMPONENT python
 ARCHIVE DESTINATION python COMPONENT python
 RUNTIME DESTINATION bin COMPONENT python)
 
-install(DIRECTORY acap
+install(DIRECTORY xten
 DESTINATION python COMPONENT python)
 
 #add_subdirectory(test)
