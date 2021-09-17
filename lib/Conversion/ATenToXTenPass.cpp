@@ -2,9 +2,9 @@
 #include "PassDetail.h"
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 
-#include "aten/Conversion/ATenToXTenPass.h"
-#include "aten/Dialect/XTen/XTenDialect.h"
-#include "aten/Dialect/XTen/XTenOps.h"
+#include "xten/Conversion/ATenToXTenPass.h"
+#include "xten/Dialect/XTen/XTenDialect.h"
+#include "xten/Dialect/XTen/XTenOps.h"
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
@@ -46,7 +46,7 @@ using namespace xilinx;
 
 namespace {
 
-#include "aten/Conversion/ATenToXTen.cpp.inc"
+#include "xten/Conversion/ATenToXTen.cpp.inc"
 
 struct ATenToXTenPass : public PassWrapper<ATenToXTenPass,
                                            OperationPass<ModuleOp>> {

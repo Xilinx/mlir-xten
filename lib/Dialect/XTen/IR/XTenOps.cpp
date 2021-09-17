@@ -5,11 +5,11 @@
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/TypeUtilities.h"
 
-#include "aten/Dialect/XTen/XTenDialect.h"
-#include "aten/Dialect/XTen/XTenOps.h"
+#include "xten/Dialect/XTen/XTenDialect.h"
+#include "xten/Dialect/XTen/XTenOps.h"
 
 using namespace mlir;
 using namespace xilinx::xten;
 
 #define GET_OP_CLASSES
-#include "aten/Dialect/XTen/XTenOps.cpp.inc"
+#include "xten/Dialect/XTen/XTenOps.cpp.inc"

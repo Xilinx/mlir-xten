@@ -2,7 +2,7 @@
 include "mlir/IR/OpBase.td"
 include "mlir/Dialect/StandardOps/IR/Ops.td"
 include "npcomp/Dialect/ATen/IR/ATenOps.td"
-include "aten/Dialect/XTen/XTenOps.td"
+include "xten/Dialect/XTen/XTenOps.td"
 
 def : Pat<(aten_ConvolutionOp $a,$b,$c,$d,$e,$f,$g,$h,$i),
           (XTen_Conv2dOp  $a,$b,$c,$d,$e,$f,$g,$h,$i)>;

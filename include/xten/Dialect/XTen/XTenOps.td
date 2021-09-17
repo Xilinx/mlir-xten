@@ -9,7 +9,7 @@
 #ifndef XTEN_OPS
 #define XTEN_OPS
 
-include "aten/Dialect/XTen/XTenBase.td"
+include "xten/Dialect/XTen/XTenBase.td"
 include "mlir/IR/SymbolInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 

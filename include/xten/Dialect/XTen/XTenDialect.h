@@ -12,6 +12,6 @@ namespace xten {
 } // namespace xten
 } // namespace xilinx
 
-#include "aten/Dialect/XTen/XTenOpsDialect.h.inc"
+#include "xten/Dialect/XTen/XTenOpsDialect.h.inc"
 
 #endif // XTEN_DIALECT_H

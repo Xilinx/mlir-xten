@@ -1,16 +1,16 @@
-#ifndef ATEN_TRANSFORM_PASSES_H
-#define ATEN_TRANSFORM_PASSES_H
+#ifndef XTEN_TRANSFORM_PASSES_H
+#define XTEN_TRANSFORM_PASSES_H
 
-#include "aten/Transform/ATenOpReport.h"
-#include "aten/Transform/ATenLoweringPass.h"
-#include "aten/Transform/LowerToLibATenPass.h"
+#include "xten/Transform/ATenOpReport.h"
+#include "xten/Transform/ATenLoweringPass.h"
+#include "xten/Transform/LowerToLibATenPass.h"
 
 namespace xilinx {
-namespace aten {
+namespace xten {
 
 void registerTransformPasses();
 
-} // namespace aten
+} // namespace xten
 } // namespace xilinx
 
-#endif // ATEN_TRANSFORM_PASSES_H
+#endif // XTEN_TRANSFORM_PASSES_H

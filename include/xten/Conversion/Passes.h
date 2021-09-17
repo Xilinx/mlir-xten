@@ -1,16 +1,16 @@
-#ifndef ATEN_CONVERSION_PASSES_H
-#define ATEN_CONVERSION_PASSES_H
+#ifndef XTEN_CONVERSION_PASSES_H
+#define XTEN_CONVERSION_PASSES_H
 
-#include "aten/Conversion/ATenToXTenPass.h"
-#include "aten/Conversion/XTenToAffinePass.h"
-#include "aten/Conversion/XTenToLinalgPass.h"
+#include "xten/Conversion/ATenToXTenPass.h"
+#include "xten/Conversion/XTenToAffinePass.h"
+#include "xten/Conversion/XTenToLinalgPass.h"
 
 namespace xilinx {
-namespace aten {
+namespace xten {
 
 void registerConversionPasses();
 
-} // namespace aten
+} // namespace xten
 } // namespace xilinx
 
-#endif // ATEN_CONVERSION_PASSES_H
+#endif // XTEN_CONVERSION_PASSES_H

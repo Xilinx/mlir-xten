@@ -1,9 +1,9 @@
 // (c) Copyright 2021 Xilinx Inc. All Rights Reserved.
-#include "aten/Conversion/Passes.h"
+#include "xten/Conversion/Passes.h"
 
 namespace {
 #define GEN_PASS_REGISTRATION
-#include "aten/Conversion/Passes.h.inc"
+#include "xten/Conversion/Passes.h.inc"
 }
 
-void xilinx::aten::registerConversionPasses() { ::registerATenConversionPasses(); }
+void xilinx::xten::registerConversionPasses() { ::registerXTenConversionPasses(); }

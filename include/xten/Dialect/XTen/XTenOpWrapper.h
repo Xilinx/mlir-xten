@@ -10,8 +10,8 @@
 
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 
-#include "aten/Dialect/XTen/XTenOps.h"
-#include "aten/Util/Arch.h"
+#include "xten/Dialect/XTen/XTenOps.h"
+#include "xten/Util/Arch.h"
 
 // NOTE this could be merged with the ops directly possibly, but would need to both NPCOMP and AIR
 // But we will need the build function here anyway as each op will have different arguments and we

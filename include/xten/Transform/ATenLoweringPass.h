@@ -6,11 +6,11 @@
 #include "mlir/Pass/Pass.h"
 
 namespace xilinx {
-namespace aten {
+namespace xten {
 
 std::unique_ptr<mlir::Pass> createATenLoweringPass();
 
-} // namespace aten
+} // namespace xten
 } // namespace xilinx
 
 #endif // ATEN_LOWERING_PASS_H

@@ -1,4 +1,4 @@
-add_mlir_library(ATenTransformPasses
+add_mlir_library(XTenTransformPasses
   AcapLoopLoweringPass.cpp
   AcapHerdLoweringPass.cpp
   ATenDialectOpStats.cpp
@@ -10,7 +10,7 @@ add_mlir_library(ATenTransformPasses
   Passes.cpp
 
   DEPENDS
-  MLIRATenTransformIncGen
+  MLIRXTenTransformIncGen
 
   LINK_LIBS
   NPCOMPATenDialect

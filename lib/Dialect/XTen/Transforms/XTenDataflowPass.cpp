@@ -8,9 +8,10 @@
 #include "mlir/IR/PatternMatch.h"
 
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "aten/Dialect/XTen/XTenDataflow.h"
-#include "aten/Dialect/XTen/XTenDataflowUtils.h"
-#include "aten/Dialect/XTen/XTenDataflowExplorer.h"
+
+#include "xten/Dialect/XTen/XTenDataflow.h"
+#include "xten/Dialect/XTen/XTenDataflowUtils.h"
+#include "xten/Dialect/XTen/XTenDataflowExplorer.h"
 
 #include <iostream>
 #include <vector>

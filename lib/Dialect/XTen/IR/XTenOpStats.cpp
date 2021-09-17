@@ -1,10 +1,10 @@
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
 
-#include "aten/Dialect/XTen/XTenDialect.h"
-#include "aten/Dialect/XTen/XTenOps.h"
+#include "xten/Dialect/XTen/XTenDialect.h"
+#include "xten/Dialect/XTen/XTenOps.h"
 
-#include "aten/Util/Util.h"
+#include "xten/Util/Util.h"
 
 #include "llvm/Support/Debug.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -12,7 +12,7 @@
 #include <iostream>
 #include <type_traits>
 
-#define DEBUG_TYPE "aten-op-stats"
+#define DEBUG_TYPE "xten-op-stats"
 
 // This file contains the StatisticsOpInterface implementations
 // for ATDialect operations
@@ -46,7 +46,7 @@ std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, TensorType resu
     }
 
 
-    uint64_t ofm_volume = xilinx::aten::getTensorVolume(resultTy);
+    uint64_t ofm_volume = xilinx::xten::getTensorVolume(resultTy);
     //uint64_t ofm_depth = resultTy.getShape()[1];
 
     uint64_t ifm_depth = inputTy.getShape()[1];
@@ -61,11 +61,11 @@ std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, TensorType resu
     uint64_t MACs_per_OFM = (ifm_depth/groups) * kernel_height * kernel_width;
     uint64_t total_MACs = ofm_volume * MACs_per_OFM;
 
-    uint64_t ifm_volume = xilinx::aten::getTensorVolume(inputTy);
-    uint64_t weight_volume = xilinx::aten::getTensorVolume(weightTy);
+    uint64_t ifm_volume = xilinx::xten::getTensorVolume(inputTy);
+    uint64_t weight_volume = xilinx::xten::getTensorVolume(weightTy);
     uint64_t bias_volume;
     if(!o.bias().template getDefiningOp<NPCOMP::Basicpy::SingletonOp>()) {
-        bias_volume = xilinx::aten::getTensorVolume(biasTy);
+        bias_volume = xilinx::xten::getTensorVolume(biasTy);
     } else {
         bias_volume = 0;
     }
@@ -92,7 +92,7 @@ uint64_t getConv2dOperandTransferVolumeWithType(T o, unsigned int idx, bool read
 
   if (!read) return 0;
 
-  double vol = xilinx::aten::getTensorVolume(o.getOperand(idx).getType());
+  double vol = xilinx::xten::getTensorVolume(o.getOperand(idx).getType());
   if (simple_conv2d_model)
     return vol;
 
@@ -153,7 +153,7 @@ uint64_t getConv2dResultTransferVolumeWithType(T o, unsigned int idx, bool write
 
   if (simple_conv2d_model) {
     if (write)
-      return xilinx::aten::getTensorVolume(resultTy);
+      return xilinx::xten::getTensorVolume(resultTy);
     else
       return 0;
   }
@@ -175,7 +175,7 @@ uint64_t getConv2dResultTransferVolumeWithType(T o, unsigned int idx, bool write
     read_output_cost = il;
   }
 
-  double vol = xilinx::aten::getTensorVolume(resultTy);
+  double vol = xilinx::xten::getTensorVolume(resultTy);
 
   if (write) {
     LLVM_DEBUG(llvm::outs() << "write_output_overhead:" << write_output_overhead << "\n");

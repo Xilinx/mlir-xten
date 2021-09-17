@@ -3,9 +3,9 @@
 #include "mlir/IR/DialectImplementation.h"
 #include "llvm/ADT/TypeSwitch.h"
 
-//#include "aten/Dialect/XTen/XTenDialect.h"
-#include "aten/Dialect/XTen/XTenPasses.h"
-//#include "aten/Dialect/XTen/XTenOps.h"
+//#include "xten/Dialect/XTen/XTenDialect.h"
+#include "xten/Dialect/XTen/XTenPasses.h"
+//#include "xten/Dialect/XTen/XTenOps.h"
 
 using namespace mlir;
 using namespace xilinx::xten;

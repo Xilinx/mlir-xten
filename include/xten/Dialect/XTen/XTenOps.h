@@ -13,6 +13,6 @@
 #include "npcomp/Dialect/Basicpy/IR/BasicpyDialect.h"
 
 #define GET_OP_CLASSES
-#include "aten/Dialect/XTen/XTenOps.h.inc"
+#include "xten/Dialect/XTen/XTenOps.h.inc"
 
 #endif // XTENOPS_H

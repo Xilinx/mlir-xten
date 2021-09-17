@@ -1,17 +1,17 @@
-#ifndef ATEN_CONVERSION_PASSDETAIL_H
-#define ATEN_CONVERSION_PASSDETAIL_H
+#ifndef XTEN_CONVERSION_PASSDETAIL_H
+#define XTEN_CONVERSION_PASSDETAIL_H
 
 #include "mlir/Pass/Pass.h"
 
 namespace xilinx {
-namespace aten {
+namespace xten {
 
 using namespace mlir;
 
 #define GEN_PASS_CLASSES
-#include "aten/Conversion/Passes.h.inc"
+#include "xten/Conversion/Passes.h.inc"
 
-} // namespace aten
+} // namespace xten
 } // namespace xilinx
 
-#endif // ATEN_CONVERSION_PASSDETAIL_H
+#endif // XTEN_CONVERSION_PASSDETAIL_H

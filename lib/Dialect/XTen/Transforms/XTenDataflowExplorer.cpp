@@ -3,10 +3,10 @@
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/Pass/Pass.h"
 
-#include "aten/Dialect/XTen/XTenDataflowExplorer.h"
+#include "xten/Dialect/XTen/XTenDataflowExplorer.h"
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 
-#include "aten/Transform/ATenOpReport.h"
+#include "xten/Transform/ATenOpReport.h"
 
 #include <iostream>
 #include <fstream>
@@ -48,7 +48,7 @@ namespace xilinx {
             if (auto stats = llvm::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
                 layerStatsMap = stats.getStatistics();
             } else {
-                layerStatsMap = xilinx::aten::getATenOpStats(op);
+                layerStatsMap = xilinx::xten::getATenOpStats(op);
             }
 
             if(!layerStatsMap.size()) {

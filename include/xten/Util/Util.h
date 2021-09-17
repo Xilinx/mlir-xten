@@ -5,7 +5,7 @@
 using namespace mlir;
 
 namespace xilinx {
-namespace aten {
+namespace xten {
 
 void coalesceLoops(AffineForOp outer, AffineForOp inner);
 

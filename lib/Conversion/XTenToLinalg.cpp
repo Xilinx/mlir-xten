@@ -13,9 +13,9 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "aten/Conversion/XTenToLinalgPass.h"
-#include "aten/Dialect/XTen/XTenDialect.h"
-#include "aten/Dialect/XTen/XTenOps.h"
+#include "xten/Conversion/XTenToLinalgPass.h"
+#include "xten/Dialect/XTen/XTenDialect.h"
+#include "xten/Dialect/XTen/XTenOps.h"
 
 #define DEBUG_TYPE "xten-to-linalg-pass"
 
@@ -101,7 +101,7 @@ public:
       : XTenBinaryOpConversion(xten::AddOp::getOperationName(), 1, context) {}
 
   StringRef getDefaultLibraryFunc() const {
-      return "air_add_op";
+      return "xten_add_op";
   }
 
   Value
@@ -120,7 +120,7 @@ public:
       : XTenBinaryOpConversion(xten::MulOp::getOperationName(), 1, context) {}
 
   StringRef getDefaultLibraryFunc() const {
-      return "air_mul_op";
+      return "xten_mul_op";
   }
 
   Value
@@ -302,6 +302,7 @@ public:
       //assert(0);
     }
 
+    // TODO: get rid of this out
     module.walk([&](linalg::MatmulOp op) {
       op->setAttr(
         linalg::LinalgTransforms::kLinalgTransformMarker,

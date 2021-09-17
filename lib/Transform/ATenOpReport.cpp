@@ -8,7 +8,7 @@
 #include "mlir/Pass/Pass.h"
 
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "aten/Transform/ATenOpReport.h"
+#include "xten/Transform/ATenOpReport.h"
 
 #include <iostream>
 #include <vector>
@@ -89,7 +89,7 @@ public:
                 layerStatsMap = stats.getStatistics();
             }
             else {
-                layerStatsMap = xilinx::aten::getATenOpStats(op);
+                layerStatsMap = xilinx::xten::getATenOpStats(op);
             }
             if (!layerStatsMap.size()) return;
 
@@ -164,7 +164,7 @@ public:
 } // namespace
 
 namespace xilinx {
-namespace aten {
+namespace xten {
 
 std::unique_ptr<mlir::Pass> createATenOpReportPass() {
   return std::make_unique<ATenOpReportPass>();
@@ -174,5 +174,5 @@ std::unique_ptr<mlir::Pass> createATenOpReportPass(std::string &o) {
   return std::make_unique<ATenOpReportPass>(o);
 }
 
-} // namespace aten
+} // namespace xten
 } // namespace xilinx

@@ -1,19 +1,21 @@
-#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "mlir/Dialect/Affine/IR/AffineOps.h"
-#include "mlir/IR/OperationSupport.h"
-#include "mlir/IR/BuiltinOps.h"
 
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 
-#define DEBUG_TYPE "air-util"
+#include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include "mlir/IR/OperationSupport.h"
+#include "mlir/IR/BuiltinOps.h"
+
+#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
+
+#define DEBUG_TYPE "xten-util"
 
 using namespace mlir;
 
 namespace xilinx {
-namespace aten {
+namespace xten {
 
 namespace {
   

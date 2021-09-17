@@ -1,9 +1,9 @@
 // (c) Copyright 2021 Xilinx Inc. All Rights Reserved.
 #pragma once
 
-#include "aten/Dialect/XTen/XTenDataflowUtils.h"
-#include "aten/Dialect/XTen/XTenOpWrapper.h"
-#include "aten/Util/Arch.h"
+#include "xten/Dialect/XTen/XTenDataflowUtils.h"
+#include "xten/Dialect/XTen/XTenOpWrapper.h"
+#include "xten/Util/Arch.h"
 
 #define FORCE_INT8 1
 

@@ -1,5 +1,5 @@
-#ifndef ATEN_CONVERSION_PASSES
-#define ATEN_CONVERSION_PASSES
+#ifndef XTEN_CONVERSION_PASSES
+#define XTEN_CONVERSION_PASSES
 
 include "mlir/Pass/PassBase.td"
 

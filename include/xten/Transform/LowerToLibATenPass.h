@@ -6,12 +6,12 @@
 #include "mlir/Pass/Pass.h"
 
 namespace xilinx {
-namespace aten {
+namespace xten {
 
 std::unique_ptr<mlir::Pass> createLowerToLibATenPass();
 void registerLowerToLibATenPass();
 
-} // namespace aten
+} // namespace xten
 } // namespace xilinx
 
 #endif // LOWER_TO_LIBATEN_PASS_H

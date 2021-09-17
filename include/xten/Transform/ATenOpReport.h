@@ -6,14 +6,14 @@
 #include "mlir/Pass/Pass.h"
 
 namespace xilinx {
-namespace aten {
+namespace xten {
 
 std::unique_ptr<mlir::Pass> createATenOpReportPass(std::string &output);
 std::unique_ptr<mlir::Pass> createATenOpReportPass();
 
 std::map<std::string, uint64_t> getATenOpStats(mlir::Operation *op);
 
-} // namespace aten
+} // namespace xten
 } // namespace xilinx
 
 #endif // ATEN_OP_REPORT_H

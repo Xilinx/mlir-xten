@@ -8,7 +8,8 @@
 #include "mlir/IR/PatternMatch.h"
 
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "aten/Dialect/XTen/XTenNamePass.h"
+
+#include "xten/Dialect/XTen/XTenNamePass.h"
 
 #include <iostream>
 

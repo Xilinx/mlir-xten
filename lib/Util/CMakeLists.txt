@@ -1,4 +1,4 @@
-add_mlir_library(ATenUtil
+add_mlir_library(XTenUtil
   Util.cpp
   Outliner.cpp
 

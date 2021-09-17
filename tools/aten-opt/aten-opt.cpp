@@ -17,18 +17,18 @@
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "npcomp/Dialect/Basicpy/IR/BasicpyDialect.h"
 
-#include "aten/Transform/Passes.h"
-#include "aten/Conversion/Passes.h"
-#include "aten/Dialect/XTen/XTenDialect.h"
-#include "aten/Dialect/XTen/XTenPasses.h"
+#include "xten/Transform/Passes.h"
+#include "xten/Conversion/Passes.h"
+#include "xten/Dialect/XTen/XTenDialect.h"
+#include "xten/Dialect/XTen/XTenPasses.h"
 
 using namespace llvm;
 using namespace mlir;
 
 int main(int argc, char **argv) {
   registerAllPasses();
-  xilinx::aten::registerTransformPasses();
-  xilinx::aten::registerConversionPasses();
+  xilinx::xten::registerTransformPasses();
+  xilinx::xten::registerConversionPasses();
   xilinx::xten::registerXTenPasses();
 
   DialectRegistry registry;

@@ -4,10 +4,10 @@
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
 
-#include "aten/Conversion/XTenToAffinePass.h"
-#include "aten/Dialect/XTen/XTenDialect.h"
-#include "aten/Dialect/XTen/XTenOps.h"
-#include "aten/Util/Util.h"
+#include "xten/Conversion/XTenToAffinePass.h"
+#include "xten/Dialect/XTen/XTenDialect.h"
+#include "xten/Dialect/XTen/XTenOps.h"
+#include "xten/Util/Util.h"
 
 #include "mlir/Analysis/Utils.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
@@ -579,7 +579,7 @@ public:
     });
 
     if (failed(applyPartialConversion(module, target, std::move(patterns)))) {
-      emitError(UnknownLoc::get(context), "error lowering ATen\n");
+      emitError(UnknownLoc::get(context), "error lowering XTen\n");
       signalPassFailure();
       //assert(0);
     }

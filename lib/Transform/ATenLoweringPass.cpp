@@ -1,9 +1,9 @@
 // (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
 
-#include "aten/Transform/ATenLoweringPass.h"
+#include "xten/Transform/ATenLoweringPass.h"
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 #include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
-#include "aten/Util/Util.h"
+#include "xten/Util/Util.h"
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
@@ -41,7 +41,7 @@
 
 using namespace mlir;
 using namespace edsc::intrinsics;
-using namespace xilinx::aten;
+using namespace xilinx::xten;
 
 using callOperation = edsc::OperationBuilder<mlir::CallOp>;
 using call = edsc::ValueBuilder<mlir::CallOp>;
@@ -1420,11 +1420,11 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
 
 
 namespace xilinx {
-namespace aten {
+namespace xten {
 
 std::unique_ptr<mlir::Pass> createATenLoweringPass() {
   return std::make_unique<ATenLoweringPass>();
 }
 
-} // namespace aten
+} // namespace xten
 } // namespace xilinx

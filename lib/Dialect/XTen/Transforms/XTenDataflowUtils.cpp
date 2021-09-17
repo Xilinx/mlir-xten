@@ -2,8 +2,8 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OperationSupport.h"
 
-#include "aten/Dialect/XTen/XTenDataflowUtils.h"
-#include "aten/Dialect/XTen/XTenDataflowConsts.h"
+#include "xten/Dialect/XTen/XTenDataflowUtils.h"
+#include "xten/Dialect/XTen/XTenDataflowConsts.h"
 
 #define DEBUG_TYPE "xten-dataflow-utils"
 

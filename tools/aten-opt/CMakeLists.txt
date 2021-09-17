@@ -7,11 +7,11 @@ add_llvm_tool(aten-opt aten-opt.cpp)
 llvm_update_compile_flags(aten-opt)
 
 set(LIBS
-  ATenConversionPasses
-  ATenTransformPasses
+  XTenConversionPasses
+  XTenTransformPasses
   XTenDialect
   XTenTransforms
-  ATenUtil
+  XTenUtil
   NPCOMPATenDialect
   NPCOMPBasicpyDialect
   NPCOMPTypingCPA

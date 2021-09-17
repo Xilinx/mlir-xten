@@ -3,9 +3,9 @@
 
 #include "mlir/Pass/Pass.h"
 
-#include "aten/Dialect/XTen/XTenDataflow.h"
-//#include "aten/Dialect/XTen/XTenToAffinePass.h"
-#include "aten/Dialect/XTen/XTenNamePass.h"
+#include "xten/Dialect/XTen/XTenDataflow.h"
+//#include "xten/Dialect/XTen/XTenToAffinePass.h"
+#include "xten/Dialect/XTen/XTenNamePass.h"
 
 namespace xilinx {
   namespace xten {

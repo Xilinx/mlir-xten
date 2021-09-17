@@ -5,9 +5,9 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 
-#include "aten/Dialect/XTen/XTenOpWrapper.h"
-#include "aten/Dialect/XTen/XTenDataflowConsts.h"
-#include "aten/Dialect/XTen/XTenOps.h"
+#include "xten/Dialect/XTen/XTenOpWrapper.h"
+#include "xten/Dialect/XTen/XTenDataflowConsts.h"
+#include "xten/Dialect/XTen/XTenOps.h"
 
 using namespace mlir;
 

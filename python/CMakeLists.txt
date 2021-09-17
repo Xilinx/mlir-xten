@@ -13,9 +13,9 @@ set_target_properties(_acap PROPERTIES PREFIX "")
 
 target_link_libraries(_acap
   PRIVATE
-  ATenTransformPasses
-  ATenConversionPasses
-  ATenUtil
+  XTenTransformPasses
+  XTenConversionPasses
+  XTenUtil
   XTenDialect
   ${Python3_LIBRARIES}
 

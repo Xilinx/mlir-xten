@@ -111,13 +111,13 @@ private:
 } // namespace
 
 namespace xilinx {
-namespace aten {
+namespace xten {
 
 std::unique_ptr<mlir::Pass>
 createLowerToLibATenPass() {
   return std::make_unique<LowerToLibATenPass>();
 }
 
-} // namespace aten
+} // namespace xten
 } // namespace xilinx
 
