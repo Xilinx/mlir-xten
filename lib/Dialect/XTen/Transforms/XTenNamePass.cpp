@@ -47,7 +47,7 @@ namespace xilinx {
                             return; // skips basicpy constant generation and similar
                         }
 
-                        if(opName.startswith("xten.") && !opName.find("conv")) {//if(opName.startswith("air.") && !opName.find("conv")) {
+                        if(opName.startswith("xten.") && !opName.find("conv")) {
                             return; // Only interested about actual layers of the NN
                         }
 

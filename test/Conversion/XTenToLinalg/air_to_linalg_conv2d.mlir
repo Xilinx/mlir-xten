@@ -1,5 +1,5 @@
 // RUN: aten-opt %s -xten-to-linalg | FileCheck %s
-// CHECK: linalg.conv_2d_nchw {__internal_linalg_transform__ = "ACDC_conv2d"} ins({{.*}}, {{.*}} : memref<16x16x64x64xf32>, memref<16x16x1x1xf32>) outs({{.*}} : memref<16x16x64x64xf32>)
+// CHECK: linalg.conv_2d_nchw {__internal_linalg_transform__ = "xten_conv2d"} ins({{.*}}, {{.*}} : memref<16x16x64x64xf32>, memref<16x16x1x1xf32>) outs({{.*}} : memref<16x16x64x64xf32>)
 module  {
   func @conv2d(%arg0: tensor<16x16x1x1xf32>, %arg1: tensor<16x16x64x64xf32>) -> tensor<16x16x64x64xf32> {
     %false = constant false

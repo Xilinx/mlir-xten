@@ -1,5 +1,5 @@
-#ifndef AIR_OPS_SPLITTER
-#define AIR_OPS_SPLITTER
+#ifndef XTEN_OP_WRAPPER
+#define XTEN_OP_WRAPPER
 
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -13,7 +13,7 @@
 #include "xten/Dialect/XTen/XTenOps.h"
 #include "xten/Util/Arch.h"
 
-// NOTE this could be merged with the ops directly possibly, but would need to both NPCOMP and AIR
+// NOTE this could be merged with the ops directly possibly, but would need to both NPCOMP and XTEN
 // But we will need the build function here anyway as each op will have different arguments and we
 // don't want that in the pattern themselves
 // So then not a big addition at the moment, especially with the NPCOMP dependency

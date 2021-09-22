@@ -7,7 +7,7 @@ if(${TORCH_FOUND})
   )
 
   set(ATEN_LIBS ${TORCH_LIBRARIES})
-  add_compile_definitions(AIR_ENABLE_TORCH)
+  add_compile_definitions(ATEN_OPS_ENABLE_TORCH)
 endif()
 
 add_definitions("-Wno-string-conversion")

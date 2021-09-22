@@ -115,26 +115,6 @@ lowerConv2d(Operation *op) {
   Value weight = MemRefTypeCast(builder, conv2d.weight());
   Value bias = MemRefTypeCast(builder, conv2d.bias());
 
-  MemRefType inputTy = input.getType().cast<MemRefType>();
-  MemRefType weightTy = weight.getType().cast<MemRefType>();
-  uint64_t kernel_h = weightTy.getDimSize(2);
-  uint64_t kernel_w = weightTy.getDimSize(3);
-  // llvm::SmallVector<int64_t, 4> herd_input_size;
-  // llvm::SmallVector<uint64_t, 4> herd_output_size;
-  // if (kernel_h == 1 && kernel_w == 1) {
-  //   herd_input_size = {4,32,4,4};
-  //   herd_output_size = {4,32,4,4};
-  // }
-  // else if (kernel_h == 3 && kernel_w == 3) {
-  //   herd_input_size = {4,32,4,4};
-  //   herd_output_size = {4,32,2,2};
-  // }
-  // else {
-  //   //llvm_unreachable("unhandled kernel size");
-  //   // unsupported, skip it.
-  //   return success();
-  // }
-
   // get layer name to add to loop nest labels 
   std::string layer_name; 
   if (!op->getAttrs().empty()) {
@@ -186,19 +166,9 @@ lowerConv2d(Operation *op) {
   Operation *conv_mul = nullptr;
   Operation *conv_add = nullptr;
 
-  uint64_t batch_sw = inputTy.getDimSize(0);
-  uint64_t ifm_channels_sw = inputTy.getDimSize(1);
-  uint64_t ifm_height_sw = inputTy.getDimSize(2);
-  uint64_t ifm_width_sw = inputTy.getDimSize(3);
-  uint64_t ofm_channels_sw = resultTy.getDimSize(1);
-  uint64_t ofm_height_sw = resultTy.getDimSize(2);
-  uint64_t ofm_width_sw = resultTy.getDimSize(3);
-
   uint64_t batch_hw = 4;
   uint64_t ifm_channels_hw = 32;
   uint64_t ofm_channels_hw = 32;
-  uint64_t cols_hw = 0;
-  uint64_t rows_hw = 0;
   if (xten::Conv2dTileSizes.size()) {
     batch_hw = xten::Conv2dTileSizes[0];
     ofm_channels_hw = xten::Conv2dTileSizes[1];
@@ -213,36 +183,9 @@ lowerConv2d(Operation *op) {
     loopOrder = xten::Conv2dLoopOrder;
   }
 
-  Value stride_ci = constInt(stride[0], 32);
-  Value padding_ci = constInt(padding[0], 32);
-  Value dilation_ci = constInt(dilation[0], 32);
-
-  Value kernel_height_ci = constInt(kernel_h, 64);
-  Value kernel_width_ci = constInt(kernel_w, 64);
-
-  Value batch_sw_ci = constInt(batch_sw, 64);
-  Value ofm_channels_sw_ci = constInt(ofm_channels_sw, 64);
-  Value ofm_height_sw_ci = constInt(ofm_height_sw, 64);
-  Value ofm_width_sw_ci = constInt(ofm_width_sw, 64);
-  Value ifm_channels_sw_ci = constInt(ifm_channels_sw, 64);
-  Value ifm_height_sw_ci = constInt(ifm_height_sw, 64);
-  Value ifm_width_sw_ci = constInt(ifm_width_sw, 64);
-
-  Value batch_hw_ci = constInt(batch_hw, 64);
-  Value ofm_channels_hw_ci = constInt(ofm_channels_hw, 64);
-  Value ifm_channels_hw_ci = constInt(ifm_channels_hw, 64);
-  Value rows_hw_ci = constInt(rows_hw, 64);
-  Value cols_hw_ci = constInt(cols_hw, 64);
-
   auto body_builder = [&](ValueRange ivs) {
-      Value ofm_batch = ivs[ 1 ], ofm_channel = ivs[ 2 ], ifm_channel = ivs[ 3 ];
-      Value ofm_row = ivs[0], ofm_col = ivs[4];
-    std::vector<Value> placeholderops{stride_ci, padding_ci, dilation_ci,
-        batch_sw_ci, batch_hw_ci, ofm_batch,
-        ofm_channels_sw_ci, ofm_height_sw_ci, ofm_width_sw_ci, ofm_channels_hw_ci, ofm_channel,
-        ifm_channels_sw_ci, ifm_height_sw_ci, ifm_width_sw_ci, ifm_channels_hw_ci, ifm_channel,
-        kernel_height_ci, kernel_width_ci,
-        ofm_row, rows_hw_ci, ofm_col, cols_hw_ci, zero, zero, zero, zero};
+    Value ofm_batch = ivs[ 1 ], ofm_channel = ivs[ 2 ], ifm_channel = ivs[ 3 ];
+    Value ofm_row = ivs[0], ofm_col = ivs[4];
 
     std::vector<Type> retTy;
     std::vector<Value> ofm_indices{ofm_batch, ofm_channel, ofm_row, ofm_col};

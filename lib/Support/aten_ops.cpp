@@ -5,7 +5,7 @@
 #include <iostream>
 #include <vector>
 
-#ifdef AIR_ENABLE_TORCH
+#ifdef ATEN_OPS_ENABLE_TORCH
 #include "torch/csrc/api/include/torch/torch.h"
 
 #include <ATen/Tensor.h>
@@ -62,7 +62,7 @@ std::vector<int64_t> translate_stride(tensor_t<T,N> *t)
   return stride;
 }
 
-#ifdef AIR_ENABLE_TORCH
+#ifdef ATEN_OPS_ENABLE_TORCH
 template<typename T, int N>
 at::Tensor to_torch(tensor_t<T,N> *t,
                     const at::TensorOptions &options = at::TensorOptions())
@@ -116,7 +116,7 @@ void as_strided_out(tensor_t<float,M> *a,
          /*stride*/ int32_t sd0, int32_t sd1, int32_t sd2, int32_t sd3,
                     int32_t offset, tensor_t<T,N> *r)
 {
-#ifdef AIR_ENABLE_TORCH
+#ifdef ATEN_OPS_ENABLE_TORCH
   at::Tensor input = to_torch(a);
 
   std::vector<int64_t> size;
@@ -306,7 +306,7 @@ void conv2d_backward_out(tensor_t<T,4> *grad_output, tensor_t<T,4> *input,
                          tensor_t<T,4> *weight, int32_t stride, int32_t pad, int32_t dilation,
                          tensor_t<T,4> *r0, tensor_t<T,4> *r1, tensor_t<T,1> *r2)
 {
-#ifdef AIR_ENABLE_TORCH
+#ifdef ATEN_OPS_ENABLE_TORCH
   const at::Tensor &arg_grad = to_torch(grad_output);
   const at::Tensor &arg_input = to_torch(input);
   const at::Tensor &arg_weight = to_torch(weight);
@@ -336,7 +336,7 @@ void conv2d_backward_out(tensor_t<T,4> *grad_output, tensor_t<T,4> *input,
 template<typename T, int N>
 void log_softmax_out(tensor_t<T,N> *t, int32_t dim, bool half_to_float, tensor_t<T,N> *r)
 {
-#ifdef AIR_ENABLE_TORCH
+#ifdef ATEN_OPS_ENABLE_TORCH
   at::Tensor input = to_torch(t);
   at::Tensor result = at::native::log_softmax_cpu(input, dim, half_to_float);
   memcpy(r->d, result.data_ptr(), result.numel()*sizeof(T));
@@ -350,7 +350,7 @@ template<typename T, int N>
 void log_softmax_backward_data_out(tensor_t<T,N> *a, tensor_t<T,N> *b,
                                    int32_t c, tensor_t<T,N> *d, tensor_t<T,N> *r)
 {
-#ifdef AIR_ENABLE_TORCH
+#ifdef ATEN_OPS_ENABLE_TORCH
   at::Tensor inputA = to_torch(a);
   at::Tensor inputB = to_torch(b);
   at::Tensor inputD = to_torch(d);
@@ -368,7 +368,7 @@ void max_pool2d_with_indices_out(tensor_t<T,4> *t, int32_t c, int32_t d,
                                  int32_t e, int32_t f, bool ceil_mode,
                                  tensor_t<T,4> *r0, tensor_t<int64_t,4> *r1)
 {
-#ifdef AIR_ENABLE_TORCH
+#ifdef ATEN_OPS_ENABLE_TORCH
   at::Tensor input = to_torch(t);
 
   std::vector<int64_t> kernel{c,c};
@@ -393,7 +393,7 @@ void max_pool2d_with_indices_backward_out(tensor_t<T,4> *a, tensor_t<T,4> *b,
                                           int32_t c, int32_t d, int32_t e, int32_t f,
                                           bool g, tensor_t<int64_t,4> *h, tensor_t<T,4> *r)
 {
-#ifdef AIR_ENABLE_TORCH
+#ifdef ATEN_OPS_ENABLE_TORCH
   const at::Tensor &inputA = to_torch(a);
   const at::Tensor &inputB = to_torch(b);
   at::TensorOptions options(at::ScalarType::Long);
@@ -475,7 +475,7 @@ void t_out(tensor_t<T,2> *a, tensor_t<T,2> *r)
 template<typename T, int N>
 void threshold_backward_out(tensor_t<T,N> *a, tensor_t<T,N> *b, int32_t c, tensor_t<T,N> *r)
 {
-#ifdef AIR_ENABLE_TORCH
+#ifdef ATEN_OPS_ENABLE_TORCH
   at::Tensor inputA = to_torch(a);
   at::Tensor inputB = to_torch(b);
 
@@ -764,7 +764,7 @@ nll_loss2d_forward_1F32_1F32_4F32_3I64_1F32_out(tensor_t<float,4> *a, tensor_t<u
                                                 tensor_t<float,1> *c, int64_t d, int64_t e,
                                                 tensor_t<float,1> *r0, tensor_t<float,1> *r1)
 {
-#ifdef AIR_ENABLE_TORCH
+#ifdef ATEN_OPS_ENABLE_TORCH
   if (verbose) std::cout << "aten_ops " << __func__ << "\n";
   using T = float;
   at::Tensor inputA = to_torch(a); 
@@ -792,7 +792,7 @@ nll_loss2d_backward_4F32_1F32_4F32_3I64_1F32_1F32_out(tensor_t<float,1> *a, tens
                                                       int32_t e, int32_t f, tensor_t<float,1> *g,
                                                       tensor_t<float,4> *r)
 {
-#ifdef AIR_ENABLE_TORCH
+#ifdef ATEN_OPS_ENABLE_TORCH
   if (verbose) std::cout << "aten_ops " << __func__ << "\n";
   using T = float;
   at::Tensor inputA = to_torch(a);
@@ -817,7 +817,7 @@ nll_loss_backward_2F32_1F32_2F32_1I64_1F32_1F32_out(tensor_t<float,1> *a, tensor
                                                     int32_t e, int32_t f, tensor_t<float,1> *g,
                                                     tensor_t<float,2> *r)
 {
-#ifdef AIR_ENABLE_TORCH
+#ifdef ATEN_OPS_ENABLE_TORCH
   if (verbose) std::cout << "aten_ops " << __func__ << "\n";
   using T = float;
   at::Tensor inputA = to_torch(a);
@@ -844,7 +844,7 @@ nll_loss_forward_1F32_1F32_2F32_1I64_1F32_out(tensor_t<float,2> *a, tensor_t<uin
                                               tensor_t<float,1> *c, int64_t d, int64_t e,
                                               tensor_t<float,1> *r0, tensor_t<float,1> *r1)
 {
-#ifdef AIR_ENABLE_TORCH
+#ifdef ATEN_OPS_ENABLE_TORCH
   if (verbose) std::cout << "aten_ops " << __func__ << "\n";
   using T = float;
   at::Tensor inputA = to_torch(a);
@@ -952,24 +952,6 @@ void view_4F32_2F32_out(tensor_t<float,2> *a, int32_t b, int32_t c,int32_t d,int
 void view_4F32_3F32_out(tensor_t<float,3> *a, int32_t b, int32_t c,int32_t d,int32_t e, tensor_t<float,4> *r) {
   if (verbose) std::cout << "aten_ops " << __func__ << "\n";
   view_out<float,4,3>(a,b,c,d,e,r);
-}
-
-// air_memcpy2d
-
-void
-air_memcpy2d_2F32_2F32(int id, int64_t x, int64_t y,
-                       tensor_t<float,2> *dst, tensor_t<float,2> *src,
-                       uint64_t dst_offset_y, uint64_t dst_offset_x,
-                       uint64_t src_offset_y, uint64_t src_offset_x,
-                       uint64_t length, uint64_t dst_stride,uint64_t src_stride, uint64_t elem_per_stride) {
-  float *dst_ptr = dst->d + (dst_offset_y * dst->shape[1] + dst_offset_x);
-  float *src_ptr = src->d + (src_offset_y * src->shape[1] + src_offset_x);
-  std::cout << id << " " << x << " " << y << " " << dst_offset_x << " " << dst_offset_y << " " << src_offset_x << " " << src_offset_y << " " << length << " " << dst_stride << " "<< src_stride << " " << elem_per_stride << "\n";
-  for (uint64_t n=0; n<length; n+=elem_per_stride) {
-    memcpy(dst_ptr, src_ptr, elem_per_stride*sizeof(float));
-    dst_ptr += dst_stride;
-    src_ptr += src_stride;
-  }
 }
 
 }

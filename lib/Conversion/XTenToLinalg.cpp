@@ -306,12 +306,12 @@ public:
     module.walk([&](linalg::MatmulOp op) {
       op->setAttr(
         linalg::LinalgTransforms::kLinalgTransformMarker,
-        StringAttr::get(op->getContext(), "ACDC_mmult"));
+        StringAttr::get(op->getContext(), "xten_mmult"));
     });
     module.walk([&](linalg::ConvNCHWOp op) {
       op->setAttr(
         linalg::LinalgTransforms::kLinalgTransformMarker,
-        StringAttr::get( op->getContext(), "ACDC_conv2d"));
+        StringAttr::get( op->getContext(), "xten_conv2d"));
     });
   }
 

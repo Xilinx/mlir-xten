@@ -93,7 +93,7 @@ public:
             }
             if (!layerStatsMap.size()) return;
 
-      // acdc name for this layer
+      // name for this layer
       std::string layerName = opToName[op];
 
       // raw stats for this layer

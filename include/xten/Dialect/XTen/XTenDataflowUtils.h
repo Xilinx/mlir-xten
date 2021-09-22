@@ -1,5 +1,5 @@
-#ifndef AIR_DATAFLOW_UTILS
-#define AIR_DATAFLOW_UTILS
+#ifndef XTEN_DATAFLOW_UTILS
+#define XTEN_DATAFLOW_UTILS
 
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/BuiltinTypes.h"

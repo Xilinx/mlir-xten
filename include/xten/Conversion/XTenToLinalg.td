@@ -4,6 +4,5 @@
 #define XTEN_TO_LINALG
 
 include "mlir/IR/OpBase.td"
-include "AIR.td"
 
 #endif
