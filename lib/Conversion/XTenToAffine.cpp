@@ -37,6 +37,7 @@
 #include <vector>
 #include <sstream>
 #include <algorithm>
+#include <iostream>
 
 #define DEBUG_TYPE "xten-to-affine-pass"
 
@@ -134,6 +135,22 @@ lowerConv2d(Operation *op) {
   //   return success();
   // }
 
+  // get layer name to add to loop nest labels 
+  std::string layer_name; 
+  if (!op->getAttrs().empty()) {
+      for (NamedAttribute attr : op->getAttrs()) {
+          std::string attr_key = attr.first.c_str();
+          if (attr_key.compare("name") == 0) {
+              llvm::raw_string_ostream output(layer_name);
+              attr.second.print(output);
+              layer_name.pop_back();
+              layer_name.erase(layer_name.begin());
+          }
+          layer_name.append(".");
+      }
+  }
+
+
   std::vector<int64_t> stride, padding, dilation;
   unpack_int_list(conv2d.stride(), stride);
   unpack_int_list(conv2d.padding(), padding);
@@ -160,7 +177,7 @@ lowerConv2d(Operation *op) {
                                 {vOutput.ub(0), vOutput.ub(1), vOutput.ub(2), vOutput.ub(3)},
                                 {1,1,1,1}, loop_body);
     auto a = cast<AffineForOp>(--builder.getInsertionPoint());
-    a->setAttr("affine_opt_label", StringAttr::get(op->getContext(), "xten.conv2d_op_bias"));
+    a->setAttr("affine_opt_label", StringAttr::get(op->getContext(), layer_name + "xten.conv2d_op_bias"));
   }
 
   //
@@ -271,7 +288,7 @@ lowerConv2d(Operation *op) {
                               body_builder);
 
   auto afo = cast<AffineForOp>(--builder.getInsertionPoint());
-  afo->setAttr("affine_opt_label", StringAttr::get(op->getContext(), "xten.conv2d_op"));
+  afo->setAttr("affine_opt_label", StringAttr::get(op->getContext(), layer_name + "xten.conv2d_op"));
 
   LLVM_DEBUG(llvm::outs() << "\nInitial Conv2d loop nest:\n");
   LLVM_DEBUG(op->getBlock()->print(llvm::outs()));
