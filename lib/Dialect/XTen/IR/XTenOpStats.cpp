@@ -22,18 +22,6 @@ using namespace xilinx;
 
 namespace {
 
-    void unpack_int_list(const Value &op, std::vector<int64_t> &v) {
-        if (auto co = op.getDefiningOp<NPCOMP::aten::ConstantOp>()) {
-            DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
-            for (auto i : a.getIntValues())
-                v.push_back(i.getSExtValue());
-        }
-        else if (auto co = op.getDefiningOp<NPCOMP::Basicpy::BuildListOp>()) {
-            for (auto o : op.getDefiningOp()->getOperands())
-                v.push_back(o.template getDefiningOp<ConstantIntOp>().getValue());
-        }
-    }
-
 template<class T>
 std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, TensorType resultTy) {
     std::map<std::string, uint64_t> toReturn;

@@ -350,7 +350,7 @@ namespace xilinx {
             int64_t CIn = this->layerNameToSize[layerId]["C"];
             int64_t COut = this->layerNameToSize[layerId]["COut"];
             int64_t F0 = this->layerNameToSize[layerId]["F0"];
-            int64_t F1 = this->layerNameToSize[layerId]["F1"];
+            //int64_t F1 = this->layerNameToSize[layerId]["F1"];
 
             uint64_t missmatchCa = getMissmatchChannels(CIn, params.Ca);
             uint64_t missmatchP = getMissmatchChannels(COut, params.P);

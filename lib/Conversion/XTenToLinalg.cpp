@@ -136,7 +136,7 @@ public:
 class XTenMMOpConversion : public ConversionPattern {
 public:
   explicit XTenMMOpConversion(MLIRContext *context, bool genTensors)
-      : generateTensors(genTensors), ConversionPattern(xten::MMOp::getOperationName(), 1, context) {}
+      : ConversionPattern(xten::MMOp::getOperationName(), 1, context), generateTensors(genTensors) {}
 
   bool generateTensors;
 

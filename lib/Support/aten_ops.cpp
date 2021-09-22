@@ -176,7 +176,7 @@ void acap_conv2d_hw_kernel(tensor_t<T,4> *t, tensor_t<T,4> *weight, tensor_t<T,1
     std::cout << w_size << " " << w_start << " " << ofm_width_sw << std::endl;
   }
 
-  for (auto i=0; i<batch_hw; i++) {
+  for (size_t i=0; i<batch_hw; i++) {
     auto n = batch_start + i;
     if (n >= batch_sw) continue;
 
@@ -248,7 +248,7 @@ void conv2d_out(tensor_t<T,4> *t, tensor_t<T,4> *weight, tensor_t<T,1> *bias,
   // result.shape[1] = weight->shape[0];
   // result.shape[2] = 1 + ((t->shape[2] - weight->shape[2] + 2*pad/*[0]*/) / stride/*[0]*/);
   // result.shape[3] = 1 + ((t->shape[3] - weight->shape[3] + 2*pad/*[1]*/) / stride/*[1]*/);
-  size_t numel = r->shape[0] * r->shape[1] * r->shape[2] * r->shape[3];
+  // size_t numel = r->shape[0] * r->shape[1] * r->shape[2] * r->shape[3];
   // r->d = r->aligned = (T*)malloc(numel*sizeof(T));
 
   // from hydratype
@@ -274,7 +274,7 @@ void conv2d_out(tensor_t<T,4> *t, tensor_t<T,4> *weight, tensor_t<T,1> *bias,
               for (size_t kx = 0; kx < kernel; ++kx) {
                 int ifm_row = (int)ofm_row * stride + (ky - pad);
                 int ifm_col = (int)ofm_col * stride + (kx - pad);
-                if (ifm_row >= 0 && ifm_row < ifm_height && ifm_col >= 0 && ifm_col < ifm_width) {
+                if (ifm_row >= 0 && ifm_row < (int)ifm_height && ifm_col >= 0 && ifm_col < (int)ifm_width) {
                   int x_offset = t->index(n, ifm_channel, ifm_row, ifm_col);
                   int w_offset = w_offset_base + (ky * kernel) + kx;
 
@@ -430,7 +430,7 @@ void mm_out(tensor_t<T,2> *a, tensor_t<T,2> *b, tensor_t<T,2> *r)
     for (size_t j=0; j<b_w; j++) {
       size_t idx = i*b_w + j;
       r->d[idx] = (T)(0);
-      for (size_t k=0, ke=a_w; k<a_w; k++) {
+      for (size_t k=0; k<a_w; k++) {
         T _a = a->d[i*a_w + k];
         T _b = b->d[k*b_w + j];
         r->d[idx] += _a * _b;
@@ -965,7 +965,7 @@ air_memcpy2d_2F32_2F32(int id, int64_t x, int64_t y,
   float *dst_ptr = dst->d + (dst_offset_y * dst->shape[1] + dst_offset_x);
   float *src_ptr = src->d + (src_offset_y * src->shape[1] + src_offset_x);
   std::cout << id << " " << x << " " << y << " " << dst_offset_x << " " << dst_offset_y << " " << src_offset_x << " " << src_offset_y << " " << length << " " << dst_stride << " "<< src_stride << " " << elem_per_stride << "\n";
-  for (int n=0; n<length; n+=elem_per_stride) {
+  for (uint64_t n=0; n<length; n+=elem_per_stride) {
     memcpy(dst_ptr, src_ptr, elem_per_stride*sizeof(float));
     dst_ptr += dst_stride;
     src_ptr += src_stride;
