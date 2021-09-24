@@ -25,7 +25,7 @@ project(pytorch_mlir LANGUAGES CXX C)
 find_package(MLIR REQUIRED CONFIG)
 find_package(Python3 COMPONENTS Interpreter Development)
 
-function(npcomp_detect_pybind11_install)
+function(TORCH_MLIR_detect_pybind11_install)
   if(pybind11_DIR)
     message(STATUS "Using explicit pybind11 cmake directory: ${pybind11_DIR} (-Dpybind11_DIR to change)")
   else()
@@ -44,7 +44,7 @@ function(npcomp_detect_pybind11_install)
     set(pybind11_DIR "${PACKAGE_DIR}" PARENT_SCOPE)
   endif()
 endfunction()
-npcomp_detect_pybind11_install()
+TORCH_MLIR_detect_pybind11_install()
 find_package(pybind11 REQUIRED)
 set(pybind11_INCLUDE_DIR ${pybind11_INCLUDE_DIR})
 
@@ -83,10 +83,17 @@ include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include)
 
-# NPCOMP
-include_directories(${NPCOMP_SOURCE_DIR}/include)
-include_directories(${NPCOMP_BINARY_DIR}/include)
-link_directories(${NPCOMP_BINARY_DIR}/lib)
+# TORCH_MLIR
+set(TORCH_MLIR_BINARY_DIR "${PROJECT_BINARY_DIR}/../torch-mlir")
+set(TORCH_MLIR_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../torch-mlir")
+include_directories(${TORCH_MLIR_SOURCE_DIR}/include)
+include_directories(${TORCH_MLIR_BINARY_DIR}/include)
+
+include_directories(${TORCH_MLIR_SOURCE_DIR}/external/torch-mlir/include)
+include_directories(${TORCH_MLIR_BINARY_DIR}/llvm/tools/torch-mlir/include)
+
+link_directories(${TORCH_MLIR_BINARY_DIR}/lib)
+link_directories(${PROJECT_BINARY_DIR}/../aie/lib/)
 
 add_definitions(${LLVM_DEFINITIONS})
 

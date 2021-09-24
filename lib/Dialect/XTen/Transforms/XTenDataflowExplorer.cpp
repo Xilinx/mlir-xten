@@ -14,7 +14,7 @@
 #include "mlir/Pass/Pass.h"
 
 #include "xten/Dialect/XTen/XTenDataflowExplorer.h"
-#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 
 #include "xten/Transform/ATenOpReport.h"
 

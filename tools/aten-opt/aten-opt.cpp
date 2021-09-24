@@ -22,13 +22,12 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/ToolOutputFile.h"
 
-#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "npcomp/Dialect/Basicpy/IR/BasicpyDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 
+#include "xten/Dialect/XTen/XTenDialect.h"
+#include "xten/Dialect/XTen/Passes.h"
 #include "xten/Transform/Passes.h"
 #include "xten/Conversion/Passes.h"
-#include "xten/Dialect/XTen/XTenDialect.h"
-#include "xten/Dialect/XTen/XTenPasses.h"
 
 using namespace llvm;
 using namespace mlir;
@@ -42,8 +41,7 @@ int main(int argc, char **argv) {
   DialectRegistry registry;
   registerAllDialects(registry);
   registry.insert<xilinx::xten::XTenDialect,
-                  NPCOMP::aten::ATenDialect,
-                  NPCOMP::Basicpy::BasicpyDialect>();
+                  torch::Torch::TorchDialect>();
 
   return failed(MlirOptMain(argc, argv, "MLIR modular optimizer driver\n",
                             registry,

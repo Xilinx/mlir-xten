@@ -13,7 +13,7 @@
 
 include "mlir/IR/OpBase.td"
 
-include "npcomp/Dialect/Basicpy/IR/BasicpyDialect.td"
+//include "npcomp/Dialect/Basicpy/IR/BasicpyDialect.td"
 
 def XTen_Dialect : Dialect {
   let name = "xten";
@@ -33,8 +33,8 @@ def XTen_AnyScalar : TypeConstraint<Or<[AnySignlessInteger.predicate,
                                  "scalar">;
 
 def XTen_AnyOptionalTensor : AnyTypeOf<[
-  AnyTensor,
-  Basicpy_NoneType
+  AnyTensor//,
+//  Basicpy_NoneType
 ], "tensor or None">;
 
 #endif // #ifndef XTEN_BASE

@@ -17,7 +17,7 @@
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/BuiltinOps.h"
 
-#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 
 #define DEBUG_TYPE "xten-util"
 
@@ -47,9 +47,6 @@ std::string getMangledType(const Type ty) {
   }
   else if (const IndexType it = ty.dyn_cast<const IndexType>()) {
     ret << "I64";
-  }
-  else if (const NPCOMP::aten::ATenListType alt = ty.dyn_cast<const NPCOMP::aten::ATenListType>()) {
-
   }
   else {
     Type t = ty;

@@ -8,8 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 
 #include "xten/Util/Util.h"
 

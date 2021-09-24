@@ -9,8 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "xten/Transform/ATenLoweringPass.h"
-#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "xten/Util/Util.h"
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"

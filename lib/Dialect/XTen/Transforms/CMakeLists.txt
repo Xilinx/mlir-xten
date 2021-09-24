@@ -10,7 +10,7 @@ add_mlir_library(XTenTransforms
   XTenDataflowPass.cpp
   XTenDataflowUtils.cpp
   XTenNamePass.cpp
-  XTenPasses.cpp
+  Passes.cpp
 
   DEPENDS
 

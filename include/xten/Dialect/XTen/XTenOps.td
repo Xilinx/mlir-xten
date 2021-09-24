@@ -15,8 +15,6 @@ include "xten/Dialect/XTen/XTenBase.td"
 include "mlir/IR/SymbolInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
-include "npcomp/Dialect/ATen/IR/ATenOpInterface.td"
-
 class XTen_Op<string mnemonic, list<OpTrait> traits = []>
     : Op<XTen_Dialect, mnemonic, traits> {
 }
@@ -86,7 +84,7 @@ def XTen_NoOp: XTen_Op<"noop", []>,
   }];
 }
 
-def XTen_Conv2dOp: XTen_Op<"conv2d", [NoSideEffect, StatisticsOpInterface]>,
+def XTen_Conv2dOp: XTen_Op<"conv2d", [NoSideEffect]>,
                                 Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyTensor:$input,
@@ -112,7 +110,7 @@ def XTen_Conv2dOp: XTen_Op<"conv2d", [NoSideEffect, StatisticsOpInterface]>,
 }
 
 // TODO what happens when we have both?
-def XTen_PartialConv2dOp: XTen_Op<"partialconv2d", [NoSideEffect, StatisticsOpInterface]>{
+def XTen_PartialConv2dOp: XTen_Op<"partialconv2d", [NoSideEffect]>{
   let arguments = (
     ins AnyTensor:$input,
         Optional<AnyTensor>:$PartialIn,
@@ -143,7 +141,7 @@ def XTen_PartialConv2dOp: XTen_Op<"partialconv2d", [NoSideEffect, StatisticsOpIn
 }
 
 
-def XTen_Conv2dReLUOp: XTen_Op<"conv2d_relu", [NoSideEffect, StatisticsOpInterface]>,
+def XTen_Conv2dReLUOp: XTen_Op<"conv2d_relu", [NoSideEffect]>,
                                    Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyTensor:$input,
@@ -168,7 +166,7 @@ def XTen_Conv2dReLUOp: XTen_Op<"conv2d_relu", [NoSideEffect, StatisticsOpInterfa
 	}];
 }
 
-def XTen_PartialConv2dReLUOp: XTen_Op<"partialconv2d_relu", [NoSideEffect, StatisticsOpInterface]> {
+def XTen_PartialConv2dReLUOp: XTen_Op<"partialconv2d_relu", [NoSideEffect]> {
   let arguments = (
     ins AnyTensor:$input,
         Optional<AnyTensor>:$PartialIn,
@@ -198,7 +196,7 @@ def XTen_PartialConv2dReLUOp: XTen_Op<"partialconv2d_relu", [NoSideEffect, Stati
 	}];
 }
 
-def XTen_Conv2dBatchNormReLUOp: XTen_Op<"conv2d_bn_relu", [NoSideEffect, StatisticsOpInterface]>,
+def XTen_Conv2dBatchNormReLUOp: XTen_Op<"conv2d_bn_relu", [NoSideEffect]>,
                                             Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyTensor:$input,
@@ -231,7 +229,7 @@ def XTen_Conv2dBatchNormReLUOp: XTen_Op<"conv2d_bn_relu", [NoSideEffect, Statist
 	}];
 }
 
-def XTen_PartialConv2dBatchNormReLUOp: XTen_Op<"partialconv2d_bn_relu", [NoSideEffect, StatisticsOpInterface]> {
+def XTen_PartialConv2dBatchNormReLUOp: XTen_Op<"partialconv2d_bn_relu", [NoSideEffect]> {
   let arguments = (
     ins AnyTensor:$input,
         Optional<AnyTensor>:$PartialIn,
@@ -268,7 +266,7 @@ def XTen_PartialConv2dBatchNormReLUOp: XTen_Op<"partialconv2d_bn_relu", [NoSideE
 	}];
 }
 
-def XTen_ConcatOp: XTen_Op<"concat", [NoSideEffect, StatisticsOpInterface]>,
+def XTen_ConcatOp: XTen_Op<"concat", [NoSideEffect]>,
                                 Results<(outs AnyTensor)> {
   let arguments = (
     ins Variadic<AnyTensor>:$inputs,
@@ -287,7 +285,7 @@ def XTen_ConcatOp: XTen_Op<"concat", [NoSideEffect, StatisticsOpInterface]>,
 }
 
 // TODO Proper verifier for this operation?
-def XTen_SplitOp: XTen_Op<"split", [NoSideEffect, StatisticsOpInterface]> {
+def XTen_SplitOp: XTen_Op<"split", [NoSideEffect]> {
   let arguments = (
     ins AnyTensor:$input,
         XTen_AnyScalar:$dim

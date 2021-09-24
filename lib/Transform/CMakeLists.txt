@@ -16,7 +16,5 @@ add_mlir_library(XTenTransformPasses
   XTenTransformIncGen
 
   LINK_LIBS
-  NPCOMPATenDialect
-  NPCOMPBasicpyDialect
   MLIR
   )

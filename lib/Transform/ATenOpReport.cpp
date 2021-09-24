@@ -15,7 +15,7 @@
 
 #include "mlir/Pass/Pass.h"
 
-#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "xten/Transform/ATenOpReport.h"
 
 #include <iostream>
@@ -93,12 +93,12 @@ public:
     graph.walk([&](Operation *op) {
 
             std::map<std::string, uint64_t> layerStatsMap;
-            if (auto stats = mlir::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
-                layerStatsMap = stats.getStatistics();
-            }
-            else {
+            // if (auto stats = mlir::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
+            //     layerStatsMap = stats.getStatistics();
+            // }
+            // else {
                 layerStatsMap = xilinx::xten::getATenOpStats(op);
-            }
+            //}
             if (!layerStatsMap.size()) return;
 
       // name for this layer

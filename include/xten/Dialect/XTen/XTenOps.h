@@ -17,8 +17,7 @@
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
-#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
-#include "npcomp/Dialect/Basicpy/IR/BasicpyDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 
 #define GET_OP_CLASSES
 #include "xten/Dialect/XTen/XTenOps.h.inc"

@@ -11,8 +11,6 @@
 #include "xten/Dialect/XTen/XTenOpWrapper.h"
 #include "xten/Dialect/XTen/XTenDataflowConsts.h"
 
-#include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
-
 // TODO generate this file automatically
 
 namespace xilinx {

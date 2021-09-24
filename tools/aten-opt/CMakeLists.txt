@@ -12,14 +12,12 @@ add_llvm_tool(aten-opt aten-opt.cpp)
 llvm_update_compile_flags(aten-opt)
 
 set(LIBS
+  XTenDialect
   XTenConversionPasses
   XTenTransformPasses
-  XTenDialect
   XTenTransforms
   XTenUtil
-  NPCOMPATenDialect
-  NPCOMPBasicpyDialect
-  NPCOMPTypingCPA
+  TorchMLIRTorchDialect
   MLIR
   )
 

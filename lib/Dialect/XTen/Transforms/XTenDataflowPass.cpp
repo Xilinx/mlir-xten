@@ -15,7 +15,7 @@
 
 #include "mlir/IR/PatternMatch.h"
 
-#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 
 #include "xten/Dialect/XTen/XTenDataflow.h"
 #include "xten/Dialect/XTen/XTenDataflowUtils.h"

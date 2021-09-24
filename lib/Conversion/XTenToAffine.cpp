@@ -9,7 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
-#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "npcomp/Dialect/Basicpy/IR/BasicpyOps.h"
 
 #include "xten/Conversion/XTenToAffinePass.h"
@@ -51,10 +51,7 @@
 
 using namespace mlir;
 using namespace xilinx;
-
-using constInt = edsc::intrinsics::std_constant_int;
-using constFloat = edsc::intrinsics::std_constant_float;
-using constIndex = edsc::intrinsics::std_constant_index;
+using namespace mlir::torch;
 
 namespace xilinx {
 namespace xten {
@@ -487,7 +484,7 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
      registry.insert<AffineDialect>();
      registry.insert<memref::MemRefDialect>();
-     registry.insert<NPCOMP::aten::ATenDialect>();
+     registry.insert<Torch::TorchDialect>();
   }
 
   ListOption<unsigned> clLoopOrder{*this, "xten-loop-order",
@@ -532,7 +529,7 @@ public:
 
     target.addLegalOp<xten::Conv2dOp>();
 
-    target.addDynamicallyLegalOp<NPCOMP::aten::ConvolutionOp>([&](NPCOMP::aten::ConvolutionOp conv2d) {
+    target.addDynamicallyLegalOp<Torch::AtenConv2dOp>([&](Torch::AtenConv2dOp conv2d) {
         Value weight = conv2d.weight();
         ShapedType weightTy = weight.getType().cast<ShapedType>();
         uint64_t kernel_h = weightTy.getDimSize(2);

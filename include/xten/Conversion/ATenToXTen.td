@@ -10,7 +10,9 @@
 
 include "mlir/IR/OpBase.td"
 include "mlir/Dialect/StandardOps/IR/Ops.td"
-include "npcomp/Dialect/ATen/IR/ATenOps.td"
+
+include "torch-mlir/Dialect/Torch/IR/TorchOps.td"
+
 include "xten/Dialect/XTen/XTenOps.td"
 
 def : Pat<(aten_ConvolutionOp $a,$b,$c,$d,$e,$f,$g,$h,$i),

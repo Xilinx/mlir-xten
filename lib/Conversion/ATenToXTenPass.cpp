@@ -9,7 +9,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
-#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 
 #include "xten/Conversion/ATenToXTenPass.h"
 #include "xten/Dialect/XTen/XTenDialect.h"

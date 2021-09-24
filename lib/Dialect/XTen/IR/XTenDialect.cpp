@@ -8,12 +8,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/IR/DialectImplementation.h"
-#include "llvm/ADT/TypeSwitch.h"
 
 #include "xten/Dialect/XTen/XTenDialect.h"
-#include "xten/Dialect/XTen/XTenPasses.h"
 #include "xten/Dialect/XTen/XTenOps.h"
+
+#include "mlir/IR/DialectImplementation.h"
+
+#include "xten/Dialect/XTen/XTenOpsDialect.cpp.inc"
 
 using namespace mlir;
 using namespace xilinx::xten;

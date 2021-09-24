@@ -20,8 +20,10 @@ target_link_libraries(_xten
   PRIVATE
   XTenTransformPasses
   XTenConversionPasses
+  XTenTransforms
   XTenUtil
   XTenDialect
+  TorchMLIRTorchDialect
   ${Python3_LIBRARIES}
 
 )

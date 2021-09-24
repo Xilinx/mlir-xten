@@ -8,19 +8,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-#pragma once
+#ifndef XTEN_NAME_PASS_H
+#define XTEN_NAME_PASS_H
 
+#include "mlir/Pass/Pass.h"
 #include <memory>
 
-namespace mlir {
-    class Pass;
-} // namespace mlir
-
 namespace xilinx {
-    namespace xten {
+namespace xten {
 
-        std::unique_ptr<mlir::Pass> createXTenNamePass();
-        void registerXTenNamePass();
+std::unique_ptr<mlir::Pass> createXTenNamePass();
 
-    } // namespace xten
+} // namespace xten
 } // namespace xilinx
+
+#endif

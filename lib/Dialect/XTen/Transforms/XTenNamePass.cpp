@@ -15,7 +15,7 @@
 
 #include "mlir/IR/PatternMatch.h"
 
-#include "npcomp/Dialect/ATen/IR/ATenDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 
 #include "xten/Dialect/XTen/XTenNamePass.h"
 
@@ -94,10 +94,5 @@ namespace xilinx {
 
     } // namespace xten
 } // namespace xilinx
-
-void xilinx::xten::registerXTenNamePass() {
-    PassRegistration<XTenNamePass>("xten-name-layers",
-                                  "Give a unique name to all compute layers of a NN");
-}
 
 
