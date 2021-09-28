@@ -1,3 +1,13 @@
+//===- air_to_linalg_conv2d.mlir -------------------------------*- MLIR -*-===//
+//
+// This file is licensed under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// (c) Copyright 2021 Xilinx Inc.
+//
+//===----------------------------------------------------------------------===//
+
 // RUN: aten-opt %s -xten-to-linalg | FileCheck %s
 // CHECK: linalg.conv_2d_nchw {__internal_linalg_transform__ = "xten_conv2d"} ins({{.*}}, {{.*}} : memref<16x16x64x64xf32>, memref<16x16x1x1xf32>) outs({{.*}} : memref<16x16x64x64xf32>)
 module  {
