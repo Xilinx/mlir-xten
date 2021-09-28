@@ -1,4 +1,13 @@
-// (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
+//===- aten_addmm.mlir -----------------------------------------*- MLIR -*-===//
+//
+// This file is licensed under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// (c) Copyright 2019 Xilinx Inc.
+//
+//===----------------------------------------------------------------------===//
+
 // RUN: aten-opt %s -aten-op-report | FileCheck %s
 //   CHECK-LABEL:     "unknown-layer-2": {
 //   CHECK-NEXT:        "activation_in": 1024,
