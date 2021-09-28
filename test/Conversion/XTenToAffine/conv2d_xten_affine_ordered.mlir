@@ -1,4 +1,12 @@
-// (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
+//===- conv2d_xten_affine_ordered.mlir -------------------------*- MLIR -*-===//
+//
+// This file is licensed under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// (c) Copyright 2019 Xilinx Inc.
+//
+//===----------------------------------------------------------------------===//
 
 // RUN: aten-opt %s -xten-to-affine='xten-loop-order=3,0,1,2,4' -cse | FileCheck %s --check-prefix=ATEN
 // ATEN:       module {

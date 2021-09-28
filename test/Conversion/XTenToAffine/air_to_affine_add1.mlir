@@ -1,3 +1,13 @@
+//===- air_to_affine_add1.mlir ---------------------------------*- MLIR -*-===//
+//
+// This file is licensed under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// (c) Copyright 2021 Xilinx Inc.
+//
+//===----------------------------------------------------------------------===//
+
 // RUN: aten-opt %s --xten-to-affine | FileCheck %s
 // CHECK: affine.for %arg1 = 0 to 4 {
 // CHECK:   affine.for %arg2 = 0 to 4 {
