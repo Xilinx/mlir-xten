@@ -7,6 +7,6 @@ Using these extensions, a prototype streaming dataflow exploration tool scans th
 
 ### Prerequisites
 
-## Building on X86
+### Building on X86
 
 ## Environment setup
