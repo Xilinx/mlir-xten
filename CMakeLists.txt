@@ -84,12 +84,9 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include)
 
 # NPCOMP
-set(NPCOMP_BINARY_DIR "${PROJECT_BINARY_DIR}/../npcomp")
-set(NPCOMP_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../npcomp/mlir-npcomp")
 include_directories(${NPCOMP_SOURCE_DIR}/include)
 include_directories(${NPCOMP_BINARY_DIR}/include)
 link_directories(${NPCOMP_BINARY_DIR}/lib)
-link_directories(${PROJECT_BINARY_DIR}/../aie/lib/)
 
 add_definitions(${LLVM_DEFINITIONS})
 
