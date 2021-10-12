@@ -10,3 +10,6 @@ Using these extensions, a prototype streaming dataflow exploration tool scans th
 ### Building on X86
 
 ## Environment setup
+
+-----
+<p align="center">Copyright&copy; 2019-2021 Xilinx</p>
