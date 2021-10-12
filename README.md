@@ -9,6 +9,18 @@ Using these extensions, a prototype streaming dataflow exploration tool scans th
 
 ### Building on X86
 
+```sh
+git clone https://github.com/Xilinx/cmakeModules
+git clone https://gitenterprise.xilinx.com/XRLabs/mlir-xten.git
+mkdir build; cd build
+cmake ..\
+    -DLLVM_DIR=${absolute path to LLVMBUILD}/lib/cmake/llvm \
+    -DMLIR_DIR=${absolute path to LLVMBUILD}/lib/cmake/mlir \
+    -DCMAKE_MODULE_PATH=/absolute/path/to/cmakeModules/ \
+    -DNPCOMP_SOURCE_DIR={/absolute/path/to/npcomp}/mlir-npcomp
+    -DNPCOMP_BINARY_DIR={absolute path to npcomp BUILD}
+```
+
 ## Environment setup
 
 -----
