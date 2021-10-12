@@ -20,7 +20,6 @@ set(LIBS
   NPCOMPATenDialect
   NPCOMPBasicpyDialect
   NPCOMPTypingCPA
-  AIE
   MLIR
   )
 
