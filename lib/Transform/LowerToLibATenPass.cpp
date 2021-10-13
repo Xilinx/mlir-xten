@@ -10,6 +10,8 @@
 
 // This pass demangles function calls to match libaten_ops
 
+#include "PassDetail.h"
+
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 
 #include "llvm/Support/Debug.h"
@@ -25,6 +27,7 @@
 #define DEBUG_TYPE "lower-to-libaten"
 
 using namespace mlir;
+using namespace xilinx::xten;
 
 namespace {
 
@@ -101,8 +104,7 @@ void CpuLibDemangle(ModuleOp op)
 
 //#include "LowerToLibATen.cpp.inc"
 
-class LowerToLibATenPass : public PassWrapper<LowerToLibATenPass,
-                                              OperationPass<ModuleOp>> {
+class LowerToLibATenPass : public LowerToLibATenBase<LowerToLibATenPass> {
 
 public:
   LowerToLibATenPass() = default;
@@ -121,7 +123,7 @@ private:
 namespace xilinx {
 namespace xten {
 
-std::unique_ptr<mlir::Pass>
+std::unique_ptr<OperationPass<ModuleOp>>
 createLowerToLibATenPass() {
   return std::make_unique<LowerToLibATenPass>();
 }

@@ -17,7 +17,7 @@
 namespace xilinx {
 namespace xten {
 
-std::unique_ptr<mlir::Pass> createXTenDataflowPass();
+std::unique_ptr<mlir::OperationPass<mlir::ModuleOp>> createXTenDataflowPass();
 
 }
 }

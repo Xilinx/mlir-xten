@@ -17,8 +17,7 @@
 namespace xilinx {
 namespace xten {
 
-std::unique_ptr<mlir::Pass> createATenOpReportPass(std::string &output);
-std::unique_ptr<mlir::Pass> createATenOpReportPass();
+std::unique_ptr<mlir::OperationPass<mlir::ModuleOp>> createATenOpReportPass();
 
 std::map<std::string, uint64_t> getATenOpStats(mlir::Operation *op);
 

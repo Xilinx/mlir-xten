@@ -8,6 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "PassDetail.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OperationSupport.h"
@@ -45,7 +46,7 @@ using namespace mlir;
 namespace xilinx {
     namespace xten {
 
-        struct XTenDataflowPass : public PassWrapper<XTenDataflowPass, OperationPass<ModuleOp>> {
+        struct XTenDataflowPass : public XTenDataflowBase<XTenDataflowPass> {
         private:
             // TODO make the second thing here a map from id based on model params to AbsOpWrapper
             std::map<std::string, std::vector<AbsOpWrapper*>> layerNameToOps;
@@ -1250,7 +1251,7 @@ namespace xilinx {
 namespace xilinx {
 namespace xten {
 
-std::unique_ptr<mlir::Pass> createXTenDataflowPass() {
+std::unique_ptr<OperationPass<ModuleOp>> createXTenDataflowPass() {
     return std::make_unique<XTenDataflowPass>();
 }
 

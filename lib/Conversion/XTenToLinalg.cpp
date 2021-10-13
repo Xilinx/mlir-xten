@@ -27,7 +27,7 @@
 #define DEBUG_TYPE "xten-to-linalg-pass"
 
 using namespace mlir;
-using namespace xilinx;
+using namespace xilinx::xten;
 
 namespace {
 
@@ -105,7 +105,7 @@ public:
 class XTenAddOpConversion : public XTenBinaryOpConversion<XTenAddOpConversion> {
 public:
   explicit XTenAddOpConversion(MLIRContext *context)
-      : XTenBinaryOpConversion(xten::AddOp::getOperationName(), 1, context) {}
+      : XTenBinaryOpConversion(AddOp::getOperationName(), 1, context) {}
 
   StringRef getDefaultLibraryFunc() const {
       return "xten_add_op";
@@ -124,7 +124,7 @@ public:
 class XTenMulOpConversion : public XTenBinaryOpConversion<XTenMulOpConversion> {
 public:
   explicit XTenMulOpConversion(MLIRContext *context)
-      : XTenBinaryOpConversion(xten::MulOp::getOperationName(), 1, context) {}
+      : XTenBinaryOpConversion(MulOp::getOperationName(), 1, context) {}
 
   StringRef getDefaultLibraryFunc() const {
       return "xten_mul_op";
@@ -143,14 +143,14 @@ public:
 class XTenMMOpConversion : public ConversionPattern {
 public:
   explicit XTenMMOpConversion(MLIRContext *context, bool genTensors)
-      : ConversionPattern(xten::MMOp::getOperationName(), 1, context), generateTensors(genTensors) {}
+      : ConversionPattern(MMOp::getOperationName(), 1, context), generateTensors(genTensors) {}
 
   bool generateTensors;
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
-    auto mmult = cast<xten::MMOp>(op);
+    auto mmult = cast<MMOp>(op);
     auto loc = mmult.getLoc();
 
     auto resultTy = op->getResult(0).getType();
@@ -187,12 +187,12 @@ public:
 class XTenConv2dOpConversion : public ConversionPattern {
 public:
   explicit XTenConv2dOpConversion(MLIRContext *context)
-      : ConversionPattern(xten::Conv2dOp::getOperationName(), 1, context) {}
+      : ConversionPattern(Conv2dOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
-    auto mmult = cast<xten::Conv2dOp>(op);
+    auto mmult = cast<Conv2dOp>(op);
     auto loc = mmult.getLoc();
 
     auto A = MemRefTypeCast(rewriter, operands[0]);
@@ -217,12 +217,12 @@ public:
 class XTenPartialConv2dReLUOpConversion : public ConversionPattern {
 public:
   explicit XTenPartialConv2dReLUOpConversion(MLIRContext *context)
-      : ConversionPattern(xten::PartialConv2dReLUOp::getOperationName(), 1, context) {}
+      : ConversionPattern(PartialConv2dReLUOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
-    auto mmult = cast<xten::PartialConv2dReLUOp>(op);
+    auto mmult = cast<PartialConv2dReLUOp>(op);
     auto loc = mmult.getLoc();
 
     auto A = MemRefTypeCast(rewriter, operands[0]);
@@ -254,8 +254,7 @@ public:
   }
 };
 
-class XTenToLinalgPass : public PassWrapper<XTenToLinalgPass,
-                                           OperationPass<ModuleOp>> {
+class XTenToLinalgPass : public XTenToLinalgBase<XTenToLinalgPass> {
 
 public:
   XTenToLinalgPass() = default;

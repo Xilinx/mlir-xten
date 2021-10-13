@@ -18,7 +18,7 @@ def XTenName : Pass<"xten-name-layers", "ModuleOp"> {
   let constructor = "xilinx::xten::createXTenNamePass()";
 }
 
-def XTenDataFlow : Pass<"xten-expand-graph", "ModuleOp"> {
+def XTenDataflow : Pass<"xten-expand-graph", "ModuleOp"> {
   let summary = "xten expand graph";
   let constructor = "xilinx::xten::createXTenDataflowPass()";
 }

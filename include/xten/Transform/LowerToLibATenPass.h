@@ -17,8 +17,7 @@
 namespace xilinx {
 namespace xten {
 
-std::unique_ptr<mlir::Pass> createLowerToLibATenPass();
-void registerLowerToLibATenPass();
+std::unique_ptr<mlir::OperationPass<mlir::ModuleOp>> createLowerToLibATenPass();
 
 } // namespace xten
 } // namespace xilinx

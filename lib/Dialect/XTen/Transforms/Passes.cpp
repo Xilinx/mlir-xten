@@ -19,7 +19,7 @@ namespace xilinx {
 namespace xten {
 
 void registerXTenPasses() {
-  ::registerXTenDataFlowPass();
+  ::registerXTenDialectPasses();
 }
 
 }

@@ -47,14 +47,13 @@
 #define DEBUG_TYPE "aten-to-xten-pass"
 
 using namespace mlir;
-using namespace xilinx;
+using namespace xilinx::xten;
 
 namespace {
 
 #include "xten/Conversion/ATenToXTen.cpp.inc"
 
-struct ATenToXTenPass : public PassWrapper<ATenToXTenPass,
-                                           OperationPass<ModuleOp>> {
+struct ATenToXTenPass : public ATenToXTenBase<ATenToXTenPass> {
 
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
      registry.insert<xilinx::xten::XTenDialect>();
@@ -97,7 +96,8 @@ struct ATenToXTenPass : public PassWrapper<ATenToXTenPass,
 namespace xilinx {
 namespace xten {
 
-std::unique_ptr<mlir::Pass> createATenToXTenPass() {
+std::unique_ptr<OperationPass<ModuleOp>>
+createATenToXTenPass() {
   return std::make_unique<ATenToXTenPass>();
 }
 

@@ -8,6 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "PassDetail.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OperationSupport.h"
@@ -24,12 +25,13 @@
 #define DEBUG_TYPE "xten-name-pass"
 
 using namespace mlir;
+using namespace xilinx::xten;
 
 // heavily inspired from naming pass in ATenNamePass
 
 namespace xilinx {
     namespace xten {
-        struct XTenNamePass : public PassWrapper<XTenNamePass, OperationPass<ModuleOp>> {
+        struct XTenNamePass : public XTenNameBase<XTenNamePass> {
         public:
             std::string getLayerName(std::string layerPrefix, uint64_t id) {
                 return layerPrefix + std::to_string(id);
@@ -87,12 +89,13 @@ namespace xilinx {
 }
 
 namespace xilinx {
-    namespace xten {
-        std::unique_ptr<mlir::Pass> createXTenNamePass() {
-            return std::make_unique<XTenNamePass>();
-        }
+namespace xten {
 
-    } // namespace xten
+std::unique_ptr<OperationPass<ModuleOp>> createXTenNamePass() {
+    return std::make_unique<XTenNamePass>();
+}
+
+} // namespace xten
 } // namespace xilinx
 
 

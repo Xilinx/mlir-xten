@@ -8,6 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "PassDetail.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
@@ -24,10 +25,10 @@
 #define DEBUG_TYPE "aten-op-stats"
 
 using namespace mlir;
+using namespace xilinx::xten;
 
 namespace {
-struct ATenOpReportPass : public PassWrapper<ATenOpReportPass,
-                                             OperationPass<ModuleOp>> {
+struct ATenOpReportPass : public ATenOpReportBase<ATenOpReportPass> {
 
 private:
   std::string o;
@@ -64,26 +65,26 @@ public:
   {
   }
 
-  ATenOpReportPass(std::string &output)
-    : output(output),
-      tableFields({
-        "reads",
-        "writes",
-        "activation_in",
-        "activation_out",
-        "parameters_in",
-        "ops:MAC",
-        "ops:==",
-        "ops:>",
-        "ops:*",
-        "ops:+",
-        "ops:/",
-        "ops:sqrt",
-        "ops:-",
-        "grad"
-      })
-  {
-  }
+  // ATenOpReportPass(std::string &output)
+  //   : output(output),
+  //     tableFields({
+  //       "reads",
+  //       "writes",
+  //       "activation_in",
+  //       "activation_out",
+  //       "parameters_in",
+  //       "ops:MAC",
+  //       "ops:==",
+  //       "ops:>",
+  //       "ops:*",
+  //       "ops:+",
+  //       "ops:/",
+  //       "ops:sqrt",
+  //       "ops:-",
+  //       "grad"
+  //     })
+  // {
+  // }
 
   std::string emitJSONReport() {
 
@@ -174,12 +175,8 @@ public:
 namespace xilinx {
 namespace xten {
 
-std::unique_ptr<mlir::Pass> createATenOpReportPass() {
+std::unique_ptr<OperationPass<ModuleOp>> createATenOpReportPass() {
   return std::make_unique<ATenOpReportPass>();
-}
-
-std::unique_ptr<mlir::Pass> createATenOpReportPass(std::string &o) {
-  return std::make_unique<ATenOpReportPass>(o);
 }
 
 } // namespace xten
