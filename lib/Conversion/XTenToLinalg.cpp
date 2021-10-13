@@ -9,7 +9,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
-#include "mlir/Dialect/Linalg/EDSC/Intrinsics.h"
 #include "mlir/Dialect/Linalg/IR/LinalgOps.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
@@ -154,8 +153,6 @@ public:
     auto mmult = cast<xten::MMOp>(op);
     auto loc = mmult.getLoc();
 
-    edsc::ScopedContext scope(rewriter, loc);
-
     auto resultTy = op->getResult(0).getType();
     auto tensorTy = resultTy.cast<TensorType>();
     auto memRefTy = mlir::MemRefType::get(tensorTy.getShape(),
@@ -175,8 +172,10 @@ public:
       auto A = MemRefTypeCast(rewriter, operands[0]);
       auto B = MemRefTypeCast(rewriter, operands[1]);
       auto C = rewriter.create<memref::AllocOp>(loc, memRefTy);
-      edsc::intrinsics::linalg_matmul(ValueRange{A, B}, ValueRange{C});
-
+      rewriter.create<linalg::MatmulOp>(loc,
+                                        TypeRange{memRefTy},
+                                        ValueRange{A, B},
+                                        ValueRange{C}).getResult(0);
 
       auto tensor_cast = TensorTypeCast(rewriter, C->getResult(0));
       rewriter.replaceOp(op, tensor_cast);
@@ -196,8 +195,6 @@ public:
     auto mmult = cast<xten::Conv2dOp>(op);
     auto loc = mmult.getLoc();
 
-    edsc::ScopedContext scope(rewriter, loc);
-
     auto A = MemRefTypeCast(rewriter, operands[0]);
     auto B = MemRefTypeCast(rewriter, operands[1]);
 
@@ -209,7 +206,7 @@ public:
 
     auto C = rewriter.create<memref::AllocOp>(loc, memRefResultTy);
 
-    rewriter.create<linalg::ConvNCHWOp>(loc, ValueRange{A, B}, ValueRange{C});
+    rewriter.create<linalg::Conv2DNhwcHwcfOp>(loc, ValueRange{A, B}, ValueRange{C});
 
     auto tensor_cast = TensorTypeCast(rewriter, C->getResult(0));
     rewriter.replaceOp(op, tensor_cast);
@@ -228,8 +225,6 @@ public:
     auto mmult = cast<xten::PartialConv2dReLUOp>(op);
     auto loc = mmult.getLoc();
 
-    edsc::ScopedContext scope(rewriter, loc);
-
     auto A = MemRefTypeCast(rewriter, operands[0]);
     auto B = MemRefTypeCast(rewriter, mmult.weight());
 
@@ -246,7 +241,7 @@ public:
       C = rewriter.create<memref::AllocOp>(loc, memRefResultTy).getResult();
     }
 
-    rewriter.create<linalg::ConvNCHWOp>(loc, ValueRange{A, B}, ValueRange{C});
+    rewriter.create<linalg::Conv2DNhwcHwcfOp>(loc, ValueRange{A, B}, ValueRange{C});
 
     auto tensor_cast = TensorTypeCast(rewriter, C);
 
@@ -316,7 +311,7 @@ public:
         linalg::LinalgTransforms::kLinalgTransformMarker,
         StringAttr::get(op->getContext(), "xten_mmult"));
     });
-    module.walk([&](linalg::ConvNCHWOp op) {
+    module.walk([&](linalg::Conv2DNhwcHwcfOp op) {
       op->setAttr(
         linalg::LinalgTransforms::kLinalgTransformMarker,
         StringAttr::get( op->getContext(), "xten_conv2d"));

@@ -8,6 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if 0
 #include "xten/Transform/ATenLoweringPass.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "xten/Util/Util.h"
@@ -15,15 +16,9 @@
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Affine/IR/AffineValueMap.h"
-#include "mlir/Dialect/Affine/EDSC/Builders.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
-#include "mlir/Dialect/StandardOps/EDSC/Builders.h"
-#include "mlir/Dialect/StandardOps/EDSC/Intrinsics.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
-#include "mlir/Dialect/MemRef/EDSC/Intrinsics.h"
 #include "mlir/Dialect/SCF/SCF.h"
-#include "mlir/Dialect/SCF/EDSC/Builders.h"
-#include "mlir/EDSC/Builders.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -47,38 +42,21 @@
 #include <sstream>
 
 using namespace mlir;
-using namespace edsc::intrinsics;
 using namespace xilinx::xten;
-
-using callOperation = edsc::OperationBuilder<mlir::CallOp>;
-using call = edsc::ValueBuilder<mlir::CallOp>;
-using constInt = edsc::intrinsics::std_constant_int;
-using constFloat = edsc::intrinsics::std_constant_float;
 
 namespace {
 
-/// Utility function for type casting: this is making the type checker happy,
-/// while delaying the actual work involved to convert the type. Most of the
-/// time both side of the cast (producer and consumer) will be lowered to a
-/// dialect like LLVM and end up with the same LLVM representation, at which
-/// point this becomes a no-op and is eliminated.
-Value typeCast(PatternRewriter &builder, Value val, Type destTy) {
-  if (val.getType() == destTy)
-    return val;
-  return builder.create<NPCOMP::aten::TypeCastOp>(val.getLoc(), destTy, val)
-      .getResult();
-}
-
 /// Create a type cast to memref
-Value MemRefTypeCast(PatternRewriter &builder, Value val) {
+Value MemRefTypeCast(OpBuilder &builder, Value val) {
   if (val.getType().isa<MemRefType>())
     return val;
   auto tensorTy = val.getType().dyn_cast<TensorType>();
   if (!tensorTy)
     return val;
-  auto memRefType = mlir::MemRefType::get(tensorTy.getShape(), tensorTy.getElementType(), {}, 0);
-  return typeCast(builder, val, memRefType);
+  auto memRefType = MemRefType::get(tensorTy.getShape(), tensorTy.getElementType(), {}, 0);
+  return builder.create<memref::BufferCastOp>(val.getLoc(), memRefType, val).getResult();
 }
+
 
 void unpack_int_list(const Value &op, std::vector<int64_t> &v) {
   if (auto co = op.getDefiningOp<NPCOMP::aten::ConstantOp>()) {
@@ -109,7 +87,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
     Value yVal(MemRefTypeCast(rewriter, operands[1]));
@@ -149,7 +126,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value aVal(MemRefTypeCast(rewriter, operands[0]));
     Value bVal(MemRefTypeCast(rewriter, operands[1]));
@@ -192,7 +168,6 @@ public:
     Type elemTy = op->getResult(0).getType().cast<TensorType>().getElementType();
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
@@ -275,7 +250,6 @@ public:
                             {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value aVal(MemRefTypeCast(rewriter, operands[0]));
     Value bVal(MemRefTypeCast(rewriter, operands[1]));
@@ -317,7 +291,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
     Value wVal(MemRefTypeCast(rewriter, operands[1]));
@@ -372,7 +345,6 @@ public:
                                                  {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value arg0(MemRefTypeCast(rewriter, operands[0])); // grad_output
     Value arg1(MemRefTypeCast(rewriter, operands[1])); // input
@@ -419,7 +391,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
     Value yVal(MemRefTypeCast(rewriter, operands[1]));
@@ -454,7 +425,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value aVal(MemRefTypeCast(rewriter, operands[0]));
 
@@ -498,7 +468,7 @@ public:
 //                                                 {}, 0);
 
 //     auto loc = op->getLoc();
-//     edsc::ScopedContext scope(rewriter, loc);
+//  
 
 //     Value arg0(MemRefTypeCast(rewriter, operands[0]));
 //     Value arg1(MemRefTypeCast(rewriter, operands[1]));
@@ -541,7 +511,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
@@ -590,7 +559,6 @@ public:
                                              {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
@@ -642,7 +610,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     std::vector<int64_t> pad, kernel, stride, dilation;
     unpack_int_list(operands[2], kernel);
@@ -693,7 +660,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
     Value yVal(MemRefTypeCast(rewriter, operands[1]));
@@ -729,7 +695,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
     Value yVal(MemRefTypeCast(rewriter, operands[1]));
@@ -777,7 +742,6 @@ public:
                             {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value aVal(MemRefTypeCast(rewriter, operands[0]));
     Value bVal(MemRefTypeCast(rewriter, operands[1]));
@@ -833,7 +797,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value arg0(MemRefTypeCast(rewriter, operands[0]));
     Value arg1(MemRefTypeCast(rewriter, operands[1]));
@@ -889,7 +852,6 @@ public:
                                                  {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value arg0(MemRefTypeCast(rewriter, operands[0]));
     Value arg1(MemRefTypeCast(rewriter, operands[1]));
@@ -940,7 +902,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value arg0(MemRefTypeCast(rewriter, operands[0]));
     Value arg1(MemRefTypeCast(rewriter, operands[1]));
@@ -996,7 +957,6 @@ public:
                                                  {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value arg0(MemRefTypeCast(rewriter, operands[0]));
     Value arg1(MemRefTypeCast(rewriter, operands[1]));
@@ -1048,7 +1008,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
@@ -1083,7 +1042,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value arg0(MemRefTypeCast(rewriter, operands[0]));
     Value arg1(MemRefTypeCast(rewriter, operands[1]));
@@ -1126,7 +1084,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
@@ -1161,7 +1118,6 @@ public:
                                                 {}, 0);
 
     auto loc = op->getLoc();
-    edsc::ScopedContext scope(rewriter, loc);
 
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
 
@@ -1435,3 +1391,4 @@ std::unique_ptr<mlir::Pass> createATenLoweringPass() {
 
 } // namespace xten
 } // namespace xilinx
+#endif
