@@ -10,23 +10,14 @@
 
 #include "xten/Dialect/XTen/XTenOpWrapper.h"
 #include "xten/Dialect/XTen/XTenDataflowConsts.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 
 // TODO generate this file automatically
 
+using namespace mlir::torch;
+
 namespace xilinx {
     namespace xten {
-
-        void unpack_int_list(const Value &op, std::vector<int64_t> &v) {
-            if (auto co = op.getDefiningOp<NPCOMP::aten::ConstantOp>()) {
-                DenseElementsAttr a = co->template getAttrOfType<DenseElementsAttr>("value");
-                for (auto i : a.getIntValues())
-                    v.push_back(i.getSExtValue());
-            }
-            else if (auto co = op.getDefiningOp<NPCOMP::Basicpy::BuildListOp>()) {
-                for (auto o : op.getDefiningOp()->getOperands())
-                    v.push_back(o.template getDefiningOp<ConstantIntOp>().getValue());
-            }
-        }
 
         AbsOpWrapper::~AbsOpWrapper() {}
 
@@ -48,7 +39,7 @@ namespace xilinx {
             return ArrayRef<Value>();
         }
 
-        Value Conv2dOpWrapper::getBiases() {
+        Optional<Value> Conv2dOpWrapper::getBiases() {
             return this->conv.bias();
         }
 
@@ -70,10 +61,10 @@ namespace xilinx {
 
         unsigned int Conv2dOpWrapper::getStride() {
             Value s = this->conv.stride();
-            std::vector<int64_t> stride;
-            unpack_int_list(s, stride);
-
-            return stride.at(0);
+            SmallVector<int64_t, 2> stride;
+            matchPattern(s, Torch::m_TorchConstantIntList(stride));
+            
+            return stride[0];
         }
 
 
@@ -82,7 +73,7 @@ namespace xilinx {
         }
 
         bool Conv2dOpWrapper::hasBias() {
-            return (!this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>());
+            return this->getBiases().hasValue();
         }
 
         bool Conv2dOpWrapper::hasBN() {
@@ -130,8 +121,6 @@ namespace xilinx {
                                                                   this->conv.stride(),
                                                                   this->conv.padding(),
                                                                   this->conv.dilation(),
-                                                                  this->conv.transposed(),
-                                                                  this->conv.output_padding(),
                                                                   this->conv.groups());
 
                 nOp->setAttrs(op->getAttrs());
@@ -146,8 +135,6 @@ namespace xilinx {
                                                           this->conv.stride(),
                                                           this->conv.padding(),
                                                           this->conv.dilation(),
-                                                          this->conv.transposed(),
-                                                          this->conv.output_padding(),
                                                           this->conv.groups());
 
                 nOp->setAttrs(op->getAttrs());
@@ -163,14 +150,12 @@ namespace xilinx {
                 op =  builder.create<PartialConv2dOp>(builder.getUnknownLoc(),
                                                       resTypes.getValue(),
                                                       this->getInput(),
-                                                      Value(),
+                                                      nullptr,
                                                       this->getWeights(),
-                                                      this->getBiases(),
+                                                      this->getBiases().getValueOr(nullptr),
                                                       this->conv.stride(),
                                                       this->conv.padding(),
                                                       this->conv.dilation(),
-                                                      this->conv.transposed(),
-                                                      this->conv.output_padding(),
                                                       this->conv.groups());
 
             } else {
@@ -178,12 +163,10 @@ namespace xilinx {
                                               this->getUnderlyingOperation()->getResultTypes(),
                                               this->getInput(),
                                               this->getWeights(),
-                                              this->getBiases(),
+                                              this->getBiases().getValueOr(nullptr),
                                               this->conv.stride(),
                                               this->conv.padding(),
                                               this->conv.dilation(),
-                                              this->conv.transposed(),
-                                              this->conv.output_padding(),
                                               this->conv.groups());
             }
 
@@ -214,7 +197,7 @@ namespace xilinx {
             return ArrayRef<Value>();
         }
 
-        Value PartialConv2dOpWrapper::getBiases() {
+        Optional<Value> PartialConv2dOpWrapper::getBiases() {
             return this->conv.bias();
         }
 
@@ -236,10 +219,9 @@ namespace xilinx {
 
         unsigned int PartialConv2dOpWrapper::getStride() {
             Value s = this->conv.stride();
-            std::vector<int64_t> stride;
-            unpack_int_list(s, stride);
-
-            return stride.at(0);
+            SmallVector<int64_t, 2> stride;
+            matchPattern(s, Torch::m_TorchConstantIntList(stride));
+            return stride[0];
         }
 
         bool PartialConv2dOpWrapper::hasWeights() {
@@ -247,7 +229,7 @@ namespace xilinx {
         }
 
         bool PartialConv2dOpWrapper::hasBias() {
-            return (!this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>());
+            return this->getBiases().hasValue();
         }
 
         bool PartialConv2dOpWrapper::hasBN() {
@@ -302,8 +284,6 @@ namespace xilinx {
                                                               this->conv.stride(),
                                                               this->conv.padding(),
                                                               this->conv.dilation(),
-                                                              this->conv.transposed(),
-                                                              this->conv.output_padding(),
                                                               this->conv.groups());
 
             nOp->setAttrs(op->getAttrs());
@@ -319,12 +299,10 @@ namespace xilinx {
                                                      this->getInput(),
                                                      this->conv.PartialIn(),
                                                      this->getWeights(),
-                                                     this->getBiases(),
+                                                     this->getBiases().getValueOr(nullptr),
                                                      this->conv.stride(),
                                                      this->conv.padding(),
                                                      this->conv.dilation(),
-                                                     this->conv.transposed(),
-                                                     this->conv.output_padding(),
                                                      this->conv.groups());
             } else {
                 op = builder.create<PartialConv2dOp>(builder.getUnknownLoc(),
@@ -332,12 +310,10 @@ namespace xilinx {
                                                      this->getInput(),
                                                      this->conv.PartialIn(),
                                                      this->getWeights(),
-                                                     this->getBiases(),
+                                                     this->getBiases().getValueOr(nullptr),
                                                      this->conv.stride(),
                                                      this->conv.padding(),
                                                      this->conv.dilation(),
-                                                     this->conv.transposed(),
-                                                     this->conv.output_padding(),
                                                      this->conv.groups());
             }
 
@@ -369,7 +345,7 @@ namespace xilinx {
             return ArrayRef<Value>();
         }
 
-        Value Conv2dReLUOpWrapper::getBiases() {
+        Optional<Value> Conv2dReLUOpWrapper::getBiases() {
             return this->conv.bias();
         }
 
@@ -391,10 +367,10 @@ namespace xilinx {
 
         unsigned int Conv2dReLUOpWrapper::getStride() {
             Value s = this->conv.stride();
-            std::vector<int64_t> stride;
-            unpack_int_list(s, stride);
+            SmallVector<int64_t,2> stride;
+            matchPattern(s, Torch::m_TorchConstantIntList(stride));
 
-            return stride.at(0);
+            return stride[0];
         }
 
         bool Conv2dReLUOpWrapper::hasWeights() {
@@ -402,7 +378,7 @@ namespace xilinx {
         }
 
         bool Conv2dReLUOpWrapper::hasBias() {
-            return !this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>();
+            return this->getBiases().hasValue();
         }
 
         bool Conv2dReLUOpWrapper::hasBN() {
@@ -450,8 +426,6 @@ namespace xilinx {
                                                                       this->conv.stride(),
                                                                       this->conv.padding(),
                                                                       this->conv.dilation(),
-                                                                      this->conv.transposed(),
-                                                                      this->conv.output_padding(),
                                                                       this->conv.groups());
 
                 nOp->setAttrs(op->getAttrs());
@@ -465,8 +439,6 @@ namespace xilinx {
                                                               this->conv.stride(),
                                                               this->conv.padding(),
                                                               this->conv.dilation(),
-                                                              this->conv.transposed(),
-                                                              this->conv.output_padding(),
                                                               this->conv.groups());
 
                 nOp->setAttrs(op->getAttrs());
@@ -483,24 +455,20 @@ namespace xilinx {
                                                           this->getInput(),
                                                           Value(),
                                                           this->getWeights(),
-                                                          this->getBiases(),
+                                                          this->getBiases().getValueOr(nullptr),
                                                           this->conv.stride(),
                                                           this->conv.padding(),
                                                           this->conv.dilation(),
-                                                          this->conv.transposed(),
-                                                          this->conv.output_padding(),
                                                           this->conv.groups());
             } else {
                 op = builder.create<Conv2dReLUOp>(builder.getUnknownLoc(),
                                                   this->getUnderlyingOperation()->getResultTypes(),
                                                   this->getInput(),
                                                   this->getWeights(),
-                                                  this->getBiases(),
+                                                  this->getBiases().getValueOr(nullptr),
                                                   this->conv.stride(),
                                                   this->conv.padding(),
                                                   this->conv.dilation(),
-                                                  this->conv.transposed(),
-                                                  this->conv.output_padding(),
                                                   this->conv.groups());
             }
 
@@ -532,7 +500,7 @@ namespace xilinx {
             return ArrayRef<Value>();
         }
 
-        Value PartialConv2dReLUOpWrapper::getBiases() {
+        Optional<Value> PartialConv2dReLUOpWrapper::getBiases() {
             return this->conv.bias();
         }
 
@@ -554,10 +522,10 @@ namespace xilinx {
 
         unsigned int PartialConv2dReLUOpWrapper::getStride() {
             Value s = this->conv.stride();
-            std::vector<int64_t> stride;
-            unpack_int_list(s, stride);
+            SmallVector<int64_t,2> stride;
+            matchPattern(s, Torch::m_TorchConstantIntList(stride));
 
-            return stride.at(0);
+            return stride[0];
         }
 
         bool PartialConv2dReLUOpWrapper::hasWeights() {
@@ -565,7 +533,7 @@ namespace xilinx {
         }
 
         bool PartialConv2dReLUOpWrapper::hasBias() {
-            return (!this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>());
+            return this->getBiases().hasValue();
         }
 
         bool PartialConv2dReLUOpWrapper::hasBN() {
@@ -621,8 +589,6 @@ namespace xilinx {
                                                                  this->conv.stride(),
                                                                  this->conv.padding(),
                                                                  this->conv.dilation(),
-                                                                 this->conv.transposed(),
-                                                                 this->conv.output_padding(),
                                                                  this->conv.groups());
             nOp->setAttrs(op->getAttrs());
             return nOp;
@@ -637,12 +603,10 @@ namespace xilinx {
                                                          this->getInput(),
                                                          this->conv.PartialIn(),
                                                          this->getWeights(),
-                                                         this->getBiases(),
+                                                         this->getBiases().getValueOr(nullptr),
                                                          this->conv.stride(),
                                                          this->conv.padding(),
                                                          this->conv.dilation(),
-                                                         this->conv.transposed(),
-                                                         this->conv.output_padding(),
                                                          this->conv.groups());
             } else {
                 op = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
@@ -650,12 +614,10 @@ namespace xilinx {
                                                          this->getInput(),
                                                          this->conv.PartialIn(),
                                                          this->getWeights(),
-                                                         this->getBiases(),
+                                                         this->getBiases().getValueOr(nullptr),
                                                          this->conv.stride(),
                                                          this->conv.padding(),
                                                          this->conv.dilation(),
-                                                         this->conv.transposed(),
-                                                         this->conv.output_padding(),
                                                          this->conv.groups());
             }
 
@@ -688,7 +650,7 @@ namespace xilinx {
             return ArrayRef<Value>({this->conv.bn_weight(), this->conv.bn_bias(), this->conv.running_mean(), this->conv.running_var()});
         }
 
-        Value PartialConv2dBatchNormReLUOpWrapper::getBiases() {
+        Optional<Value> PartialConv2dBatchNormReLUOpWrapper::getBiases() {
             return this->conv.bias();
         }
 
@@ -710,10 +672,10 @@ namespace xilinx {
 
         unsigned int PartialConv2dBatchNormReLUOpWrapper::getStride() {
             Value s = this->conv.stride();
-            std::vector<int64_t> stride;
-            unpack_int_list(s, stride);
+            SmallVector<int64_t,2 > stride;
+            matchPattern(s, Torch::m_TorchConstantIntList(stride));
 
-            return stride.at(0);
+            return stride[0];
         }
 
         bool PartialConv2dBatchNormReLUOpWrapper::hasWeights() {
@@ -721,7 +683,7 @@ namespace xilinx {
         }
 
         bool PartialConv2dBatchNormReLUOpWrapper::hasBias() {
-            return (!this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>());
+            return this->getBiases().hasValue();
         }
 
         bool PartialConv2dBatchNormReLUOpWrapper::hasBN() {
@@ -778,8 +740,6 @@ namespace xilinx {
                                                                           this->conv.stride(),
                                                                           this->conv.padding(),
                                                                           this->conv.dilation(),
-                                                                          this->conv.transposed(),
-                                                                          this->conv.output_padding(),
                                                                           this->conv.groups(),
                                                                           bn.getValue()[0],
                                                                           bn.getValue()[1],
@@ -801,12 +761,10 @@ namespace xilinx {
                                                                   this->getInput(),
                                                                   this->conv.PartialIn(),
                                                                   this->getWeights(),
-                                                                  this->getBiases(),
+                                                                  this->getBiases().getValueOr(nullptr),
                                                                   this->conv.stride(),
                                                                   this->conv.padding(),
                                                                   this->conv.dilation(),
-                                                                  this->conv.transposed(),
-                                                                  this->conv.output_padding(),
                                                                   this->conv.groups(),
                                                                   this->conv.bn_weight(),
                                                                   this->conv.bn_bias(),
@@ -821,12 +779,10 @@ namespace xilinx {
                                                                   this->getInput(),
                                                                   this->conv.PartialIn(),
                                                                   this->getWeights(),
-                                                                  this->getBiases(),
+                                                                  this->getBiases().getValueOr(nullptr),
                                                                   this->conv.stride(),
                                                                   this->conv.padding(),
                                                                   this->conv.dilation(),
-                                                                  this->conv.transposed(),
-                                                                  this->conv.output_padding(),
                                                                   this->conv.groups(),
                                                                   this->conv.bn_weight(),
                                                                   this->conv.bn_bias(),
@@ -867,7 +823,7 @@ namespace xilinx {
             return ArrayRef<Value>({this->conv.bn_weight(), this->conv.bn_bias(), this->conv.running_mean(), this->conv.running_var()});
         }
 
-        Value Conv2dBatchNormReLUOpWrapper::getBiases() {
+        Optional<Value> Conv2dBatchNormReLUOpWrapper::getBiases() {
             return this->conv.bias();
         }
 
@@ -889,10 +845,10 @@ namespace xilinx {
 
         unsigned int Conv2dBatchNormReLUOpWrapper::getStride() {
             Value s = this->conv.stride();
-            std::vector<int64_t> stride;
-            unpack_int_list(s, stride);
+            SmallVector<int64_t,2> stride;
+            matchPattern(s, Torch::m_TorchConstantIntList(stride));
 
-            return stride.at(0);
+            return stride[0];
         }
 
         bool Conv2dBatchNormReLUOpWrapper::hasWeights() {
@@ -900,7 +856,7 @@ namespace xilinx {
         }
 
         bool Conv2dBatchNormReLUOpWrapper::hasBias() {
-            return (!this->getBiases().getDefiningOp<NPCOMP::Basicpy::SingletonOp>());
+            return this->getBiases().hasValue();
         }
 
         bool Conv2dBatchNormReLUOpWrapper::hasBN() {
@@ -950,8 +906,6 @@ namespace xilinx {
                                                                                this->conv.stride(),
                                                                                this->conv.padding(),
                                                                                this->conv.dilation(),
-                                                                               this->conv.transposed(),
-                                                                               this->conv.output_padding(),
                                                                                this->conv.groups(),
                                                                                bn.getValue()[0],
                                                                                bn.getValue()[1],
@@ -972,8 +926,6 @@ namespace xilinx {
                                                                        this->conv.stride(),
                                                                        this->conv.padding(),
                                                                        this->conv.dilation(),
-                                                                       this->conv.transposed(),
-                                                                       this->conv.output_padding(),
                                                                        this->conv.groups(),
                                                                        bn.getValue()[0],
                                                                        bn.getValue()[1],
@@ -998,12 +950,10 @@ namespace xilinx {
                                                                    this->getInput(),
                                                                    Value(),
                                                                    this->getWeights(),
-                                                                   this->getBiases(),
+                                                                   this->getBiases().getValueOr(nullptr),
                                                                    this->conv.stride(),
                                                                    this->conv.padding(),
                                                                    this->conv.dilation(),
-                                                                   this->conv.transposed(),
-                                                                   this->conv.output_padding(),
                                                                    this->conv.groups(),
                                                                    this->conv.bn_weight(),
                                                                    this->conv.bn_bias(),
@@ -1017,12 +967,10 @@ namespace xilinx {
                                                            this->getUnderlyingOperation()->getResultTypes(),
                                                            this->getInput(),
                                                            this->getWeights(),
-                                                           this->getBiases(),
+                                                           this->getBiases().getValueOr(nullptr),
                                                            this->conv.stride(),
                                                            this->conv.padding(),
                                                            this->conv.dilation(),
-                                                           this->conv.transposed(),
-                                                           this->conv.output_padding(),
                                                            this->conv.groups(),
                                                            this->conv.bn_weight(),
                                                            this->conv.bn_bias(),
@@ -1044,82 +992,82 @@ namespace xilinx {
             return op;
         }
 
-        MaxPool2dWithIndicesOpWrapper::MaxPool2dWithIndicesOpWrapper(mlir::NPCOMP::aten::MaxPool2dWithIndicesOp mp) {
+        MaxPool2dOpWrapper::MaxPool2dOpWrapper(Torch::AtenMaxPool2dOp mp) {
             maxpool = mp;
         }
 
-        MaxPool2dWithIndicesOpWrapper::~MaxPool2dWithIndicesOpWrapper() {}
+        MaxPool2dOpWrapper::~MaxPool2dOpWrapper() {}
 
 
-        Operation* MaxPool2dWithIndicesOpWrapper::getUnderlyingOperation() {
+        Operation* MaxPool2dOpWrapper::getUnderlyingOperation() {
             return maxpool.getOperation();
         }
 
-        Value MaxPool2dWithIndicesOpWrapper::getWeights() {
+        Value MaxPool2dOpWrapper::getWeights() {
             return Value();
         }
 
-        Value MaxPool2dWithIndicesOpWrapper::getBiases() {
-            return Value();
+        Optional<Value> MaxPool2dOpWrapper::getBiases() {
+            return Optional<Value>{};
         }
 
-        unsigned int MaxPool2dWithIndicesOpWrapper::getF0() {
+        unsigned int MaxPool2dOpWrapper::getF0() {
             Value ks = this->maxpool.kernel_size();
-            std::vector<int64_t> kernel_size;
-            unpack_int_list(ks, kernel_size);
+            SmallVector<int64_t,2> kernel_size;
+            matchPattern(ks, Torch::m_TorchConstantIntList(kernel_size));
 
-            return kernel_size.at(0);
+            return kernel_size[0];
         }
 
-        unsigned int MaxPool2dWithIndicesOpWrapper::getF1() {
+        unsigned int MaxPool2dOpWrapper::getF1() {
             Value ks = this->maxpool.kernel_size();
-            std::vector<int64_t> kernel_size;
-            unpack_int_list(ks, kernel_size);
+            SmallVector<int64_t,2> kernel_size;
+            matchPattern(ks, Torch::m_TorchConstantIntList(kernel_size));
 
-            return kernel_size.at(1);
+            return kernel_size[1];
         }
 
-        unsigned int MaxPool2dWithIndicesOpWrapper::getStride() {
+        unsigned int MaxPool2dOpWrapper::getStride() {
             Value s = this->maxpool.stride();
-            std::vector<int64_t> stride;
-            unpack_int_list(s, stride);
+            SmallVector<int64_t,2> stride;
+            matchPattern(s, Torch::m_TorchConstantIntList(stride));
 
-            return stride.at(0);
+            return stride[0];
         }
 
-        Value MaxPool2dWithIndicesOpWrapper::getInput() {
+        Value MaxPool2dOpWrapper::getInput() {
             return this->maxpool.self();
         }
 
-        Value MaxPool2dWithIndicesOpWrapper::getPartialInput() {
+        Value MaxPool2dOpWrapper::getPartialInput() {
             return Value();
         }
 
-        ArrayRef<Value> MaxPool2dWithIndicesOpWrapper::getBN() {
+        ArrayRef<Value> MaxPool2dOpWrapper::getBN() {
             return ArrayRef<Value>();
         }
 
-        bool MaxPool2dWithIndicesOpWrapper::hasWeights() {
+        bool MaxPool2dOpWrapper::hasWeights() {
             return false;
         }
 
-        bool MaxPool2dWithIndicesOpWrapper::hasBias() {
+        bool MaxPool2dOpWrapper::hasBias() {
             return false;
         }
 
-        bool MaxPool2dWithIndicesOpWrapper::isDepthWise() {
+        bool MaxPool2dOpWrapper::isDepthWise() {
             return true;
         }
 
-        bool MaxPool2dWithIndicesOpWrapper::hasBN() {
+        bool MaxPool2dOpWrapper::hasBN() {
             return false;
         }
 
-        double MaxPool2dWithIndicesOpWrapper::getKernelEfficiency() {
+        double MaxPool2dOpWrapper::getKernelEfficiency() {
             return 0.25;
         }
 
-        Operation* MaxPool2dWithIndicesOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input,
+        Operation* MaxPool2dOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input,
                                                           llvm::Optional<Value> weight, llvm::Optional<Value> bias,
                                                           llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                                           llvm::Optional<ArrayRef<Value>> bn) {
@@ -1129,28 +1077,28 @@ namespace xilinx {
             assert(!partialIn.hasValue());
 
             Operation* op = this->getUnderlyingOperation();
-            Operation* nOp =  builder.create<NPCOMP::aten::MaxPool2dWithIndicesOp>(builder.getUnknownLoc(), returnType, input,
-                                                                                   this->maxpool.kernel_size(),
-                                                                                   this->maxpool.stride(),
-                                                                                   this->maxpool.padding(),
-                                                                                   this->maxpool.dilation(),
-                                                                                   this->maxpool.ceil_mode());
+            Operation* nOp =  builder.create<Torch::AtenMaxPool2dOp>(builder.getUnknownLoc(), returnType, input,
+                                                                     this->maxpool.kernel_size(),
+                                                                     this->maxpool.stride(),
+                                                                     this->maxpool.padding(),
+                                                                     this->maxpool.dilation(),
+                                                                     this->maxpool.ceil_mode());
 
             nOp->setAttrs(op->getAttrs());
             return nOp;
         }
 
-        Operation* MaxPool2dWithIndicesOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> typeRes) {
+        Operation* MaxPool2dOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> typeRes) {
             assert(!typeRes.hasValue());
 
-            Operation* op =  builder.create<NPCOMP::aten::MaxPool2dWithIndicesOp>(builder.getUnknownLoc(),
-                                                                                  this->getUnderlyingOperation()->getResultTypes(),
-                                                                                  this->getInput(),
-                                                                                  this->maxpool.kernel_size(),
-                                                                                  this->maxpool.stride(),
-                                                                                  this->maxpool.padding(),
-                                                                                  this->maxpool.dilation(),
-                                                                                  this->maxpool.ceil_mode());
+            Operation* op =  builder.create<Torch::AtenMaxPool2dOp>(builder.getUnknownLoc(),
+                                                                    this->getUnderlyingOperation()->getResultTypes(),
+                                                                    this->getInput(),
+                                                                    this->maxpool.kernel_size(),
+                                                                    this->maxpool.stride(),
+                                                                    this->maxpool.padding(),
+                                                                    this->maxpool.dilation(),
+                                                                    this->maxpool.ceil_mode());
 
             op->setAttrs(this->getUnderlyingOperation()->getAttrs());
 

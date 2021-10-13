@@ -16,6 +16,7 @@
 #include "mlir/IR/PatternMatch.h"
 
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 
 #include "xten/Dialect/XTen/XTenDataflow.h"
 #include "xten/Dialect/XTen/XTenDataflowUtils.h"
@@ -59,8 +60,8 @@ namespace xilinx {
                     return new Conv2dReLUOpWrapper(conv);
                 } else if(auto conv = llvm::dyn_cast<PartialConv2dReLUOp>(op)) {
                     return new PartialConv2dReLUOpWrapper(conv);
-                } else if(auto maxpool = llvm::dyn_cast<mlir::NPCOMP::aten::MaxPool2dWithIndicesOp>(op)) {
-                    return new MaxPool2dWithIndicesOpWrapper(maxpool);
+                } else if(auto maxpool = llvm::dyn_cast<torch::Torch::AtenMaxPool2dOp>(op)) {
+                    return new MaxPool2dOpWrapper(maxpool);
                 } else if(auto conv = llvm::dyn_cast<Conv2dOp>(op)) {
                     return new Conv2dOpWrapper(conv);
                 } else if(auto conv = llvm::dyn_cast<PartialConv2dOp>(op)) {
@@ -145,7 +146,7 @@ namespace xilinx {
                     // Split biases
                     Operation* biases;
                     if(genOp->hasBias()) {
-                        biases = genOp->getBiases().getDefiningOp();
+                        biases = genOp->getBiases()->getDefiningOp();
                         if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
                             splitConstantInto(constOp, nBiases, builder, PSplit, bSplitType, into);
                         } else {
@@ -309,7 +310,7 @@ namespace xilinx {
                     // Split biases
                     Operation* biases;
                     if(genOp->hasBias()) {
-                        biases = genOp->getBiases().getDefiningOp();
+                        biases = genOp->getBiases()->getDefiningOp();
                         if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
                             splitConstantInto(constOp, nBiases, builder, CaSplit, bSplitType, into);
                         } else {
@@ -469,7 +470,7 @@ namespace xilinx {
                     // Split biases
                     Operation* biases;
                     if(genOp->hasBias()) {
-                        biases = genOp->getBiases().getDefiningOp();
+                        biases = genOp->getBiases()->getDefiningOp();
                         if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
                             splitConstantInto(constOp, nBiases, builder, LSplit, bSplitType, into);
                         } else {
@@ -1247,16 +1248,11 @@ namespace xilinx {
 }
 
 namespace xilinx {
-    namespace xten {
-        std::unique_ptr<mlir::Pass> createXTenDataflowPass() {
-            return std::make_unique<XTenDataflowPass>();
-        }
+namespace xten {
 
-    } // namespace xten
-} // namespace xilinx
-
-void xilinx::xten::registerXTenDataflowPass() {
-    PassRegistration<XTenDataflowPass>("xten-expand-graph",
-                                      "Dataflow expansion of XTen NN graph towards AIE implementation");
+std::unique_ptr<mlir::Pass> createXTenDataflowPass() {
+    return std::make_unique<XTenDataflowPass>();
 }
 
+} // namespace xten
+} // namespace xilinx

@@ -78,7 +78,7 @@ namespace xilinx {
                 }
 
                 uint64_t i = 0;
-                for(auto it =  at.float_value_begin(); it != at.float_value_end(); it++) {
+                for(auto it =  at.value_begin<APFloat>(); it != at.value_end<APFloat>(); it++) {
                     //llvm::outs() << "Got this value: ";
                     //(*it).print(llvm::outs());
                     uint64_t loc_c = i / (M * N);
@@ -139,7 +139,7 @@ namespace xilinx {
                 }
 
                 uint64_t i = 0;
-                for(auto it =  at.float_value_begin(); it != at.float_value_end(); it++) {
+                for(auto it =  at.value_begin<APFloat>(); it != at.value_end<APFloat>(); it++) {
                     //llvm::outs() << "Got this value: ";
                     //(*it).print(llvm::outs());
 
@@ -180,7 +180,7 @@ namespace xilinx {
                 }
 
                 uint64_t i = 0;
-                for(auto it =  at.float_value_begin(); it != at.float_value_end(); it++) {
+                for(auto it =  at.value_begin<APFloat>(); it != at.value_end<APFloat>(); it++) {
                     if(loc == 0) {
                         unsigned int index = i / (at.getType().getNumElements() / into);
                         vects.at(index).push_back(*it);

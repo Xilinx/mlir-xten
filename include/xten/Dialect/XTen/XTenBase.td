@@ -13,8 +13,6 @@
 
 include "mlir/IR/OpBase.td"
 
-//include "npcomp/Dialect/Basicpy/IR/BasicpyDialect.td"
-
 def XTen_Dialect : Dialect {
   let name = "xten";
   let cppNamespace = "xilinx::xten";

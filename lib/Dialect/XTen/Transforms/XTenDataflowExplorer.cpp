@@ -55,11 +55,7 @@ namespace xilinx {
     namespace xten {
         std::map<std::string, uint64_t> getStats(Operation* op) {
             std::map<std::string, uint64_t> layerStatsMap;
-            if (auto stats = llvm::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
-                layerStatsMap = stats.getStatistics();
-            } else {
-                layerStatsMap = xilinx::xten::getATenOpStats(op);
-            }
+            layerStatsMap = xilinx::xten::getATenOpStats(op);
 
             if(!layerStatsMap.size()) {
                 llvm::outs() << "No statistics provided for that op!!\n";

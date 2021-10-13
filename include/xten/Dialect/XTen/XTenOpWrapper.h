@@ -19,6 +19,7 @@
 #include "mlir/IR/PatternMatch.h"
 
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 
 #include "xten/Dialect/XTen/XTenOps.h"
 #include "xten/Util/Arch.h"
@@ -33,6 +34,7 @@
 // TODO whenever we generate something it will always be generating the partial version of the corresponding convolution?
 
 using namespace mlir;
+using namespace mlir::torch;
 using namespace xilinx::xten;
 
 namespace xilinx {
@@ -45,7 +47,7 @@ namespace xilinx {
             virtual Value getWeights() = 0;
             virtual Value getInput() = 0;
             virtual Value getPartialInput() = 0;
-            virtual Value getBiases() = 0;
+            virtual Optional<Value> getBiases() = 0;
             virtual ArrayRef<Value> getBN() = 0;
             virtual unsigned int getF0() = 0;
             virtual unsigned int getF1() = 0;
@@ -74,7 +76,7 @@ namespace xilinx {
             Value getWeights();
             Value getInput();
             Value getPartialInput();
-            Value getBiases();
+            Optional<Value> getBiases();
             ArrayRef<Value> getBN();
             virtual unsigned int getF0();
             virtual unsigned int getF1();
@@ -100,7 +102,7 @@ namespace xilinx {
             Value getWeights();
             Value getInput();
             Value getPartialInput();
-            Value getBiases();
+            Optional<Value> getBiases();
             ArrayRef<Value> getBN();
             virtual unsigned int getF0();
             virtual unsigned int getF1();
@@ -126,7 +128,7 @@ namespace xilinx {
             Value getWeights();
             Value getInput();
             Value getPartialInput();
-            Value getBiases();
+            Optional<Value> getBiases();
             ArrayRef<Value> getBN();
             virtual unsigned int getF0();
             virtual unsigned int getF1();
@@ -152,7 +154,7 @@ namespace xilinx {
             Value getWeights();
             Value getInput();
             Value getPartialInput();
-            Value getBiases();
+            Optional<Value> getBiases();
             ArrayRef<Value> getBN();
             virtual unsigned int getF0();
             virtual unsigned int getF1();
@@ -178,7 +180,7 @@ namespace xilinx {
             Value getWeights();
             Value getInput();
             Value getPartialInput();
-            Value getBiases();
+            Optional<Value> getBiases();
             ArrayRef<Value> getBN();
             virtual unsigned int getF0();
             virtual unsigned int getF1();
@@ -204,7 +206,7 @@ namespace xilinx {
             Value getWeights();
             Value getInput();
             Value getPartialInput();
-            Value getBiases();
+            Optional<Value> getBiases();
             ArrayRef<Value> getBN();
             virtual unsigned int getF0();
             virtual unsigned int getF1();
@@ -221,17 +223,17 @@ namespace xilinx {
         };
 
 
-        class MaxPool2dWithIndicesOpWrapper : public AbsOpWrapper {
+        class MaxPool2dOpWrapper : public AbsOpWrapper {
         private:
-            mlir::NPCOMP::aten::MaxPool2dWithIndicesOp maxpool;
+            Torch::AtenMaxPool2dOp maxpool;
         public:
-            MaxPool2dWithIndicesOpWrapper(mlir::NPCOMP::aten::MaxPool2dWithIndicesOp c);
-            ~MaxPool2dWithIndicesOpWrapper();
+            MaxPool2dOpWrapper(Torch::AtenMaxPool2dOp c);
+            ~MaxPool2dOpWrapper();
             Operation* getUnderlyingOperation();
             Value getWeights();
             Value getInput();
             Value getPartialInput();
-            Value getBiases();
+            Optional<Value> getBiases();
             ArrayRef<Value> getBN();
             virtual unsigned int getF0();
             virtual unsigned int getF1();

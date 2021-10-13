@@ -15,54 +15,41 @@ include "torch-mlir/Dialect/Torch/IR/TorchOps.td"
 
 include "xten/Dialect/XTen/XTenOps.td"
 
-def : Pat<(aten_ConvolutionOp $a,$b,$c,$d,$e,$f,$g,$h,$i),
-          (XTen_Conv2dOp  $a,$b,$c,$d,$e,$f,$g,$h,$i)>;
+def : Pat<(Torch_AtenConv2dOp $a,$b,$c,$d,$e,$f,$g),
+          (XTen_Conv2dOp  $a,$b,$c,$d,$e,$f,$g)>;
 
-def : Pat<(aten_TOp (aten_TOp $input)), (XTen_NoOp $input)>;
+// def : Pat<(aten_TOp (aten_TOp $input)), (XTen_NoOp $input)>;
 
-def : Pat<(aten_ReluOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i)),
-          (XTen_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i)>;
+// def : Pat<(Torch_AtenReluOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g)),
+//           (XTen_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g)>;
 
-def : Pat<(aten_LeakyReluOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i),$j),
-          (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j)>;
+// def : Pat<(Torch_AtenRelu_Op (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g)),
+//           (XTen_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g)>;
 
-def : Pat<(aten_LeakyReluOp 
-            (aten_NativeBatchNormOp
-              (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i),
-              $a1,$a2,$a3,$a4,$a5,$a6,$a7),$j),
-          (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j)>;
+// def : Pat<(Torch_AtenReluOp
+//             (Torch_AtenBatchNormOp
+//               (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i),
+//               $a1,$a2,$a3,$a4,$a5,$a6,$a7,$a8
+//             )
+//           ),
+//           (XTen_Conv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;
 
-def : Pat<(aten_MaxPool2dWithIndicesOp
-            (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$j),$mp2,$mp3,$mp4,$mp5,$mp6),
-          (XTen_Conv2dLReLUMaxPoolOp $a,$b,$c,$mp3,$e,$f,$g,$h,$i,$j)>;
+// def : Pat<(Torch_AtenRelu_Op
+//             (Torch_AtenBatchNormOp
+//               (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i),
+//               $a1,$a2,$a3,$a4,$a5,$a6,$a7,$a8
+//             )
+//           ),
+//           (XTen_Conv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;
 
-def : Pat<(aten_ReluUnderOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i)),
-          (XTen_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i)>;
-
-def : Pat<(aten_ReluOp
-            (aten_NativeBatchNormOp
-              (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i),
-              $a1,$a2,$a3,$a4,$a5,$a6,$a7
-            )
-          ),
-          (XTen_Conv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;
-
-def : Pat<(aten_ReluUnderOp
-            (aten_NativeBatchNormOp
-              (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i),
-              $a1,$a2,$a3,$a4,$a5,$a6,$a7
-            )
-          ),
-          (XTen_Conv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;
-
-def : Pat<(aten_AddOp $a, (ConstantOp:$b $ab), (ConstantOp:$c $ac)),
+def : Pat<(Torch_AtenAdd_TensorOp $a, (ConstantOp:$b $ab), (ConstantOp:$c $ac)),
           (XTen_AddConstantOp $a, $b)>;
 
-def : Pat<(aten_MmOp $a, $b),
+def : Pat<(Torch_AtenMmOp $a, $b),
           (XTen_MMOp $a, $b)>;
 
-def : Pat<(aten_MulOp $a, $b),
+def : Pat<(Torch_AtenMulTensorOp $a, $b),
           (XTen_MulOp $a, $b)>;
 
-def : Pat<(aten_AddOp $a, $b, $c),
+def : Pat<(Torch_AtenAdd_TensorOp $a, $b, $c),
           (XTen_AddOp $a, $b)>;

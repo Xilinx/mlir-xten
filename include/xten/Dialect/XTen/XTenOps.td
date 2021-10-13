@@ -85,16 +85,14 @@ def XTen_NoOp: XTen_Op<"noop", []>,
 }
 
 def XTen_Conv2dOp: XTen_Op<"conv2d", [NoSideEffect]>,
-                                Results<(outs AnyTensor)> {
+                                Results<(outs AnyTensor:$result)> {
   let arguments = (
     ins AnyTensor:$input,
         AnyTensor:$weight,
-        XTen_AnyOptionalTensor:$bias,
+        Optional<AnyTensor>:$bias,
         AnyType:$stride,
         AnyType:$padding,
         AnyType:$dilation,
-        AnyType:$transposed,
-        AnyType:$output_padding,
         XTen_AnyScalar:$groups
   );
 
@@ -110,17 +108,16 @@ def XTen_Conv2dOp: XTen_Op<"conv2d", [NoSideEffect]>,
 }
 
 // TODO what happens when we have both?
-def XTen_PartialConv2dOp: XTen_Op<"partialconv2d", [NoSideEffect]>{
+def XTen_PartialConv2dOp: XTen_Op<"partialconv2d", [NoSideEffect,
+                                                    AttrSizedOperandSegments]>{
   let arguments = (
     ins AnyTensor:$input,
         Optional<AnyTensor>:$PartialIn,
         AnyTensor:$weight,
-        XTen_AnyOptionalTensor:$bias,
+        Optional<AnyTensor>:$bias,
         AnyType:$stride,
         AnyType:$padding,
         AnyType:$dilation,
-        AnyType:$transposed,
-        AnyType:$output_padding,
         XTen_AnyScalar:$groups
   );
 
@@ -146,12 +143,10 @@ def XTen_Conv2dReLUOp: XTen_Op<"conv2d_relu", [NoSideEffect]>,
   let arguments = (
     ins AnyTensor:$input,
         AnyTensor:$weight,
-        XTen_AnyOptionalTensor:$bias,
+        Optional<AnyTensor>:$bias,
         AnyType:$stride,
         AnyType:$padding,
         AnyType:$dilation,
-        AnyType:$transposed,
-        AnyType:$output_padding,
         XTen_AnyScalar:$groups
   );
 
@@ -166,17 +161,16 @@ def XTen_Conv2dReLUOp: XTen_Op<"conv2d_relu", [NoSideEffect]>,
 	}];
 }
 
-def XTen_PartialConv2dReLUOp: XTen_Op<"partialconv2d_relu", [NoSideEffect]> {
+def XTen_PartialConv2dReLUOp: XTen_Op<"partialconv2d_relu",
+                                [NoSideEffect,AttrSizedOperandSegments]> {
   let arguments = (
     ins AnyTensor:$input,
         Optional<AnyTensor>:$PartialIn,
         AnyTensor:$weight,
-        XTen_AnyOptionalTensor:$bias,
+        Optional<AnyTensor>:$bias,
         AnyType:$stride,
         AnyType:$padding,
         AnyType:$dilation,
-        AnyType:$transposed,
-        AnyType:$output_padding,
         XTen_AnyScalar:$groups
   );
 
@@ -201,12 +195,10 @@ def XTen_Conv2dBatchNormReLUOp: XTen_Op<"conv2d_bn_relu", [NoSideEffect]>,
   let arguments = (
     ins AnyTensor:$input,
         AnyTensor:$weight,
-        XTen_AnyOptionalTensor:$bias,
+        Optional<AnyTensor>:$bias,
         AnyType:$stride,
         AnyType:$padding,
         AnyType:$dilation,
-        AnyType:$transposed,
-        AnyType:$output_padding,
         XTen_AnyScalar:$groups,
         AnyTensor:$bn_weight,
         AnyTensor:$bn_bias,
@@ -229,17 +221,17 @@ def XTen_Conv2dBatchNormReLUOp: XTen_Op<"conv2d_bn_relu", [NoSideEffect]>,
 	}];
 }
 
-def XTen_PartialConv2dBatchNormReLUOp: XTen_Op<"partialconv2d_bn_relu", [NoSideEffect]> {
+def XTen_PartialConv2dBatchNormReLUOp: XTen_Op<"partialconv2d_bn_relu",
+                                        [NoSideEffect,
+                                         AttrSizedOperandSegments]> {
   let arguments = (
     ins AnyTensor:$input,
         Optional<AnyTensor>:$PartialIn,
         AnyTensor:$weight,
-        XTen_AnyOptionalTensor:$bias,
+        Optional<AnyTensor>:$bias,
         AnyType:$stride,
         AnyType:$padding,
         AnyType:$dilation,
-        AnyType:$transposed,
-        AnyType:$output_padding,
         XTen_AnyScalar:$groups,
         AnyTensor:$bn_weight,
         AnyTensor:$bn_bias,
