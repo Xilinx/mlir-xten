@@ -1,13 +1,4 @@
-//===- ATenToXTen.td ---------------------------------------*- tablegen -*-===//
-//
-// This file is licensed under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-//
-// (c) Copyright 2020 Xilinx Inc.
-//
-//===----------------------------------------------------------------------===//
-
+// (c) Copyright 2020 Xilinx Inc. All Rights Reserved.
 include "mlir/IR/OpBase.td"
 include "mlir/Dialect/StandardOps/IR/Ops.td"
 include "npcomp/Dialect/ATen/IR/ATenOps.td"
@@ -20,6 +11,19 @@ def : Pat<(aten_TOp (aten_TOp $input)), (XTen_NoOp $input)>;
 
 def : Pat<(aten_ReluOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i)),
           (XTen_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i)>;
+
+def : Pat<(aten_LeakyReluOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i),$j),
+          (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i)>;
+
+def : Pat<(aten_LeakyReluOp 
+            (aten_NativeBatchNormOp
+              (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i),
+              $a1,$a2,$a3,$a4,$a5,$a6,$a7),$j),
+          (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i)>;
+
+def : Pat<(aten_MaxPool2dWithIndicesOp
+            (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i),$mp2,$mp3,$mp4,$mp5,$mp6),
+          (XTen_Conv2dLReLUMaxPoolOp $a,$b,$c,$mp3,$e,$f,$g,$h,$i)>;
 
 def : Pat<(aten_ReluUnderOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i)),
           (XTen_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i)>;

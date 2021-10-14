@@ -1,13 +1,4 @@
-//===- ATenToXTenPass.cpp ---------------------------------------*- C++ -*-===//
-//
-// This file is licensed under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-//
-// (c) Copyright 2019 Xilinx Inc.
-//
-//===----------------------------------------------------------------------===//
-
+// (c) Copyright 2019 Xilinx Inc. All Rights Reserved.
 #include "PassDetail.h"
 #include "npcomp/Dialect/ATen/IR/ATenDialect.h"
 
@@ -82,6 +73,8 @@ struct ATenToXTenPass : public PassWrapper<ATenToXTenPass,
 
     target.addLegalOp<xilinx::xten::Conv2dBatchNormReLUOp>();
     target.addLegalOp<xilinx::xten::Conv2dReLUOp>();
+    target.addLegalOp<xilinx::xten::Conv2dLReLUOp>();
+    target.addLegalOp<xilinx::xten::Conv2dLReLUMaxPoolOp>();
     target.addLegalOp<xilinx::xten::Conv2dOp>();
     target.addLegalOp<xilinx::xten::NoOp>();
     if (failed(applyPatternsAndFoldGreedily(module, /*target,*/ std::move(fusionPatterns)))) {

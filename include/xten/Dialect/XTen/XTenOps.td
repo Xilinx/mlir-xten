@@ -1,10 +1,8 @@
-//===- XTenOps.td ------------------------------------------*- tablegen -*-===//
+//===-------------------------------------------------------*- tablegen -*-===//
 //
-// This file is licensed under the Apache License v2.0 with LLVM Exceptions.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-//
-// (c) Copyright 2021 Xilinx Inc.
 //
 //===----------------------------------------------------------------------===//
 
@@ -307,5 +305,61 @@ def XTen_SplitOp: XTen_Op<"split", [NoSideEffect, StatisticsOpInterface]> {
     uint64_t getResultTransferVolume(unsigned int idx, bool write);
 	}];
 }
+
+def XTen_Conv2dLReLUOp: XTen_Op<"conv2d_lrelu", [NoSideEffect]>,
+                                   Results<(outs AnyTensor)> {
+  let arguments = (
+    ins AnyTensor:$input,
+        AnyTensor:$weight,
+        XTen_AnyOptionalTensor:$bias,
+        AnyType:$stride,
+        AnyType:$padding,
+        AnyType:$dilation,
+        AnyType:$transposed,
+        AnyType:$output_padding,
+        XTen_AnyScalar:$groups
+  );
+
+  let summary = "Convolution with Leaky ReLU operator";
+  let description = [{
+    Fused Convolution followed by Leaky ReLU activation operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+    uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    uint64_t getResultTransferVolume(unsigned int idx, bool write);
+	}];
+}
+
+
+def XTen_Conv2dLReLUMaxPoolOp: XTen_Op<"conv2d_lrelu_maxpool", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTensor:$input,
+        AnyTensor:$weight,
+        XTen_AnyOptionalTensor:$bias,
+        AnyType:$stride,
+        AnyType:$padding,
+        AnyType:$dilation,
+        AnyType:$transposed,
+        AnyType:$output_padding,
+        XTen_AnyScalar:$groups
+  );
+
+  let results = (
+      outs AnyTensor:$output,
+           AnyTensor:$indices
+  );
+
+  let summary = "Convolution with Leaky ReLU plus MaxPool operator";
+  let description = [{
+    Fused Convolution followed by Leaky ReLU activation followed by compatible MaxPool operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+    uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    uint64_t getResultTransferVolume(unsigned int idx, bool write);
+	}];
+}
+
 
 #endif // #ifndef XTEN_OPS
