@@ -27,17 +27,17 @@ def : Pat<(Torch_AtenConv2dOp $a,$b,$c,$d,$e,$f,$g),
 //           (XTen_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g)>;
 
 def : Pat<(aten_LeakyReluOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),$h),
-          (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g)>;
+          (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h)>;
 
 def : Pat<(aten_LeakyReluOp 
             (aten_NativeBatchNormOp
               (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),
               $a1,$a2,$a3,$a4,$a5,$a6,$a7),$j),
-          (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g)>;
+          (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h)>;
 
 def : Pat<(aten_MaxPool2dWithIndicesOp
-            (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g),$mp2,$mp3,$mp4,$mp5,$mp6),
-          (XTen_Conv2dLReLUMaxPoolOp $a,$b,$c,$mp3,$e,$f,$g)>;
+            (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h),$mp2,$mp3,$mp4,$mp5,$mp6),
+          (XTen_Conv2dLReLUMaxPoolOp $a,$b,$c,$mp3,$e,$f,$g,$h)>;
 
 def : Pat<(aten_ReluUnderOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g)),
           (XTen_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g)>;

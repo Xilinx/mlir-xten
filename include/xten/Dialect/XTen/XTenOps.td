@@ -307,7 +307,8 @@ def XTen_Conv2dLReLUOp: XTen_Op<"conv2d_lrelu", [NoSideEffect]>,
         AnyType:$stride,
         AnyType:$padding,
         AnyType:$dilation,
-        XTen_AnyScalar:$groups
+        XTen_AnyScalar:$groups,
+        AnyType:$alpha
   );
 
   let summary = "Convolution with Leaky ReLU operator";
@@ -330,7 +331,8 @@ def XTen_Conv2dLReLUMaxPoolOp: XTen_Op<"conv2d_lrelu_maxpool", [NoSideEffect]> {
         AnyType:$stride,
         AnyType:$padding,
         AnyType:$dilation,
-        XTen_AnyScalar:$groups
+        XTen_AnyScalar:$groups,
+        AnyType:$alpha
   );
 
   let results = (
