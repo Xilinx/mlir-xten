@@ -45,7 +45,7 @@ def XTen_AddOp: XTen_Op<"add", []>,
   }];
 }
 
-def XTen_MMOp: XTen_Op<"mm", [NoSideEffect, SameOperandsAndResultElementType]>,
+def XTen_MMOp: XTen_Op<"mm", [NoSideEffect]>,
               Results<(outs AnyTensor)> {
   let arguments = (
     ins AnyTensor:$x,
