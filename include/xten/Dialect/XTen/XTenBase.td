@@ -30,9 +30,4 @@ def XTen_AnyScalar : TypeConstraint<Or<[AnySignlessInteger.predicate,
                                    AnyFloat.predicate]>,
                                  "scalar">;
 
-def XTen_AnyOptionalTensor : AnyTypeOf<[
-  AnyTensor//,
-//  Basicpy_NoneType
-], "tensor or None">;
-
 #endif // #ifndef XTEN_BASE
