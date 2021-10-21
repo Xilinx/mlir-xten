@@ -207,9 +207,9 @@ def XTen_Conv2dBatchNormReLUOp: XTen_Op<"conv2d_bn_relu", [NoSideEffect]>,
         AnyTorchTensorType:$bn_bias,
         AnyTorchTensorType:$running_mean,
         AnyTorchTensorType:$running_var,
-        AnyType:$training,
-        XTen_AnyScalar:$momentum,
-        XTen_AnyScalar:$eps
+        Torch_BoolType:$training,
+        Torch_FloatType:$momentum,
+        Torch_FloatType:$eps
 
   );
 
@@ -239,9 +239,9 @@ def XTen_PartialConv2dBatchNormReLUOp: XTen_Op<"partialconv2d_bn_relu",
         AnyTorchTensorType:$bn_bias,
         AnyTorchTensorType:$running_mean,
         AnyTorchTensorType:$running_var,
-        AnyType:$training,
-        XTen_AnyScalar:$momentum,
-        XTen_AnyScalar:$eps
+        Torch_BoolType:$training,
+        Torch_FloatType:$momentum,
+        Torch_FloatType:$eps
   );
 
   let results = (

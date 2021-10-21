@@ -39,21 +39,21 @@ def : Pat<(Torch_AtenRelu_Op (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g)),
 //             (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h),$mp2,$mp3,$mp4,$mp5,$mp6),
 //           (XTen_Conv2dLReLUMaxPoolOp $a,$b,$c,$mp3,$e,$f,$g,$h)>;
 
-// def : Pat<(Torch_AtenReluOp
-//             (Torch_AtenBatchNormOp
-//               (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i),
-//               $a1,$a2,$a3,$a4,$a5,$a6,$a7,$a8
-//             )
-//           ),
-//           (XTen_Conv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;
+def : Pat<(Torch_AtenReluOp
+            (Torch_AtenBatchNormOp
+              (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),
+              $a1,$a2,$a3,$a4,$a5,$a6,$a7,$a8
+            )
+          ),
+          (XTen_Conv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;
 
-// def : Pat<(Torch_AtenRelu_Op
-//             (Torch_AtenBatchNormOp
-//               (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g,$h,$i),
-//               $a1,$a2,$a3,$a4,$a5,$a6,$a7,$a8
-//             )
-//           ),
-//           (XTen_Conv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$h,$i,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;
+def : Pat<(Torch_AtenRelu_Op
+            (Torch_AtenBatchNormOp
+              (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),
+              $a1,$a2,$a3,$a4,$a5,$a6,$a7,$a8
+            )
+          ),
+          (XTen_Conv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;
 
 def : Pat<(Torch_AtenAdd_TensorOp $a, (ConstantOp:$b $ab), (ConstantOp:$c $ac)),
           (XTen_AddConstantOp $a, $b)>;
