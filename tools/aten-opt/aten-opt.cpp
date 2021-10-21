@@ -23,6 +23,7 @@
 #include "llvm/Support/ToolOutputFile.h"
 
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
+#include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionDialect.h"
 
 #include "xten/Dialect/XTen/XTenDialect.h"
 #include "xten/Dialect/XTen/Passes.h"
@@ -41,7 +42,8 @@ int main(int argc, char **argv) {
   DialectRegistry registry;
   registerAllDialects(registry);
   registry.insert<xilinx::xten::XTenDialect,
-                  torch::Torch::TorchDialect>();
+                  torch::Torch::TorchDialect,
+                  torch::TorchConversion::TorchConversionDialect>();
 
   return failed(MlirOptMain(argc, argv, "MLIR modular optimizer driver\n",
                             registry,

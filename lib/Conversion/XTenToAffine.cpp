@@ -11,6 +11,7 @@
 #include "PassDetail.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
+#include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionOps.h"
 
 #include "xten/Conversion/XTenToAffinePass.h"
 #include "xten/Dialect/XTen/XTenDialect.h"
@@ -62,21 +63,28 @@ namespace {
 Value MemRefTypeCast(OpBuilder &builder, Value val) {
   if (val.getType().isa<MemRefType>())
     return val;
-  auto tensorTy = val.getType().dyn_cast<TensorType>();
+
+  auto tensorTy = val.getType().dyn_cast<Torch::BaseTensorType>();
   if (!tensorTy)
-    return val;
-  auto memRefType = MemRefType::get(tensorTy.getShape(), tensorTy.getElementType(), {}, 0);
-  return builder.create<memref::BufferCastOp>(val.getLoc(), memRefType, val).getResult();
+    return val;//error
+
+  auto sizes = tensorTy.getSizes();
+  auto dtype = tensorTy.getDtype();
+  auto tensor = builder.create<TorchConversion::ToBuiltinTensorOp>(
+      val.getLoc(), RankedTensorType::get(sizes,dtype), val);
+  auto memRefType = MemRefType::get(tensorTy.getSizes(), tensorTy.getDtype(), {}, 0);
+  return builder.create<memref::BufferCastOp>(val.getLoc(), memRefType, tensor).getResult();
 }
 
 /// Create a type cast to tensor
-Value TensorTypeCast(OpBuilder &builder, Value val) {
+Value TensorTypeCast(OpBuilder &builder, Value val, Type resultTy) {
   if (val.getType().isa<TensorType>())
     return val;
   auto refType = val.getType().dyn_cast<MemRefType>();
   if (!refType)
     return val;
-  return builder.create<memref::TensorLoadOp>(val.getLoc(), val).getResult();
+  auto tensor = builder.create<memref::TensorLoadOp>(val.getLoc(), val).getResult();
+  return builder.create<TorchConversion::FromBuiltinTensorOp>(val.getLoc(), resultTy, tensor);
 }
 
 LogicalResult
@@ -306,7 +314,7 @@ public:
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
-    return failure();
+
     // auto addOp = cast<xten::AddConstantOp>(op);
     // auto loc = addOp.getLoc();
 
@@ -342,12 +350,12 @@ public:
     //     std::vector<uint64_t> index{};
     //     Value add = nullptr;
     //     if (isFloatOp) {
-    //       auto add_const = rhs.cast<DenseElementsAttr>().getValue<llvm::APFloat>(index);
-    //       add = builder.create<AddFOp>(loc, load, constFloat(add_const, f32Type));
+    //       auto add_const = rhs.cast<DenseElementsAttr>();
+    //       add = builder.create<AddFOp>(loc, load, builder.create<ConstantOp>(loc, f32Type, add_const));
     //     }
     //     else {
-    //       auto add_const = rhs.cast<DenseElementsAttr>().getValue<int>(index);
-    //       add = builder.create<AddIOp>(loc, load, constInt(add_const, i32Type));
+    //       auto add_const = rhs.cast<DenseElementsAttr>();
+    //       add = builder.create<AddIOp>(loc, load, builder.create<ConstantOp>(loc, i32Type, add_const));
     //     }
     //     builder.create<AffineStoreOp>(loc, add, result, ident, ivs);
     //   });
@@ -357,9 +365,10 @@ public:
     //     afo->setAttr("affine_opt_label", StringAttr::get(op->getContext(), "affine_opt"));
     // }
 
-    // auto tensor_result = TensorTypeCast(rewriter,result);
+    // auto tensor_result = TensorTypeCast(rewriter,result, resultTy);
     // rewriter.replaceOp(op, {tensor_result});
     // return success();
+    return failure();
   }
 };
 
@@ -373,55 +382,51 @@ public:
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
-    // auto loc = op->getLoc();
+    auto loc = op->getLoc();
 
-    // LLVM_DEBUG(llvm::outs() << "XTenBinaryOpConversion:\n");
-    // LLVM_DEBUG(op->getBlock()->print(llvm::outs()));
+    LLVM_DEBUG(llvm::outs() << "XTenBinaryOpConversion:\n");
+    LLVM_DEBUG(op->getBlock()->print(llvm::outs()));
 
-    // edsc::ScopedContext scope(rewriter, loc);
+    rewriter.setInsertionPointAfter(op);
+    Type resultTy = op->getOperand(0).getType();
 
-    // rewriter.setInsertionPointAfter(op);
-    // Type resultTy = op->getResult(0).getType();
-    // TensorType tensorResultTy = resultTy.cast<TensorType>();
-    // MemRefType memRefResultTy = MemRefType::get(tensorResultTy.getShape(),
-    //                                             tensorResultTy.getElementType(),
-    //                                             {}, 0);
-    // Value result = rewriter.create<memref::AllocOp>(loc, memRefResultTy);
-    // Value argA = MemRefTypeCast(rewriter, operands[0]);
-    // Value argB = MemRefTypeCast(rewriter, operands[1]);
+    Torch::BaseTensorType tensorType
+      = op->getOperand(0).getType().cast<Torch::BaseTensorType>();
 
-    // Value zero = constIndex(0);
-    // SmallVector<Value, 4> lbs(tensorResultTy.getRank(), zero);
-    // SmallVector<Value, 4> ubs;
-    // SmallVector<int64_t, 4> steps(tensorResultTy.getRank(), 1);
+    auto sizes = tensorType.getSizes();
 
-    // edsc::MemRefBoundsCapture vRes(result);
-    // for (int i=0, e=tensorResultTy.getRank(); i<e; i++)
-    //   ubs.push_back(vRes.ub(i));
+    MemRefType memrefTy = MemRefType::get(sizes,
+                                                tensorType.getDtype(),
+                                                {}, 0);
+    Value result = rewriter.create<memref::AllocOp>(loc, memrefTy);
+    Value argA = MemRefTypeCast(rewriter, operands[0]);
+    Value argB = MemRefTypeCast(rewriter, operands[1]);
 
-    // edsc::affineLoopNestBuilder(lbs, ubs, steps,
-    //   [&](ValueRange ivs) {
-    //     SmallVector<Value, 4> indices;
-    //     for (int i=0, e=tensorResultTy.getRank(); i<e; i++)
-    //       indices.push_back(ivs[i]);
-    //     auto ident = AffineMap::getMultiDimIdentityMap(tensorResultTy.getRank(),
-    //                                                    op->getContext());
-    //     auto loadA = rewriter.create<AffineLoadOp>(loc, argA, ident, indices);
-    //     auto loadB = rewriter.create<AffineLoadOp>(loc, argB, ident, indices);
-    //     auto binop = static_cast<const T*>(this)->emitBinaryOp(op, tensorResultTy, rewriter, loadA, loadB);
-    //     rewriter.create<AffineStoreOp>(loc, binop, result, ident, indices);
-    //   });
+    SmallVector<int64_t, 4> lbs(sizes.size(), 0);
+    SmallVector<int64_t, 4> steps(sizes.size(), 1);
 
-    // for (auto it = Block::iterator(op),ie=rewriter.getInsertionPoint(); it!=ie; ++it) {
-    //    if (auto afo = dyn_cast<AffineForOp>(it))
-    //     afo->setAttr("affine_opt_label", StringAttr::get(op->getContext(), "xten.binary_op"));
-    // }
+    buildAffineLoopNest(
+      rewriter, loc, lbs, sizes, steps,
+      [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+        SmallVector<Value, 4> indices;
+        for (int i=0, e=sizes.size(); i<e; i++)
+          indices.push_back(ivs[i]);
+        auto ident = AffineMap::getMultiDimIdentityMap(sizes.size(),
+                                                       op->getContext());
+        auto loadA = rewriter.create<AffineLoadOp>(loc, argA, ident, indices);
+        auto loadB = rewriter.create<AffineLoadOp>(loc, argB, ident, indices);
+        auto binop = static_cast<const T*>(this)->emitBinaryOp(op, tensorType, rewriter, loadA, loadB);
+        rewriter.create<AffineStoreOp>(loc, binop, result, ident, indices);
+      });
 
-    // auto tensor_result = TensorTypeCast(rewriter,result);
-    // rewriter.replaceOp(op, {tensor_result});
-    // return success();
-    return failure();
+    for (auto it = Block::iterator(op),ie=rewriter.getInsertionPoint(); it!=ie; ++it) {
+       if (auto afo = dyn_cast<AffineForOp>(it))
+        afo->setAttr("affine_opt_label", StringAttr::get(op->getContext(), "xten.binary_op"));
+    }
 
+    auto tensor_result = TensorTypeCast(rewriter, result, op->getResult(0).getType());
+    rewriter.replaceOp(op, {tensor_result});
+    return success();
   }
 };
 
@@ -431,9 +436,9 @@ public:
       : XTenBinaryOpConversion(xten::MulOp::getOperationName(), 1, context) {}
 
   Value
-  emitBinaryOp(Operation *op, TensorType tensorResultTy,
+  emitBinaryOp(Operation *op, Torch::BaseTensorType tensorResultTy,
                ConversionPatternRewriter &rewriter, Value a, Value b) const {
-    if (FloatType::getF32(op->getContext()) == tensorResultTy.getElementType())
+    if (FloatType::getF32(op->getContext()) == tensorResultTy.getDtype())
       return rewriter.create<MulFOp>(op->getLoc(), a, b);
     else
       return rewriter.create<MulIOp>(op->getLoc(), a, b);
@@ -446,9 +451,9 @@ public:
       : XTenBinaryOpConversion(xten::AddOp::getOperationName(), 1, context) {}
 
   Value
-  emitBinaryOp(Operation *op, TensorType tensorResultTy,
+  emitBinaryOp(Operation *op, Torch::BaseTensorType tensorResultTy,
                ConversionPatternRewriter &rewriter, Value a, Value b) const {
-    if (FloatType::getF32(op->getContext()) == tensorResultTy.getElementType())
+    if (FloatType::getF32(op->getContext()) == tensorResultTy.getDtype())
       return rewriter.create<AddFOp>(op->getLoc(), a, b);
     else
       return rewriter.create<AddIOp>(op->getLoc(), a, b);
@@ -456,8 +461,7 @@ public:
 };
 
 
-class XTenToAffinePass : public PassWrapper<XTenToAffinePass,
-                                           OperationPass<ModuleOp>> {
+class XTenToAffinePass : public xilinx::xten::XTenToAffineBase<XTenToAffinePass> {
 
 public:
   XTenToAffinePass() = default;
@@ -466,7 +470,8 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
      registry.insert<AffineDialect>();
      registry.insert<memref::MemRefDialect>();
-     registry.insert<Torch::TorchDialect>();
+     registry.insert<Torch::TorchDialect,
+                     TorchConversion::TorchConversionDialect>();
   }
 
   ListOption<unsigned> clLoopOrder{*this, "xten-loop-order",
@@ -504,10 +509,11 @@ public:
 
     target.addLegalDialect<AffineDialect, LLVM::LLVMDialect,
                            memref::MemRefDialect,
-                           StandardOpsDialect, scf::SCFDialect>();
-    target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
-       return typeConverter.isSignatureLegal(op.getType());
-    });
+                           StandardOpsDialect, scf::SCFDialect,
+                           TorchConversion::TorchConversionDialect>();
+    // target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
+    //    return typeConverter.isSignatureLegal(op.getType());
+    // });
 
     target.addLegalOp<xten::Conv2dOp>();
 

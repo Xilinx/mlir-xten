@@ -18,10 +18,10 @@ def ATenToXTen : Pass<"aten-to-xten", "ModuleOp"> {
   let constructor = "xilinx::xten::createATenToXTenPass()";
 }
 
-// def XTenToAffine : Pass<"xten-to-affine", "ModuleOp"> {
-//   let summary = "Convert XTen dialect to Affine dialect";
-//   let constructor = "xilinx::xten::createXTenToAffinePass()";
-// }
+def XTenToAffine : Pass<"xten-to-affine", "ModuleOp"> {
+  let summary = "Convert XTen dialect to Affine dialect";
+  let constructor = "xilinx::xten::createXTenToAffinePass()";
+}
 
 def XTenToLinalg : Pass<"xten-to-linalg", "ModuleOp"> {
   let summary = "Convert XTen dialect to Linalg dialect";
