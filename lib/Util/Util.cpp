@@ -18,6 +18,7 @@
 #include "mlir/IR/BuiltinOps.h"
 
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 
 #define DEBUG_TYPE "xten-util"
 
@@ -94,19 +95,19 @@ FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value> operands, 
   return fn;
 }
 
-uint64_t getTensorVolume(const ShapedType ty) {
+uint64_t getTensorVolume(const torch::Torch::BaseTensorType ty) {
 
-  if (!ty.hasRank())
+  if (!ty.hasSizes())
     return 1;
 
   uint64_t volume = 1;
-  for (auto &d : ty.getShape())
+  for (auto &d : ty.getSizes())
     volume *= d;
   return volume;
 }
 
 uint64_t getTensorVolume(const Type ty) {
-  if (auto t = ty.dyn_cast<ShapedType>()) {
+  if (auto t = ty.dyn_cast<torch::Torch::BaseTensorType>()) {
     return getTensorVolume(t);
   }
   else {

@@ -90,8 +90,8 @@ public:
 
     llvm::json::Object top;
 
-    auto graph = getOperation().lookupSymbol<mlir::FuncOp>("graph");
-    graph.walk([&](Operation *op) {
+    auto forward = getOperation().lookupSymbol<mlir::FuncOp>("forward");
+    forward.walk([&](Operation *op) {
 
             std::map<std::string, uint64_t> layerStatsMap;
             // if (auto stats = mlir::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
@@ -138,18 +138,18 @@ public:
 
     auto module = getOperation();
 
-    // check that a function called "graph" exists
-    auto graph = module.lookupSymbol<mlir::FuncOp>("graph");
-    if (!graph) {
+    // check that a function called "forward" exists
+    auto forward = module.lookupSymbol<mlir::FuncOp>("forward");
+    if (!forward) {
       emitError(mlir::UnknownLoc::get(module.getContext()),
-                "OpReportPass failed: can't find a graph function\n");
+                "OpReportPass failed: can't find a forward function\n");
       signalPassFailure();
       return;
     }
 
     unsigned currentLayer = 0;
     opToName.clear();
-    graph.walk([&](Operation *op) {
+    forward.walk([&](Operation *op) {
       auto attr = op->getAttrOfType<StringAttr>("layer_name");
       if (attr)
         opToName[op] = attr.getValue().str();

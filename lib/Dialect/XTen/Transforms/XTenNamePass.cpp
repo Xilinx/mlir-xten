@@ -27,72 +27,75 @@
 using namespace mlir;
 using namespace xilinx::xten;
 
-// heavily inspired from naming pass in ATenNamePass
-
 namespace xilinx {
-    namespace xten {
-        struct XTenNamePass : public XTenNameBase<XTenNamePass> {
-        public:
-            std::string getLayerName(std::string layerPrefix, uint64_t id) {
-                return layerPrefix + std::to_string(id);
-            }
+namespace xten {
 
-            void runOnOperation() override {
-                markAllAnalysesPreserved();
+struct XTenNamePass : public XTenNameBase<XTenNamePass> {
+public:
 
-                ModuleOp module = getOperation();
+  std::string getLayerName(std::string layerPrefix, uint64_t id) {
+    return layerPrefix + std::to_string(id);
+  }
 
-                auto graph = module.lookupSymbol<FuncOp>("graph");
-                if(!graph) {
-                    emitError(UnknownLoc::get(module.getContext()), "Can't find graph function\n");
-                    signalPassFailure();
-                    return;
-                }
+  void runOnOperation() override {
+    markAllAnalysesPreserved();
 
-                std::map<std::string, uint64_t> layerToName;
-                graph.walk([&](Operation *op) {
-                        llvm::StringRef opName = op->getName().getStringRef();
+    ModuleOp module = getOperation();
 
-                        if(!opName.startswith(llvm::StringRef("aten.")) && !opName.startswith(llvm::StringRef("xten."))) {
-                            return; // skips basicpy constant generation and similar
-                        }
-
-                        if(opName.startswith("xten.") && !opName.find("conv")) {
-                            return; // Only interested about actual layers of the NN
-                        }
-
-                        llvm::StringRef type;
-                        if(opName.startswith("aten.")) {
-                            type = opName.split("aten.").second;
-                        } else {
-                            type = opName.split("xten.").second;
-                        }
-
-                        if(type.equals("constant")) {
-                            return;
-                        }
-
-                        std::string layerName;
-                        if(layerToName.count(type.str())) {
-                            layerToName[type.str()] = layerToName[type.str()] + 1;
-                        } else {
-                            layerToName[type.str()] = 0;
-                        }
-
-                        layerName = getLayerName(type.str(), layerToName[type.str()]);
-                        auto attr = StringAttr::get(module.getContext(), layerName);
-                        op->setAttr(llvm::StringRef("name"), attr);
-                    });
-            }
-        };
+    auto forward = module.lookupSymbol<FuncOp>("forward");
+    if(!forward) {
+      emitError(UnknownLoc::get(module.getContext()),
+                "Can't find forward function\n");
+      signalPassFailure();
+      return;
     }
+
+    std::map<std::string, uint64_t> layerToName;
+    forward.walk([&](Operation *op) {
+      llvm::StringRef opName = op->getName().getStringRef();
+
+      if(!opName.startswith(llvm::StringRef("torch.aten.")) &&
+         !opName.startswith(llvm::StringRef("xten."))) {
+        return; // skips basicpy constant generation and similar
+      }
+
+      if(opName.startswith("xten.") && !opName.find("conv")) {
+        return; // Only interested about actual layers of the NN
+      }
+
+      llvm::StringRef type;
+      if (opName.startswith("torch.aten.")) {
+        type = opName.split("torch.aten.").second;
+      } else {
+        type = opName.split("xten.").second;
+      }
+
+      if (type.equals("constant")) {
+        return;
+      }
+
+      std::string layerName;
+      if (layerToName.count(type.str())) {
+        layerToName[type.str()] = layerToName[type.str()] + 1;
+      } else {
+        layerToName[type.str()] = 0;
+      }
+
+      layerName = getLayerName(type.str(), layerToName[type.str()]);
+      auto attr = StringAttr::get(module.getContext(), layerName);
+      op->setAttr(llvm::StringRef("layer_name"), attr);
+    });
+  }
+};
+
+}
 }
 
 namespace xilinx {
 namespace xten {
 
 std::unique_ptr<OperationPass<ModuleOp>> createXTenNamePass() {
-    return std::make_unique<XTenNamePass>();
+  return std::make_unique<XTenNamePass>();
 }
 
 } // namespace xten
