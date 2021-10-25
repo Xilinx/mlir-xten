@@ -84,8 +84,6 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include)
 
 # TORCH_MLIR
-set(TORCH_MLIR_BINARY_DIR "${PROJECT_BINARY_DIR}/../torch-mlir")
-set(TORCH_MLIR_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../torch-mlir")
 include_directories(${TORCH_MLIR_SOURCE_DIR}/include)
 include_directories(${TORCH_MLIR_BINARY_DIR}/include)
 
