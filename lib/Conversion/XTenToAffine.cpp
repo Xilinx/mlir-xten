@@ -439,9 +439,9 @@ public:
   emitBinaryOp(Operation *op, Torch::BaseTensorType tensorResultTy,
                ConversionPatternRewriter &rewriter, Value a, Value b) const {
     if (FloatType::getF32(op->getContext()) == tensorResultTy.getDtype())
-      return rewriter.create<MulFOp>(op->getLoc(), a, b);
+      return rewriter.create<mlir::arith::MulIOp>(op->getLoc(), a, b);
     else
-      return rewriter.create<MulIOp>(op->getLoc(), a, b);
+      return rewriter.create<mlir::arith::MulIOp>(op->getLoc(), a, b);
   }
 };
 
@@ -454,9 +454,9 @@ public:
   emitBinaryOp(Operation *op, Torch::BaseTensorType tensorResultTy,
                ConversionPatternRewriter &rewriter, Value a, Value b) const {
     if (FloatType::getF32(op->getContext()) == tensorResultTy.getDtype())
-      return rewriter.create<AddFOp>(op->getLoc(), a, b);
+      return rewriter.create<mlir::arith::AddFOp>(op->getLoc(), a, b);
     else
-      return rewriter.create<AddIOp>(op->getLoc(), a, b);
+      return rewriter.create<mlir::arith::AddFOp>(op->getLoc(), a, b);
   }
 };
 

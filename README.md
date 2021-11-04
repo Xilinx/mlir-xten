@@ -20,6 +20,12 @@ NOTE: this initial version of mlir-xten currently fails to build against head to
 #### First Compile torch-mlir
 
 Clone torch-mlir from https://github.com/llvm/torch-mlir and follow the build instructions.
+Make sure to add following extra CMake flags: -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_LINK_LLVM_DYLIB=ON
+and build everything
+
+```sh
+cmake --build build
+```
 
 #### Finally compile mlir-xten
 

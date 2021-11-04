@@ -115,9 +115,9 @@ public:
   emitBinaryOp(Operation *op, Type elementTy,
                ConversionPatternRewriter &rewriter, Value a, Value b) const {
     if (elementTy.isa<FloatType>())
-      return rewriter.create<AddFOp>(op->getLoc(), a, b);
+      return rewriter.create<mlir::arith::AddFOp>(op->getLoc(), a, b);
     else
-      return rewriter.create<AddIOp>(op->getLoc(), a, b);
+      return rewriter.create<mlir::arith::AddIOp>(op->getLoc(), a, b);
   }
 };
 
@@ -134,9 +134,9 @@ public:
   emitBinaryOp(Operation *op, Type elementTy,
                ConversionPatternRewriter &rewriter, Value a, Value b) const {
     if (elementTy.isa<FloatType>())
-      return rewriter.create<MulFOp>(op->getLoc(), a, b);
+      return rewriter.create<mlir::arith::MulFOp>(op->getLoc(), a, b);
     else
-      return rewriter.create<MulIOp>(op->getLoc(), a, b);
+      return rewriter.create<mlir::arith::MulIOp>(op->getLoc(), a, b);
   }
 };
 

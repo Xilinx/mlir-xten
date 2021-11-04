@@ -290,7 +290,7 @@ namespace xilinx {
             ArrayRef<Value> valuesRef = ArrayRef<Value>(values);
             ValueRange valuesRange(valuesRef);
 
-            Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
+            Operation* cstDim = builder.create<mlir::arith::ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
             Operation* res = builder.create<xilinx::xten::ConcatOp>(builder.getUnknownLoc(), prevResType, valuesRange, cstDim->getResult(0));
             if(clearPrev) {
                 // Replace output of old convolution usage by concat value
@@ -305,7 +305,7 @@ namespace xilinx {
             std::vector<Type> shapes = std::vector<Type>(into, nShape);
             ArrayRef<Type> tShapes = ArrayRef<Type>(shapes);
 
-            Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
+            Operation* cstDim = builder.create<mlir::arith::ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
             Operation* splitOp = builder.create<SplitOp>(builder.getUnknownLoc(), TypeRange(tShapes), prevInput, cstDim->getResult(0));
 
             for(auto indexedResult: llvm::enumerate(splitOp->getResults())) {
@@ -337,7 +337,7 @@ namespace xilinx {
                         consumed++;
                     } else {
                         ArrayRef<Value> af = ArrayRef<Value>(values);
-                        Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
+                        Operation* cstDim = builder.create<mlir::arith::ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
                         Operation* splitOp = builder.create<xilinx::xten::SplitOp>(builder.getUnknownLoc(), TypeRange(af), values.at(i), cstDim->getResult(0));
                         for(unsigned int j = 0; j < shouldHandle; j++) {
                             split.getResult(consumed).replaceAllUsesWith(splitOp->getResult(j));
@@ -382,7 +382,7 @@ namespace xilinx {
 
                         ArrayRef<Value> af = ArrayRef<Value>(values);
 
-                        Operation* cstDim = builder.create<ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
+                        Operation* cstDim = builder.create<mlir::arith::ConstantIntOp>(builder.getUnknownLoc(), dim, 32);
                         Operation* res = builder.create<xilinx::xten::ConcatOp>(builder.getUnknownLoc(), nShape, ValueRange(af), cstDim->getResult(0));
 
                         nInputs.push_back(res->getResult(0));

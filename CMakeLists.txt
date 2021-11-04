@@ -86,6 +86,7 @@ include_directories(${PROJECT_BINARY_DIR}/include)
 # TORCH_MLIR
 include_directories(${TORCH_MLIR_SOURCE_DIR}/include)
 include_directories(${TORCH_MLIR_BINARY_DIR}/include)
+include_directories(${TORCH_MLIR_BINARY_DIR}/tools/torch-mlir/include)
 
 link_directories(${TORCH_MLIR_BINARY_DIR}/lib)
 link_directories(${PROJECT_BINARY_DIR}/../aie/lib/)
