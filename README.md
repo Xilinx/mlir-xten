@@ -15,11 +15,11 @@ llvm/torch-mlir from https://github.com/llvm/torch-mlir
 
 ### Building on X86
 
-NOTE: this initial version of mlir-xten currentl fails to build against head torch-mlir. Fixes in progress.
+NOTE: this initial version of mlir-xten currently fails to build against head torch-mlir. Fixes in progress.
 
 #### First Compile torch-mlir
 
-Clone torch-mlir from https://github.com/llvm/torch-mlir and follow the build instruction
+Clone torch-mlir from https://github.com/llvm/torch-mlir and follow the build instructions.
 
 #### Finally compile mlir-xten
 
