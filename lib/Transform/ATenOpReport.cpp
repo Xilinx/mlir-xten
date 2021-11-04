@@ -11,8 +11,8 @@
 #include "PassDetail.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/JSON.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include "mlir/Pass/Pass.h"
 
@@ -37,54 +37,17 @@ private:
   std::map<Operation *, std::string> opToName;
 
 public:
-  Option<std::string>
-  ATenOpReportFilename{*this, "output-file",
-                        llvm::cl::desc("Output filename for JSON report"),
-                        llvm::cl::init("-")};
+  Option<std::string> ATenOpReportFilename{
+      *this, "output-file", llvm::cl::desc("Output filename for JSON report"),
+      llvm::cl::init("-")};
 
   ATenOpReportPass(const ATenOpReportPass &pass) : output(o) {}
 
   ATenOpReportPass()
-    : output(o),
-      tableFields({
-        "reads",
-        "writes",
-        "activation_in",
-        "activation_out",
-        "parameters_in",
-        "ops:MAC",
-        "ops:==",
-        "ops:>",
-        "ops:*",
-        "ops:+",
-        "ops:/",
-        "ops:sqrt",
-        "ops:-",
-        "grad"
-      })
-  {
-  }
-
-  // ATenOpReportPass(std::string &output)
-  //   : output(output),
-  //     tableFields({
-  //       "reads",
-  //       "writes",
-  //       "activation_in",
-  //       "activation_out",
-  //       "parameters_in",
-  //       "ops:MAC",
-  //       "ops:==",
-  //       "ops:>",
-  //       "ops:*",
-  //       "ops:+",
-  //       "ops:/",
-  //       "ops:sqrt",
-  //       "ops:-",
-  //       "grad"
-  //     })
-  // {
-  // }
+      : output(o),
+        tableFields({"reads", "writes", "activation_in", "activation_out",
+                     "parameters_in", "ops:MAC", "ops:==", "ops:>", "ops:*",
+                     "ops:+", "ops:/", "ops:sqrt", "ops:-", "grad"}) {}
 
   std::string emitJSONReport() {
 
@@ -92,15 +55,10 @@ public:
 
     auto forward = getOperation().lookupSymbol<mlir::FuncOp>("forward");
     forward.walk([&](Operation *op) {
-
-            std::map<std::string, uint64_t> layerStatsMap;
-            // if (auto stats = mlir::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
-            //     layerStatsMap = stats.getStatistics();
-            // }
-            // else {
-                layerStatsMap = xilinx::xten::getATenOpStats(op);
-            //}
-            if (!layerStatsMap.size()) return;
+      std::map<std::string, uint64_t> layerStatsMap;
+      layerStatsMap = xilinx::xten::getATenOpStats(op);
+      if (!layerStatsMap.size())
+        return;
 
       // name for this layer
       std::string layerName = opToName[op];
@@ -127,7 +85,7 @@ public:
     llvm::json::Value topv(std::move(top));
     std::string ret;
     llvm::raw_string_ostream ss(ret);
-    ss << llvm::formatv("{0:2}",topv) << "\n";
+    ss << llvm::formatv("{0:2}", topv) << "\n";
     return ss.str();
   }
 
@@ -159,7 +117,7 @@ public:
     });
 
     output = emitJSONReport();
-    
+
     if (ATenOpReportFilename != "-") {
       std::error_code EC;
       llvm::raw_fd_ostream aie_ostream(ATenOpReportFilename, EC);
