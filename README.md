@@ -38,7 +38,7 @@ cmake ..\
     -DLLVM_DIR=${absolute path to torchMlirBuild}/cmake/llvm \
     -DMLIR_DIR=${absolute path to torchMlirBuild}/cmake/mlir \
     -DTORCH_MLIR_SOURCE_DIR=${absolute path to torchMlirSource} \
-    -DTORCH_MLIR_BINARY_DIR=${absolute path to torchMlirBuild}/tools/torch-mlir
+    -DTORCH_MLIR_BINARY_DIR=${absolute path to torchMlirBuild}
 ```
 
 ## Environment setup
