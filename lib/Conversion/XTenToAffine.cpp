@@ -72,7 +72,7 @@ Value MemRefTypeCast(OpBuilder &builder, Value val) {
   auto dtype = tensorTy.getDtype();
   auto tensor = builder.create<TorchConversion::ToBuiltinTensorOp>(
       val.getLoc(), RankedTensorType::get(sizes,dtype), val);
-  auto memRefType = MemRefType::get(tensorTy.getSizes(), tensorTy.getDtype(), {}, 0);
+  auto memRefType = MemRefType::get(tensorTy.getSizes(), dtype, {}, 0);
   return builder.create<memref::BufferCastOp>(val.getLoc(), memRefType, tensor).getResult();
 }
 
@@ -315,60 +315,70 @@ public:
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
 
-    // auto addOp = cast<xten::AddConstantOp>(op);
-    // auto loc = addOp.getLoc();
+    auto addOp = cast<xten::AddConstantOp>(op);
+    auto loc = addOp.getLoc();
 
-    // rewriter.setInsertionPointAfter(op);
+    rewriter.setInsertionPointAfter(op);
 
-    // Type resultTy = addOp.getResult().getType();
-    // TensorType tensorResultTy = resultTy.cast<TensorType>();
-    // MemRefType memRefResultTy = MemRefType::get(tensorResultTy.getShape(),
-    //                                             tensorResultTy.getElementType(),
-    //                                             {}, 0);
+    Torch::BaseTensorType tensorType =
+        op->getOperand(0).getType().cast<Torch::BaseTensorType>();
 
-    // LLVM_DEBUG(llvm::outs() << "\nIn XTenAddConstantOpConversion\n");
-    // LLVM_DEBUG(op->getBlock()->print(llvm::outs()));
+    auto sizes = tensorType.getSizes();
+    auto dtype = tensorType.getDtype();
+    auto rank = sizes.size();
 
-    // Value result = rewriter.create<memref::AllocOp>(loc, memRefResultTy);
-    // Value lhs = MemRefTypeCast(rewriter, operands[0]);
-    // auto rhs = cast<mlir::ConstantOp>(operands[1].getDefiningOp()).getValue();
+    MemRefType memRefResultTy = MemRefType::get(sizes, dtype, {}, 0);
 
-    // auto f32Type = FloatType::getF32(op->getContext());
-    // auto i32Type = IntegerType::get(op->getContext(),32);
-    // bool isFloatOp = (f32Type == tensorResultTy.getElementType()); 
+    LLVM_DEBUG(llvm::outs() << "\nIn XTenAddConstantOpConversion\n");
+    LLVM_DEBUG(op->getBlock()->print(llvm::outs()));
 
-    // SmallVector<int64_t, 4> lbs(tensorResultTy.getRank(), 0);
-    // SmallVector<int64_t, 4> steps(tensorResultTy.getRank(), 1);
+    Value result = rewriter.create<memref::AllocOp>(loc, memRefResultTy);
+    Value lhs = MemRefTypeCast(rewriter, operands[0]);
 
-    // buildAffineLoopNest(
-    //   rewriter, loc, lbs, tensorResultTy.getShape(), steps,
-    //   [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-    //     SmallVector<Value, 4> indices;
-    //     auto ident = AffineMap::getMultiDimIdentityMap(ivs.size(),
-    //                                                    builder.getContext());
-    //     auto load = builder.create<AffineLoadOp>(loc, lhs, ident, ivs);
-    //     std::vector<uint64_t> index{};
-    //     Value add = nullptr;
-    //     if (isFloatOp) {
-    //       auto add_const = rhs.cast<DenseElementsAttr>();
-    //       add = builder.create<AddFOp>(loc, load, builder.create<ConstantOp>(loc, f32Type, add_const));
-    //     }
-    //     else {
-    //       auto add_const = rhs.cast<DenseElementsAttr>();
-    //       add = builder.create<AddIOp>(loc, load, builder.create<ConstantOp>(loc, i32Type, add_const));
-    //     }
-    //     builder.create<AffineStoreOp>(loc, add, result, ident, ivs);
-    //   });
+    bool isFloatOp = isa<Torch::ConstantFloatOp>(operands[1].getDefiningOp());
 
-    // for (auto it = Block::iterator(op),ie=rewriter.getInsertionPoint(); it!=ie; ++it) {
-    //    if (auto afo = dyn_cast<AffineForOp>(it))
-    //     afo->setAttr("affine_opt_label", StringAttr::get(op->getContext(), "affine_opt"));
-    // }
+    SmallVector<int64_t, 4> lbs(rank, 0);
+    SmallVector<int64_t, 4> steps(rank, 1);
 
-    // auto tensor_result = TensorTypeCast(rewriter,result, resultTy);
-    // rewriter.replaceOp(op, {tensor_result});
-    // return success();
-    return failure();
+    buildAffineLoopNest(
+        rewriter, loc, lbs, sizes, steps,
+        [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+          SmallVector<Value, 4> indices;
+          auto ident = AffineMap::getMultiDimIdentityMap(ivs.size(),
+                                                         builder.getContext());
+          auto load = builder.create<AffineLoadOp>(loc, lhs, ident, ivs);
+          std::vector<uint64_t> index{};
+          Value add = nullptr;
+          if (isFloatOp) {
+            auto c = cast<Torch::ConstantFloatOp>(operands[1].getDefiningOp())
+                         .value();
+            auto ty = rewriter.getF32Type();
+            auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
+            add = builder.create<AddFOp>(
+                loc, load, builder.create<ConstantOp>(loc, ty, add_const));
+          } else {
+            Torch::ConstantIntOp op;
+            auto c =
+                cast<Torch::ConstantIntOp>(operands[1].getDefiningOp()).value();
+            auto ty = rewriter.getIntegerType(32);
+            auto add_const = rewriter.getI32IntegerAttr(c.getZExtValue());
+            add = builder.create<AddIOp>(
+                loc, load, builder.create<ConstantOp>(loc, ty, add_const));
+          }
+          builder.create<AffineStoreOp>(loc, add, result, ident, ivs);
+        });
+
+    for (auto it = Block::iterator(op), ie = rewriter.getInsertionPoint();
+         it != ie; ++it) {
+      if (auto afo = dyn_cast<AffineForOp>(it))
+        afo->setAttr("affine_opt_label",
+                     StringAttr::get(op->getContext(), "affine_opt"));
+    }
+
+    auto tensor_result =
+        TensorTypeCast(rewriter, result, op->getResult(0).getType());
+    rewriter.replaceOp(op, {tensor_result});
+    return success();
   }
 };
 
