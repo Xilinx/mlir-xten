@@ -25,6 +25,7 @@ target_link_libraries(_xten
   XTenDialect
   TorchMLIRTorchDialect
   TorchMLIRTorchConversionDialect
+  TorchMLIRTorchUtils
   ${Python3_LIBRARIES}
 
 )

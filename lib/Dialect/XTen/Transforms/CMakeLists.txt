@@ -13,6 +13,7 @@ add_mlir_library(XTenTransforms
   Passes.cpp
 
   DEPENDS
+  XTenDialectPassesIncGen
 
   LINK_LIBS PUBLIC
   MLIRIR

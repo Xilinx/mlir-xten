@@ -19,6 +19,7 @@ set(LIBS
   XTenUtil
   TorchMLIRTorchDialect
   TorchMLIRTorchConversionDialect
+  TorchMLIRTorchUtils
   MLIR
   )
 

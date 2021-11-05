@@ -13,6 +13,7 @@ XTenToLinalg.cpp
 
 DEPENDS
 XTenConversionIncGen
+XTenDialect
 ATenToXTenIncGen
 
 LINK_COMPONENTS
