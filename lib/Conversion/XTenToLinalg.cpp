@@ -127,10 +127,8 @@ public:
 
 class XTenMMOpConversion : public ConversionPattern {
 public:
-  explicit XTenMMOpConversion(MLIRContext *context, bool genTensors)
-      : ConversionPattern(MMOp::getOperationName(), 1, context), generateTensors(genTensors) {}
-
-  bool generateTensors;
+  explicit XTenMMOpConversion(MLIRContext *context)
+      : ConversionPattern(MMOp::getOperationName(), 1, context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
@@ -147,28 +145,18 @@ public:
     auto tensorTy = tTy.getWithSizesAndDtype(ArrayRef<int64_t>{sizes}, dtype);
     auto memRefTy = mlir::MemRefType::get(sizes, dtype, {}, 0);
 
-    if (generateTensors) {
-      auto A = operands[0];
-      auto B = operands[1];
-      auto C = rewriter.create<linalg::InitTensorOp>(loc, sizes, dtype);
-      rewriter.replaceOp(op,
-        rewriter.create<linalg::MatmulOp>(loc,
-                                          TypeRange{tensorTy},
-                                          ValueRange{A, B},
-                                          ValueRange{C}).getResult(0));
-    } else {
-      auto A = MemRefTypeCast(rewriter, operands[0]);
-      auto B = MemRefTypeCast(rewriter, operands[1]);
-      auto C = rewriter.create<memref::AllocOp>(loc, memRefTy);
-      rewriter
-          .create<linalg::MatmulOp>(loc, TypeRange{}, ValueRange{A, B},
-                                    ValueRange{C})
-          .getResult(0);
+    auto A = MemRefTypeCast(rewriter, operands[0]);
+    auto B = MemRefTypeCast(rewriter, operands[1]);
+    auto C = rewriter.create<memref::AllocOp>(loc, memRefTy);
+    rewriter
+        .create<linalg::MatmulOp>(loc, TypeRange{}, ValueRange{A, B},
+                                  ValueRange{C})
+        .getResult(0);
 
-      auto tensor_cast =
-          TensorTypeCast(rewriter, C->getResult(0), op->getResult(0).getType());
-      rewriter.replaceOp(op, tensor_cast);
-    }
+    auto tensor_cast =
+        TensorTypeCast(rewriter, C->getResult(0), op->getResult(0).getType());
+    rewriter.replaceOp(op, tensor_cast);
+
     return success();
   }
 };
@@ -248,12 +236,6 @@ public:
   XTenToLinalgPass() = default;
   XTenToLinalgPass(const XTenToLinalgPass &pass) {};
 
-  Option<bool> clLinalgOnTensors{
-    *this, "linalg-on-tensors",
-    llvm::cl::desc("Generate linalg operations on tensors instead of memrefs"),
-    llvm::cl::init(false)
-  };
-
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
      registry.insert<memref::MemRefDialect>();
      registry.insert<linalg::LinalgDialect>();
@@ -271,10 +253,9 @@ public:
     // tablegen patterns
     OwningRewritePatternList patterns(context);
 
-    patterns.insert<XTenMMOpConversion>(context, clLinalgOnTensors);
-
     patterns.insert<XTenAddOpConversion,
                     XTenMulOpConversion,
+                    XTenMMOpConversion,
                     XTenConv2dOpConversion,
                     XTenPartialConv2dReLUOpConversion>(context);
 
