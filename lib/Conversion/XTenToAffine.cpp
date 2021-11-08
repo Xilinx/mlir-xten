@@ -9,14 +9,15 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
-#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
-#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
-#include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionOps.h"
 
 #include "xten/Conversion/XTenToAffinePass.h"
 #include "xten/Dialect/XTen/XTenDialect.h"
 #include "xten/Dialect/XTen/XTenOps.h"
 #include "xten/Util/Util.h"
+
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
+#include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionDialect.h"
 
 #include "mlir/Analysis/Utils.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
@@ -58,34 +59,6 @@ std::vector<uint64_t> Conv2dTileSizes;
 }
 
 namespace {
-
-/// Create a type cast to memref
-Value MemRefTypeCast(OpBuilder &builder, Value val) {
-  if (val.getType().isa<MemRefType>())
-    return val;
-
-  auto tensorTy = val.getType().dyn_cast<Torch::BaseTensorType>();
-  if (!tensorTy)
-    return val;//error
-
-  auto sizes = tensorTy.getSizes();
-  auto dtype = tensorTy.getDtype();
-  auto tensor = builder.create<TorchConversion::ToBuiltinTensorOp>(
-      val.getLoc(), RankedTensorType::get(sizes,dtype), val);
-  auto memRefType = MemRefType::get(tensorTy.getSizes(), dtype, {}, 0);
-  return builder.create<memref::BufferCastOp>(val.getLoc(), memRefType, tensor).getResult();
-}
-
-/// Create a type cast to tensor
-Value TensorTypeCast(OpBuilder &builder, Value val, Type resultTy) {
-  if (val.getType().isa<TensorType>())
-    return val;
-  auto refType = val.getType().dyn_cast<MemRefType>();
-  if (!refType)
-    return val;
-  auto tensor = builder.create<memref::TensorLoadOp>(val.getLoc(), val).getResult();
-  return builder.create<TorchConversion::FromBuiltinTensorOp>(val.getLoc(), resultTy, tensor);
-}
 
 LogicalResult
 lowerConv2d(Operation *op) {
@@ -333,7 +306,7 @@ public:
     LLVM_DEBUG(op->getBlock()->print(llvm::outs()));
 
     Value result = rewriter.create<memref::AllocOp>(loc, memRefResultTy);
-    Value lhs = MemRefTypeCast(rewriter, operands[0]);
+    Value lhs = xten::MemRefTypeCast(rewriter, operands[0]);
 
     bool isFloatOp = isa<Torch::ConstantFloatOp>(operands[1].getDefiningOp());
 
@@ -376,7 +349,7 @@ public:
     }
 
     auto tensor_result =
-        TensorTypeCast(rewriter, result, op->getResult(0).getType());
+        xten::TensorTypeCast(rewriter, result, op->getResult(0).getType());
     rewriter.replaceOp(op, {tensor_result});
     return success();
   }
@@ -407,8 +380,8 @@ public:
                                                 tensorType.getDtype(),
                                                 {}, 0);
     Value result = rewriter.create<memref::AllocOp>(loc, memrefTy);
-    Value argA = MemRefTypeCast(rewriter, operands[0]);
-    Value argB = MemRefTypeCast(rewriter, operands[1]);
+    Value argA = xten::MemRefTypeCast(rewriter, operands[0]);
+    Value argB = xten::MemRefTypeCast(rewriter, operands[1]);
 
     SmallVector<int64_t, 4> lbs(sizes.size(), 0);
     SmallVector<int64_t, 4> steps(sizes.size(), 1);
@@ -432,7 +405,8 @@ public:
         afo->setAttr("affine_opt_label", StringAttr::get(op->getContext(), "xten.binary_op"));
     }
 
-    auto tensor_result = TensorTypeCast(rewriter, result, op->getResult(0).getType());
+    auto tensor_result =
+        xten::TensorTypeCast(rewriter, result, op->getResult(0).getType());
     rewriter.replaceOp(op, {tensor_result});
     return success();
   }

@@ -19,6 +19,9 @@
 
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
+#include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionOps.h"
+
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
 
 #define DEBUG_TYPE "xten-util"
 
@@ -71,6 +74,37 @@ std::string getMangledFuncName(ModuleOp module, std::string prefix, FunctionType
 
   return ret;
 }
+}
+
+/// Create a type cast to memref
+Value MemRefTypeCast(OpBuilder &builder, Value val) {
+  if (val.getType().isa<MemRefType>())
+    return val;
+
+  auto tensorTy = val.getType().dyn_cast<torch::Torch::BaseTensorType>();
+  if (!tensorTy)
+    return val; // error
+
+  auto sizes = tensorTy.getSizes();
+  auto dtype = tensorTy.getDtype();
+  auto tensor = builder.create<torch::TorchConversion::ToBuiltinTensorOp>(
+      val.getLoc(), RankedTensorType::get(sizes, dtype), val);
+  auto memRefType = MemRefType::get(tensorTy.getSizes(), dtype, {}, 0);
+  return builder.create<memref::BufferCastOp>(val.getLoc(), memRefType, tensor)
+      .getResult();
+}
+
+/// Create a type cast to tensor
+Value TensorTypeCast(OpBuilder &builder, Value val, Type resultTy) {
+  if (val.getType().isa<TensorType>())
+    return val;
+  auto refType = val.getType().dyn_cast<MemRefType>();
+  if (!refType)
+    return val;
+  auto tensor =
+      builder.create<memref::TensorLoadOp>(val.getLoc(), val).getResult();
+  return builder.create<torch::TorchConversion::FromBuiltinTensorOp>(
+      val.getLoc(), resultTy, tensor);
 }
 
 FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value> operands, ArrayRef<Type> retTys)

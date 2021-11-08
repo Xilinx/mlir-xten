@@ -17,6 +17,10 @@ using namespace mlir;
 namespace xilinx {
 namespace xten {
 
+Value MemRefTypeCast(OpBuilder &builder, Value val);
+
+Value TensorTypeCast(OpBuilder &builder, Value val, Type resultTy);
+
 FuncOp getATenFn(ModuleOp module, std::string fnName, ArrayRef<Value> operands, ArrayRef<Type> retTys);
 
 uint64_t getTensorVolume(const ShapedType ty);

@@ -9,6 +9,16 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
+
+#include "xten/Conversion/XTenToLinalgPass.h"
+#include "xten/Dialect/XTen/XTenDialect.h"
+#include "xten/Dialect/XTen/XTenOps.h"
+#include "xten/Util/Util.h"
+
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
+#include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionDialect.h"
+
 #include "mlir/Dialect/Linalg/IR/LinalgOps.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
@@ -20,37 +30,13 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "xten/Conversion/XTenToLinalgPass.h"
-#include "xten/Dialect/XTen/XTenDialect.h"
-#include "xten/Dialect/XTen/XTenOps.h"
-
 #define DEBUG_TYPE "xten-to-linalg-pass"
 
 using namespace mlir;
 using namespace xilinx::xten;
+using namespace mlir::torch;
 
 namespace {
-
-/// Create a type cast to memref
-Value MemRefTypeCast(OpBuilder &builder, Value val) {
-  if (val.getType().isa<MemRefType>())
-    return val;
-  auto tensorTy = val.getType().dyn_cast<TensorType>();
-  if (!tensorTy)
-    return val;
-  auto memRefType = MemRefType::get(tensorTy.getShape(), tensorTy.getElementType(), {}, 0);
-  return builder.create<memref::BufferCastOp>(val.getLoc(), memRefType, val).getResult();
-}
-
-/// Create a type cast to tensor
-Value TensorTypeCast(OpBuilder &builder, Value val) {
-  if (val.getType().isa<TensorType>())
-    return val;
-  auto refType = val.getType().dyn_cast<MemRefType>();
-  if (!refType)
-    return val;
-  return builder.create<memref::TensorLoadOp>(val.getLoc(), val).getResult();
-}
 
 template <class T>
 class XTenBinaryOpConversion : public ConversionPattern {
@@ -66,13 +52,11 @@ public:
     auto A = MemRefTypeCast(rewriter, operands[0]);
     auto B = MemRefTypeCast(rewriter, operands[1]);
 
-    auto resultTy = op->getResult(0).getType();
-    auto tensorResultTy = resultTy.cast<TensorType>();
-    auto elementTy = tensorResultTy.getElementType();
-    auto rank = tensorResultTy.getRank();
-    auto memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
-                                                tensorResultTy.getElementType(),
-                                                {}, 0);
+    auto tensorTy = operands[0].getType().cast<Torch::BaseTensorType>();
+    auto elementTy = tensorTy.getDtype();
+    auto sizes = tensorTy.getSizes();
+    auto rank = sizes.size();
+    auto memRefResultTy = mlir::MemRefType::get(sizes, elementTy, {}, 0);
 
     auto C = rewriter.create<memref::AllocOp>(loc, memRefResultTy);
 
@@ -96,7 +80,8 @@ public:
         nestedBuilder.create<linalg::YieldOp>(loc, result);
       });
 
-    auto tensor_cast = TensorTypeCast(rewriter, C->getResult(0));
+    auto tensor_cast =
+        TensorTypeCast(rewriter, C->getResult(0), op->getResult(0).getType());
     rewriter.replaceOp(op, tensor_cast);
     return success();
   }
@@ -154,15 +139,18 @@ public:
     auto loc = mmult.getLoc();
 
     auto resultTy = op->getResult(0).getType();
-    auto tensorTy = resultTy.cast<TensorType>();
-    auto memRefTy = mlir::MemRefType::get(tensorTy.getShape(),
-                                                tensorTy.getElementType(),
-                                                {}, 0);
+    auto tTy = resultTy.cast<Torch::BaseTensorType>();
+    auto oper0Ty = operands[0].getType().cast<Torch::BaseTensorType>();
+    auto oper1Ty = operands[1].getType().cast<Torch::BaseTensorType>();
+    auto dtype = tTy.getDtype();
+    std::vector<int64_t> sizes{oper0Ty.getSizes()[1], oper1Ty.getSizes()[0]};
+    auto tensorTy = tTy.getWithSizesAndDtype(ArrayRef<int64_t>{sizes}, dtype);
+    auto memRefTy = mlir::MemRefType::get(sizes, dtype, {}, 0);
 
     if (generateTensors) {
       auto A = operands[0];
       auto B = operands[1];
-      auto C = rewriter.create<linalg::InitTensorOp>(loc, tensorTy.getShape(), tensorTy.getElementType());
+      auto C = rewriter.create<linalg::InitTensorOp>(loc, sizes, dtype);
       rewriter.replaceOp(op,
         rewriter.create<linalg::MatmulOp>(loc,
                                           TypeRange{tensorTy},
@@ -172,12 +160,13 @@ public:
       auto A = MemRefTypeCast(rewriter, operands[0]);
       auto B = MemRefTypeCast(rewriter, operands[1]);
       auto C = rewriter.create<memref::AllocOp>(loc, memRefTy);
-      rewriter.create<linalg::MatmulOp>(loc,
-                                        TypeRange{memRefTy},
-                                        ValueRange{A, B},
-                                        ValueRange{C}).getResult(0);
+      rewriter
+          .create<linalg::MatmulOp>(loc, TypeRange{}, ValueRange{A, B},
+                                    ValueRange{C})
+          .getResult(0);
 
-      auto tensor_cast = TensorTypeCast(rewriter, C->getResult(0));
+      auto tensor_cast =
+          TensorTypeCast(rewriter, C->getResult(0), op->getResult(0).getType());
       rewriter.replaceOp(op, tensor_cast);
     }
     return success();
@@ -199,16 +188,16 @@ public:
     auto B = MemRefTypeCast(rewriter, operands[1]);
 
     auto resultTy = op->getResult(0).getType();
-    auto tensorResultTy = resultTy.cast<TensorType>();
-    auto memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
-                                                tensorResultTy.getElementType(),
-                                                {}, 0);
+    auto tensorTy = resultTy.cast<Torch::BaseTensorType>();
+    auto memRefResultTy =
+        mlir::MemRefType::get(tensorTy.getSizes(), tensorTy.getDtype(), {}, 0);
 
     auto C = rewriter.create<memref::AllocOp>(loc, memRefResultTy);
 
     rewriter.create<linalg::Conv2DNhwcHwcfOp>(loc, ValueRange{A, B}, ValueRange{C});
 
-    auto tensor_cast = TensorTypeCast(rewriter, C->getResult(0));
+    auto tensor_cast =
+        TensorTypeCast(rewriter, C->getResult(0), op->getResult(0).getType());
     rewriter.replaceOp(op, tensor_cast);
     return success();
   }
@@ -229,10 +218,9 @@ public:
     auto B = MemRefTypeCast(rewriter, mmult.weight());
 
     auto resultTy = op->getResult(0).getType();
-    auto tensorResultTy = resultTy.cast<TensorType>();
-    auto memRefResultTy = mlir::MemRefType::get(tensorResultTy.getShape(),
-                                                tensorResultTy.getElementType(),
-                                                {}, 0);
+    auto tensorResultTy = resultTy.cast<Torch::BaseTensorType>();
+    auto memRefResultTy = mlir::MemRefType::get(
+        tensorResultTy.getSizes(), tensorResultTy.getDtype(), {}, 0);
 
     Value C;
     if(mmult.PartialIn()) {
@@ -243,7 +231,7 @@ public:
 
     rewriter.create<linalg::Conv2DNhwcHwcfOp>(loc, ValueRange{A, B}, ValueRange{C});
 
-    auto tensor_cast = TensorTypeCast(rewriter, C);
+    auto tensor_cast = TensorTypeCast(rewriter, C, op->getResult(0).getType());
 
     if(mmult.getNumResults() == 1)
       rewriter.replaceOp(op, tensor_cast);
@@ -269,6 +257,8 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
      registry.insert<memref::MemRefDialect>();
      registry.insert<linalg::LinalgDialect>();
+     registry.insert<Torch::TorchDialect,
+                     TorchConversion::TorchConversionDialect>();
   }
 
   void runOnOperation() override {
@@ -291,30 +281,14 @@ public:
     ConversionTarget target(*context);
 
     target.addLegalDialect<AffineDialect, linalg::LinalgDialect,
-                           memref::MemRefDialect,
-                           StandardOpsDialect, scf::SCFDialect>();
-
-    target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
-       return typeConverter.isSignatureLegal(op.getType());
-    });
+                           memref::MemRefDialect, StandardOpsDialect,
+                           scf::SCFDialect, Torch::TorchDialect,
+                           TorchConversion::TorchConversionDialect>();
 
     if (failed(applyPartialConversion(module, target, std::move(patterns)))) {
       emitError(UnknownLoc::get(context), "error lowering XTen to Linalg\n");
       signalPassFailure();
-      //assert(0);
     }
-
-    // TODO: get rid of this out
-    module.walk([&](linalg::MatmulOp op) {
-      op->setAttr(
-        linalg::LinalgTransforms::kLinalgTransformMarker,
-        StringAttr::get(op->getContext(), "xten_mmult"));
-    });
-    module.walk([&](linalg::Conv2DNhwcHwcfOp op) {
-      op->setAttr(
-        linalg::LinalgTransforms::kLinalgTransformMarker,
-        StringAttr::get( op->getContext(), "xten_conv2d"));
-    });
   }
 
 private:
