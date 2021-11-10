@@ -37,41 +37,41 @@ class AIEv1 : public AbsArchitecture {
     ~AIEv1() {}
 
     // Size in bytes
-    uint64_t getBankSize() {
+    uint64_t getBankSize() override {
         return pow(2, 12);
     }
 
     // Integer
-    uint64_t getNumBanks() {
+    uint64_t getNumBanks() override {
         return 8;
     }
 
     // Size in bytes
-    uint64_t getMemSize() {
+    uint64_t getMemSize() override {
         return getBankSize() * getNumBanks();
     }
 
     // Integer
-    uint64_t getVectSize() {
+    uint64_t getVectSize() override {
         //llvm::outs() << "Vects size is: " << 128 / (xWidth * zWidth) << "\n";
         return 128 / (xWidth * zWidth);
     }
 
     // Bytes per cycles
-    uint64_t getComSpeed() {
+    uint64_t getComSpeed() override {
         return 4;
     }
 
     // Integer, TODO check that
-    uint64_t getPipelineDepth() {
+    uint64_t getPipelineDepth() override {
         return 8;
     }
 
-    uint64_t getNumCores() {
+    uint64_t getNumCores() override {
         return 400;
     }
 
-    uint64_t getClockFrequency() {
+    uint64_t getClockFrequency() override {
         return pow(10, 9);
     }
 };
