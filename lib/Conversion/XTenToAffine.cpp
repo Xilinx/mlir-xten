@@ -398,8 +398,6 @@ public:
     LLVM_DEBUG(op->getBlock()->print(llvm::outs()));
 
     rewriter.setInsertionPointAfter(op);
-    Type resultTy = op->getOperand(0).getType();
-
     Torch::BaseTensorType tensorType
       = op->getOperand(0).getType().cast<Torch::BaseTensorType>();
 

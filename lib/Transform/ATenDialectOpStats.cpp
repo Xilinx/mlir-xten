@@ -224,11 +224,7 @@ std::map<std::string, uint64_t> getStatistics(OpT op) {
 // add
 template<>
 std::map<std::string, uint64_t> getStatistics(Torch::AtenAddTensorOp op) {
-  int *a = nullptr;
-  *a++;
   std::map<std::string, uint64_t> toReturn;
-
-  Torch::BaseTensorType resultTy = op.getResult().getType().cast<Torch::BaseTensorType>();
   Torch::BaseTensorType aType = op.getOperand(0).getType().cast<Torch::BaseTensorType>();
   Type bType = op.getOperand(1).getType();
 
@@ -248,7 +244,6 @@ std::map<std::string, uint64_t> getStatistics(Torch::AtenAddTensorOp op) {
   toReturn["writes"] = ofm_volume;
 
   return toReturn;
-
 }
 
 // add_
