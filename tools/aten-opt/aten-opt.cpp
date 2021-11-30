@@ -24,6 +24,7 @@
 
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionDialect.h"
+#include "torch-mlir/InitAll.h"
 
 #include "xten/Dialect/XTen/XTenDialect.h"
 #include "xten/Dialect/XTen/Passes.h"
@@ -41,6 +42,7 @@ int main(int argc, char **argv) {
 
   DialectRegistry registry;
   registerAllDialects(registry);
+  mlir::torch::registerAllDialects(registry);
   registry.insert<xilinx::xten::XTenDialect,
                   torch::Torch::TorchDialect,
                   torch::TorchConversion::TorchConversionDialect>();

@@ -17,10 +17,19 @@ set(LIBS
   XTenTransformPasses
   XTenTransforms
   XTenUtil
+  TorchMLIRInitAll
   TorchMLIRTorchDialect
   TorchMLIRTorchConversionDialect
   TorchMLIRTorchUtils
+  TorchMLIRTorchPasses
+  TorchMLIRTorchConversionPasses
+  TorchMLIRTorchToLinalg
+  TorchMLIRTorchToSCF
+  TorchMLIRTorchToStd
+  TorchMLIRTorchToTosa
+  TorchMLIRConversionPasses
+  TorchMLIRRefBackend
   MLIR
   )
-
+  
 target_link_libraries(aten-opt PRIVATE ${LIBS})
