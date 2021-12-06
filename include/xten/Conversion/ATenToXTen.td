@@ -26,8 +26,11 @@ def : Pat<(Torch_AtenReluOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g)),
 def : Pat<(Torch_AtenRelu_Op (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g)),
           (XTen_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g)>;
 
-// def : Pat<(aten_LeakyReluOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),$h),
-//           (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h)>;
+def : Pat<(Torch_AtenLeakyReluOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),$h),
+          (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h)>;
+
+def : Pat<(Torch_AtenLeakyRelu_Op (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),$h),
+          (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h)>;
 
 // def : Pat<(aten_LeakyReluOp 
 //             (Torch_AtenBatchNormOp
@@ -35,9 +38,9 @@ def : Pat<(Torch_AtenRelu_Op (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g)),
 //               $a1,$a2,$a3,$a4,$a5,$a6,$a7),$j),
 //           (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h)>;
 
-// def : Pat<(Torch_AtenMaxPool2dOp
-//             (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h),$mp2,$mp3,$mp4,$mp5,$mp6),
-//           (XTen_Conv2dLReLUMaxPoolOp $a,$b,$c,$mp3,$e,$f,$g,$h)>;
+def : Pat<(Torch_AtenMaxPool2dOp
+            (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h),$mp2,$mp3,$mp4,$mp5,$mp6),
+          (XTen_Conv2dLReLUMaxPoolOp $a,$b,$c,$d,$e,$f,$g,$h,$mp2,$mp3,$mp4,$mp5,$mp6)>;
 
 def : Pat<(Torch_AtenReluOp
             (Torch_AtenBatchNormOp
