@@ -245,7 +245,7 @@ namespace xilinx {
         void splitConstantInto(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into) {
             for(NamedAttribute attr: op->getAttrs()) {
                 // We Look for the Dense Attribute
-                auto at = attr.second.dyn_cast<DenseElementsAttr>();
+                auto at = attr.getValue().dyn_cast<DenseElementsAttr>();
                 if(at) {
                     if(t == bSplitType) {
                         unsigned int splitDim = splitToDim(split, t);
