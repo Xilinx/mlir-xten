@@ -310,7 +310,7 @@ def XTen_Conv2dLReLUOp: XTen_Op<"conv2d_lrelu", [NoSideEffect]>,
         TorchIntListType:$padding,
         TorchIntListType:$dilation,
         Torch_IntType:$groups,
-        AnyType:$alpha
+        Torch_FloatType:$alpha
   );
 
   let summary = "Convolution with Leaky ReLU operator";
@@ -334,12 +334,16 @@ def XTen_Conv2dLReLUMaxPoolOp: XTen_Op<"conv2d_lrelu_maxpool", [NoSideEffect]> {
         TorchIntListType:$padding,
         TorchIntListType:$dilation,
         Torch_IntType:$groups,
-        AnyType:$alpha
+        Torch_FloatType:$alpha,
+        TorchIntListType:$mp_kernel_size,
+        TorchIntListType:$mp_stride,
+        TorchIntListType:$mp_padding,
+        TorchIntListType:$mp_dilation,
+        Torch_BoolType:$mp_ceil_mode
   );
 
   let results = (
-      outs AnyTorchTensorType:$output,
-           AnyTorchTensorType:$indices
+      outs AnyTorchTensorType:$output
   );
 
   let summary = "Convolution with Leaky ReLU plus MaxPool operator";
