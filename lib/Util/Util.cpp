@@ -108,7 +108,7 @@ Value ToBuiltinTensorTypeCast(OpBuilder &builder, Value val) {
       val.getLoc(), RankedTensorType::get(sizes, dtype), val);
 }
 
-Value FromTorchTensorTypeCast(OpBuilder &builder, Value val, Type resultTy) {
+Value ToTorchTensorTypeCast(OpBuilder &builder, Value val, Type resultTy) {
   if (!val.getType().isa<TensorType>())
     return val;
 
