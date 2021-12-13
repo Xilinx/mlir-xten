@@ -21,7 +21,7 @@ Value MemRefTypeCast(OpBuilder &builder, Value val);
 
 Value ToBuiltinTensorTypeCast(OpBuilder &builder, Value val);
 
-Value FromTorchTensorTypeCast(OpBuilder &builder, Value val, Type resultTy);
+Value ToTorchTensorTypeCast(OpBuilder &builder, Value val, Type resultTy);
 
 Value TensorTypeCast(OpBuilder &builder, Value val, Type resultTy);
 

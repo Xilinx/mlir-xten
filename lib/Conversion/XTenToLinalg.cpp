@@ -180,7 +180,7 @@ public:
     auto oper1Ty = operands[1].getType().cast<Torch::BaseTensorType>();
     auto dtype = tTy.getDtype();
     std::vector<int64_t> sizes{oper0Ty.getSizes()[1], oper1Ty.getSizes()[0]};
-    auto tensorTy = tTy.getWithSizesAndDtype(ArrayRef<int64_t>{sizes}, dtype);
+    //auto tensorTy = tTy.getWithSizesAndDtype(ArrayRef<int64_t>{sizes}, dtype);
     auto memRefTy = mlir::MemRefType::get(sizes, dtype, {}, 0);
 
     auto A = MemRefTypeCast(rewriter, operands[0]);
@@ -229,14 +229,15 @@ public:
     // Pattern match against the op's original operands, because otherwise we
     // will get the lowered version of the operands which is harder to pattern
     // match.
-    SmallVector<int64_t,6> paddingInts;
+    SmallVector<int64_t> paddingInts;
+    paddingInts.resize(2, 0);
     if (!matchPattern(conv2d.padding(),Torch::m_TorchConstantIntList(paddingInts))) {
       return rewriter.notifyMatchFailure(
           op, "only support constant padding values");
     }
 
     // Apply padding as necessary.
-    //paddingInts.resize(6, 0);
+    paddingInts.resize(paddingInts.size() + 2, 0);
     Attribute zeroAttr = rewriter.getZeroAttr(elementType);
     input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
 
@@ -294,7 +295,7 @@ public:
                   })
               .getResult(0);
 
-    auto torchTensorCast = FromTorchTensorTypeCast(rewriter, result, op->getResult(0).getType());
+    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, result, op->getResult(0).getType());
     rewriter.replaceOp(op, torchTensorCast);
     return success();
   }
