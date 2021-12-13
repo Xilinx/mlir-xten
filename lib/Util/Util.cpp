@@ -94,6 +94,28 @@ Value MemRefTypeCast(OpBuilder &builder, Value val) {
       .getResult();
 }
 
+Value ToBuiltinTensorTypeCast(OpBuilder &builder, Value val) {
+  if (val.getType().isa<MemRefType>())
+    return val;
+
+  auto tensorTy = val.getType().dyn_cast<torch::Torch::BaseTensorType>();
+  if (!tensorTy)
+    return val; // error
+
+  auto sizes = tensorTy.getSizes();
+  auto dtype = tensorTy.getDtype();
+  return  builder.create<torch::TorchConversion::ToBuiltinTensorOp>(
+      val.getLoc(), RankedTensorType::get(sizes, dtype), val);
+}
+
+Value FromTorchTensorTypeCast(OpBuilder &builder, Value val, Type resultTy) {
+  if (!val.getType().isa<TensorType>())
+    return val;
+
+  return builder.create<torch::TorchConversion::FromBuiltinTensorOp>(
+      val.getLoc(), resultTy, val);
+}
+
 /// Create a type cast to tensor
 Value TensorTypeCast(OpBuilder &builder, Value val, Type resultTy) {
   if (val.getType().isa<TensorType>())
