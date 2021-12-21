@@ -38,11 +38,6 @@ using namespace mlir;
 using namespace xilinx::xten;
 using namespace mlir::torch;
 
-
-static SmallVector<StringRef> getNParallelLoopsAttrs(unsigned nParallelLoops) {
-  return SmallVector<StringRef>(nParallelLoops, getParallelIteratorTypeName());
-}
-
 static Value applyPad(Location loc, Value input, ArrayRef<int64_t> pad,
                             Attribute padAttr, OpBuilder &rewriter) {
   // Input should be padded if necessary.
@@ -180,7 +175,6 @@ public:
     auto oper1Ty = operands[1].getType().cast<Torch::BaseTensorType>();
     auto dtype = tTy.getDtype();
     std::vector<int64_t> sizes{oper0Ty.getSizes()[1], oper1Ty.getSizes()[0]};
-    //auto tensorTy = tTy.getWithSizesAndDtype(ArrayRef<int64_t>{sizes}, dtype);
     auto memRefTy = mlir::MemRefType::get(sizes, dtype, {}, 0);
 
     auto A = MemRefTypeCast(rewriter, operands[0]);
@@ -213,7 +207,7 @@ public:
     Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
     Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
     Value biasTensorTy = ToBuiltinTensorTypeCast(rewriter, operands[2]);
-
+    
     Type elementType = input.getType().cast<RankedTensorType>().getElementType();
     if (!elementType.isa<mlir::FloatType>())
       return op->emitError("unimplemented: non-floating point type");
@@ -306,7 +300,7 @@ public:
 
     Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
     Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
-    Value biasTensorTy = ToBuiltinTensorTypeCast(rewriter, operands[2]);
+    Value bias = ToBuiltinTensorTypeCast(rewriter, operands[2]);
 
     Type elementType = input.getType().cast<RankedTensorType>().getElementType();
     if (!elementType.isa<mlir::FloatType>())
@@ -342,42 +336,83 @@ public:
     Value initTensor = rewriter.create<linalg::InitTensorOp>(
         loc, resultTensorType.getShape(), elementType);
 
-    Value bias = conv2dRelu.bias();
-    Value biasInitTensor;
-    if (bias.getType().isa<Torch::NoneType>()) {
-      Value c0float = rewriter.create<arith::ConstantOp>(
-          loc, FloatAttr::get(elementType, 0.0));
-      biasInitTensor = rewriter.create<linalg::FillOp>(loc, c0float, initTensor)
-                           .getResult(0);
-    } else {
-      auto biasType = biasTensorTy.getType().cast<RankedTensorType>();
-      if (biasType.getRank() != 1)
-        return rewriter.notifyMatchFailure(op, "expect bias to be rank 1");
-      if (elementType != biasType.getElementType())
-        return rewriter.notifyMatchFailure(op, "unimplemented: type promotion");
-
-      auto resultRank = initTensor.getType().cast<RankedTensorType>().getRank();
-      SmallVector<AffineMap> indexingMaps = {
-          // bias is used to initialize the channels - dimension 1 of output
-          AffineMap::get(/*dimCount=*/resultRank, /*symbolCount=*/0,
-                         rewriter.getAffineDimExpr(1), rewriter.getContext()),
-          rewriter.getMultiDimIdentityMap(resultRank)};
-      SmallVector<StringRef> iteratorTypes(resultRank, "parallel");
-      biasInitTensor = rewriter
-                          .create<linalg::GenericOp>(
-                              loc, initTensor.getType(), biasTensorTy, initTensor,
-                              indexingMaps, iteratorTypes,
-                              [](OpBuilder &b, Location loc, ValueRange args) {
-                                b.create<linalg::YieldOp>(loc, args[0]);
-                              })
-                          .getResult(0);
-    }
-
     Value conv2dReluVal =
         rewriter
             .create<linalg::Conv2DReluOp>(
-                loc, biasInitTensor.getType(), ValueRange{input, weight},
-                biasInitTensor, stridesAttr, dilationAttr)
+                loc, initTensor.getType(), ValueRange{input, weight, bias},
+                initTensor, stridesAttr, dilationAttr)
+            .getResult(0);
+
+    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dReluVal, op->getResult(0).getType());
+    rewriter.replaceOp(op, torchTensorCast);
+    return success();
+  }
+};
+
+class XTenConv2dLeakyReluOpConversion : public ConversionPattern {
+public:
+  explicit XTenConv2dLeakyReluOpConversion(MLIRContext *context)
+      : ConversionPattern(Conv2dLReLUOp::getOperationName(), 1, context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value > operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto conv2dRelu = cast<Conv2dLReLUOp>(op);
+    auto loc = conv2dRelu.getLoc();
+
+    Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
+    Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
+    Value bias = ToBuiltinTensorTypeCast(rewriter, operands[2]);
+    
+    if(!isa<Torch::ConstantFloatOp>(operands[7].getDefiningOp()))
+      return op->emitError("Alpha, unimplemented: non-floating point type");
+
+    Type elementType = input.getType().cast<RankedTensorType>().getElementType();
+    if (!elementType.isa<mlir::FloatType>())
+      return op->emitError("unimplemented: non-floating point type");
+    
+    SmallVector<int64_t> paddingInts;
+    paddingInts.resize(4, 0);
+    if (!matchPattern(conv2dRelu.padding(),Torch::m_TorchConstantIntList(paddingInts))) {
+      return rewriter.notifyMatchFailure(
+          op, "only support constant padding values");
+    }
+
+    // Getting alpha value
+    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp())
+                         .value();
+    auto ty = rewriter.getF32Type();
+    auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
+    Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
+
+    //paddedInput. input shape change based on padding
+    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
+    input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
+    
+    SmallVector<int64_t, 2> strideInts;
+    if (!matchPattern(conv2dRelu.stride(), Torch::m_TorchConstantIntList(strideInts)))
+      return rewriter.notifyMatchFailure(op, "only support constant int strides");
+    
+    SmallVector<int64_t, 2> dilationInts;
+    if (!matchPattern(conv2dRelu.dilation(), Torch::m_TorchConstantIntList(dilationInts)))
+      return rewriter.notifyMatchFailure(op, "only support constant int dilations");
+
+    auto stridesAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
+    auto dilationAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), dilationInts);
+    
+    auto torchTensorTy = op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(), torchTensorTy.getDtype());
+    
+    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+        loc, resultTensorType.getShape(), elementType);
+
+    Value conv2dReluVal =
+        rewriter
+            .create<linalg::Conv2DLreluOp>(
+                loc, initTensor.getType(), ValueRange{input, weight, bias, alpha},
+                initTensor, stridesAttr, dilationAttr)
             .getResult(0);
 
 
@@ -386,6 +421,7 @@ public:
     return success();
   }
 };
+
 
 class XTenPartialConv2dReLUOpConversion : public ConversionPattern {
 public:
@@ -423,7 +459,7 @@ public:
     else
       rewriter.replaceOp(op, {tensor_cast, operands[0]});
     */
-    return success();
+    return failure();
   }
 };
 
@@ -455,6 +491,7 @@ public:
                     XTenMMOpConversion,
                     XTenConv2dOpConversion,
                     XTenConv2dReluOpConversion,
+                    XTenConv2dLeakyReluOpConversion,
                     XTenPartialConv2dReLUOpConversion>(context);
 
     ConversionTarget target(*context);
