@@ -80,7 +80,8 @@ private:
 
   void initProperties() {
     auto ss = std::ostringstream{};
-    std::ifstream file("/proj/ipeng/staff/jcamacho/repos/acdc/xten/lib/Transform/operators_supported.json");
+    //std::ifstream file("/proj/ipeng/staff/jcamacho/repos/acdc/xten/lib/Transform/operators_supported.json");
+    std::ifstream file("/proj/ipeng/staff/jcamacho/repos/FlexML/vitis_flexml/third-party/mlir-xten/lib/Transform/operators_supported.json");
     // TODO: make input json filename as command option
     ss << file.rdbuf();
     auto json_model_str = std::string(ss.str());
@@ -151,8 +152,8 @@ private:
       for (size_t i = 0; i < sv.size(); i++)
 	v.push_back(sv[i]);
     }
-    else if (auto co = op.getDefiningOp<ConstantIntOp>()) {
-      v.push_back(co.getValue());
+    else if (auto co = op.getDefiningOp<mlir::arith::ConstantIntOp>()) {
+      v.push_back(co.value());
     }
   }
 
@@ -213,11 +214,6 @@ private:
     }
     return (bit_width/BYTE_SIZE_IN_BIT) * total_inputs;
   }
-
-  inline double getFloatTypeValue(::mlir::ConstantFloatOp &op, uint64_t width) {
-    return width > 32 ? op.getValue().convertToDouble() :  
-      op.getValue().convertToFloat();
-  } 
 
   uint64_t storage_bytes_of_input_and_output(Value input, Value output) {
     uint64_t storage_n = 0;
@@ -687,7 +683,7 @@ private:
   template<class T>
   void fillPropertiesSoftmaxOp(T &softmaxOp, llvm::json::Array &propertiesArray) {
       Value dim           = softmaxOp.dim();
-      uint64_t dim_v      = dim.getDefiningOp<::mlir::ConstantIntOp>().getValue();      
+      uint64_t dim_v      = dim.getDefiningOp<mlir::arith::ConstantIntOp>().value();      
       std::string dim_str = std::to_string(dim_v);
 
       Value input  = softmaxOp.self();
@@ -702,7 +698,7 @@ private:
 
   void fillPropertiesGatherOp(Torch::AtenGatherOp &gatherOp, llvm::json::Array &propertiesArray) {
       Value dim           =  gatherOp.dim();
-      uint64_t dim_v      = dim.getDefiningOp<::mlir::ConstantIntOp>().getValue();      
+      uint64_t dim_v      = dim.getDefiningOp<mlir::arith::ConstantIntOp>().value();      
       std::string dim_str = std::to_string(dim_v);
 
       Value index = gatherOp.index();
@@ -731,7 +727,7 @@ private:
 
   void fillPropertiesSliceOp(Torch::AtenSliceTensorOp &sliceOp, llvm::json::Array &propertiesArray) {
       Value dim           = sliceOp.dim();
-      uint64_t dim_v      = dim.getDefiningOp<::mlir::ConstantIntOp>().getValue();      
+      uint64_t dim_v      = dim.getDefiningOp<mlir::arith::ConstantIntOp>().value();      
       std::string dim_str = std::to_string(dim_v);
 
       Value input  = sliceOp.self();
