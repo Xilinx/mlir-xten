@@ -230,6 +230,13 @@ public:
     SmallVector<int64_t, 2> dilationInts;
     if (!matchPattern(conv2d.dilation(), Torch::m_TorchConstantIntList(dilationInts)))
       return rewriter.notifyMatchFailure(op, "only support constant int dilations");
+    
+    int64_t groups;
+    if (!matchPattern(conv2d.groups(), Torch::m_TorchConstantInt(&groups)))
+      return rewriter.notifyMatchFailure(op, "only support constant int group");
+    
+    if (groups != 1)
+      return op->emitError("Only support groups value '1'");
 
     auto stridesAttr = DenseIntElementsAttr::get(
         RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
@@ -273,7 +280,7 @@ public:
                           .getResult(0);
     }
 
-    Value conv2dReluVal =
+    Value conv2dVal =
         rewriter
             .create<linalg::Conv2DNchwFchwOp>(
                 loc, biasInitTensor.getType(), ValueRange{input, weight},
@@ -281,7 +288,7 @@ public:
             .getResult(0);
 
 
-    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dReluVal, op->getResult(0).getType());
+    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dVal, op->getResult(0).getType());
     rewriter.replaceOp(op, torchTensorCast);
     return success();
   }
@@ -325,6 +332,13 @@ public:
     if (!matchPattern(conv2dRelu.dilation(), Torch::m_TorchConstantIntList(dilationInts)))
       return rewriter.notifyMatchFailure(op, "only support constant int dilations");
 
+    int64_t groups;
+    if (!matchPattern(conv2dRelu.groups(), Torch::m_TorchConstantInt(&groups)))
+      return rewriter.notifyMatchFailure(op, "only support constant int group");
+    
+    if (groups != 1)
+      return op->emitError("Only support groups value '1'");
+
     auto stridesAttr = DenseIntElementsAttr::get(
         RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
     auto dilationAttr = DenseIntElementsAttr::get(
@@ -343,6 +357,12 @@ public:
                 initTensor, stridesAttr, dilationAttr)
             .getResult(0);
 
+    if(op->hasAttr("layer_name")) {
+      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
+      Operation * conv2dReluValOps = conv2dReluVal.getDefiningOp();
+      conv2dReluValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
+    }
+
     auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dReluVal, op->getResult(0).getType());
     rewriter.replaceOp(op, torchTensorCast);
     return success();
@@ -357,8 +377,8 @@ public:
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
-    auto conv2dRelu = cast<Conv2dLReLUOp>(op);
-    auto loc = conv2dRelu.getLoc();
+    auto conv2dLRelu = cast<Conv2dLReLUOp>(op);
+    auto loc = conv2dLRelu.getLoc();
 
     Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
     Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
@@ -373,7 +393,7 @@ public:
     
     SmallVector<int64_t> paddingInts;
     paddingInts.resize(2, 0);
-    if (!matchPattern(conv2dRelu.padding(),Torch::m_TorchConstantIntList(paddingInts))) {
+    if (!matchPattern(conv2dLRelu.padding(),Torch::m_TorchConstantIntList(paddingInts))) {
       return rewriter.notifyMatchFailure(
           op, "only support constant padding values");
     }
@@ -390,12 +410,19 @@ public:
     input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
     
     SmallVector<int64_t, 2> strideInts;
-    if (!matchPattern(conv2dRelu.stride(), Torch::m_TorchConstantIntList(strideInts)))
+    if (!matchPattern(conv2dLRelu.stride(), Torch::m_TorchConstantIntList(strideInts)))
       return rewriter.notifyMatchFailure(op, "only support constant int strides");
     
     SmallVector<int64_t, 2> dilationInts;
-    if (!matchPattern(conv2dRelu.dilation(), Torch::m_TorchConstantIntList(dilationInts)))
+    if (!matchPattern(conv2dLRelu.dilation(), Torch::m_TorchConstantIntList(dilationInts)))
       return rewriter.notifyMatchFailure(op, "only support constant int dilations");
+
+    int64_t groups;
+    if (!matchPattern(conv2dLRelu.groups(), Torch::m_TorchConstantInt(&groups)))
+      return rewriter.notifyMatchFailure(op, "only support constant int group");
+    
+    if (groups != 1)
+      return op->emitError("Only support groups value '1'");
 
     auto stridesAttr = DenseIntElementsAttr::get(
         RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
@@ -408,14 +435,20 @@ public:
     Value initTensor = rewriter.create<linalg::InitTensorOp>(
         loc, resultTensorType.getShape(), elementType);
 
-    Value conv2dReluVal =
+    Value conv2dLReluVal =
         rewriter
             .create<linalg::Conv2DLreluOp>(
                 loc, initTensor.getType(), ValueRange{input, weight, bias, alpha},
                 initTensor, stridesAttr, dilationAttr)
             .getResult(0);
 
-    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dReluVal, op->getResult(0).getType());
+    if(op->hasAttr("layer_name")) {
+      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
+      Operation * conv2dLReluValOps = conv2dLReluVal.getDefiningOp();
+      conv2dLReluValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
+    }
+
+    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dLReluVal, op->getResult(0).getType());
     rewriter.replaceOp(op, torchTensorCast);
     return success();
   }
@@ -429,8 +462,8 @@ public:
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value > operands,
                   ConversionPatternRewriter &rewriter) const override {
-    auto conv2dReluMaxpool = cast<Conv2dLReLUMaxPoolOp>(op);
-    auto loc = conv2dReluMaxpool.getLoc();
+    auto conv2dLReluMaxpool = cast<Conv2dLReLUMaxPoolOp>(op);
+    auto loc = conv2dLReluMaxpool.getLoc();
 
     Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
     Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
@@ -445,7 +478,7 @@ public:
     
     SmallVector<int64_t> paddingInts;
     paddingInts.resize(2, 0);
-    if (!matchPattern(conv2dReluMaxpool.padding(),Torch::m_TorchConstantIntList(paddingInts))) {
+    if (!matchPattern(conv2dLReluMaxpool.padding(),Torch::m_TorchConstantIntList(paddingInts))) {
       return rewriter.notifyMatchFailure(
           op, "only support constant padding values");
     }
@@ -462,28 +495,42 @@ public:
     input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
     
     SmallVector<int64_t, 2> strideInts;
-    if (!matchPattern(conv2dReluMaxpool.stride(), Torch::m_TorchConstantIntList(strideInts)))
+    if (!matchPattern(conv2dLReluMaxpool.stride(), Torch::m_TorchConstantIntList(strideInts)))
       return rewriter.notifyMatchFailure(op, "only support constant int strides");
     
     SmallVector<int64_t, 2> dilationInts;
-    if (!matchPattern(conv2dReluMaxpool.dilation(), Torch::m_TorchConstantIntList(dilationInts)))
+    if (!matchPattern(conv2dLReluMaxpool.dilation(), Torch::m_TorchConstantIntList(dilationInts)))
       return rewriter.notifyMatchFailure(op, "only support constant int dilations");
 
     SmallVector<int64_t, 2> mp_kernel_sizeInts;
-    if (!matchPattern(conv2dReluMaxpool.mp_kernel_size(), Torch::m_TorchConstantIntList(mp_kernel_sizeInts)))
+    if (!matchPattern(conv2dLReluMaxpool.mp_kernel_size(), Torch::m_TorchConstantIntList(mp_kernel_sizeInts)))
       return rewriter.notifyMatchFailure(op, "only support constant int mp_kernel_size");
     
     SmallVector<int64_t, 2> mp_strideInts;
-    if (!matchPattern(conv2dReluMaxpool.mp_stride(), Torch::m_TorchConstantIntList(mp_strideInts)))
+    if (!matchPattern(conv2dLReluMaxpool.mp_stride(), Torch::m_TorchConstantIntList(mp_strideInts)))
       return rewriter.notifyMatchFailure(op, "only support constant int mp_stride");
 
     SmallVector<int64_t, 2> mp_paddingInts;
-    if (!matchPattern(conv2dReluMaxpool.mp_padding(), Torch::m_TorchConstantIntList(mp_paddingInts)))
+    if (!matchPattern(conv2dLReluMaxpool.mp_padding(), Torch::m_TorchConstantIntList(mp_paddingInts)))
       return rewriter.notifyMatchFailure(op, "only support constant int mp_padding");
     
     SmallVector<int64_t, 2> mp_dilationInts;
-    if (!matchPattern(conv2dReluMaxpool.mp_dilation(), Torch::m_TorchConstantIntList(mp_dilationInts)))
+    if (!matchPattern(conv2dLReluMaxpool.mp_dilation(), Torch::m_TorchConstantIntList(mp_dilationInts)))
       return rewriter.notifyMatchFailure(op, "only support constant int mp_dilation");
+
+    int64_t groups;
+    if (!matchPattern(conv2dLReluMaxpool.groups(), Torch::m_TorchConstantInt(&groups)))
+      return rewriter.notifyMatchFailure(op, "only support constant int group");
+
+    bool mp_ceil_mode;
+    if (!matchPattern(conv2dLReluMaxpool.mp_ceil_mode(), Torch::m_TorchConstantBool(&mp_ceil_mode)))
+      return rewriter.notifyMatchFailure(op, "only support bool type mp_ceil_mode");  
+    
+    if (groups != 1)
+      return op->emitError("Only support groups value '1'");
+
+    if (mp_ceil_mode)
+      return op->emitError("Only support mp_ceil_mode value 'False'");
 
     auto stridesAttr = DenseIntElementsAttr::get(
         RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
@@ -504,14 +551,20 @@ public:
     Value initTensor = rewriter.create<linalg::InitTensorOp>(
         loc, resultTensorType.getShape(), elementType);
 
-    Value conv2dReluMaxpoolVal =
+    Value conv2dLReluMaxpoolVal =
         rewriter
             .create<linalg::Conv2DLreluMaxpoolOp>(
                 loc, initTensor.getType(), ValueRange{input, weight, bias, alpha},
                 initTensor, stridesAttr, dilationAttr, mp_kernel_sizeAttr, mp_stridesAttr, mp_paddingAttr,mp_dilationAttr)
             .getResult(0);
 
-    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dReluMaxpoolVal, op->getResult(0).getType());
+    if(op->hasAttr("layer_name")) {
+      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
+      Operation * conv2dReluMaxpoolOps = conv2dLReluMaxpoolVal.getDefiningOp();
+      conv2dReluMaxpoolOps->setAttr(llvm::StringRef("layer_name"), attrVal);
+    }
+    
+    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dLReluMaxpoolVal, op->getResult(0).getType());
     rewriter.replaceOp(op, torchTensorCast);
     return success();
   }

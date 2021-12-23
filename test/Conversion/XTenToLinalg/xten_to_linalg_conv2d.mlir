@@ -1,4 +1,4 @@
-//===- air_to_linalg_conv2d.mlir -------------------------------*- MLIR -*-===//
+//===- xten_to_linalg_conv2d.mlir -------------------------------*- MLIR -*-===//
 //
 // This file is licensed under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -16,7 +16,7 @@ module attributes {torch.debug_module_name = "model"}  {
     %int1 = torch.constant.int 1 
     %int0 = torch.constant.int 0 
     %2 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<!torch.int>
-    %3 = torch.prim.ListConstruct %int0, %int0,%int0, %int0 : (!torch.int, !torch.int,!torch.int, !torch.int) -> !torch.list<!torch.int>
+    %3 = torch.prim.ListConstruct %int0, %int0 : (!torch.int, !torch.int) -> !torch.list<!torch.int>
     %4 = torch.prim.ListConstruct %int2, %int1 : (!torch.int, !torch.int) -> !torch.list<!torch.int>
     %5 = "xten.conv2d"(%arg0, %arg1, %arg2, %2, %3, %4, %int1) : (!torch.vtensor<[1,27,49,42],f32>, !torch.vtensor<[28,27,3,3],f32>, !torch.vtensor<[28],f32>, !torch.list<!torch.int>, !torch.list<!torch.int>, !torch.list<!torch.int>, !torch.int) -> !torch.vtensor<[1,28,45,40],f32>
     return %5 : !torch.vtensor<[1,28,45,40],f32>
