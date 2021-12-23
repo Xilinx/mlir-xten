@@ -79,10 +79,11 @@ private:
   unsigned currentDesign = 1;
 
   void initProperties() {
+    assert(ATenOperatorsSupportedFilePath != "-" && "Provide (absolute or relative) path to JSON list of operators supported (operators_supported.json)");
+    
     auto ss = std::ostringstream{};
-    //std::ifstream file("/proj/ipeng/staff/jcamacho/repos/acdc/xten/lib/Transform/operators_supported.json");
-    std::ifstream file("/proj/ipeng/staff/jcamacho/repos/FlexML/vitis_flexml/third-party/mlir-xten/lib/Transform/operators_supported.json");
-    // TODO: make input json filename as command option
+    std::ifstream file(ATenOperatorsSupportedFilePath);
+
     ss << file.rdbuf();
     auto json_model_str = std::string(ss.str());
     StringRef sr(json_model_str);
@@ -1222,6 +1223,10 @@ private:
 public:
   Option<std::string> ATenVisualGraphFilename{
       *this, "output-file", llvm::cl::desc("Output filename for JSON report"),
+      llvm::cl::init("-")};
+
+  Option<std::string> ATenOperatorsSupportedFilePath{
+      *this, "operators-supported-path", llvm::cl::desc("File path of JSON list of operators supported"),
       llvm::cl::init("-")};
 
   ATenVisualGraphPass(const ATenVisualGraphPass &pass) : output(o) {}

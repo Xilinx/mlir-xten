@@ -8,7 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// RUN: aten-opt %s -aten-visual-graph
+// RUN: aten-opt %s -aten-visual-graph='operators-supported-path=../../../../../../../third-party/mlir-xten/lib/Transform/operators_supported.json'
 
 module attributes {torch.debug_module_name = "model"}  {
   func @forward(%arg0: !torch.vtensor<[1,2,128,128],f32>) -> !torch.vtensor<[?,?,?,?],f32> {
