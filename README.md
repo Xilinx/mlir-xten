@@ -33,8 +33,8 @@ cmake --build build
 git clone https://github.com/Xilinx/mlir-xten.git
 mkdir build; cd build
 cmake ..\
-    -DCMAKE_C_COMPILER=clang
-    -DCMAKE_CXX_COMPILER=clang++
+    -DCMAKE_C_COMPILER=clang \
+    -DCMAKE_CXX_COMPILER=clang++ \
     -DLLVM_DIR=${absolute path to torchMlirBuild}/cmake/llvm \
     -DMLIR_DIR=${absolute path to torchMlirBuild}/cmake/mlir \
     -DTORCH_MLIR_SOURCE_DIR=${absolute path to torchMlirSource} \
