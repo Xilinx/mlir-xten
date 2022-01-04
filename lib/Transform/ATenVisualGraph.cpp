@@ -425,7 +425,8 @@ private:
       padding_v      = getPadding(mOp);
 
       output = ((Operation *)maxPool2dOp)->getResult(0);
-      
+
+      uint64_t maxpool_storage_bytes = 0;
       std::vector<int64_t> kernel_shape;
       std::vector<int64_t> padding;
       std::vector<int64_t> stride;
@@ -435,18 +436,15 @@ private:
       unpack_int_list(stride_v,  stride);
 
       ////////////////For DEMO
-      //if (padding[0] != padding[1] and padding[0] == 0) {
-      //	padding.push_back(0);
-      //	padding.push_back(1);
-      //}
+      if (padding[0] != padding[1] and padding[0] == 0) {
+      	padding.push_back(0);
+      	padding.push_back(1);
+      }
       ///////////////////////
       
       std::string kernel_str   = vector_to_str(kernel_shape);
       std::string padding_str  = vector_to_str(padding);      
       std::string stride_str   = vector_to_str(stride);
-      
-      uint64_t storage_i_o_bytes = storage_bytes_of_input_and_output(input, output);
-      std::string storage_str  = std::to_string(storage_i_o_bytes);
       
       fillPropertiesObject({"Attributes.kernel shape", kernel_str},    propertiesArray, separately_return_storage, "aten.max_pool2d");      
       fillPropertiesObject({"Attributes.padding",      padding_str},   propertiesArray, separately_return_storage, "aten.max_pool2d");
@@ -456,7 +454,18 @@ private:
       layerStatsMap = getLayerStatsMap(maxPool2dOp);           
       
       fillPropertiesObject({"Computations.Vec MAX", std::to_string(layerStatsMap["ops:>"])}, propertiesArray, separately_return_storage, "max_pool2d");
-      fillPropertiesObject({"Storage.Bytes",    storage_str},     propertiesArray);
+
+      if (separately_return_storage) {
+	if (storage_n)
+	  *storage_n = maxpool_storage_bytes;
+      } else {
+	Value input  = getInput(maxPool2dOp);
+	Value output = ((Operation *) maxPool2dOp)->getResult(0); 	
+	uint64_t storage_i_o_bytes = storage_bytes_of_input_and_output(input, output);
+
+	std::string storage_str  = std::to_string(maxpool_storage_bytes + storage_i_o_bytes);	
+	fillPropertiesObject({"Storage.Bytes",    storage_str},       propertiesArray);
+      }      
   }
 
   inline Value getAlpha(Torch::AtenReluOp reluOp) {
@@ -769,10 +778,10 @@ private:
     fillPropertiesConvOp<xten::Conv2dLReLUMaxPoolOp>(xtenConv2LReluMaxPoolOp, propertiesArray,
 						     true, &conv_storage, 0);
     //For DEMO
-    /*    auto tensor_size = propagatedTensorSizesMap[xtenConv2LReluMaxPoolOp][true]["value"];    
+    auto tensor_size = propagatedTensorSizesMap[xtenConv2LReluMaxPoolOp][true]["value"];    
     std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" + std::to_string(tensor_size[1]) + "c" +
       std::to_string(tensor_size[2]) + "h" + std::to_string(tensor_size[3]) + "w";
-      fusedToUnfuseOutputMap[xtenConv2LReluMaxPoolOp]["aten.conv2d"] = tensor_size_str; */
+    fusedToUnfuseOutputMap[xtenConv2LReluMaxPoolOp]["aten.conv2d"] = tensor_size_str; 
     ///////////////////////////////////////
 
     
@@ -782,10 +791,10 @@ private:
     fillPropertiesMaxPool2dOp<xten::Conv2dLReLUMaxPoolOp>(xtenConv2LReluMaxPoolOp, propertiesArray,
     							  true, &maxpool_storage, 2);
     //For DEMO
-    /*    tensor_size = propagatedTensorSizesMap[xtenConv2LReluMaxPoolOp][false]["value"];
+    tensor_size = propagatedTensorSizesMap[xtenConv2LReluMaxPoolOp][false]["value"];
     tensor_size_str = std::to_string(tensor_size[0]) + "n" + std::to_string(tensor_size[1]) + "c" +
       std::to_string(tensor_size[2]) + "h" + std::to_string(tensor_size[3]) + "w";
-      fusedToUnfuseOutputMap[xtenConv2LReluMaxPoolOp]["aten.max_pool2d"] = tensor_size_str; */
+      fusedToUnfuseOutputMap[xtenConv2LReluMaxPoolOp]["aten.max_pool2d"] = tensor_size_str; 
     ///////////////////////////////////////
     
     uint64_t storage = conv_storage + maxpool_storage + lrelu_storage;
@@ -806,11 +815,10 @@ private:
 					      true, &conv_storage, 0);
 
     //For DEMO
-    /*
     auto tensor_size = propagatedTensorSizesMap[xtenConv2dLReluOp][false]["value"];    
     std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" + std::to_string(tensor_size[1]) + "c" +
       std::to_string(tensor_size[2]) + "h" + std::to_string(tensor_size[3]) + "w";
-    fusedToUnfuseOutputMap[xtenConv2dLReluOp]["aten.conv2d"] = tensor_size_str; */
+    fusedToUnfuseOutputMap[xtenConv2dLReluOp]["aten.conv2d"] = tensor_size_str; 
     ///////////////////////////////////////
     
     fillPropertiesReLUOp<xten::Conv2dLReLUOp>(xtenConv2dLReluOp, propertiesArray,
@@ -965,7 +973,7 @@ private:
   }
 
   //////////// For DEMO
-  /*std::vector<int64_t> getOutputTensorDivFactors(Operation *op) {
+  std::vector<int64_t> getOutputTensorDivFactors(Operation *op) {
     std::vector<int64_t> n_stride = {1, 1};
     
     if (auto xtenConv2dOp = mlir::dyn_cast<xten::Conv2dOp>(op)) {
@@ -998,7 +1006,7 @@ private:
     Torch::BaseTensorType weightTy = weight.getType().cast<Torch::BaseTensorType>();    
     cout   = weightTy.getSizes()[0];    
     return cout;
-    }*/
+  }
   ///////////////////
   
   void fillPortProperties(Operation *op, bool isInput, llvm::json::Array &portPropsArray,
@@ -1053,8 +1061,8 @@ private:
 	bytes_str = std::to_string(total_bytes(sizeResultTy, total_inputs));	
       }
       
-      //For DEMO only
-      /*      auto value_v = propagatedTensorSizesMap[op][isInput]["value"];
+      //For TinyYolo-DEMO only
+      auto value_v = propagatedTensorSizesMap[op][isInput]["value"];
       auto bit_width = propagatedTensorSizesMap[op][isInput]["type"][0];
       uint64_t n, c, h, w;
       n = value_v[0];
@@ -1066,7 +1074,7 @@ private:
       value_str = std::to_string(n) + "n" + std::to_string(c) +
 	"c" + std::to_string(h) + "h" + std::to_string(w) + "w";
       type_str  = propagatedTensorTypeMap[op];
-      bytes_str = std::to_string( (bit_width/BYTE_SIZE_IN_BIT) * total_inputs); */
+      bytes_str = std::to_string( (bit_width/BYTE_SIZE_IN_BIT) * total_inputs); 
       
       /////////////////////////////////////////
       
@@ -1102,19 +1110,19 @@ private:
       portObject["direction"] = "in";
       
       llvm::json::Array portPropsArray;
-      fillPortProperties(op_input.first, true, portPropsArray);
+      //fillPortProperties(op_input.first, true, portPropsArray);
       ///// For DEMO only
-      //fillPortProperties(op, true, portPropsArray);
-      ////////////////////////////////////////////////
+      fillPortProperties(op, true, portPropsArray);
 
       /*For each fused operator, also add to JSON model sub-outputs of unfused parts of fused op  */
-      /*auto op_name = getOperationNameStr(op);
+      auto op_name = getOperationNameStr(op);
       if (fusedOpToUnfusedOpsMap.find(op_name) != fusedOpToUnfusedOpsMap.end()) {
 	unsigned unfused_id = 1;
 	for (auto unfused_op_name : fusedOpToUnfusedOpsMap[op_name]) {
 	  fillPortProperties(op, true, portPropsArray, true, unfused_op_name, unfused_id++);
 	}
-	}*/
+      }
+      ////////////////////////////////////////////////
 
       portObject["properties"] = llvm::json::Value(std::move(portPropsArray));      
       portsArray.push_back(llvm::json::Value(std::move(portObject)));      
@@ -1226,7 +1234,7 @@ public:
       llvm::cl::init("-")};
 
   Option<std::string> ATenOperatorsSupportedFilePath{
-      *this, "operators-supported-path", llvm::cl::desc("File path of JSON list of operators supported"),
+      *this, "operators-supported-path", llvm::cl::desc("Path of JSON file that has list of operators supported (REQUIRED)"),
       llvm::cl::init("-")};
 
   ATenVisualGraphPass(const ATenVisualGraphPass &pass) : output(o) {}
@@ -1286,7 +1294,10 @@ public:
 
     clearAllDataStructures();
 
-    //Operation *prevOp = nullptr; //////For DEMO
+    //////For DEMO
+    Operation *prevOp = nullptr; 
+    /////////
+
     unsigned currentOp  = 0;    
     unsigned currPortId = 0;    
     forward.walk([&](Operation *op) {
@@ -1324,8 +1335,8 @@ public:
 	  }
 	} 	
 
-	// ------------- For DEMO Only --------------------
-	/*	uint64_t o, c, h, w;
+	// ------------- For DEMO 
+	uint64_t o, c, h, w;
 	uint64_t bit_width;
 	std::string type_str;
 	bool isInput  = true;
@@ -1371,11 +1382,7 @@ public:
 	std::string outputStr = std::to_string(o2) + "o" + std::to_string(c2) +
 	  "c" + std::to_string(h2) + "h" + std::to_string(w2) + "w";
  
-	std::cout << inputStr << std::endl;
-	std::cout << outputStr << std::endl << std::endl;
-	
 	prevOp = op;
-	*/
 	//////////////////////////////////////
 	
 	updateOperatorTypes(op);
