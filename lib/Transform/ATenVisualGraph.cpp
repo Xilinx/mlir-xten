@@ -68,6 +68,8 @@ private:
   std::unordered_map<Operation *, Value > inputOpToIFMValue;
 
   ///// For DEMO only
+  bool propagate_tensor_sizes;
+
   std::unordered_map<Operation *,
 		     std::unordered_map<bool,
 					std::unordered_map<std::string,
@@ -77,7 +79,7 @@ private:
   ///////////////////////
   
   unsigned currentDesign = 1;
-
+  
   void initProperties() {
     assert(ATenOperatorsSupportedFilePath != "-" && "Provide (absolute or relative) path to JSON list of operators supported (operators_supported.json)");
     
@@ -284,8 +286,6 @@ private:
   } 
 
   void fillPropertiesCatOp(Torch::AtenCatOp &catOp, llvm::json::Array &propertiesArray) {
-    //Value output = aluOp.getResult();
-
     std::string storage_str      = "";//std::to_string(storage_i_o_bytes);
 
     fillPropertiesObject({"Storage.Bytes",    storage_str},  propertiesArray);
@@ -388,10 +388,6 @@ private:
     return maxPoolOp.padding();
   }
 
-  inline Value getMaxPoolInput(Torch::AtenMaxPool2dOp maxPoolOp) {
-    return maxPoolOp.self();
-  }
-  
   inline Value getKernelSize(xten::Conv2dLReLUMaxPoolOp maxPoolOp) {
     return maxPoolOp.mp_kernel_size();
   }
@@ -404,10 +400,6 @@ private:
     return maxPoolOp.mp_padding();
   }
 
-  inline Value getMaxPoolInput(xten::Conv2dLReLUMaxPoolOp maxPoolOp) {
-    return maxPoolOp.input();
-  }
-  
   template<class T>
   void fillPropertiesMaxPool2dOp(T &maxPool2dOp, llvm::json::Array &propertiesArray,
 				 bool separately_return_storage = false, uint64_t *storage_n = nullptr,
@@ -778,10 +770,12 @@ private:
     fillPropertiesConvOp<xten::Conv2dLReLUMaxPoolOp>(xtenConv2LReluMaxPoolOp, propertiesArray,
 						     true, &conv_storage, 0);
     //For DEMO
-    auto tensor_size = propagatedTensorSizesMap[xtenConv2LReluMaxPoolOp][true]["value"];    
-    std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" + std::to_string(tensor_size[1]) + "c" +
-      std::to_string(tensor_size[2]) + "h" + std::to_string(tensor_size[3]) + "w";
-    fusedToUnfuseOutputMap[xtenConv2LReluMaxPoolOp]["aten.conv2d"] = tensor_size_str; 
+    if (propagate_tensor_sizes) {
+      auto tensor_size = propagatedTensorSizesMap[xtenConv2LReluMaxPoolOp][true]["value"];    
+      std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" + std::to_string(tensor_size[1]) + "c" +
+	std::to_string(tensor_size[2]) + "h" + std::to_string(tensor_size[3]) + "w";
+      fusedToUnfuseOutputMap[xtenConv2LReluMaxPoolOp]["aten.conv2d"] = tensor_size_str; 
+    }
     ///////////////////////////////////////
 
     
@@ -791,10 +785,12 @@ private:
     fillPropertiesMaxPool2dOp<xten::Conv2dLReLUMaxPoolOp>(xtenConv2LReluMaxPoolOp, propertiesArray,
     							  true, &maxpool_storage, 2);
     //For DEMO
-    tensor_size = propagatedTensorSizesMap[xtenConv2LReluMaxPoolOp][false]["value"];
-    tensor_size_str = std::to_string(tensor_size[0]) + "n" + std::to_string(tensor_size[1]) + "c" +
-      std::to_string(tensor_size[2]) + "h" + std::to_string(tensor_size[3]) + "w";
+    if (propagate_tensor_sizes) {
+      auto tensor_size = propagatedTensorSizesMap[xtenConv2LReluMaxPoolOp][false]["value"];
+      std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" + std::to_string(tensor_size[1]) + "c" +
+	std::to_string(tensor_size[2]) + "h" + std::to_string(tensor_size[3]) + "w";
       fusedToUnfuseOutputMap[xtenConv2LReluMaxPoolOp]["aten.max_pool2d"] = tensor_size_str; 
+    }
     ///////////////////////////////////////
     
     uint64_t storage = conv_storage + maxpool_storage + lrelu_storage;
@@ -815,10 +811,12 @@ private:
 					      true, &conv_storage, 0);
 
     //For DEMO
-    auto tensor_size = propagatedTensorSizesMap[xtenConv2dLReluOp][false]["value"];    
-    std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" + std::to_string(tensor_size[1]) + "c" +
-      std::to_string(tensor_size[2]) + "h" + std::to_string(tensor_size[3]) + "w";
-    fusedToUnfuseOutputMap[xtenConv2dLReluOp]["aten.conv2d"] = tensor_size_str; 
+    if (propagate_tensor_sizes) {
+      auto tensor_size = propagatedTensorSizesMap[xtenConv2dLReluOp][false]["value"];    
+      std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" + std::to_string(tensor_size[1]) + "c" +
+	std::to_string(tensor_size[2]) + "h" + std::to_string(tensor_size[3]) + "w";
+      fusedToUnfuseOutputMap[xtenConv2dLReluOp]["aten.conv2d"] = tensor_size_str; 
+    }
     ///////////////////////////////////////
     
     fillPropertiesReLUOp<xten::Conv2dLReLUOp>(xtenConv2dLReluOp, propertiesArray,
@@ -1062,20 +1060,21 @@ private:
       }
       
       //For TinyYolo-DEMO only
-      auto value_v = propagatedTensorSizesMap[op][isInput]["value"];
-      auto bit_width = propagatedTensorSizesMap[op][isInput]["type"][0];
-      uint64_t n, c, h, w;
-      n = value_v[0];
-      c = value_v[1];
-      h = value_v[2];
-      w = value_v[3];
-      total_inputs = n * c * h * w;
-
-      value_str = std::to_string(n) + "n" + std::to_string(c) +
-	"c" + std::to_string(h) + "h" + std::to_string(w) + "w";
-      type_str  = propagatedTensorTypeMap[op];
-      bytes_str = std::to_string( (bit_width/BYTE_SIZE_IN_BIT) * total_inputs); 
-      
+      if (propagate_tensor_sizes) {
+	auto value_v = propagatedTensorSizesMap[op][isInput]["value"];
+	auto bit_width = propagatedTensorSizesMap[op][isInput]["type"][0];
+	uint64_t n, c, h, w;
+	n = value_v[0];
+	c = value_v[1];
+	h = value_v[2];
+	w = value_v[3];
+	total_inputs = n * c * h * w;
+	
+	value_str = std::to_string(n) + "n" + std::to_string(c) +
+	  "c" + std::to_string(h) + "h" + std::to_string(w) + "w";
+	type_str  = propagatedTensorTypeMap[op];
+	bytes_str = std::to_string( (bit_width/BYTE_SIZE_IN_BIT) * total_inputs); 
+      }
       /////////////////////////////////////////
       
       portPropsObject["name"]    = port_name_prefix + ".Tensor";
@@ -1112,14 +1111,16 @@ private:
       llvm::json::Array portPropsArray;
       //fillPortProperties(op_input.first, true, portPropsArray);
       ///// For DEMO only
-      fillPortProperties(op, true, portPropsArray);
+      if (propagate_tensor_sizes) {
+	fillPortProperties(op, true, portPropsArray);
 
-      /*For each fused operator, also add to JSON model sub-outputs of unfused parts of fused op  */
-      auto op_name = getOperationNameStr(op);
-      if (fusedOpToUnfusedOpsMap.find(op_name) != fusedOpToUnfusedOpsMap.end()) {
-	unsigned unfused_id = 1;
-	for (auto unfused_op_name : fusedOpToUnfusedOpsMap[op_name]) {
-	  fillPortProperties(op, true, portPropsArray, true, unfused_op_name, unfused_id++);
+	/*For each fused operator, also add to JSON model sub-outputs of unfused parts of fused op  */
+	auto op_name = getOperationNameStr(op);
+	if (fusedOpToUnfusedOpsMap.find(op_name) != fusedOpToUnfusedOpsMap.end()) {
+	  unsigned unfused_id = 1;
+	  for (auto unfused_op_name : fusedOpToUnfusedOpsMap[op_name]) {
+	    fillPortProperties(op, true, portPropsArray, true, unfused_op_name, unfused_id++);
+	  }
 	}
       }
       ////////////////////////////////////////////////
@@ -1237,6 +1238,10 @@ public:
       *this, "operators-supported-path", llvm::cl::desc("Path of JSON file that has list of operators supported (REQUIRED)"),
       llvm::cl::init("-")};
 
+  Option<bool> ATenPropagateTensorSizesFlag{
+      *this, "propagate-tensor-sizes", llvm::cl::desc("Boolean flag to indicate if pass should propagate tensor sizes (only works with Tiny Yolo)"),
+      llvm::cl::init(false)};
+
   ATenVisualGraphPass(const ATenVisualGraphPass &pass) : output(o) {}
 
   ATenVisualGraphPass()
@@ -1277,7 +1282,8 @@ public:
 
   void runOnOperation() override {
     initProperties();
-    
+    propagate_tensor_sizes = ATenPropagateTensorSizesFlag;
+
     // I don't change anything  
     markAllAnalysesPreserved();
 
@@ -1336,53 +1342,55 @@ public:
 	} 	
 
 	// ------------- For DEMO 
-	uint64_t o, c, h, w;
-	uint64_t bit_width;
-	std::string type_str;
-	bool isInput  = true;
-	bool isOutput = not isInput;
-	if (currentOp == 0) {
-	  Value cInput = getInput(op);
-	  Torch::BaseTensorType inputTy = cInput.getType().cast<Torch::BaseTensorType>();	  
-	  o   = inputTy.getSizes()[0];
-	  c   = inputTy.getSizes()[1];	  
-	  h   = inputTy.getSizes()[2];
-	  w   = inputTy.getSizes()[3];
-	  bit_width = total_bytes(inputTy, 1) * BYTE_SIZE_IN_BIT;
-	  type_str = typeStr(inputTy);
+	if (propagate_tensor_sizes) {
+	  uint64_t o, c, h, w;
+	  uint64_t bit_width;
+	  std::string type_str;
+	  bool isInput  = true;
+	  bool isOutput = not isInput;
+	  if (currentOp == 0) {
+	    Value cInput = getInput(op);
+	    Torch::BaseTensorType inputTy = cInput.getType().cast<Torch::BaseTensorType>();	  
+	    o   = inputTy.getSizes()[0];
+	    c   = inputTy.getSizes()[1];	  
+	    h   = inputTy.getSizes()[2];
+	    w   = inputTy.getSizes()[3];
+	    bit_width = total_bytes(inputTy, 1) * BYTE_SIZE_IN_BIT;
+	    type_str = typeStr(inputTy);
 
-	} else {
-	  auto input_v = propagatedTensorSizesMap[prevOp][isOutput]["value"];
-	  o = input_v[0];
-	  c = input_v[1];
-	  h = input_v[2];
-	  w = input_v[3];
-	  bit_width    = propagatedTensorSizesMap[prevOp][isOutput]["type"][0];
-	  type_str     = propagatedTensorTypeMap[prevOp];
-	}
+	  } else {
+	    auto input_v = propagatedTensorSizesMap[prevOp][isOutput]["value"];
+	    o = input_v[0];
+	    c = input_v[1];
+	    h = input_v[2];
+	    w = input_v[3];
+	    bit_width    = propagatedTensorSizesMap[prevOp][isOutput]["type"][0];
+	    type_str     = propagatedTensorTypeMap[prevOp];
+	  }
 	
-	auto stride_v = getOutputTensorDivFactors(op);
-	uint64_t o2, c2, h2, w2;
+	  auto stride_v = getOutputTensorDivFactors(op);
+	  uint64_t o2, c2, h2, w2;
 	
-	o2 = o;
-	c2 = getChannelsOut(op);
-	h2 = h/stride_v[0];
-	w2 = w/stride_v[1];
+	  o2 = o;
+	  c2 = getChannelsOut(op);
+	  h2 = h/stride_v[0];
+	  w2 = w/stride_v[1];
 
-	propagatedTensorSizesMap[op][isInput]["value"]  = {o,c,h,w};	
-	propagatedTensorSizesMap[op][isOutput]["value"] = {o2,c2,h2,w2};
+	  propagatedTensorSizesMap[op][isInput]["value"]  = {o,c,h,w};	
+	  propagatedTensorSizesMap[op][isOutput]["value"] = {o2,c2,h2,w2};
 
-	propagatedTensorSizesMap[op][isInput]["type"]  = {bit_width};	
-	propagatedTensorSizesMap[op][isOutput]["type"] = {bit_width};
+	  propagatedTensorSizesMap[op][isInput]["type"]  = {bit_width};	
+	  propagatedTensorSizesMap[op][isOutput]["type"] = {bit_width};
 
-	propagatedTensorTypeMap[op] = type_str;
+	  propagatedTensorTypeMap[op] = type_str;
 	
-	std::string inputStr  = std::to_string(o) + "o" + std::to_string(c) +
-	  "c" + std::to_string(h) + "h" + std::to_string(w) + "w";
-	std::string outputStr = std::to_string(o2) + "o" + std::to_string(c2) +
-	  "c" + std::to_string(h2) + "h" + std::to_string(w2) + "w";
+	  std::string inputStr  = std::to_string(o) + "o" + std::to_string(c) +
+	    "c" + std::to_string(h) + "h" + std::to_string(w) + "w";
+	  std::string outputStr = std::to_string(o2) + "o" + std::to_string(c2) +
+	    "c" + std::to_string(h2) + "h" + std::to_string(w2) + "w";
  
-	prevOp = op;
+	  prevOp = op;
+	}
 	//////////////////////////////////////
 	
 	updateOperatorTypes(op);
