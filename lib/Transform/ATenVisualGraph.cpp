@@ -571,8 +571,8 @@ private:
   }
 
   void fillPropertiesLinearOp(Torch::AtenLinearOp &linearOp, llvm::json::Array &propertiesArray) {
-      Value weight = linearOp.weight(); //getBnWeight(batchNormOp);
-      Value bias   = linearOp.bias(); //getBnBias(batchNormOp);
+      Value weight = linearOp.weight(); 
+      Value bias   = linearOp.bias(); 
  
       Torch::BaseTensorType weightTy = weight.getType().cast<Torch::BaseTensorType>();      
       Torch::BaseTensorType biasTy   = bias.getType().cast<Torch::BaseTensorType>();
@@ -603,13 +603,29 @@ private:
       
       fillPropertiesObject({"Storage.Bytes",    storage_str},   propertiesArray);            
   }
+
+  inline Value getBnWeight(Torch::AtenBatchNormOp bnOp) {
+    return bnOp.weight();
+  }
+
+  inline Value getBnWeight(xten::Conv2dBatchNormReLUOp xtenBnOp) {
+    return xtenBnOp.bn_weight();
+  }
   
+  inline Value getBnBias(Torch::AtenBatchNormOp bnOp) {
+    return bnOp.bias();
+  }
+
+  inline Value getBnBias(xten::Conv2dBatchNormReLUOp xtenBnOp) {
+    return xtenBnOp.bn_bias();
+  }
+
   template<class T>
   void fillPropertiesBatchNormOp(T &batchNormOp, llvm::json::Array &propertiesArray,
 				 bool separately_return_storage = false, uint64_t *storage_n = nullptr,
 				 unsigned unfused_op_id = 0) {
-      Value weight = batchNormOp.weight(); //getBnWeight(batchNormOp);
-      Value bias   = batchNormOp.bias(); //getBnBias(batchNormOp);
+      Value weight = getBnWeight(batchNormOp);
+      Value bias   = getBnBias(batchNormOp);
  
       Torch::BaseTensorType weightTy = weight.getType().cast<Torch::BaseTensorType>();      
       Torch::BaseTensorType biasTy   = bias.getType().cast<Torch::BaseTensorType>();
@@ -745,14 +761,18 @@ private:
   void fillPropertiesOp(xten::Conv2dBatchNormReLUOp &xtenConv2dBnReluOp, llvm::json::Array &propertiesArray) {
     uint64_t conv_storage;
     uint64_t bn_storage;
-  
+    uint64_t relu_storage = 0;
+
     fillPropertiesConvOp<xten::Conv2dBatchNormReLUOp>(xtenConv2dBnReluOp, propertiesArray,
 						      true, &conv_storage, 0);
 
     fillPropertiesBatchNormOp<xten::Conv2dBatchNormReLUOp>(xtenConv2dBnReluOp, propertiesArray,
     							   true, &bn_storage, 1);
 
-    uint64_t storage = conv_storage + bn_storage;
+    //fillPropertiesReLUOp<xten::Conv2dBatchNormReLUOp>(xtenConv2dBnReluOp, propertiesArray,
+    //						      true, &relu_storage, 2);
+
+    uint64_t storage = conv_storage + bn_storage + relu_storage;
 
     Value input  = xtenConv2dBnReluOp.input();
     Value output = xtenConv2dBnReluOp.getResult();
@@ -930,17 +950,19 @@ private:
       fillPropertiesBinaryALUOp<Torch::AtenDivTensorOp>(divOp, propertiesArray);
     } else if (auto gatherOp    = dyn_cast<Torch::AtenGatherOp>(op)) {
       fillPropertiesGatherOp(gatherOp, propertiesArray);
-    } else if (auto sliceOp    = dyn_cast<Torch::AtenSliceTensorOp>(op)) {
+    } else if (auto sliceOp     = dyn_cast<Torch::AtenSliceTensorOp>(op)) {
       fillPropertiesSliceOp(sliceOp, propertiesArray);
-    } else if (auto xtenConv2dOp = mlir::dyn_cast<xten::Conv2dOp>(op)) {
+    } else if (auto xtenConv2dOp             = mlir::dyn_cast<xten::Conv2dOp>(op)) {
       fillPropertiesConvOp<xten::Conv2dOp>(xtenConv2dOp, propertiesArray);          
-    } else if (auto xtenConv2dBnReluOp = mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
+    } else if (auto xtenConv2dBnReluOp       = mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
       fillPropertiesOp(xtenConv2dBnReluOp, propertiesArray);      
-    } else if (auto xtenConv2dLReluOp = mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
+    } else if (auto xtenConv2dLReluOp        = mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
       fillPropertiesOp(xtenConv2dLReluOp, propertiesArray);      
     } else if (auto xtenConv2dLReluMaxPoolOp = mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
       fillPropertiesOp(xtenConv2dLReluMaxPoolOp, propertiesArray);      
-    } 
+    } else if (auto xtenAddOp                = mlir::dyn_cast<xten::AddOp>(op)  ) {
+      //fillPropertiesBinaryALUOp<xten::AddOp>(xtenAddOp, propertiesArray); 
+    }
 
     return propertiesArray;
   }
@@ -956,13 +978,13 @@ private:
       opInput = getInput(reluOp);
     } else if (auto addOp       = dyn_cast<Torch::AtenAddTensorOp>(op)) {
       opInput = getInput(addOp); //TODO: add Tensor technically has two inputs 
-    } else if (auto xtenConv2dOp = mlir::dyn_cast<xten::Conv2dOp>(op)) {
+    } else if (auto xtenConv2dOp              = mlir::dyn_cast<xten::Conv2dOp>(op)) {
       opInput = getInput(xtenConv2dOp);
-    } else if (auto xtenConv2dBnReluOp = mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
+    } else if (auto xtenConv2dBnReluOp        = mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
       opInput = getInput(xtenConv2dBnReluOp);
-    } else if (auto xtenConv2dLReluOp = mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
+    } else if (auto xtenConv2dLReluOp         = mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
       opInput = getInput(xtenConv2dLReluOp);
-    } else if (auto xtenConv2dLReluMaxPoolOp = mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
+    } else if (auto xtenConv2dLReluMaxPoolOp  = mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
       opInput = getInput(xtenConv2dLReluMaxPoolOp);
     }
     //TODO: expand switch table for more ops
@@ -1109,7 +1131,7 @@ private:
       portObject["direction"] = "in";
       
       llvm::json::Array portPropsArray;
-      //fillPortProperties(op_input.first, true, portPropsArray);
+
       ///// For DEMO only
       if (propagate_tensor_sizes) {
 	fillPortProperties(op, true, portPropsArray);
@@ -1122,8 +1144,9 @@ private:
 	    fillPortProperties(op, true, portPropsArray, true, unfused_op_name, unfused_id++);
 	  }
 	}
-      }
-      ////////////////////////////////////////////////
+      } ////////////////////////////////////////////////
+      else 
+ 	fillPortProperties(op_input.first, true, portPropsArray);
 
       portObject["properties"] = llvm::json::Value(std::move(portPropsArray));      
       portsArray.push_back(llvm::json::Value(std::move(portObject)));      
@@ -1208,8 +1231,8 @@ private:
     unsigned connection_id = 0;
     
     for (auto const &conns_pair : connsInToOutMap) {
-      Operation *input_op   = conns_pair.first;
-      const auto output_ops   = conns_pair.second;
+      Operation *input_op    = conns_pair.first;
+      const auto output_ops  = conns_pair.second;
       for (auto const &output_op_pair : output_ops) {
 	llvm::json::Object connectionObject;
 	Operation *output_op = output_op_pair.first;
@@ -1219,7 +1242,7 @@ private:
 	unsigned inPortId   = output_op_pair.second;
 	unsigned outPortId  = connsOutToInMap[output_op][input_op];
 						       
-	connectionObject["id"] = std::to_string(connection_id++);
+	connectionObject["id"]           = std::to_string(connection_id++);
 	connectionObject["from_port_id"] = std::to_string(outPortId);
 	connectionObject["to_port_id"]   = std::to_string(inPortId); 
 	connectionsArray.push_back(llvm::json::Value(std::move(connectionObject)));
@@ -1227,6 +1250,21 @@ private:
     }
 
     return connectionsArray;
+  }
+
+  std::vector<Operation *> vectorValidArgOps(Operation *argOp, Operation *op) {
+    auto vectorArgOps = std::vector<Operation *>();
+    if (opIsValid(argOp)) 	      
+      vectorArgOps.push_back(argOp);
+    else if (getOperationNameStr(op)    == "torch.aten.cat" and 
+	     getOperationNameStr(argOp) == "torch.prim.ListConstruct") {
+      for (auto listArgOp_ref : argOp->getOperands()) {
+	if (auto listArgOp = listArgOp_ref.getDefiningOp()) 
+	  if (opIsValid(listArgOp))
+	    vectorArgOps.push_back(listArgOp);
+      }
+    } 
+    return vectorArgOps;
   }
   
 public:
@@ -1262,7 +1300,7 @@ public:
     flexmlDesigns     = emitJSONDesigns();
     flexmlLayers      = emitJSONLayers();
     flexmlConnections = emitJSONConnections();
-    
+
     //Fill Top JSON properties
     flexmlTop["schema_version"]   = llvm::json::Value(std::move(flexmlSchema));
     flexmlTop["designs"]          = llvm::json::Value(std::move(flexmlDesigns));
@@ -1325,22 +1363,23 @@ public:
 	opToName[op] = std::make_pair(op_str + "_" + std::to_string(opTypes[op_str]), layer_name);
 	opToId[op]   = currentOp;
 
-	for (auto output_op : op->getOperands()) {
-	  if (auto s_op = output_op.getDefiningOp()) {
-	    if (opIsValid(s_op)) {
-	      // where Op accepts S_Op as input  <===> Op(%S_Op, ...) 
-	      connsInToOutMap[op][s_op] = currPortId++;
-	    
-	      // where output of S_Op is sent to input port of Op <===>  S_Op.output ----> Op.input_port_example
+	for (auto argOp_ref : op->getOperands()) {
+	  if (auto argOp = argOp_ref.getDefiningOp()) {
+	    auto vectorArgOps = vectorValidArgOps(argOp, op);
+	    for (auto argOp : vectorArgOps) {
+	      // where Op accepts ArgOp as input  <===> Op(%ArgOp, ...) 
+	      connsInToOutMap[op][argOp] = currPortId++;
+	      
+	      // where output of ArgOp is sent to input port of Op <===>  ArgOp.output ----> Op.input_port_example
 	      //same output port goes to several next input ports -> this output port should have one Port ID
-	      if (connsOutToInMap[s_op].size() == 0)
-		connsOutToInMap[s_op][op] = currPortId++;
+	      if (connsOutToInMap[argOp].size() == 0)
+		connsOutToInMap[argOp][op] = currPortId++;
 	      else
-		connsOutToInMap[s_op][op] = connsOutToInMap[s_op].begin()->second;
+		connsOutToInMap[argOp][op] = connsOutToInMap[argOp].begin()->second;
 	    }
 	  }
-	} 	
-
+	}
+       	
 	// ------------- For DEMO 
 	if (propagate_tensor_sizes) {
 	  uint64_t o, c, h, w;
@@ -1396,12 +1435,12 @@ public:
 	updateOperatorTypes(op);
 	currentOp++;      
     });
-
+    
     /* for operators whose outputs are the return values of 'graph' */
     for (const auto &op_pair : opToName) {
       Operation *op = op_pair.first;
       if (connsInToOutMap.find(op) == connsInToOutMap.end()) {       
-      //TODO: for the first input Ops (aka source Ops) in the NN graph
+        //For the first input Ops (aka source Ops) in the NN graph
         connsInToOutMap[op][op] = currPortId++;
 	inputOpToIFMValue[op]   = getInput(op);
       }

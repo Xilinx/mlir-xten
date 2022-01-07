@@ -86,11 +86,6 @@
 	    ]		
 	},
 	{
- 	    "name" : "torch.prim.ListConstruct_",
-	    "properties" : [		
-	    ]		
-	},	
-	{
 	    "name" : "torch.aten.addmm",
 	    "properties" : [
 		["Attributes.Mat1.Tensor", "", "string"],
@@ -241,7 +236,7 @@
 		["Attributes.Index.type", "Numerical type of each Index number", "string"],
 		["Attributes.Index.Bytes", "Size of index in bytes", "long"],
 		["Attributes.dim", "Value of dimension", "long"],		
-		["Storage.Bytes", "Total storage required for Gather engine", "long"]		
+		["Storage.Bytes", "Total storage required for Slicer engine", "long"]		
 	    ]
 	},		
 	{
@@ -258,7 +253,7 @@
 		["Attributes.strides", "Value of strides", "string"],		
 		["Attributes.padding", "Value of padding", "string"],
 		["Computation.MACs", "Total units of MAC units in engine", "long"],		
-		["Storage.Bytes", "Total storage required for XTen-Conv2d engine", "string"] 
+		["Storage.Bytes", "Total storage required for this engine", "string"] 
 	    ]
 	},
 	{ 
@@ -280,9 +275,9 @@
 		["Attributes.Mean.Byes", "Size of mean in bytes", "string"],
 		["Computation.MACs", "Total units of MAC units in engine", "long"],
 		["Computation.Comparison", "Total number of > comparator units in engine", "long"],		
-		["Storage.Bytes", "Total storage required for fused XTen-Conv2dBnRelu engine", "string"]		
+		["Storage.Bytes", "Total storage required for this engine", "string"]		
 	    ]	    
-	},
+	}, 
 	{
 	    "name" : "xten.conv2d_relu",
 	    "fused" : ["aten.conv2d", "aten.relu"],	    	    
@@ -299,7 +294,7 @@
 		["Attributes.padding", "Value of padding", "string"],    		
 		["Computation.MACs", "Total units of MAC units in engine", "long"],
 		["Computation.Comparison", "Total number of > comparator units in engine", "long"],		
-		["Storage.Bytes", "Total storage required for LReLU engine", "long"]  		
+		["Storage.Bytes", "Total storage required for this engine", "long"]  		
 	    ]
 	},
 	{
@@ -318,7 +313,7 @@
 		["Attributes.Alpha", "Value of alpha", "long"],
 		["Computation.MACs", "Total units of MAC units in engine", "long"],
 		["Computation.>", "Total number of > comparator units in engine", "long"],		
-		["Storage.Bytes", "Total storage required for LReLU engine", "long"]  	
+		["Storage.Bytes", "Total storage required for this engine", "long"]  	
 	    ]
 	},
 	{
@@ -341,7 +336,13 @@
 		["Attributes.Alpha", "Value of alpha", "long"],
 		["Computation.MACs", "Total units of MAC units in engine", "long"],
 		["Computation.Comparison", "Total number of > comparator units in engine", "long"],
-		["Storage.Bytes", "Total storage required for LReLU engine", "long"]  	
+		["Storage.Bytes", "Total storage required for this engine", "long"]  	
+	    ]
+	},
+	{
+	    "name" : "xten.add",
+	    "properties" : [
+		["Storage.Bytes", "Total storage required for Add engine", "long"]  	 
 	    ]
 	}	
     ]    

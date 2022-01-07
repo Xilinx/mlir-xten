@@ -8,7 +8,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-// RUN: aten-opt %s -aten-visual-graph='operators-supported-path=../../../../../../../third-party/mlir-xten/lib/Transform/operators_supported.json'
+// RUN: aten-opt %s -aten-visual-graph='operators-supported-path=%S/../../../lib/Transform/operators_supported.json' | FileCheck %s
+// CHECK-LABEL:     "{{.*}}": {
+// CHECK-LABEL:     "name": "conv2d0",
+// CHECK-LABEL:     "name": "torch.aten.conv2d",
+//
 
 module attributes {torch.debug_module_name = "model"}  {
   func @forward(%arg0: !torch.vtensor<[1,2,128,128],f32>) -> !torch.vtensor<[?,?,?,?],f32> {
