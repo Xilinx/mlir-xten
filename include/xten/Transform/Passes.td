@@ -28,4 +28,9 @@ def LowerToLibATen : Pass<"lower-to-libaten", "ModuleOp"> {
   let constructor = "xilinx::xten::createLowerToLibATenPass()";
 }
 
+def LinalgToDse : Pass<"linalg-to-dse", "ModuleOp"> {
+  let summary = "Generate JSON visual model for ATen";
+  let constructor = "xilinx::xten::createLinalgToDsePass()";
+}
+
 #endif // ATEN_CONVERSION_PASSES

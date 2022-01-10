@@ -11,6 +11,7 @@
 #ifndef XTEN_TRANSFORM_PASSES_H
 #define XTEN_TRANSFORM_PASSES_H
 
+#include "xten/Transform/LinalgToDsePass.h"
 #include "xten/Transform/ATenOpReport.h"
 #include "xten/Transform/ATenLoweringPass.h"
 #include "xten/Transform/LowerToLibATenPass.h"
