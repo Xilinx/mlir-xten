@@ -76,6 +76,36 @@ public:
   };
 };
 
+// Match a bias-copy operation like:
+//    %24 = linalg.generic {...} ins(%cst_17 : tensor<125xf32>) outs(%23 :
+//    tensor<1x125x7x7xf32>) { ^bb0(%arg1: f32, %arg2: f32):  // no predecessors
+//      linalg.yield %arg1 : f32
+//    } -> tensor<1x125x7x7xf32>
+class M_biasCopy {
+public:
+  bool match(Operation *op) const {
+    // check we have the right operator
+    auto genOp = dyn_cast<linalg::GenericOp>(op);
+    if (!genOp)
+      return false;
+    if (genOp.inputs().size() != 1)
+      return false;
+
+    auto &yieldBlock = genOp.getRegion().front();
+    auto yieldOp = dyn_cast<linalg::YieldOp>(yieldBlock.getTerminator());
+    if (!yieldOp || yieldOp.values().size() != 1)
+      return false;
+
+    // When we have a single block, yielding a single block arg, this
+    // should be suited to bias copying. Note: there is a small risk
+    // that the loop is copying the output to itself - I didn't know
+    // how to check this and deferred looking into it as it seems so
+    // useless (probably famous last words).
+    Value yieldValue = yieldOp.values().front();
+    return yieldValue.isa<BlockArgument>();
+  };
+};
+
 std::string as_str(OpFoldResult const &r) {
   if (auto c = getConstantIntValue(r)) {
     std::stringstream str;
@@ -146,28 +176,45 @@ public:
     auto f = module.lookupSymbol<mlir::FuncOp>("forward");
     assert(f.getNumArguments() == 1 && "forward func must have 1 args");
 
-    auto pad = M_padFpZero();
-    auto constant = m_Op<arith::ConstantOp>();
-    auto ret = m_Op<ReturnOp>();
-    auto init = m_Op<linalg::InitTensorOp>();
-    auto p1 = m_Op<linalg::Conv2DLreluMaxpoolOp>();
-    auto p2 = m_Op<linalg::Conv2DLreluOp>();
-    auto p3 = m_Op<linalg::Conv2DNchwFchwOp>();
-    std::set<Operation *> pads;
-    f.walk<WalkOrder::PreOrder>([&constant, &ret, &init, &pads, &pad, &p1, &p2,
-                                 &p3, &f](Operation *op) -> WalkResult {
+    auto patternPadZero = M_padFpZero();
+    auto patternConstant = m_Op<arith::ConstantOp>();
+    auto patternRet = m_Op<ReturnOp>();
+    auto patternInit = m_Op<linalg::InitTensorOp>();
+    auto patternConvLreluMaxpool = m_Op<linalg::Conv2DLreluMaxpoolOp>();
+    auto patternConvLrelu = m_Op<linalg::Conv2DLreluOp>();
+    auto patternConv = m_Op<linalg::Conv2DNchwFchwOp>();
+    auto patternBias = M_biasCopy();
+    llvm::SetVector<Operation *> pads;
+    llvm::SetVector<Operation *> biases;
+    f.walk<WalkOrder::PreOrder>([&patternConstant, &patternRet, &patternInit,
+                                 &patternPadZero, &patternConvLreluMaxpool,
+                                 &patternConvLrelu, &patternConv, &patternBias,
+                                 &pads, &biases,
+                                 &f](Operation *op) -> WalkResult {
       if (op == f) // don't analyze the function op itself
         return WalkResult::advance();
 
-      if (constant.match(op) || ret.match(op) || init.match(op)) // ignore
+      if (patternConstant.match(op) || patternRet.match(op) ||
+          patternInit.match(op)) // ignore
         return WalkResult::skip();
-      if (pad.match(op)) {
+      if (patternPadZero.match(op)) {
         pads.insert(op);
         return WalkResult::skip();
       }
-      if (p3.match(op)) {
+      if (patternBias.match(op)) {
+        biases.insert(op);
+        return WalkResult::skip();
+      }
+      if (patternConv.match(op)) {
+        auto *outOp = op;
+        if (biases.count(outOp)) {
+          // We know that this is the bias copy for this conv2d.
+          // No further information is needed.
+          biases.remove(outOp);
+        }
         auto *inOp = op->getOperand(0).getDefiningOp();
         if (pads.count(inOp)) {
+          pads.remove(inOp);
           auto pad = dyn_cast<linalg::PadTensorOp>(inOp);
           auto conv = dyn_cast<linalg::Conv2DNchwFchwOp>(op);
           llvm::outs() << "Conv2DOp:\n";
@@ -206,9 +253,10 @@ public:
         }
         return WalkResult::skip();
       }
-      if (p1.match(op)) {
+      if (patternConvLreluMaxpool.match(op)) {
         auto *inOp = op->getOperand(0).getDefiningOp();
         if (pads.count(inOp)) {
+          pads.remove(inOp);
           auto pad = dyn_cast<linalg::PadTensorOp>(inOp);
           auto conv = dyn_cast<linalg::Conv2DLreluMaxpoolOp>(op);
           llvm::outs() << "Conv2DLreluMaxpoolOp:\n";
@@ -244,9 +292,10 @@ public:
 
         return WalkResult::skip();
       }
-      if (p2.match(op)) {
+      if (patternConvLrelu.match(op)) {
         auto *inOp = op->getOperand(0).getDefiningOp();
         if (pads.count(inOp)) {
+          pads.remove(inOp);
           auto pad = dyn_cast<linalg::PadTensorOp>(inOp);
           auto conv = dyn_cast<linalg::Conv2DLreluOp>(op);
           llvm::outs() << "Conv2DLreluOp:\n";
@@ -274,6 +323,11 @@ public:
       return WalkResult::advance();
     });
 
+    llvm::for_each(
+        pads, [&](Operation *op) { op->emitError("unmatched pad operator"); });
+    llvm::for_each(biases, [&](Operation *op) {
+      op->emitError("unmatched generic broadcast operator");
+    });
     // auto ifm = m_Val(f.getArgument(0));
     // M_conv2d(M_padZero(ivm));
     // {
