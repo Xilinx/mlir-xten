@@ -141,7 +141,14 @@
 	    ]
 	},
 	{
-	    "name" : "aten.mul",
+	    "name" : "torch.aten.mul",
+	    "properties" : [
+		["Computation.*", "Total number of * units in engine", "long"],
+		["Storage.Bytes", "Total storage required for Mul engine", "long"]		
+	    ]
+	},
+	{
+	    "name" : "torch.aten.mul.Tensor",
 	    "properties" : [
 		["Computation.*", "Total number of * units in engine", "long"],
 		["Storage.Bytes", "Total storage required for Mul engine", "long"]		
@@ -217,6 +224,18 @@
 	    "name" : "torch.aten.neg",
 	    "properties" : [
 		["Storage.Bytes", "Total storage required for Neg engine", "long"]		
+	    ]
+	},
+	{
+	    "name" : "torch.aten.sigmoid",
+	    "properties" : [
+		["Storage.Bytes", "Total storage required for Sigmoid engine", "long"]		
+	    ]
+	},
+	{
+	    "name" : "torch.aten.mean.dim",
+	    "properties" : [
+		["Storage.Bytes", "Total storage required for Mean engine", "long"]		
 	    ]
 	},
 	{
