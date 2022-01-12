@@ -149,6 +149,19 @@ std::string size_and_wgts_to_kernel_str(DenseIntElementsAttr const &size,
   return str.str();
 }
 
+std::string as_str(DenseIntElementsAttr const &t, std::string prefix = {}) {
+  std::stringstream str;
+  std::string sep = prefix;
+  auto vals = llvm::to_vector<2>(t.getValues<int64_t>());
+  str << "[";
+  for (auto val : vals) {
+    str << sep << val;
+    sep = ", ";
+  }
+  str << "]";
+  return str.str();
+}
+
 std::string as_2d_str(DenseIntElementsAttr const &t,
                              std::string prefix = {}) {
   std::stringstream str;
@@ -283,8 +296,7 @@ public:
                        << "\n";
           llvm::outs() << " - postp_stride_dim=" << as_2d_str(conv.mp_stride())
                        << "\n";
-          llvm::outs() << " - postp_pad_dim="
-                       << as_2d_str(conv.mp_padding(), /*prefix=*/"0, 0, ")
+          llvm::outs() << " - postp_pad_dim=" << as_str(conv.mp_padding())
                        << "\n";
         } else
           op->emitError("The Xilinx fused conv2d operators are expected to be "
