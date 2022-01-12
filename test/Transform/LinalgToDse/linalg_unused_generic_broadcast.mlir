@@ -1,4 +1,4 @@
-//===- .mlir -------------------------------------------*- MLIR -*-===//
+//===- linalg_unused_generic_broadcast.mlir --------------------*- MLIR -*-===//
 //
 // This file is licensed under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -8,7 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// RUN: aten-opt "%s" -linalg-to-dse -o /dev/null 2>&1 | FileCheck "%s"
+// RUN: not aten-opt "%s" -linalg-to-dse -o /dev/null 2>&1 | FileCheck "%s"
 // CHECK: error: unmatched generic broadcast operator
 #map0 = affine_map<(d0, d1, d2, d3) -> (d1)>
 #map1 = affine_map<(d0, d1, d2, d3) -> (d0, d1, d2, d3)>

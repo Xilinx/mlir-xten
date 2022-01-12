@@ -8,7 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// RUN: aten-opt "%s" -linalg-to-dse -o /dev/null 2>&1 | FileCheck "%s"
+// RUN: not aten-opt "%s" -linalg-to-dse -o /dev/null 2>&1 | FileCheck "%s"
 // CHECK: error: unmatched pad operator
 #map0 = affine_map<(d0, d1, d2, d3) -> (d1)>
 #map1 = affine_map<(d0, d1, d2, d3) -> (d0, d1, d2, d3)>

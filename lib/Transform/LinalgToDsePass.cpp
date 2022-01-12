@@ -189,21 +189,27 @@ public:
     auto f = module.lookupSymbol<mlir::FuncOp>("forward");
     assert(f.getNumArguments() == 1 && "forward func must have 1 args");
 
-    auto patternPadZero = M_padFpZero();
+    // harmless to ignore
     auto patternConstant = m_Op<arith::ConstantOp>();
     auto patternRet = m_Op<ReturnOp>();
     auto patternInit = m_Op<linalg::InitTensorOp>();
+
+    // initial sub-operators of layers
+    auto patternPadZero = M_padFpZero();
+    auto patternBias = M_biasCopy();
+
+    // terminal operators of layers
     auto patternConvLreluMaxpool = m_Op<linalg::Conv2DLreluMaxpoolOp>();
     auto patternConvLrelu = m_Op<linalg::Conv2DLreluOp>();
     auto patternConv = m_Op<linalg::Conv2DNchwFchwOp>();
-    auto patternBias = M_biasCopy();
+
     llvm::SetVector<Operation *> pads;
     llvm::SetVector<Operation *> biases;
-    f.walk<WalkOrder::PreOrder>([&patternConstant, &patternRet, &patternInit,
-                                 &patternPadZero, &patternConvLreluMaxpool,
-                                 &patternConvLrelu, &patternConv, &patternBias,
-                                 &pads, &biases,
-                                 &f](Operation *op) -> WalkResult {
+    auto walkResult = f.walk<
+        WalkOrder::PreOrder>([&patternConstant, &patternRet, &patternInit,
+                              &patternPadZero, &patternConvLreluMaxpool,
+                              &patternConvLrelu, &patternConv, &patternBias,
+                              &pads, &biases, &f](Operation *op) -> WalkResult {
       if (op == f) // don't analyze the function op itself
         return WalkResult::advance();
 
@@ -219,7 +225,8 @@ public:
         return WalkResult::skip();
       }
       if (patternConv.match(op)) {
-        auto *outOp = op;
+        auto conv = dyn_cast<linalg::Conv2DNchwFchwOp>(op);
+        auto *outOp = conv.outputs()[0].getDefiningOp();
         if (biases.count(outOp)) {
           // We know that this is the bias copy for this conv2d.
           // No further information is needed.
@@ -229,7 +236,6 @@ public:
         if (pads.count(inOp)) {
           pads.remove(inOp);
           auto pad = dyn_cast<linalg::PadTensorOp>(inOp);
-          auto conv = dyn_cast<linalg::Conv2DNchwFchwOp>(op);
           llvm::outs() << "Conv2DOp:\n";
           llvm::outs() << " - node_name=" << conv->getAttr("layer_name")
                        << "\n";
@@ -298,9 +304,11 @@ public:
                        << "\n";
           llvm::outs() << " - postp_pad_dim=" << as_str(conv.mp_padding())
                        << "\n";
-        } else
+        } else {
           op->emitError("The Xilinx fused conv2d operators are expected to be "
                         "paired with a padding operator");
+          return WalkResult::interrupt();
+        }
 
         return WalkResult::skip();
       }
@@ -325,47 +333,30 @@ public:
           llvm::outs() << " - pad_dim="
                        << as_str(pad.getMixedHighPad(), pad.getMixedLowPad())
                        << "\n";
-        } else
+        } else {
           op->emitError("The Xilinx fused conv2d operators are expected to be "
                         "paired with a padding operator");
+          return WalkResult::interrupt();
+        }
         return WalkResult::skip();
       }
 
       op->emitError("unmatched operator");
-      return WalkResult::advance();
+      return WalkResult::interrupt();
     });
 
-    llvm::for_each(
-        pads, [&](Operation *op) { op->emitError("unmatched pad operator"); });
-    llvm::for_each(biases, [&](Operation *op) {
-      op->emitError("unmatched generic broadcast operator");
-    });
+    if (walkResult.wasInterrupted())
+      return signalPassFailure();
+    if (!(pads.empty() && biases.empty())) {
+      llvm::for_each(pads, [&](Operation *op) {
+        op->emitError("unmatched pad operator");
+      });
+      llvm::for_each(biases, [&](Operation *op) {
+        op->emitError("unmatched generic broadcast operator");
+      });
+      return signalPassFailure();
+    }
     // auto ifm = m_Val(f.getArgument(0));
-    // M_conv2d(M_padZero(ivm));
-    // {
-    //   auto p0 = m_Op<linalg::Conv2DLreluMaxpoolOp>();
- 
-    //   llvm::outs() << "Pattern Conv2dLreluMaxpoolOp(*) matched "
-    //                << countMatches(f, p0) << " times\n";
-    // }
-    // {
-    //   auto p0 = m_Op<linalg::PadTensorOp>();
- 
-    //   llvm::outs() << "Pattern PadTensorOp(ifm) matched " << countMatches(f, p0)
-    //                << " times\n";
-    // }
-    // {
-    //   auto p0 = M_padFpZero();
- 
-    //   llvm::outs() << "Pattern M_padFpZero(ifm) matched " << countMatches(f, p0)
-    //                << " times\n";
-    // }
-
-    // forward.walk([&](Operation *op) {
-    //   llvm::outs() << " forward:";
-    //   op->print(llvm::outs());
-    //   llvm::outs() << "\n";
-    // });
   }
 };
 
