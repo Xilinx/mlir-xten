@@ -16,6 +16,5 @@ add_mlir_library(XTenTransformPasses
   XTenTransformIncGen
 
   LINK_LIBS
-  MLIR
   XTenDialect
   )
