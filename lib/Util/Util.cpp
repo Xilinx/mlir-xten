@@ -14,8 +14,8 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
-#include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/OperationSupport.h"
 
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
@@ -31,7 +31,7 @@ namespace xilinx {
 namespace xten {
 
 namespace {
-  
+
 std::string getMangledType(const Type ty) {
   std::stringstream ret;
 
@@ -42,17 +42,13 @@ std::string getMangledType(const Type ty) {
     for (auto s : shape)
       ret << s << "x";
     ret << getMangledType(elem);
-  }
-  else if (FloatType ft = ty.dyn_cast<FloatType>()) {
+  } else if (FloatType ft = ty.dyn_cast<FloatType>()) {
     ret << "F" << ft.getWidth();
-  }
-  else if (const IntegerType it = ty.dyn_cast<const IntegerType>()) {
+  } else if (const IntegerType it = ty.dyn_cast<const IntegerType>()) {
     ret << "I" << it.getWidth();
-  }
-  else if (const IndexType it = ty.dyn_cast<const IndexType>()) {
+  } else if (const IndexType it = ty.dyn_cast<const IndexType>()) {
     ret << "I64";
-  }
-  else {
+  } else {
     Type t = ty;
     t.dump();
     assert(0 && "unhandled type in getMangledType");
@@ -60,7 +56,8 @@ std::string getMangledType(const Type ty) {
   return ret.str();
 }
 
-std::string getMangledFuncName(ModuleOp module, std::string prefix, FunctionType fnTy) {
+std::string getMangledFuncName(ModuleOp module, std::string prefix,
+                               FunctionType fnTy) {
   std::string sep = "_";
 
   auto resultTy = fnTy.getResults();
@@ -74,7 +71,7 @@ std::string getMangledFuncName(ModuleOp module, std::string prefix, FunctionType
 
   return ret;
 }
-}
+} // namespace
 
 /// Create a type cast to memref
 Value MemRefTypeCast(OpBuilder &builder, Value val) {
@@ -104,7 +101,7 @@ Value ToBuiltinTensorTypeCast(OpBuilder &builder, Value val) {
 
   auto sizes = tensorTy.getSizes();
   auto dtype = tensorTy.getDtype();
-  return  builder.create<torch::TorchConversion::ToBuiltinTensorOp>(
+  return builder.create<torch::TorchConversion::ToBuiltinTensorOp>(
       val.getLoc(), RankedTensorType::get(sizes, dtype), val);
 }
 
@@ -129,8 +126,8 @@ Value TensorTypeCast(OpBuilder &builder, Value val, Type resultTy) {
       val.getLoc(), resultTy, tensor);
 }
 
-FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value> operands, ArrayRef<Type> retTys)
-{
+FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value> operands,
+                 ArrayRef<Type> retTys) {
   Builder builder(module);
 
   SmallVector<Type, 16> tys;
@@ -139,7 +136,7 @@ FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value> operands, 
 
   auto fnTy = builder.getFunctionType(tys, retTys);
 
-  std::string fnName = getMangledFuncName(module, prefix+"_AtenAcapOp", fnTy);
+  std::string fnName = getMangledFuncName(module, prefix + "_AtenAcapOp", fnTy);
   auto fn = module.lookupSymbol<FuncOp>(fnName);
 
   if (!fn) {
@@ -165,11 +162,10 @@ uint64_t getTensorVolume(const torch::Torch::BaseTensorType ty) {
 uint64_t getTensorVolume(const Type ty) {
   if (auto t = ty.dyn_cast<torch::Torch::BaseTensorType>()) {
     return getTensorVolume(t);
-  }
-  else {
+  } else {
     return 1;
   }
 }
 
-}
-}
+} // namespace xten
+} // namespace xilinx
