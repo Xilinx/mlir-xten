@@ -14,6 +14,8 @@
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "llvm/ADT/MapVector.h"
+
 #include "mlir/Pass/Pass.h"
 
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
@@ -44,11 +46,10 @@ private:
   std::string o;
   std::string &output;
   
-  std::map<Operation *, std::pair<std::string, std::string> > opToName;
+  //  std::map<Operation *, std::pair<std::string, std::string> > opToName;
+  llvm::MapVector<Operation *, std::pair<std::string, std::string> > opToName;
   std::map<Operation *, int> opToId;
   
-  std::vector<Operation *> opListInOrder;
-
   std::unordered_map<std::string, int> opTypes;
   std::unordered_map<std::string, llvm::json::Object> opTypeToProperties;
 
@@ -56,10 +57,10 @@ private:
   std::unordered_map<int, std::vector<std::string>> designToLayers;
   
   //map of ops whose inputs come from other ops  
-  std::unordered_map<Operation *, std::unordered_map<Operation *, unsigned>> connsInToOutMap;
+  llvm::MapVector<Operation *, llvm::MapVector<Operation *, unsigned>> connsInToOutMap;
 
   //map of ops whose output are sent to other ops
-  std::unordered_map<Operation *, std::unordered_map<Operation *, unsigned>> connsOutToInMap;
+  llvm::MapVector<Operation *, llvm::MapVector<Operation *, unsigned>> connsOutToInMap;
 
   //maps to be defined at the beginning from JSON input model
   std::map<std::string, std::vector<std::vector<std::string>>> propertiesInfo; 
@@ -69,7 +70,6 @@ private:
   std::unordered_map<Operation *, std::unordered_map<std::string, std::string>> fusedToUnfuseInputMap;
   
   std::unordered_map<Operation *, Value > inputOpToIFMValue;
-  
 
   ///// For TinyYolo DEMO only
   bool propagate_tensor_sizes;
@@ -137,7 +137,6 @@ private:
     connsOutToInMap.clear();
     fusedToUnfuseOutputMap.clear();
     inputOpToIFMValue.clear();
-    opListInOrder = std::vector<Operation *>();
 
     //For DEMO
     propagatedTensorSizesMap.clear();
@@ -1124,27 +1123,11 @@ private:
     }
   }
     
-  std::vector<std::pair<Operation *, unsigned> > sort_ConnsMap(std::unordered_map<Operation *, unsigned> &connsMap) {
-    std::vector<std::pair<Operation *, unsigned> > connsPair;
-    for (auto const &op_input : connsMap) {
-      connsPair.push_back(std::make_pair(op_input.first, op_input.second));
-    }    
-
-    std::sort(connsPair.begin(), connsPair.end(), [](std::pair<Operation *, unsigned> a, std::pair<Operation *, unsigned> b) {
-	return a.second > b.second;
-      });
-
-    return connsPair;
-  }
-
   llvm::json::Array emitJSONLayerOpPorts(Operation *op) {
     llvm::json::Array portsArray;
 
-    auto sortedConnsInToOut = sort_ConnsMap(connsInToOutMap[op]);
-    auto sortedConnsOutToIn = sort_ConnsMap(connsOutToInMap[op]);
-
     unsigned input_port_id = 0;
-    for (auto const &op_input : sortedConnsInToOut) {
+    for (auto const &op_input : connsInToOutMap[op]) {
       llvm::json::Object portObject;
 
       portObject["id"] = std::to_string(op_input.second);
@@ -1174,7 +1157,7 @@ private:
     }
 
     unsigned output_port_id = 0;    
-    for (auto const &op_output : sortedConnsOutToIn) {
+    for (auto const &op_output : connsOutToInMap[op]) {
       llvm::json::Object portObject;
 
       portObject["id"] = std::to_string(op_output.second);
@@ -1250,7 +1233,7 @@ private:
   llvm::json::Array emitJSONConnections() {
     llvm::json::Array connectionsArray;
 
-    auto connectionPairIds = std::vector<std::pair<int, int>>();
+    unsigned connection_id = 0;    
     for (auto const &conns_pair : connsInToOutMap) {
       Operation *input_op    = conns_pair.first;
       const auto output_ops  = conns_pair.second;
@@ -1259,32 +1242,18 @@ private:
 	if (output_op == input_op)
 	  continue;
 
+	llvm::json::Object connectionObject;
+      
 	unsigned inPortId   = output_op_pair.second;
 	unsigned outPortId  = connsOutToInMap[output_op][input_op];
 
-	connectionPairIds.push_back(std::make_pair(inPortId, outPortId));
+	connectionObject["id"]           = std::to_string(connection_id++);
+	connectionObject["from_port_id"] = std::to_string(outPortId);
+	connectionObject["to_port_id"]   = std::to_string(inPortId); 
+	connectionsArray.push_back(llvm::json::Value(std::move(connectionObject)));
       }
     } 
 
-    std::sort(connectionPairIds.begin(), connectionPairIds.end(), [](std::pair<int, int> &a, std::pair<int, int> &b) {
-	if (a.first == b.first)
-	  return a.second > b.second;
-	return a.first > b.first;
-      });
-
-    unsigned connection_id = 0;    
-    for (auto const &id_pair : connectionPairIds) {
-      llvm::json::Object connectionObject;
-      
-      unsigned inPortId   = id_pair.first;
-      unsigned outPortId  = id_pair.second;      
-
-      connectionObject["id"]           = std::to_string(connection_id++);
-      connectionObject["from_port_id"] = std::to_string(outPortId);
-      connectionObject["to_port_id"]   = std::to_string(inPortId); 
-      connectionsArray.push_back(llvm::json::Value(std::move(connectionObject)));
-    }
-    
     return connectionsArray;
   }
 
@@ -1391,8 +1360,6 @@ public:
 	  return;
 	auto attr = attr_l ? attr_l : attr_n;
 	
-	opListInOrder.push_back(op);
-
 	auto op_str     = getOperationNameStr(op);
 	auto layer_name = attr.getValue().str();
 	layerToOps[layer_name].push_back(op);
@@ -1475,7 +1442,8 @@ public:
     });
     
     /* for operators whose outputs are the return values of 'graph' */
-    for (const auto op : opListInOrder) {
+    for (const auto &op_pair : opToName) {
+      auto op = op_pair.first;
       if (connsInToOutMap.find(op) == connsInToOutMap.end()) {       
         //For the first input Ops (aka source Ops) in the NN graph
         connsInToOutMap[op][op] = currPortId++;
