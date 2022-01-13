@@ -9,15 +9,53 @@
 //===----------------------------------------------------------------------===//
 
 // RUN: aten-opt %s -linalg-to-dse -o /dev/null | FileCheck %s
-//   CHECK:       Conv2DLreluMaxpoolOp:
-//   CHECK-NEXT:        - node_name=""conv2d_lrelu_maxpool0""
-//   CHECK-NEXT:        - in_dim=[1, 128, 128, 3]
-//   CHECK-NEXT:        - filter_dim=[3, 3, 16]
-//   CHECK-NEXT:        - stride_dim=[1, 1]
-//   CHECK-NEXT:        - pad_dim=[1, 1, 1, 1]
-//   CHECK-NEXT:        - postp_filter_dim=[2, 2, 16]
-//   CHECK-NEXT:        - postp_stride_dim=[2, 2]
-//   CHECK-NEXT:        - postp_pad_dim=[0, 0, 0, 0]
+//   CHECK:      {
+//   CHECK-NEXT:   "graph": [
+//   CHECK-NEXT:     "l1"
+//   CHECK-NEXT:   ],
+//   CHECK-NEXT:   "nodes": {
+//   CHECK-NEXT:     "l1": {
+//   CHECK-NEXT:       "filter_dim": [
+//   CHECK-NEXT:         3,
+//   CHECK-NEXT:         3,
+//   CHECK-NEXT:         16
+//   CHECK-NEXT:       ],
+//   CHECK-NEXT:       "in_dim": [
+//   CHECK-NEXT:         1,
+//   CHECK-NEXT:         128,
+//   CHECK-NEXT:         128,
+//   CHECK-NEXT:         3
+//   CHECK-NEXT:       ],
+//   CHECK-NEXT:       "node_name": "\"conv2d_lrelu_maxpool0\"",
+//   CHECK-NEXT:       "pad_dim": [
+//   CHECK-NEXT:         1,
+//   CHECK-NEXT:         1,
+//   CHECK-NEXT:         1,
+//   CHECK-NEXT:         1
+//   CHECK-NEXT:       ],
+//   CHECK-NEXT:       "postp_filter_dim": [
+//   CHECK-NEXT:         2,
+//   CHECK-NEXT:         2,
+//   CHECK-NEXT:         16
+//   CHECK-NEXT:       ],
+//   CHECK-NEXT:       "postp_pad_dim": [
+//   CHECK-NEXT:         0,
+//   CHECK-NEXT:         0,
+//   CHECK-NEXT:         0,
+//   CHECK-NEXT:         0
+//   CHECK-NEXT:       ],
+//   CHECK-NEXT:       "postp_stride_dim": [
+//   CHECK-NEXT:         2,
+//   CHECK-NEXT:         2
+//   CHECK-NEXT:       ],
+//   CHECK-NEXT:       "stride_dim": [
+//   CHECK-NEXT:         1,
+//   CHECK-NEXT:         1
+//   CHECK-NEXT:       ],
+//   CHECK-NEXT:       "type": "Conv2D_LeakyRelu_MaxPool2D"
+//   CHECK-NEXT:     }
+//   CHECK-NEXT:   }
+//   CHECK-NEXT: }
 module attributes {torch.debug_module_name = "HelloWorld"}  {
   func @forward(%arg0: tensor<1x3x128x128xf32>) -> tensor<1x16x64x64xf32> {
     %cst = arith.constant 0.000000e+00 : f32

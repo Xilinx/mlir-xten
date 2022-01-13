@@ -9,12 +9,28 @@
 //===----------------------------------------------------------------------===//
 
 // RUN: aten-opt %s -linalg-to-dse -o /dev/null | FileCheck %s
-//   CHECK:      Conv2DLreluOp:
-//   CHECK-NEXT:       - node_name=""conv2d_lrelu0""
-//   CHECK-NEXT:       - in_dim=[1, 64, 64, 16]
-//   CHECK-NEXT:       - filter_dim=[3, 3, 16]
-//   CHECK-NEXT:       - stride_dim=[1, 1]
-//   CHECK-NEXT:       - pad_dim=[1, 1, 1, 1]
+//   CHECK:       "filter_dim": [
+//   CHECK:         3,
+//   CHECK:         3,
+//   CHECK:         16
+//   CHECK:       ],
+//   CHECK:       "in_dim": [
+//   CHECK:         1,
+//   CHECK:         64,
+//   CHECK:         64,
+//   CHECK:         16
+//   CHECK:       ],
+//   CHECK:       "node_name": "\"conv2d_lrelu0\"",
+//   CHECK:       "pad_dim": [
+//   CHECK:         1,
+//   CHECK:         1,
+//   CHECK:         1,
+//   CHECK:         1
+//   CHECK:       ],
+//   CHECK:       "stride_dim": [
+//   CHECK:         1,
+//   CHECK:         1
+//   CHECK:       ],
 module attributes {torch.debug_module_name = "HelloWorld"}  {
   func @forward(%arg0: tensor<1x16x64x64xf32>) -> tensor<1x16x64x64xf32> {
     %cst = arith.constant 0.000000e+00 : f32

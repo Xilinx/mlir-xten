@@ -9,12 +9,28 @@
 //===----------------------------------------------------------------------===//
 
 // RUN: aten-opt %s -linalg-to-dse -o /dev/null | FileCheck %s
-//   CHECK:       Conv2DOp:
-//   CHECK-NEXT:        - node_name="<<NULL ATTRIBUTE>>"
-//   CHECK-NEXT:        - in_dim=[125, 1, 1, 1024]
-//   CHECK-NEXT:        - filter_dim=[1, 1, 125]
-//   CHECK-NEXT:        - stride_dim=[1, 1]
-//   CHECK-NEXT:        - pad_dim=[0, 0, 0, 0]
+//   CHECK: "filter_dim": [
+//   CHECK:   1,
+//   CHECK:   1,
+//   CHECK:   125
+//   CHECK: ],
+//   CHECK: "in_dim": [
+//   CHECK:   1,
+//   CHECK:   7,
+//   CHECK:   7,
+//   CHECK:   1024
+//   CHECK: ],
+//   CHECK: "node_name": "<<NULL ATTRIBUTE>>",
+//   CHECK: "pad_dim": [
+//   CHECK:   0,
+//   CHECK:   0,
+//   CHECK:   0,
+//   CHECK:   0
+//   CHECK: ],
+//   CHECK: "stride_dim": [
+//   CHECK:   1,
+//   CHECK:   1
+//   CHECK: ],
 #map0 = affine_map<(d0, d1, d2, d3) -> (d1)>
 #map1 = affine_map<(d0, d1, d2, d3) -> (d0, d1, d2, d3)>
 module attributes {torch.debug_module_name = "HelloWorld"}  {

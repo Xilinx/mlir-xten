@@ -13,6 +13,7 @@
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/JSON.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
@@ -33,9 +34,6 @@
 
 using namespace mlir;
 using namespace xilinx::xten;
-
-using mlir::matchers::m_Any;
-using mlir::matchers::m_Val;
 
 namespace {
 // This could be done better but is not worth the variadic template trouble.
@@ -106,69 +104,81 @@ public:
   };
 };
 
-std::string as_str(OpFoldResult const &r) {
-  if (auto c = getConstantIntValue(r)) {
-    std::stringstream str;
-    str << *c;
-    return str.str();
-  }
-  return "<unknown>";
+std::string as_str(Attribute const &r) {
+  std::string name;
+  llvm::raw_string_ostream OS(name);
+  r.print(OS);
+  return name;
 }
 
-std::string as_str(SmallVectorImpl<OpFoldResult> const &low,
-                   SmallVectorImpl<OpFoldResult> const &high) {
-  std::stringstream str;
-  std::string split;
+int64_t to_int(OpFoldResult const &val) {
+  Attribute attr = val.dyn_cast<Attribute>();
+  return attr.cast<IntegerAttr>().getInt();
+}
+
+std::vector<int64_t> as_array(SmallVectorImpl<OpFoldResult> const &low,
+                              SmallVectorImpl<OpFoldResult> const &high) {
   // low/high specify padding as NCHW
-  str << "[" << as_str(low[2]) << ", " << as_str(low[3]) << ", "
-      << as_str(high[2]) << ", " << as_str(high[3]) << "]";
-  return str.str();
+  return {to_int(low[2]), to_int(low[3]), to_int(high[2]), to_int(high[3])};
 }
 
-std::string as_nhwc_str(RankedTensorType const &t) {
-  std::stringstream str;
+std::vector<int64_t> as_nhwc_array(RankedTensorType const &t) {
   auto shape = t.getShape(); // in NCHW format
-  str << "[" << shape[0] << ", " << shape[2] << ", " << shape[3] << ", "
-      << shape[1] << "]";
-  return str.str();
+  return {shape[0], shape[2], shape[3], shape[1]};
 }
 
-std::string wgts_to_kernel_str(RankedTensorType const &t) {
-  std::stringstream str;
+std::vector<int64_t> wgts_to_kernel_array(RankedTensorType const &t) {
   auto shape = t.getShape(); // in FCHW format
-  str << "[" << shape[2] << ", " << shape[3] << ", " << shape[0] << "]";
-  return str.str();
+  return {shape[2], shape[3], shape[0]};
 }
 
-std::string size_and_wgts_to_kernel_str(DenseIntElementsAttr const &size,
-                                        RankedTensorType const &wgts) {
-  std::stringstream str;
+std::vector<int64_t>
+size_and_wgts_to_kernel_array(DenseIntElementsAttr const &size,
+                              RankedTensorType const &wgts) {
   auto shape = wgts.getShape(); // in FCHW format
   auto vals = llvm::to_vector<2>(size.getValues<int64_t>());
-  str << "[" << vals[0] << ", " << vals[1] << ", " << shape[0] << "]";
-  return str.str();
+  return {vals[0], vals[1], shape[0]};
 }
 
-std::string as_str(DenseIntElementsAttr const &t, std::string prefix = {}) {
-  std::stringstream str;
-  std::string sep = prefix;
+std::vector<int64_t> as_array(DenseIntElementsAttr const &t) {
   auto vals = llvm::to_vector<2>(t.getValues<int64_t>());
-  str << "[";
-  for (auto val : vals) {
-    str << sep << val;
-    sep = ", ";
+  return {vals.begin(), vals.end()};
+}
+
+std::vector<int64_t> as_2d_array(DenseIntElementsAttr const &t) {
+  auto vals = llvm::to_vector<2>(t.getValues<int64_t>());
+  return {vals[0], vals[1]};
+}
+
+struct NextName {
+  int nextNum = 1;
+  std::string getNext() {
+    return std::string("l" + std::to_string(nextNum++));
   }
-  str << "]";
-  return str.str();
-}
+};
 
-std::string as_2d_str(DenseIntElementsAttr const &t,
-                             std::string prefix = {}) {
-  std::stringstream str;
-  auto vals = llvm::to_vector<2>(t.getValues<int64_t>());
-  str << "[" << prefix << vals[0] << ", " << vals[1] << "]";
-  return str.str();
-}
+struct OutputOp {
+  llvm::json::Object object;
+
+  OutputOp(StringRef type) : object({{"type", type}}) {}
+  void addConv2dPart(Attribute const &name, std::vector<int64_t> inDim,
+                     std::vector<int64_t> filterDim,
+                     std::vector<int64_t> strideDim,
+                     std::vector<int64_t> padDim) {
+    object.insert({"node_name", as_str(name)});
+    object.insert({"in_dim", inDim});
+    object.insert({"filter_dim", filterDim});
+    object.insert({"stride_dim", strideDim});
+    object.insert({"pad_dim", padDim});
+  }
+
+  void add(std::string key, std::string value) {
+    object.insert({key, value});
+  }
+  void add(std::string key, std::vector<int64_t> value) {
+    object.insert({key, value});
+  }
+};
 
 struct LinalgToDsePass
     : public LinalgToDseBase<LinalgToDsePass> {
@@ -189,32 +199,39 @@ public:
     auto f = module.lookupSymbol<mlir::FuncOp>("forward");
     assert(f.getNumArguments() == 1 && "forward func must have 1 args");
 
-    // harmless to ignore
+    // Ops that do not need to be implemented.
     auto patternConstant = m_Op<arith::ConstantOp>();
-    auto patternRet = m_Op<ReturnOp>();
     auto patternInit = m_Op<linalg::InitTensorOp>();
 
-    // initial sub-operators of layers
+    // To collect potential sub-operators of layers.
     auto patternPadZero = M_padFpZero();
+    llvm::SetVector<Operation *> pads;
     auto patternBias = M_biasCopy();
+    llvm::SetVector<Operation *> biases;
 
-    // terminal operators of layers
+    // To collect terminal operators of layers.
     auto patternConvLreluMaxpool = m_Op<linalg::Conv2DLreluMaxpoolOp>();
     auto patternConvLrelu = m_Op<linalg::Conv2DLreluOp>();
     auto patternConv = m_Op<linalg::Conv2DNchwFchwOp>();
+    struct NodeResult {
+      Value result;
+      std::string id;
+    };
+    std::map<Operation *, NodeResult> inputToResult;
 
-    llvm::SetVector<Operation *> pads;
-    llvm::SetVector<Operation *> biases;
-    auto walkResult = f.walk<
-        WalkOrder::PreOrder>([&patternConstant, &patternRet, &patternInit,
-                              &patternPadZero, &patternConvLreluMaxpool,
-                              &patternConvLrelu, &patternConv, &patternBias,
-                              &pads, &biases, &f](Operation *op) -> WalkResult {
+    // To collect the return value.
+    auto patternRet = m_Op<ReturnOp>();
+    Value retVal;
+
+    NextName nextName;
+
+    llvm::json::Object nodes;
+    auto walkResult = f.walk<WalkOrder::PreOrder>([&](Operation *op)
+                                                      -> WalkResult {
       if (op == f) // don't analyze the function op itself
         return WalkResult::advance();
 
-      if (patternConstant.match(op) || patternRet.match(op) ||
-          patternInit.match(op)) // ignore
+      if (patternConstant.match(op) || patternInit.match(op)) // ignore
         return WalkResult::skip();
       if (patternPadZero.match(op)) {
         pads.insert(op);
@@ -222,6 +239,10 @@ public:
       }
       if (patternBias.match(op)) {
         biases.insert(op);
+        return WalkResult::skip();
+      }
+      if (patternRet.match(op)) {
+        retVal = op->getOperand(0);
         return WalkResult::skip();
       }
       if (patternConv.match(op)) {
@@ -233,77 +254,71 @@ public:
           biases.remove(outOp);
         }
         auto *inOp = op->getOperand(0).getDefiningOp();
+        auto name = nextName.getNext();
+        OutputOp output("Conv2D");
         if (pads.count(inOp)) {
-          pads.remove(inOp);
-          auto pad = dyn_cast<linalg::PadTensorOp>(inOp);
-          llvm::outs() << "Conv2DOp:\n";
-          llvm::outs() << " - node_name=" << conv->getAttr("layer_name")
-                       << "\n";
-          llvm::outs() << " - in_dim=" << as_nhwc_str(pad.getSourceType())
-                       << "\n";
-          llvm::outs() << " - filter_dim="
-                       << wgts_to_kernel_str(
-                              conv.inputs()[1]
-                                  .getType()
-                                  .dyn_cast<mlir::RankedTensorType>())
-                       << "\n";
-          llvm::outs() << " - stride_dim=" << as_2d_str(conv.strides()) << "\n";
-          llvm::outs() << " - pad_dim="
-                       << as_str(pad.getMixedHighPad(), pad.getMixedLowPad())
-                       << "\n";
+          auto *padOp = inOp;
+          pads.remove(padOp);
+          inOp = padOp->getOperand(0).getDefiningOp();
+          auto pad = dyn_cast<linalg::PadTensorOp>(padOp);
+          output.addConv2dPart(
+              /*name=*/conv->getAttr("layer_name"),
+              /*inDim=*/as_nhwc_array(pad.getSourceType()),
+              /*filterDim=*/
+              wgts_to_kernel_array(conv.inputs()[1]
+                                       .getType()
+                                       .dyn_cast<mlir::RankedTensorType>()),
+              /*strideDim=*/as_2d_array(conv.strides()),
+              /*padDim=*/as_array(pad.getMixedHighPad(), pad.getMixedLowPad()));
         } else {
           auto conv = dyn_cast<linalg::Conv2DNchwFchwOp>(op);
-          llvm::outs() << "Conv2DOp:\n";
-          llvm::outs() << " - node_name=\"" << conv->getAttr("layer_name")
-                       << "\"\n";
-          llvm::outs() << " - in_dim="
-                       << as_nhwc_str(conv.inputs()[1]
-                                          .getType()
-                                          .dyn_cast<mlir::RankedTensorType>())
-                       << "\n";
-          llvm::outs() << " - filter_dim="
-                       << wgts_to_kernel_str(
-                              conv.inputs()[1]
-                                  .getType()
-                                  .dyn_cast<mlir::RankedTensorType>())
-                       << "\n";
-          llvm::outs() << " - stride_dim=" << as_2d_str(conv.strides()) << "\n";
-          llvm::outs() << " - pad_dim=[0, 0, 0, 0]\n";
+          output.addConv2dPart(
+              /*name=*/conv->getAttr("layer_name"),
+              /*inDim=*/
+              as_nhwc_array(conv.inputs()[0]
+                                .getType()
+                                .dyn_cast<mlir::RankedTensorType>()),
+              /*filterDim=*/
+              wgts_to_kernel_array(conv.inputs()[1]
+                                       .getType()
+                                       .dyn_cast<mlir::RankedTensorType>()),
+              /*strideDim=*/as_2d_array(conv.strides()),
+              /*padDim=*/{0, 0, 0, 0});
         }
+        inputToResult[inOp] = {op->getResult(0), name};
+        nodes.insert({name, std::move(output.object)});
+
         return WalkResult::skip();
       }
       if (patternConvLreluMaxpool.match(op)) {
         auto *inOp = op->getOperand(0).getDefiningOp();
         if (pads.count(inOp)) {
-          pads.remove(inOp);
-          auto pad = dyn_cast<linalg::PadTensorOp>(inOp);
+          auto *padOp = inOp;
+          pads.remove(padOp);
+          inOp = padOp->getOperand(0).getDefiningOp();
+          auto name = nextName.getNext();
+          OutputOp output("Conv2D_LeakyRelu_MaxPool2D");
+          inputToResult[inOp] = {op->getResult(0), name};
+          auto pad = dyn_cast<linalg::PadTensorOp>(padOp);
           auto conv = dyn_cast<linalg::Conv2DLreluMaxpoolOp>(op);
-          llvm::outs() << "Conv2DLreluMaxpoolOp:\n";
-          llvm::outs() << " - node_name=\"" << conv->getAttr("layer_name")
-                       << "\"\n";
-          llvm::outs() << " - in_dim=" << as_nhwc_str(pad.getSourceType())
-                       << "\n";
-          llvm::outs() << " - filter_dim="
-                       << wgts_to_kernel_str(
-                              conv.inputs()[1]
-                                  .getType()
-                                  .dyn_cast<mlir::RankedTensorType>())
-                       << "\n";
-          llvm::outs() << " - stride_dim=" << as_2d_str(conv.stride()) << "\n";
-          llvm::outs() << " - pad_dim="
-                       << as_str(pad.getMixedHighPad(), pad.getMixedLowPad())
-                       << "\n";
-          llvm::outs() << " - postp_filter_dim="
-                       << size_and_wgts_to_kernel_str(
-                              conv.mp_kernel_size(),
-                              conv.inputs()[1]
-                                  .getType()
-                                  .dyn_cast<mlir::RankedTensorType>())
-                       << "\n";
-          llvm::outs() << " - postp_stride_dim=" << as_2d_str(conv.mp_stride())
-                       << "\n";
-          llvm::outs() << " - postp_pad_dim=" << as_str(conv.mp_padding())
-                       << "\n";
+          output.addConv2dPart(
+              /*name=*/conv->getAttr("layer_name"),
+              /*inDim=*/as_nhwc_array(pad.getSourceType()),
+              /*filterDim=*/
+              wgts_to_kernel_array(conv.inputs()[1]
+                                       .getType()
+                                       .dyn_cast<mlir::RankedTensorType>()),
+              /*strideDim=*/as_2d_array(conv.stride()),
+              /*padDim=*/as_array(pad.getMixedHighPad(), pad.getMixedLowPad()));
+          output.add("postp_filter_dim",
+                     size_and_wgts_to_kernel_array(
+                         conv.mp_kernel_size(),
+                         conv.inputs()[1]
+                             .getType()
+                             .dyn_cast<mlir::RankedTensorType>()));
+          output.add("postp_stride_dim", as_2d_array(conv.mp_stride()));
+          output.add("postp_pad_dim", as_array(conv.mp_padding()));
+          nodes.insert({name, std::move(output.object)});
         } else {
           op->emitError("The Xilinx fused conv2d operators are expected to be "
                         "paired with a padding operator");
@@ -315,24 +330,24 @@ public:
       if (patternConvLrelu.match(op)) {
         auto *inOp = op->getOperand(0).getDefiningOp();
         if (pads.count(inOp)) {
-          pads.remove(inOp);
-          auto pad = dyn_cast<linalg::PadTensorOp>(inOp);
+          auto *padOp = inOp;
+          pads.remove(padOp);
+          inOp = padOp->getOperand(0).getDefiningOp();
+          auto name = nextName.getNext();
+          OutputOp output("Conv2D_LeakyRelu");
+          inputToResult[inOp] = {op->getResult(0), name};
+          auto pad = dyn_cast<linalg::PadTensorOp>(padOp);
           auto conv = dyn_cast<linalg::Conv2DLreluOp>(op);
-          llvm::outs() << "Conv2DLreluOp:\n";
-          llvm::outs() << " - node_name=\"" << conv->getAttr("layer_name")
-                       << "\"\n";
-          llvm::outs() << " - in_dim=" << as_nhwc_str(pad.getSourceType())
-                       << "\n";
-          llvm::outs() << " - filter_dim="
-                       << wgts_to_kernel_str(
-                              conv.inputs()[1]
-                                  .getType()
-                                  .dyn_cast<mlir::RankedTensorType>())
-                       << "\n";
-          llvm::outs() << " - stride_dim=" << as_2d_str(conv.stride()) << "\n";
-          llvm::outs() << " - pad_dim="
-                       << as_str(pad.getMixedHighPad(), pad.getMixedLowPad())
-                       << "\n";
+          output.addConv2dPart(
+              /*name=*/conv->getAttr("layer_name"),
+              /*inDim=*/as_nhwc_array(pad.getSourceType()),
+              /*filterDim=*/
+              wgts_to_kernel_array(conv.inputs()[1]
+                                       .getType()
+                                       .dyn_cast<mlir::RankedTensorType>()),
+              /*strideDim=*/as_2d_array(conv.stride()),
+              /*padDim=*/as_array(pad.getMixedHighPad(), pad.getMixedLowPad()));
+          nodes.insert({name, std::move(output.object)});
         } else {
           op->emitError("The Xilinx fused conv2d operators are expected to be "
                         "paired with a padding operator");
@@ -356,7 +371,30 @@ public:
       });
       return signalPassFailure();
     }
-    // auto ifm = m_Val(f.getArgument(0));
+
+    // Build the connected list of operators.
+    Value prevOutput = f.getArgument(0);
+    llvm::json::Array graph;
+    while (prevOutput != retVal) {
+      auto nextResultIt = inputToResult.find(prevOutput.getDefiningOp());
+      if (nextResultIt == inputToResult.end()) {
+        if (prevOutput == f.getArgument(0))
+          f->emitError("The argument is not used by another operator.");
+        else
+          prevOutput.getDefiningOp()->emitError(
+              "The operator result is not used by another operator.");
+      }
+      auto &nextResult = nextResultIt->second;
+      graph.push_back(nextResult.id);
+      prevOutput = nextResult.result;
+    }
+
+    llvm::json::Object final(
+        {{"nodes", std::move(nodes)}, {"graph", std::move(graph)}});
+    llvm::json::OStream out(llvm::outs(), 2);
+    out.value(std::move(final));
+    out.flush();
+    llvm::outs() << "\n";
   }
 };
 
