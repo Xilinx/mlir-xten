@@ -32,7 +32,7 @@
 #include <unordered_map>
 #include <algorithm>
 
-#define DEBUG_TYPE "aten-op-stats"
+#define DEBUG_TYPE "aten-visual-graph"
 
 using namespace mlir;
 using namespace xilinx::xten;
@@ -46,7 +46,6 @@ private:
   std::string o;
   std::string &output;
   
-  //  std::map<Operation *, std::pair<std::string, std::string> > opToName;
   llvm::MapVector<Operation *, std::pair<std::string, std::string> > opToName;
   std::map<Operation *, int> opToId;
   
@@ -71,7 +70,11 @@ private:
   
   std::unordered_map<Operation *, Value > inputOpToIFMValue;
 
-  ///// For TinyYolo DEMO only
+  ///// ------------- NOTE: For TinyYolo DEMO only --------------------------------------------------------
+  ///// Since Torch-Mlir doesn't propagate tensor output sizes by default, the ATEN visualizer needs 
+  ///// include a way to do shape propagation for now. 
+  ///// Code Sections marked with a DEMO label implement the shape propagation logic, which is relevant
+  ///// to the TinyYolo DEMO only.
   bool propagate_tensor_sizes;
 
   std::unordered_map<Operation *,
@@ -149,7 +152,7 @@ private:
     for (auto v : vec_input)
       vec_str += std::to_string(v) + separator;
 
-    if (vec_str.size() != 0) vec_str.pop_back();
+    if (not vec_str.empty()) vec_str.pop_back();
     return vec_str;
   }
 
@@ -166,14 +169,18 @@ private:
 
   std::map<std::string, uint64_t> getLayerStatsMap(Operation *op) {
     std::map<std::string, uint64_t> layerStatsMap;
-    //if (auto stats = mlir::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
-    //  layerStatsMap = stats.getStatistics();
-    //} else {
-    //layerStatsMap = xilinx::xten::getATenOpStats(op);
 
+    // ------ NOTE: Some functions in getATenOpStats don't handle 'unknown' tensor sizes.------
+    // ------ For now, comment out this section till the above is fixed. ----------------------
+    /* if (auto stats = mlir::dyn_cast<NPCOMP::StatisticsOpInterface>(op)) {
+      layerStatsMap = stats.getStatistics();
+    } else {
+    layerStatsMap = xilinx::xten::getATenOpStats(op);
+    
     //couldn't find ATen Stats for op, check if it has XTen Stats instead
-    //if (layerStatsMap.empty()) 
-    //  layerStatsMap = xilinx::xten::getXTenOpStats(op);
+    if (layerStatsMap.empty()) 
+      layerStatsMap = xilinx::xten::getXTenOpStats(op);
+    */
 
     return layerStatsMap;
   }
@@ -290,7 +297,7 @@ private:
   } 
 
   void fillPropertiesCatOp(Torch::AtenCatOp &catOp, llvm::json::Array &propertiesArray) {
-    std::string storage_str      = "";//std::to_string(storage_i_o_bytes);
+    std::string storage_str      = "";
 
     fillPropertiesObject({"Storage.Bytes",    storage_str},  propertiesArray);
   }
@@ -522,13 +529,12 @@ private:
 	uint64_t alpha_bytes = 0;
 	  
 	if (auto co = alpha.getDefiningOp<Torch::ConstantFloatOp>()) {
-	  alpha_bytes  = sizeof(double); // co.getType().dyn_cast<FloatType>().getWidth();
+	  alpha_bytes  = sizeof(double);
 	  auto alpha_n = co.value().convertToDouble();
 
 	  alpha_str = std::to_string(alpha_n);
 	  alpha_type_str = "float" + std::to_string(alpha_bytes);
 	} else {
-	  //TODO: still needs to be tested
 	  std::vector<int64_t> alpha_vec;	  
 	  unpack_int_list(alpha, alpha_vec);
 	  alpha_bytes = alpha.getType().dyn_cast<const IntegerType>().getWidth();
@@ -793,7 +799,7 @@ private:
 
     fillPropertiesConvOp<xten::Conv2dLReLUMaxPoolOp>(xtenConv2LReluMaxPoolOp, propertiesArray,
 						     true, &conv_storage, 0);
-    //For DEMO
+    ///////// For DEMO
     if (propagate_tensor_sizes) {
       auto tensor_size = propagatedTensorSizesMap[xtenConv2LReluMaxPoolOp][true]["value"];    
       std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" + std::to_string(tensor_size[1]) + "c" +
@@ -808,7 +814,7 @@ private:
     
     fillPropertiesMaxPool2dOp<xten::Conv2dLReLUMaxPoolOp>(xtenConv2LReluMaxPoolOp, propertiesArray,
     							  true, &maxpool_storage, 2);
-    //For DEMO
+    ///////// For DEMO
     if (propagate_tensor_sizes) {
       auto tensor_size = propagatedTensorSizesMap[xtenConv2LReluMaxPoolOp][false]["value"];
       std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" + std::to_string(tensor_size[1]) + "c" +
@@ -834,7 +840,7 @@ private:
     fillPropertiesConvOp<xten::Conv2dLReLUOp>(xtenConv2dLReluOp, propertiesArray,
 					      true, &conv_storage, 0);
 
-    //For DEMO
+    /////// For DEMO
     if (propagate_tensor_sizes) {
       auto tensor_size = propagatedTensorSizesMap[xtenConv2dLReluOp][false]["value"];    
       std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" + std::to_string(tensor_size[1]) + "c" +
@@ -1031,7 +1037,7 @@ private:
     cout   = weightTy.getSizes()[0];    
     return cout;
   }
-  ///////////////////
+  ///////////////////////////////////////////////
   
   void fillPortProperties(Operation *op, bool isInput, llvm::json::Array &portPropsArray,
 			  bool unfused_part_of_fused = false, std::string unfused_part_name = "",
@@ -1085,7 +1091,7 @@ private:
 	bytes_str = std::to_string(total_bytes(sizeResultTy, total_inputs));	
       }
       
-      //For TinyYolo-DEMO only
+      ///////// For TinyYolo-DEMO only
       if (propagate_tensor_sizes) {
 	auto value_v   = propagatedTensorSizesMap[op][isInput]["value"];
 	auto bit_width = propagatedTensorSizesMap[op][isInput]["type"][0];
@@ -1136,7 +1142,7 @@ private:
       
       llvm::json::Array portPropsArray;
 
-      ///// For DEMO only
+      ///////// For DEMO only
       if (propagate_tensor_sizes) {
 	fillPortProperties(op, true, portPropsArray);
 
@@ -1342,7 +1348,8 @@ public:
     }
 
     clearAllDataStructures();
-
+    std::cout << "TEST   " << std::endl;
+    std::cout << o << std::endl;
     //////For DEMO
     Operation *prevOp = nullptr; 
     /////////
