@@ -1348,8 +1348,6 @@ public:
     }
 
     clearAllDataStructures();
-    std::cout << "TEST   " << std::endl;
-    std::cout << o << std::endl;
     //////For DEMO
     Operation *prevOp = nullptr; 
     /////////

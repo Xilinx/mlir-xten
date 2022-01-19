@@ -10,7 +10,23 @@
 
 // RUN: aten-opt %s -aten-visual-graph='operators-supported-path=%S/../../../lib/Transform/operators_supported.json' | FileCheck %s
 // CHECK-LABEL:     "{{.*}}": {
-//
+// CHECK-LABEL:     "connections"
+// CHECK-LABEL:     {
+// CHECK-LABEL:     "from_port_id" 
+// CHECK-LABEL:     "id": 
+// CHECK-LABEL:     "to_port_id" 
+// CHECk-LABEL:     }
+// CHECK-LABEL:     {
+// CHECK-LABEL:     "from_port_id" 
+// CHECK-LABEL:     "id": 
+// CHECK-LABEL:     "to_port_id" 
+// CHECk-LABEL:     }
+// CHECK-LABEL:     {
+// CHECK-LABEL:     "from_port_id" 
+// CHECK-LABEL:     "id": 
+// CHECK-LABEL:     "to_port_id" 
+// CHECk-LABEL:     }
+// CHECk-LABEL:     "design_name": "design 1",
 
 module attributes {torch.debug_module_name = "TinyYoloV2"}  {
   func @forward(%arg0: !torch.vtensor<[1,3,416,416],f32>) -> !torch.vtensor<[?,?,?,?],f32> {
