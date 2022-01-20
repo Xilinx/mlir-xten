@@ -180,8 +180,7 @@ struct OutputOp {
   }
 };
 
-struct LinalgToDsePass
-    : public LinalgToDseBase<LinalgToDsePass> {
+struct LinalgToDsePass : public LinalgToDseBase<LinalgToDsePass> {
 
 public:
   LinalgToDsePass() = default;
@@ -210,7 +209,6 @@ public:
     llvm::SetVector<Operation *> biases;
 
     // To collect terminal operators of layers.
-    auto patternConvLreluMaxpool = m_Op<linalg::Conv2DLreluMaxpoolOp>();
     auto patternConvLrelu = m_Op<linalg::Conv2DLreluOp>();
     auto patternConv = m_Op<linalg::Conv2DNchwFchwOp>();
     struct NodeResult {
@@ -245,62 +243,63 @@ public:
         retVal = op->getOperand(0);
         return WalkResult::skip();
       }
-      if (patternConv.match(op)) {
+
+
+      if (isa<linalg::Conv2DNchwFchwOp>(op)) {
         auto conv = dyn_cast<linalg::Conv2DNchwFchwOp>(op);
+
         auto *outOp = conv.outputs()[0].getDefiningOp();
-        if (biases.count(outOp)) {
-          // We know that this is the bias copy for this conv2d.
-          // No further information is needed.
-          biases.remove(outOp);
-        }
+        biases.remove(outOp);
         auto *inOp = op->getOperand(0).getDefiningOp();
         auto name = nextName.getNext();
         OutputOp output("Conv2D");
-        if (pads.count(inOp)) {
+
+        mlir::RankedTensorType c2d_inDim = nullptr;
+        std::vector<int64_t> c2d_padDim;
+
+        if (pads.remove(inOp)) {
           auto *padOp = inOp;
-          pads.remove(padOp);
           inOp = padOp->getOperand(0).getDefiningOp();
           auto pad = dyn_cast<linalg::PadTensorOp>(padOp);
-          output.addConv2dPart(
-              /*name=*/conv->getAttr("layer_name"),
-              /*inDim=*/as_nhwc_array(pad.getSourceType()),
-              /*filterDim=*/
-              wgts_to_kernel_array(conv.inputs()[1]
-                                       .getType()
-                                       .dyn_cast<mlir::RankedTensorType>()),
-              /*strideDim=*/as_2d_array(conv.strides()),
-              /*padDim=*/as_array(pad.getMixedHighPad(), pad.getMixedLowPad()));
+
+          c2d_inDim = pad.getSourceType();
+          c2d_padDim = as_array(pad.getMixedHighPad(), pad.getMixedLowPad());
         } else {
-          auto conv = dyn_cast<linalg::Conv2DNchwFchwOp>(op);
-          output.addConv2dPart(
-              /*name=*/conv->getAttr("layer_name"),
-              /*inDim=*/
-              as_nhwc_array(conv.inputs()[0]
-                                .getType()
-                                .dyn_cast<mlir::RankedTensorType>()),
-              /*filterDim=*/
-              wgts_to_kernel_array(conv.inputs()[1]
-                                       .getType()
-                                       .dyn_cast<mlir::RankedTensorType>()),
-              /*strideDim=*/as_2d_array(conv.strides()),
-              /*padDim=*/{0, 0, 0, 0});
+          c2d_inDim =
+              conv.inputs()[0].getType().dyn_cast<mlir::RankedTensorType>();
+          c2d_padDim = {0, 0, 0, 0};
         }
+
+        auto c2d_name = conv->getAttr("layer_name");
+        auto c2d_filterDim =
+            conv.inputs()[1].getType().dyn_cast<mlir::RankedTensorType>();
+
+        output.addConv2dPart(
+            c2d_name,
+            as_nhwc_array(c2d_inDim),
+            wgts_to_kernel_array(c2d_filterDim),
+            as_2d_array(conv.strides()),
+            c2d_padDim);
+
         inputToResult[inOp] = {op->getResult(0), name};
         nodes.insert({name, std::move(output.object)});
 
         return WalkResult::skip();
       }
-      if (patternConvLreluMaxpool.match(op)) {
+
+
+      if (isa<linalg::Conv2DLreluMaxpoolOp>(op)) {
+        auto conv = dyn_cast<linalg::Conv2DLreluMaxpoolOp>(op);
+
         auto *inOp = op->getOperand(0).getDefiningOp();
-        if (pads.count(inOp)) {
+        if (pads.remove(inOp)) {
           auto *padOp = inOp;
-          pads.remove(padOp);
           inOp = padOp->getOperand(0).getDefiningOp();
           auto name = nextName.getNext();
-          OutputOp output("Conv2D_LeakyRelu_MaxPool2D");
           inputToResult[inOp] = {op->getResult(0), name};
           auto pad = dyn_cast<linalg::PadTensorOp>(padOp);
-          auto conv = dyn_cast<linalg::Conv2DLreluMaxpoolOp>(op);
+
+          OutputOp output("Conv2D_LeakyRelu_MaxPool2D");
           output.addConv2dPart(
               /*name=*/conv->getAttr("layer_name"),
               /*inDim=*/as_nhwc_array(pad.getSourceType()),
@@ -327,17 +326,18 @@ public:
 
         return WalkResult::skip();
       }
-      if (patternConvLrelu.match(op)) {
+
+      if (isa<linalg::Conv2DLreluOp>(op)) {
+        auto conv = dyn_cast<linalg::Conv2DLreluOp>(op);
+
         auto *inOp = op->getOperand(0).getDefiningOp();
-        if (pads.count(inOp)) {
+        if (pads.remove(inOp)) {
           auto *padOp = inOp;
-          pads.remove(padOp);
           inOp = padOp->getOperand(0).getDefiningOp();
           auto name = nextName.getNext();
           OutputOp output("Conv2D_LeakyRelu");
           inputToResult[inOp] = {op->getResult(0), name};
           auto pad = dyn_cast<linalg::PadTensorOp>(padOp);
-          auto conv = dyn_cast<linalg::Conv2DLreluOp>(op);
           output.addConv2dPart(
               /*name=*/conv->getAttr("layer_name"),
               /*inDim=*/as_nhwc_array(pad.getSourceType()),
