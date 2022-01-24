@@ -245,8 +245,7 @@ public:
       }
 
 
-      if (isa<linalg::Conv2DNchwFchwOp>(op)) {
-        auto conv = dyn_cast<linalg::Conv2DNchwFchwOp>(op);
+      if (auto conv = dyn_cast<linalg::Conv2DNchwFchwOp>(op)) {
 
         auto *outOp = conv.outputs()[0].getDefiningOp();
         biases.remove(outOp);
@@ -288,8 +287,7 @@ public:
       }
 
 
-      if (isa<linalg::Conv2DLreluMaxpoolOp>(op)) {
-        auto conv = dyn_cast<linalg::Conv2DLreluMaxpoolOp>(op);
+      if (auto conv = dyn_cast<linalg::Conv2DLreluMaxpoolOp>(op))) {
 
         auto *inOp = op->getOperand(0).getDefiningOp();
         if (pads.remove(inOp)) {
@@ -327,8 +325,7 @@ public:
         return WalkResult::skip();
       }
 
-      if (isa<linalg::Conv2DLreluOp>(op)) {
-        auto conv = dyn_cast<linalg::Conv2DLreluOp>(op);
+      if (auto conv = dyn_cast<linalg::Conv2DLreluOp>(op)) {
 
         auto *inOp = op->getOperand(0).getDefiningOp();
         if (pads.remove(inOp)) {
