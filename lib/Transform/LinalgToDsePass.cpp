@@ -209,8 +209,6 @@ public:
     llvm::SetVector<Operation *> biases;
 
     // To collect terminal operators of layers.
-    auto patternConvLrelu = m_Op<linalg::Conv2DLreluOp>();
-    auto patternConv = m_Op<linalg::Conv2DNchwFchwOp>();
     struct NodeResult {
       Value result;
       std::string id;
@@ -244,15 +242,12 @@ public:
         return WalkResult::skip();
       }
 
-
       if (auto conv = dyn_cast<linalg::Conv2DNchwFchwOp>(op)) {
-
         auto *outOp = conv.outputs()[0].getDefiningOp();
         biases.remove(outOp);
         auto *inOp = op->getOperand(0).getDefiningOp();
         auto name = nextName.getNext();
         OutputOp output("Conv2D");
-
         mlir::RankedTensorType c2d_inDim = nullptr;
         std::vector<int64_t> c2d_padDim;
 
@@ -286,9 +281,7 @@ public:
         return WalkResult::skip();
       }
 
-
-      if (auto conv = dyn_cast<linalg::Conv2DLreluMaxpoolOp>(op))) {
-
+      if (auto conv = dyn_cast<linalg::Conv2DLreluMaxpoolOp>(op)) {
         auto *inOp = op->getOperand(0).getDefiningOp();
         if (pads.remove(inOp)) {
           auto *padOp = inOp;
