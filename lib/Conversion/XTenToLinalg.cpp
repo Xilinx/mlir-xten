@@ -19,7 +19,7 @@
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 #include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionDialect.h"
 
-#include "mlir/Dialect/Linalg/IR/LinalgOps.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
@@ -142,7 +142,6 @@ public:
     auto oper1Ty = operands[1].getType().cast<Torch::BaseTensorType>();
     auto dtype = tTy.getDtype();
     std::vector<int64_t> sizes{oper0Ty.getSizes()[1], oper1Ty.getSizes()[0]};
-    auto tensorTy = tTy.getWithSizesAndDtype(ArrayRef<int64_t>{sizes}, dtype);
     auto memRefTy = mlir::MemRefType::get(sizes, dtype, {}, 0);
 
     auto A = MemRefTypeCast(rewriter, operands[0]);
