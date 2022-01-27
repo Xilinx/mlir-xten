@@ -477,7 +477,7 @@ public:
     TypeConverter typeConverter;
 
     // tablegen patterns
-    OwningRewritePatternList patterns(&getContext());
+    RewritePatternSet patterns(&getContext());
 //    populateWithGenerated(context, patterns);
 
     patterns.insert<XTenAddConstantOpConversion,

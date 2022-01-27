@@ -66,7 +66,7 @@ struct ATenToXTenPass : public ATenToXTenBase<ATenToXTenPass> {
     auto context = module.getContext();
     
     // tablegen patterns
-    OwningRewritePatternList fusionPatterns(&getContext());
+    RewritePatternSet fusionPatterns(&getContext());
     populateWithGenerated(fusionPatterns);
 
     // Perform aten specific Fusion.

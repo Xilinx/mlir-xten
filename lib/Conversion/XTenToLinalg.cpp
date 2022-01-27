@@ -250,7 +250,7 @@ public:
     TypeConverter typeConverter;
 
     // tablegen patterns
-    OwningRewritePatternList patterns(context);
+    RewritePatternSet patterns(context);
 
     patterns.insert<XTenAddOpConversion,
                     XTenMulOpConversion,
