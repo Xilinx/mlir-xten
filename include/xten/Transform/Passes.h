@@ -13,6 +13,7 @@
 
 #include "xten/Transform/ATenOpReport.h"
 #include "xten/Transform/ATenLoweringPass.h"
+#include "xten/Transform/ATenVisualGraph.h"
 #include "xten/Transform/LowerToLibATenPass.h"
 
 namespace xilinx {
