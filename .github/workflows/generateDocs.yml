@@ -66,6 +66,7 @@ jobs:
       # Build the repo test target in release mode to build and test.
       - name: Build Docs
         run: |
+          ls
           mkdir build_release
           pushd build_release
           cmake .. \
