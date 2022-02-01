@@ -72,13 +72,14 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DLLVM_ENABLE_ASSERTIONS=OFF \
             -DCMAKE_MODULE_PATH=../cmakeModules \
-            -DMLIR_DIR=/build/build/lib/cmake/mlir \
-            -DTORCH_MLIR_BINARY_DIR=/build/torch-mlir-build \
-            -DTORCH_MLIR_SOURCE_DIR=/build/torch-mlir
+            -DMLIR_DIR=../install/lib/cmake/mlir/ \
+            -DLLVM_DIR=../install/lib/cmake/llvm/ \
+            -DTORCH_MLIR_BINARY_DIR=../torch-mlir-build \
+            -DTORCH_MLIR_SOURCE_DIR=../torch-mlir
             -DCMAKE_LINKER=lld \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++ \
-            -DLLVM_EXTERNAL_LIT=/build/build/bin/llvm-lit
+            -DLLVM_EXTERNAL_LIT=`pwd`/../build/bin/llvm-lit
           make docs
           popd
           cp -r docs/* build_release/docs
