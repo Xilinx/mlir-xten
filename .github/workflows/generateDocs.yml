@@ -67,16 +67,17 @@ jobs:
       - name: Build Docs
         run: |
           ls
+          ls install/lib/cmake/mlir
           mkdir build_release
           pushd build_release
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DLLVM_ENABLE_ASSERTIONS=OFF \
             -DCMAKE_MODULE_PATH=../cmakeModules \
-            -DMLIR_DIR=../install/lib/cmake/mlir/ \
-            -DLLVM_DIR=../install/lib/cmake/llvm/ \
+            -DMLIR_DIR=../build/lib/cmake/mlir/ \
+            -DLLVM_DIR=../build/lib/cmake/llvm/ \
             -DTORCH_MLIR_BINARY_DIR=../torch-mlir-build \
-            -DTORCH_MLIR_SOURCE_DIR=../torch-mlir
+            -DTORCH_MLIR_SOURCE_DIR=../torch-mlir \
             -DCMAKE_LINKER=lld \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++ \
