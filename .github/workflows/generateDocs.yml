@@ -64,39 +64,39 @@ jobs:
         run: utils/build-llvm.sh
 
       # Build the repo test target in release mode to build and test.
-      # - name: Build Docs
-      #   run: |
-      #     ls
-      #     ls install/lib/cmake/mlir
-      #     mkdir build_release
-      #     pushd build_release
-      #     cmake .. \
-      #       -DCMAKE_BUILD_TYPE=Release \
-      #       -DLLVM_ENABLE_ASSERTIONS=OFF \
-      #       -DCMAKE_MODULE_PATH=`pwd`../cmakeModules \
-      #       -DMLIR_DIR=`pwd`../install/lib/cmake/mlir/ \
-      #       -DLLVM_DIR=`pwd`../install/lib/cmake/llvm/ \
-      #       -DTORCH_MLIR_BINARY_DIR=`pwd`../torch-mlir-build \
-      #       -DTORCH_MLIR_SOURCE_DIR=`pwd`../torch-mlir \
-      #       -DCMAKE_LINKER=lld \
-      #       -DCMAKE_C_COMPILER=clang \
-      #       -DCMAKE_CXX_COMPILER=clang++ \
-      #       -DLLVM_EXTERNAL_LIT=`pwd`/../build/bin/llvm-lit
-      #     make docs
-      #     popd
-      #     cp -r docs/* build_release/docs
+      - name: Build Docs
+        run: |
+          ls
+          ls install/lib/cmake/mlir
+          mkdir build_release
+          pushd build_release
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLLVM_ENABLE_ASSERTIONS=OFF \
+            -DCMAKE_MODULE_PATH=`pwd`/../cmakeModules \
+            -DMLIR_DIR=`pwd`/../install/lib/cmake/mlir/ \
+            -DLLVM_DIR=`pwd`/../install/lib/cmake/llvm/ \
+            -DTORCH_MLIR_BINARY_DIR=`pwd`/../torch-mlir-build \
+            -DTORCH_MLIR_SOURCE_DIR=`pwd`/../torch-mlir \
+            -DCMAKE_LINKER=lld \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DLLVM_EXTERNAL_LIT=`pwd`/../build/bin/llvm-lit
+          make docs
+          popd
+          cp -r docs/* build_release/docs
 
-      # - name: Save LLVM Version
-      #   run: |
-      #     cd llvm; set VER=`git rev-parse HEAD`
-      #     echo "{" > ../build_release/docs/build_info.json
-      #     echo "llvm-version: \"$(VER)\"," >> ../build_release/docs/build_info.json
-      #     echo "}" > ../build_release/docs/build_info.json
+      - name: Save LLVM Version
+        run: |
+          cd llvm; set VER=`git rev-parse HEAD`
+          echo "{" > ../build_release/docs/build_info.json
+          echo "llvm-version: \"$(VER)\"," >> ../build_release/docs/build_info.json
+          echo "}" > ../build_release/docs/build_info.json
 
-      # - name: Publish to github-pages
-      #   uses: peaceiris/actions-gh-pages@v3.6.1
-      #   with:
-      #     github_token: ${{ secrets.GITHUB_TOKEN }}
-      #     publish_dir: ./build_release/docs
-      #     enable_jekyll: true
+      - name: Publish to github-pages
+        uses: peaceiris/actions-gh-pages@v3.6.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build_release/docs
+          enable_jekyll: true
 
