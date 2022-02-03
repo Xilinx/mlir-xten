@@ -73,11 +73,11 @@ jobs:
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DLLVM_ENABLE_ASSERTIONS=OFF \
-            -DCMAKE_MODULE_PATH=../cmakeModules \
-            -DMLIR_DIR=../build/lib/cmake/mlir/ \
-            -DLLVM_DIR=../build/lib/cmake/llvm/ \
-            -DTORCH_MLIR_BINARY_DIR=../torch-mlir-build \
-            -DTORCH_MLIR_SOURCE_DIR=../torch-mlir \
+            -DCMAKE_MODULE_PATH=`pwd`../cmakeModules \
+            -DMLIR_DIR=`pwd`../install/lib/cmake/mlir/ \
+            -DLLVM_DIR=`pwd`../install/lib/cmake/llvm/ \
+            -DTORCH_MLIR_BINARY_DIR=`pwd`../torch-mlir-build \
+            -DTORCH_MLIR_SOURCE_DIR=`pwd`../torch-mlir \
             -DCMAKE_LINKER=lld \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++ \
