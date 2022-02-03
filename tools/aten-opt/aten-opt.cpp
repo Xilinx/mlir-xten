@@ -27,7 +27,7 @@
 #include "torch-mlir/InitAll.h"
 
 #include "xten/Dialect/XTen/XTenDialect.h"
-#include "xten/Dialect/XTen/Passes.h"
+#include "xten/Dialect/XTen/XTenPasses.h"
 #include "xten/Transform/Passes.h"
 #include "xten/Conversion/Passes.h"
 

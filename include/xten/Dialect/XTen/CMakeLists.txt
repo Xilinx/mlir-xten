@@ -5,22 +5,17 @@
 #
 # (c) Copyright 2021 Xilinx Inc.
 
-set(dialect XTenOps)
-set(dialect_namespace xten)
+
+add_mlir_dialect(XTenOps xten)
+add_mlir_doc(XTenOps XTenDialect ./ -gen-dialect-doc)
+
 set(LLVM_TARGET_DEFINITIONS XTenOps.td)
+mlir_tablegen(XTenEnums.h.inc -gen-enum-decls)
+mlir_tablegen(XTenEnums.cpp.inc -gen-enum-defs)
+add_public_tablegen_target(XTenEnumsIncGen)
 
-mlir_tablegen(${dialect}.h.inc -gen-op-decls)
-mlir_tablegen(${dialect}.cpp.inc -gen-op-defs)
-mlir_tablegen(${dialect}Types.h.inc -gen-typedef-decls)
-mlir_tablegen(${dialect}Types.cpp.inc -gen-typedef-defs)
-mlir_tablegen(${dialect}Dialect.h.inc -gen-dialect-decls -dialect=${dialect_namespace})
-mlir_tablegen(${dialect}Dialect.cpp.inc -gen-dialect-defs -dialect=${dialect_namespace})
-mlir_tablegen(${dialect}Enums.h.inc -gen-enum-decls)
-mlir_tablegen(${dialect}Enums.cpp.inc -gen-enum-defs)
-add_public_tablegen_target(XTenOpsIncGen)
+set(LLVM_TARGET_DEFINITIONS XTenPasses.td)
+mlir_tablegen(XTenPasses.h.inc -gen-pass-decls -name XTenDialect)
+add_public_tablegen_target(XTenPassesIncGen)
 
-set(LLVM_TARGET_DEFINITIONS Passes.td)
-mlir_tablegen(Passes.h.inc -gen-pass-decls -name XTenDialect)
-add_public_tablegen_target(XTenDialectPassesIncGen)
-
-#add_mlir_doc(Passes XTenDialectPasses ./ -gen-pass-doc)
+add_mlir_doc(XTenPasses XTenDialectPasses ./ -gen-pass-doc)

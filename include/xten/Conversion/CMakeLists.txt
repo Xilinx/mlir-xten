@@ -13,4 +13,4 @@ set(LLVM_TARGET_DEFINITIONS ATenToXTen.td)
 mlir_tablegen(ATenToXTen.cpp.inc -gen-rewriters)
 add_public_tablegen_target(ATenToXTenIncGen)
 
-#add_mlir_doc(Passes XTenConversionPasses ./ -gen-pass-doc)
+add_mlir_doc(Passes XTenConversionPasses ./ -gen-pass-doc)
