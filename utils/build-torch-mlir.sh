@@ -29,8 +29,8 @@ mkdir -p $INSTALL_DIR
 cmake -B $BUILD_DIR -S $SOURCE_DIR -G Ninja \
     -DMLIR_DIR=`pwd`/build/lib/cmake/mlir/ \
     -DCMAKE_INSTALL_PREFIX=../$INSTALL_DIR \
-    -DCMAKE_C_COMPILER=clang-8 \
-    -DCMAKE_CXX_COMPILER=clang++-8 \
+    -DCMAKE_C_COMPILER=clang \
+    -DCMAKE_CXX_COMPILER=clang++ \
     -DCMAKE_BUILD_TYPE=Release
 
 cmake --build $BUILD_DIR --target install -- -j$(nproc)
