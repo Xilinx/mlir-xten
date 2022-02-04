@@ -63,11 +63,12 @@ jobs:
       - name: Rebuild and Install LLVM
         run: utils/build-llvm.sh
 
+      - name: Build Torch-mLIR
+        run: utils/build-torch-mlir.sh
+
       # Build the repo test target in release mode to build and test.
       - name: Build Docs
         run: |
-          ls
-          ls install/lib/cmake/mlir
           mkdir build_release
           pushd build_release
           cmake .. \

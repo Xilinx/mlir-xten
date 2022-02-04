@@ -27,7 +27,7 @@ popd
 mkdir -p $BUILD_DIR
 mkdir -p $INSTALL_DIR
 cmake -B $BUILD_DIR -S $SOURCE_DIR -G Ninja \
-    -DMLIR_DIR=/build/build/lib/cmake/mlir \
+    -DMLIR_DIR=`pwd`/build/lib/cmake/mlir/ \
     -DCMAKE_INSTALL_PREFIX=../$INSTALL_DIR \
     -DCMAKE_C_COMPILER=clang-8 \
     -DCMAKE_CXX_COMPILER=clang++-8 \
