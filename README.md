@@ -11,9 +11,9 @@ This repository contains Xilinx extensions to the torch-mlir ATen dialect to ena
 Generated code documentation
 - [XTen Dialect](XTenDialect.md)
 - XTen Passes
--- [Dialect Passes](XTenDialectPasses.md)
--- [Transform Passes](XTenTransformPasses.md)
--- [Conversion Passes](XTenConversionPasses.md)
+    - [Dialect Passes](XTenDialectPasses.md)
+    - [Transform Passes](XTenTransformPasses.md)
+    - [Conversion Passes](XTenConversionPasses.md)
 
 -----
 
