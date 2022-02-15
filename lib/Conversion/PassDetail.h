@@ -12,6 +12,8 @@
 #define XTEN_CONVERSION_PASSDETAIL_H
 
 #include "mlir/Pass/Pass.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 
 namespace xilinx {
 namespace xten {

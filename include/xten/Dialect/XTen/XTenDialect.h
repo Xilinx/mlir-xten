@@ -12,6 +12,8 @@
 #define XTEN_DIALECT_H
 
 #include "mlir/IR/Dialect.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 
 using namespace mlir;
 
