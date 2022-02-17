@@ -18,6 +18,7 @@
 
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchTypes.h"
 
 #include "xten/Dialect/XTen/XTenDataflow.h"
 #include "xten/Dialect/XTen/XTenDataflowUtils.h"
@@ -82,8 +83,8 @@ namespace xilinx {
                 std::vector<std::pair<std::string, AbsOpWrapper*>> explorerInit;
 
                 graph.walk([&](Operation *op) {
-                        if(op->getAttr("name") != nullptr) {
-                            auto opName = (op->getAttr("name").dyn_cast<StringAttr>()).getValue();
+                        if(op->getAttr("layer_name") != nullptr) {
+                            auto opName = (op->getAttr("layer_name").dyn_cast<StringAttr>()).getValue();
                             AbsOpWrapper* wrappedOp = opToWrapper(op);
                             if(layerNameToOps.count(opName.str()) == 0) {
                                 layerNameToOps[opName.str()] = std::vector<AbsOpWrapper*>({wrappedOp});
@@ -188,9 +189,9 @@ namespace xilinx {
                     // TODO for Maxpool2d with indices, check other return types and check that assumption
                     std::vector<Type> shapes = std::vector<Type>();
                     for(unsigned int i = 0; i < op->getNumResults(); i++) {
-                        ShapedType origType = op->getResult(i).getType().dyn_cast<ShapedType>();
+                        mlir::torch::Torch::BaseTensorType origType = op->getResult(i).getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
                         assert(origType);
-                        ShapedType nReturnType = breakShapeInto(origType, C_LOC, into);
+                        mlir::torch::Torch::BaseTensorType nReturnType = breakShapeInto(origType, C_LOC, into);
                         shapes.push_back(nReturnType);
                     }
 
@@ -509,8 +510,8 @@ namespace xilinx {
                     }
 
                     // Same return type here
-                    ShapedType retTypePartial = op->getResult(0).getType().dyn_cast<ShapedType>();
-                    ShapedType retTypeForward = genOp->getInput().getType().dyn_cast<ShapedType>();
+                    mlir::torch::Torch::BaseTensorType retTypePartial = op->getResult(0).getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+                    mlir::torch::Torch::BaseTensorType retTypeForward = genOp->getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
 
                     // Generate new convs
                     auto w = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(0)) : llvm::Optional<Value>();
@@ -605,9 +606,8 @@ namespace xilinx {
                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
                 //unsigned int locP = getAttrOrDefault(op, "locP", 0);
 
-                std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
+                std::string layerName = op->getAttr("layer_name").dyn_cast<StringAttr>().getValue().str();
 
-                //ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
                 uint64_t F0 = absOp->getF0();
                 // TODO fix for F1
 
@@ -638,9 +638,8 @@ namespace xilinx {
                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
                 //unsigned int locP = getAttrOrDefault(op, "locP", 0);
 
-                std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
+                std::string layerName = op->getAttr("layer_name").dyn_cast<StringAttr>().getValue().str();
 
-                //ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
                 uint64_t F0 = absOp->getF0();
                 // TODO fix for F1
 
@@ -679,7 +678,7 @@ namespace xilinx {
                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
                 //unsigned int locP = getAttrOrDefault(op, "locP", 0);
 
-                std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
+                std::string layerName = op->getAttr("layer_name").dyn_cast<StringAttr>().getValue().str();
                 unsigned int W = this->layerNameToParams[layerName].W;
                 unsigned int L = this->layerNameToParams[layerName].L;
 
@@ -690,7 +689,6 @@ namespace xilinx {
                     WPrev = this->layerNameToParams[expl.layerIdToName[expl.layerNameToID[layerName]-1]].W;
                 }
 
-                //ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
                 uint64_t F0 = absOp->getF0();
                 // TODO fix for F1
 
@@ -829,8 +827,8 @@ namespace xilinx {
                             localLines[s] = absOp->getUnderlyingOperation()->getResult(1);
                         } else {
                             unsigned int locW = getAttrOrDefault(absOp->getUnderlyingOperation(), "locW", 0);
-                            ShapedType partialRes = absOp->getUnderlyingOperation()->getResult(0).getType().dyn_cast<ShapedType>();
-                            ShapedType forwardRes = absOp->getInput().getType().dyn_cast<ShapedType>();
+                            mlir::torch::Torch::BaseTensorType partialRes = absOp->getUnderlyingOperation()->getResult(0).getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+                            mlir::torch::Torch::BaseTensorType forwardRes = absOp->getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
 
                             OpBuilder builder(absOp->getUnderlyingOperation());
 

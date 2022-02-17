@@ -66,8 +66,8 @@ namespace xilinx {
             }
         };
 
-        ShapedType breakShapeInto(ShapedType initShape, unsigned int at, unsigned int into);
-        ShapedType mergeShapeInto(ShapedType initShape, unsigned int at, unsigned int into);
+        mlir::torch::Torch::BaseTensorType breakShapeInto(mlir::torch::Torch::BaseTensorType initShape, unsigned int at, unsigned int into);
+        mlir::torch::Torch::BaseTensorType mergeShapeInto(mlir::torch::Torch::BaseTensorType initShape, unsigned int at, unsigned int into);
 
         void splitConstantInto(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into);
 

@@ -501,9 +501,9 @@ public:
 
     target.addDynamicallyLegalOp<Torch::AtenConv2dOp>([&](Torch::AtenConv2dOp conv2d) {
         Value weight = conv2d.weight();
-        ShapedType weightTy = weight.getType().cast<ShapedType>();
-        uint64_t kernel_h = weightTy.getDimSize(2);
-        uint64_t kernel_w = weightTy.getDimSize(3);
+        mlir::torch::Torch::BaseTensorType weightTy = weight.getType().cast<mlir::torch::Torch::BaseTensorType>();
+        uint64_t kernel_h = weightTy.getSizes()[2]; //uint64_t kernel_h = weightTy.getDimSize(2);
+        uint64_t kernel_w = weightTy.getSizes()[3]; //uint64_t kernel_w = weightTy.getDimSize(3);
         if (kernel_h == 1 && kernel_w == 1) {
           return false;
         }
