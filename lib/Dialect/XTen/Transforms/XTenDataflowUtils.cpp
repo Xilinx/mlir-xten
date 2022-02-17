@@ -38,7 +38,8 @@ namespace xilinx {
 
             ArrayRef<long> nShape = ArrayRef<long>(newShape);
             //ShapedType ttype = RankedTensorType::get(nShape, initShape.getElementType());
-            mlir::torch::Torch::BaseTensorType ttype = initShape.cloneWith(nShape,initShape.getDtype()); //NOLF NEED CHECK
+            auto tmpType = initShape.getWithSizesAndDtype(nShape,initShape.getDtype()); // NOLF NEED CHECK
+            auto ttype = tmpType.dyn_cast<mlir::torch::Torch::BaseTensorType>(); // NOLF NEED CHECK
 
             return ttype;
         }
