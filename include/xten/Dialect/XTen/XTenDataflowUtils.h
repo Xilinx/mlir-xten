@@ -69,7 +69,7 @@ namespace xilinx {
         mlir::torch::Torch::BaseTensorType breakShapeInto(mlir::torch::Torch::BaseTensorType initShape, unsigned int at, unsigned int into);
         mlir::torch::Torch::BaseTensorType mergeShapeInto(mlir::torch::Torch::BaseTensorType initShape, unsigned int at, unsigned int into);
 
-        void splitConstantInto(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into);
+        void splitConstantInto(mlir::arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into);
 
         void deleteOpsFrom(std::vector<Operation*> &ops);
         void deleteOpsFrom(std::vector<AbsOpWrapper*> &ops);

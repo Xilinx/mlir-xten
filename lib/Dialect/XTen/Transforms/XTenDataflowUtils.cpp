@@ -53,7 +53,7 @@ namespace xilinx {
         }
 
         // TODO most likely factor some code here
-        void splitConstantActivationsInto(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, unsigned int loc,
+        void splitConstantActivationsInto(mlir::arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, unsigned int loc,
                                           DenseElementsAttr at, unsigned int into) {
             mlir::torch::Torch::BaseTensorType initialShape = at.getType().dyn_cast<mlir::torch::Torch::BaseTensorType>(); // NOLF NEED CHECK
             ArrayRef<int64_t> s = initialShape.getSizes();
@@ -104,14 +104,14 @@ namespace xilinx {
 
                 for(uint64_t i = 0; i < into; i++) {
                     DenseElementsAttr attr = DenseElementsAttr::get(ttype, vects.at(i));
-                    Operation* cst = builder.create<ConstantOp>(builder.getUnknownLoc(), ttype, attr);
+                    Operation* cst = builder.create<mlir::arith::ConstantOp>(builder.getUnknownLoc(), ttype, attr);
                     ops.push_back(cst->getResult(0));
                 }
             }
         }
 
         // Splits weights into according to dim given by loc
-        void splitConstantWeightsInto(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, unsigned int loc,
+        void splitConstantWeightsInto(mlir::arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, unsigned int loc,
                                   DenseElementsAttr at, unsigned int into) {
             mlir::torch::Torch::BaseTensorType initialShape = at.getType().dyn_cast<mlir::torch::Torch::BaseTensorType>(); // NOLF NEED CHECK
             ArrayRef<int64_t> s = initialShape.getSizes();
@@ -168,7 +168,7 @@ namespace xilinx {
 
                 for(uint64_t i = 0; i < into; i++) {
                     DenseElementsAttr attr = DenseElementsAttr::get(ttype, vects.at(i));
-                    Operation* cst = builder.create<ConstantOp>(builder.getUnknownLoc(), ttype, attr);
+                    Operation* cst = builder.create<mlir::arith::ConstantOp>(builder.getUnknownLoc(), ttype, attr);
                     ops.push_back(cst->getResult(0));
                 }
             }
@@ -176,7 +176,7 @@ namespace xilinx {
 
         // loc = 0 split
         // loc > 0 generate some other 0 biases
-        void splitConstantBiasInto(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, unsigned int loc, DenseElementsAttr at, unsigned int into) {
+        void splitConstantBiasInto(mlir::arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, unsigned int loc, DenseElementsAttr at, unsigned int into) {
             mlir::torch::Torch::BaseTensorType initialShape = at.getType().dyn_cast<mlir::torch::Torch::BaseTensorType>(); // NOLF NEED CHECK
             //if(initialShape.getElementType().isF32()) { // TODO extend to more types
             if(initialShape.getDtype().isF32()) {
@@ -215,7 +215,7 @@ namespace xilinx {
 
                 for(uint64_t i = 0; i < into; i++) {
                     DenseElementsAttr attr = DenseElementsAttr::get(ttype, vects.at(i));
-                    Operation* cst = builder.create<ConstantOp>(builder.getUnknownLoc(), ttype, attr);
+                    Operation* cst = builder.create<mlir::arith::ConstantOp>(builder.getUnknownLoc(), ttype, attr);
                     ops.push_back(cst->getResult(0));
                 }
             }
@@ -248,7 +248,7 @@ namespace xilinx {
             return (unsigned int )-1;
         }
 
-        void splitConstantInto(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into) {
+        void splitConstantInto(mlir::arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into) {
             for(NamedAttribute attr: op->getAttrs()) {
                 // We Look for the Dense Attribute
                 auto at = attr.getValue().dyn_cast<DenseElementsAttr>();

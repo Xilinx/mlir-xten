@@ -327,16 +327,14 @@ public:
                          .value();
             auto ty = rewriter.getF32Type();
             auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
-            add = builder.create<mlir::arith::AddFOp>(
-                loc, load, builder.create<ConstantOp>(loc, ty, add_const));
+            add = builder.create<mlir::arith::AddFOp>(loc, load, builder.create<mlir::arith::ConstantOp>(loc, ty, add_const));
           } else {
             Torch::ConstantIntOp op;
             auto c =
                 cast<Torch::ConstantIntOp>(operands[1].getDefiningOp()).value();
             auto ty = rewriter.getIntegerType(32);
             auto add_const = rewriter.getI32IntegerAttr(c.getZExtValue());
-            add = builder.create<mlir::arith::AddIOp>(
-                loc, load, builder.create<ConstantOp>(loc, ty, add_const));
+            add = builder.create<mlir::arith::AddIOp>(loc, load, builder.create<mlir::arith::ConstantOp>(loc, ty, add_const));
           }
           builder.create<AffineStoreOp>(loc, add, result, ident, ivs);
         });
