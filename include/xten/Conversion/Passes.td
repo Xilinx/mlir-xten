@@ -29,7 +29,10 @@ def XTenToLinalg : Pass<"xten-to-linalg", "ModuleOp"> {
   let constructor = "xilinx::xten::createXTenToLinalgPass()";
   let dependentDialects = [
     "linalg::LinalgDialect",
-    "bufferization::BufferizationDialect"
+    "bufferization::BufferizationDialect",
+    "memref::MemRefDialect",
+    "mlir::torch::Torch::TorchDialect",
+    "mlir::torch::TorchConversion::TorchConversionDialect",
   ];
 }
 
