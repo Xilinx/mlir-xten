@@ -12,7 +12,7 @@ add_mlir_library(XTenDialect
   XTenOpStats.cpp
 
   DEPENDS
-  XTenOpsIncGen
+  MLIRXTenOpsIncGen
 
   LINK_LIBS PUBLIC
   MLIRIR

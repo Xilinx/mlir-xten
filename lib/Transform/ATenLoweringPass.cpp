@@ -1292,7 +1292,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
       return type;
     });
 
-    OwningRewritePatternList atenPatterns(&getContext());
+    RewritePatternSet atenPatterns(&getContext());
     auto module = getOperation();
     auto context = module.getContext();
 

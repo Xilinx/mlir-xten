@@ -19,7 +19,7 @@ namespace xten {
 using namespace mlir;
 
 #define GEN_PASS_CLASSES
-#include "xten/Dialect/XTen/Passes.h.inc"
+#include "xten/Dialect/XTen/XTenPasses.h.inc"
 
 } // namespace xten
 } // namespace xilinx

@@ -23,6 +23,11 @@ def ATenOpReport : Pass<"aten-op-report", "ModuleOp"> {
   let constructor = "xilinx::xten::createATenOpReportPass()";
 }
 
+def ATenVisualGraph : Pass<"aten-visual-graph", "ModuleOp"> {
+  let summary = "Generate JSON visual model for ATen";
+  let constructor = "xilinx::xten::createATenVisualGraphPass()";
+}
+
 def LowerToLibATen : Pass<"lower-to-libaten", "ModuleOp"> {
   let summary = "Lower ATen Ops to library calls";
   let constructor = "xilinx::xten::createLowerToLibATenPass()";

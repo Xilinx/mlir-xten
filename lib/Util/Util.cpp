@@ -14,6 +14,8 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
+#include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OperationSupport.h"
 
@@ -87,7 +89,7 @@ Value MemRefTypeCast(OpBuilder &builder, Value val) {
   auto tensor = builder.create<torch::TorchConversion::ToBuiltinTensorOp>(
       val.getLoc(), RankedTensorType::get(sizes, dtype), val);
   auto memRefType = MemRefType::get(tensorTy.getSizes(), dtype, {}, 0);
-  return builder.create<memref::BufferCastOp>(val.getLoc(), memRefType, tensor)
+  return builder.create<bufferization::ToMemrefOp>(val.getLoc(), memRefType, tensor)
       .getResult();
 }
 
@@ -121,7 +123,7 @@ Value TensorTypeCast(OpBuilder &builder, Value val, Type resultTy) {
   if (!refType)
     return val;
   auto tensor =
-      builder.create<memref::TensorLoadOp>(val.getLoc(), val).getResult();
+      builder.create<bufferization::ToTensorOp>(val.getLoc(), val).getResult();
   return builder.create<torch::TorchConversion::FromBuiltinTensorOp>(
       val.getLoc(), resultTy, tensor);
 }

@@ -19,20 +19,20 @@
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 #include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionDialect.h"
 
-#include "mlir/Analysis/Utils.h"
+#include "mlir/Dialect/Affine/Analysis/Utils.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Affine/LoopUtils.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/Builders.h"
+#include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/IntegerSet.h"
 #include "mlir/IR/OperationSupport.h"
-#include "mlir/IR/BuiltinTypes.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Support/MathExtras.h"
 #include "mlir/Transforms/DialectConversion.h"
-#include "mlir/Transforms/LoopUtils.h"
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -477,15 +477,15 @@ public:
     TypeConverter typeConverter;
 
     // tablegen patterns
-    OwningRewritePatternList patterns(&getContext());
+    RewritePatternSet patterns(&getContext());
 //    populateWithGenerated(context, patterns);
 
     patterns.insert<XTenAddConstantOpConversion,
                     XTenAddOpConversion,
                     XTenMulOpConversion>(context);
 
-    populateFuncOpTypeConversionPattern(patterns,
-                                        typeConverter);
+    populateFunctionOpInterfaceTypeConversionPattern<FuncOp>(patterns,
+                                                             typeConverter);
 
     ConversionTarget target(*context);
 

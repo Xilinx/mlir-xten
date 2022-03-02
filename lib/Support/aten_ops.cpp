@@ -730,15 +730,15 @@ void mm_2F32_2F32_2F32_out(tensor_t<float,2> *a, tensor_t<float,2> *b, tensor_t<
   mm_out<float>(a,b,r);
 }
 
-tensor_t<float,2> mm_2F32_2F32_2F32(tensor_t<float,2> *a, tensor_t<float,2> *b) {
-  if (verbose) std::cout << "aten_ops " << __func__ << "\n";
-  tensor_t<float,2> r;
-  r.shape[0] = a->shape[0];
-  r.shape[1] = b->shape[1];
-  r.d = r.aligned = (float*)malloc(sizeof(float)*r.shape[0]*r.shape[1]);
-  mm_out<float>(a,b,&r);
-  return r;
-}
+// tensor_t<float,2> mm_2F32_2F32_2F32(tensor_t<float,2> *a, tensor_t<float,2> *b) {
+//   if (verbose) std::cout << "aten_ops " << __func__ << "\n";
+//   tensor_t<float,2> r;
+//   r.shape[0] = a->shape[0];
+//   r.shape[1] = b->shape[1];
+//   r.d = r.aligned = (float*)malloc(sizeof(float)*r.shape[0]*r.shape[1]);
+//   mm_out<float>(a,b,&r);
+//   return r;
+// }
 
 // mul_out
 

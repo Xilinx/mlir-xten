@@ -8,11 +8,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "xten/Dialect/XTen/Passes.h"
+#include "xten/Dialect/XTen/XTenPasses.h"
 
 namespace {
 #define GEN_PASS_REGISTRATION
-#include "xten/Dialect/XTen/Passes.h.inc"
+#include "xten/Dialect/XTen/XTenPasses.h.inc"
 }
 
 namespace xilinx {

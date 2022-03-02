@@ -15,6 +15,8 @@
 #include "mlir/IR/OpDefinition.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/SymbolTable.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"

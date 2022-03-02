@@ -15,6 +15,8 @@ add_library(_xten SHARED
   XTenModule.cpp
 )
 set_target_properties(_xten PROPERTIES PREFIX "")
+get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
+get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 
 target_link_libraries(_xten
   PRIVATE
@@ -27,7 +29,10 @@ target_link_libraries(_xten
   TorchMLIRTorchConversionDialect
   TorchMLIRTorchUtils
   ${Python3_LIBRARIES}
-
+  ${dialect_libs}
+  ${conversion_libs}
+  MLIRPass
+  MLIRIR
 )
 
 install(TARGETS _xten
