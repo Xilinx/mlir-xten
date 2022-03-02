@@ -850,6 +850,7 @@ public:
 
     ConversionTarget target(*context);
 
+    target.addIllegalDialect<XTenDialect>();
     target.addLegalDialect<
         AffineDialect, linalg::LinalgDialect, memref::MemRefDialect, bufferization::BufferizationDialect,
         StandardOpsDialect, arith::ArithmeticDialect, scf::SCFDialect,
