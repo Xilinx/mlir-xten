@@ -831,14 +831,6 @@ public:
   XTenToLinalgPass() = default;
   XTenToLinalgPass(const XTenToLinalgPass &pass){};
 
-  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
-    registry.insert<memref::MemRefDialect>();
-    registry.insert<bufferization::BufferizationDialect>();
-    registry.insert<linalg::LinalgDialect>();
-    registry
-        .insert<Torch::TorchDialect, TorchConversion::TorchConversionDialect>();
-  }
-
   void runOnOperation() override {
 
     auto module = getOperation();
