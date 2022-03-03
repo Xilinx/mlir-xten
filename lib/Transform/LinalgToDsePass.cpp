@@ -18,10 +18,11 @@
 
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
 #include "mlir/Dialect/Linalg/IR/LinalgInterfaces.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/Pass/Pass.h"
 
-#include "mlir/Dialect/Linalg/IR/LinalgOps.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "xten/Transform/LinalgToDsePass.h"
@@ -56,7 +57,7 @@ class M_padFpZero {
 public:
   bool match(Operation *op) const {
     // check we have the right operator
-    auto padOp = dyn_cast<linalg::PadTensorOp>(op);
+    auto padOp = dyn_cast<tensor::PadOp>(op);
     if (!padOp)
       return false;
 
@@ -254,7 +255,7 @@ public:
         if (pads.remove(inOp)) {
           auto *padOp = inOp;
           inOp = padOp->getOperand(0).getDefiningOp();
-          auto pad = dyn_cast<linalg::PadTensorOp>(padOp);
+          auto pad = dyn_cast<tensor::PadOp>(padOp);
 
           c2d_inDim = pad.getSourceType();
           c2d_padDim = as_array(pad.getMixedHighPad(), pad.getMixedLowPad());
@@ -288,7 +289,7 @@ public:
           inOp = padOp->getOperand(0).getDefiningOp();
           auto name = nextName.getNext();
           inputToResult[inOp] = {op->getResult(0), name};
-          auto pad = dyn_cast<linalg::PadTensorOp>(padOp);
+          auto pad = dyn_cast<tensor::PadOp>(padOp);
 
           OutputOp output("Conv2D_LeakyRelu_MaxPool2D");
           output.addConv2dPart(
@@ -327,7 +328,7 @@ public:
           auto name = nextName.getNext();
           OutputOp output("Conv2D_LeakyRelu");
           inputToResult[inOp] = {op->getResult(0), name};
-          auto pad = dyn_cast<linalg::PadTensorOp>(padOp);
+          auto pad = dyn_cast<tensor::PadOp>(padOp);
           output.addConv2dPart(
               /*name=*/conv->getAttr("layer_name"),
               /*inDim=*/as_nhwc_array(pad.getSourceType()),

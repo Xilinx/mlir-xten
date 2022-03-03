@@ -15,9 +15,9 @@
 module attributes {torch.debug_module_name = "HelloWorld"}  {
   func @forward(%arg0: tensor<1x16x64x64xf32>) -> tensor<1x16x66x66xf32> {
     %cst = arith.constant 1.000000e+00 : f32
-    %3 = linalg.pad_tensor %arg0 low[0, 0, 1, 1] high[0, 0, 1, 1]  {
+    %3 = tensor.pad %arg0 low[0, 0, 1, 1] high[0, 0, 1, 1]  {
     ^bb0(%arg1: index, %arg2: index, %arg3: index, %arg4: index):  // no predecessors
-      linalg.yield %cst : f32
+      tensor.yield %cst : f32
     } : tensor<1x16x64x64xf32> to tensor<1x16x66x66xf32>
     return %3 : tensor<1x16x66x66xf32>
   }

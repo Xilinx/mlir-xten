@@ -24,6 +24,7 @@
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
+#include "mlir/Dialect/Tensor/Utils/Utils.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 
@@ -62,7 +63,7 @@ static Value applyPad(Location loc, Value input, ArrayRef<int64_t> pad,
 
   Value padValue = rewriter.create<arith::ConstantOp>(loc, padAttr);
 
-  return linalg::PadTensorOp::createPadScalarOp(
+  return tensor::createPadScalarOp(
              RankedTensorType::get(paddedShape, inputETy), input, padValue,
              lowIndices, highIndices, /*nofold=*/false, loc, rewriter)
       .result();
@@ -832,6 +833,7 @@ public:
 
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     registry.insert<memref::MemRefDialect>();
+    registry.insert<bufferization::BufferizationDialect>();
     registry.insert<linalg::LinalgDialect>();
     registry
         .insert<Torch::TorchDialect, TorchConversion::TorchConversionDialect>();
@@ -857,9 +859,9 @@ public:
     ConversionTarget target(*context);
 
     target.addLegalDialect<
-        AffineDialect, linalg::LinalgDialect, memref::MemRefDialect,
+        AffineDialect, linalg::LinalgDialect, memref::MemRefDialect, bufferization::BufferizationDialect,
         StandardOpsDialect, arith::ArithmeticDialect, scf::SCFDialect,
-        Torch::TorchDialect, TorchConversion::TorchConversionDialect>();
+        tensor::TensorDialect, Torch::TorchDialect, TorchConversion::TorchConversionDialect>();
 
     if (failed(applyPartialConversion(module, target, std::move(patterns)))) {
       emitError(UnknownLoc::get(context), "error lowering XTen to Linalg\n");
