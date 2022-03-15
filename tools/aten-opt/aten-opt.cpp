@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
 
   DialectRegistry registry;
   registerAllDialects(registry);
-  mlir::torch::registerAllDialects(registry);
+  mlir::registerAllDialects(registry);
   registry.insert<xilinx::xten::XTenDialect,
                   torch::Torch::TorchDialect,
                   torch::TorchConversion::TorchConversionDialect>();
