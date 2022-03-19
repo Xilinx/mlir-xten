@@ -25,7 +25,7 @@
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/IntegerSet.h"
@@ -489,7 +489,7 @@ public:
 
     target.addLegalDialect<AffineDialect, LLVM::LLVMDialect,
                            memref::MemRefDialect,
-                           StandardOpsDialect, scf::SCFDialect,
+                           func::FuncDialect, scf::SCFDialect,
                            TorchConversion::TorchConversionDialect>();
     // target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
     //    return typeConverter.isSignatureLegal(op.getType());

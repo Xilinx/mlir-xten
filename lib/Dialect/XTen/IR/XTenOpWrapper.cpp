@@ -63,7 +63,7 @@ namespace xilinx {
             Value s = this->conv.stride();
             SmallVector<int64_t, 2> stride;
             matchPattern(s, Torch::m_TorchConstantIntList(stride));
-            
+
             return stride[0];
         }
 
@@ -81,11 +81,15 @@ namespace xilinx {
         }
 
         bool Conv2dOpWrapper::isDepthWise() {
-            unsigned int groups = this->conv.groups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
+            //unsigned int groups = this->conv.groups().getDefiningOp<mlir::torch::Torch::IntType>().get();//.value();
+          llvm::APInt intT = this->conv.groups().getDefiningOp<mlir::torch::Torch::ConstantIntOp>().value();
+            //MLIRContext *context = intT.getContext();
+          uint64_t groups = intT.getSExtValue();
+
             mlir::torch::Torch::BaseTensorType aShape = this->conv.input().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
             ArrayRef<int64_t> aShapeAR = aShape.getSizes();
 
-            int64_t C = aShapeAR[C_LOC];
+            uint64_t C = aShapeAR[C_LOC];
 
             return groups == C;
         }

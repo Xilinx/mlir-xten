@@ -9,7 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/Pass/Pass.h"
@@ -1149,7 +1149,7 @@ namespace xilinx {
             void runOnOperation() override {
                 ModuleOp module = getOperation();
 
-                auto graph = module.lookupSymbol<FuncOp>("graph");
+                auto graph = module.lookupSymbol<FuncOp>("forward");
                 if(!graph) {
                     emitError(UnknownLoc::get(module.getContext()), "Cant find graph func\n");
                     signalPassFailure();

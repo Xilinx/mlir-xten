@@ -17,5 +17,6 @@ add_mlir_library(XTenTransforms
 
   LINK_LIBS PUBLIC
   MLIRIR
-  MLIRStandard
+  MLIRPass
+  MLIRTransforms
 )
