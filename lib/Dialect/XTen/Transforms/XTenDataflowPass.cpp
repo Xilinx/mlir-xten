@@ -136,7 +136,7 @@ namespace xilinx {
                     Operation* weights;
                     if(genOp->hasWeights()) {
                         weights = genOp->getWeights().getDefiningOp();
-                        if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
+                        if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(weights)) {
                             splitConstantInto(constOp, nConsts, builder, PSplit, wSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -148,7 +148,7 @@ namespace xilinx {
                     Operation* biases;
                     if(genOp->hasBias()) {
                         biases = genOp->getBiases()->getDefiningOp();
-                        if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
+                        if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(biases)) {
                             splitConstantInto(constOp, nBiases, builder, PSplit, bSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -162,7 +162,7 @@ namespace xilinx {
                         for(unsigned int i = 0; i < 4; i++) {
                             Operation* bnParam = bnParams[i].getDefiningOp();
                             std::vector<Value> nBnLoc;
-                            if(auto constOp = llvm::dyn_cast<ConstantOp>(bnParam)) {
+                            if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(bnParam)) {
                                 splitConstantInto(constOp, nBnLoc, builder, PSplit, bSplitType, into);
                             } else {
                                 llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -299,7 +299,7 @@ namespace xilinx {
                     Operation* weights;
                     if(genOp->hasWeights()) {
                          weights = genOp->getWeights().getDefiningOp();
-                        if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
+                        if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(weights)) {
                             splitConstantInto(constOp, nConsts, builder, CaSplit, wSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -312,7 +312,7 @@ namespace xilinx {
                     Operation* biases;
                     if(genOp->hasBias()) {
                         biases = genOp->getBiases()->getDefiningOp();
-                        if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
+                        if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(biases)) {
                             splitConstantInto(constOp, nBiases, builder, CaSplit, bSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -328,7 +328,7 @@ namespace xilinx {
                         for(unsigned int i = 0; i < 4; i++) {
                             Operation* bnParam = bnParams[i].getDefiningOp();
                             std::vector<Value> nBnLoc;
-                            if(auto constOp = llvm::dyn_cast<ConstantOp>(bnParam)) {
+                            if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(bnParam)) {
                                 splitConstantInto(constOp, nBnLoc, builder, CaSplit, bSplitType, into);
                             } else {
                                 llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -350,7 +350,7 @@ namespace xilinx {
                     }
 
                     // split activations
-                    if(auto constOp = genOp->getInput().getDefiningOp<ConstantOp>()) {
+                    if(auto constOp = genOp->getInput().getDefiningOp<arith::ConstantOp>()) {
                         splitConstantInto(constOp, nInputs, builder, CaSplit, aSplitType, into);
                     } else {
                         if(ConcatOp concatOp = genOp->getInput().getDefiningOp<ConcatOp>()) {
@@ -459,7 +459,7 @@ namespace xilinx {
                     Operation* weights;
                     if(genOp->hasWeights()) {
                         weights = genOp->getWeights().getDefiningOp();//->getName();
-                        if(auto constOp = llvm::dyn_cast<ConstantOp>(weights)) {
+                        if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(weights)) {
                             splitConstantInto(constOp, nConsts, builder, LSplit, wSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -472,7 +472,7 @@ namespace xilinx {
                     Operation* biases;
                     if(genOp->hasBias()) {
                         biases = genOp->getBiases()->getDefiningOp();
-                        if(auto constOp = llvm::dyn_cast<ConstantOp>(biases)) {
+                        if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(biases)) {
                             splitConstantInto(constOp, nBiases, builder, LSplit, bSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -487,7 +487,7 @@ namespace xilinx {
                         for(unsigned int i = 0; i < 4; i++) {
                             Operation* bnParam = bnParams[i].getDefiningOp();
                             std::vector<Value> nBnLoc;
-                            if(auto constOp = llvm::dyn_cast<ConstantOp>(bnParam)) {
+                            if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(bnParam)) {
                                 splitConstantInto(constOp, nBnLoc, builder, LSplit, bSplitType, into);
                             } else {
                                 llvm::outs() << "Cannot convert to ConstOp!\n";

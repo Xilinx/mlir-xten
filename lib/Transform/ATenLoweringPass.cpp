@@ -91,7 +91,7 @@ public:
     Value xVal(MemRefTypeCast(rewriter, operands[0]));
     Value yVal(MemRefTypeCast(rewriter, operands[1]));
 
-    auto co = operands[2].getDefiningOp<ConstantOp>();
+    auto co = operands[2].getDefiningOp<arith::ConstantOp>();
     auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
@@ -131,11 +131,11 @@ public:
     Value bVal(MemRefTypeCast(rewriter, operands[1]));
     Value cVal(MemRefTypeCast(rewriter, operands[2]));
 
-    auto co0 = operands[3].getDefiningOp<ConstantOp>();
+    auto co0 = operands[3].getDefiningOp<arith::ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
-    auto co1 = operands[4].getDefiningOp<ConstantOp>();
+    auto co1 = operands[4].getDefiningOp<arith::ConstantOp>();
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt iaVal1 = ia1.getValue();
 
@@ -428,11 +428,11 @@ public:
 
     Value aVal(MemRefTypeCast(rewriter, operands[0]));
 
-    auto co0 = operands[1].getDefiningOp<ConstantOp>();
+    auto co0 = operands[1].getDefiningOp<arith::ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
-    auto co1 = operands[2].getDefiningOp<ConstantOp>();
+    auto co1 = operands[2].getDefiningOp<arith::ConstantOp>();
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt iaVal1 = ia1.getValue();
 
@@ -474,7 +474,7 @@ public:
 //     Value arg1(MemRefTypeCast(rewriter, operands[1]));
 //     Value arg3(MemRefTypeCast(rewriter, operands[3]));
 
-//     auto co0 = operands[2].getDefiningOp<ConstantOp>();
+//     auto co0 = operands[2].getDefiningOp<arith::ConstantOp>();
 //     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
 //     APInt iaVal0 = ia0.getValue();
 
@@ -569,7 +569,7 @@ public:
     unpack_int_list(operands[4], dilation);
 
     //ceil_mode
-    auto co = operands[5].getDefiningOp<ConstantOp>();
+    auto co = operands[5].getDefiningOp<arith::ConstantOp>();
     auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
@@ -618,7 +618,7 @@ public:
     unpack_int_list(operands[5], dilation);
 
     //ceil_mode
-    auto co = operands[6].getDefiningOp<ConstantOp>();
+    auto co = operands[6].getDefiningOp<arith::ConstantOp>();
     auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt iaVal = ia.getValue();
 
@@ -749,15 +749,15 @@ public:
     Value dVal(MemRefTypeCast(rewriter, operands[3]));
     Value eVal(MemRefTypeCast(rewriter, operands[4]));
 
-    auto co0 = operands[5].getDefiningOp<ConstantOp>();
+    auto co0 = operands[5].getDefiningOp<arith::ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt iaVal0 = ia0.getValue();
 
-    auto co1 = operands[6].getDefiningOp<ConstantOp>();
+    auto co1 = operands[6].getDefiningOp<arith::ConstantOp>();
     auto fa0 = co1->getAttrOfType<FloatAttr>("value");
     APFloat faVal0 = fa0.getValue();
 
-    auto co2 = operands[7].getDefiningOp<ConstantOp>();
+    auto co2 = operands[7].getDefiningOp<arith::ConstantOp>();
     auto fa1 = co2->getAttrOfType<FloatAttr>("value");
     APFloat faVal1 = fa1.getValue();
 
@@ -805,12 +805,12 @@ public:
     Value arg6(MemRefTypeCast(rewriter, operands[6]));
 
     // reduction
-    auto co0 = operands[4].getDefiningOp<ConstantOp>();
+    auto co0 = operands[4].getDefiningOp<arith::ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia0.getValue();
 
     // ignore_index
-    auto co1 = operands[5].getDefiningOp<ConstantOp>();
+    auto co1 = operands[5].getDefiningOp<arith::ConstantOp>();
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg5 = ia1.getValue();
 
@@ -858,12 +858,12 @@ public:
     Value arg2(MemRefTypeCast(rewriter, operands[2]));
 
     // reduction
-    auto co0 = operands[3].getDefiningOp<ConstantOp>();
+    auto co0 = operands[3].getDefiningOp<arith::ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg3 = ia0.getValue();
 
     // ignore_index
-    auto co1 = operands[4].getDefiningOp<ConstantOp>();
+    auto co1 = operands[4].getDefiningOp<arith::ConstantOp>();
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia1.getValue();
 
@@ -910,12 +910,12 @@ public:
     Value arg6(MemRefTypeCast(rewriter, operands[6]));
 
     // reduction
-    auto co0 = operands[4].getDefiningOp<ConstantOp>();
+    auto co0 = operands[4].getDefiningOp<arith::ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia0.getValue();
 
     // ignore_index
-    auto co1 = operands[5].getDefiningOp<ConstantOp>();
+    auto co1 = operands[5].getDefiningOp<arith::ConstantOp>();
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg5 = ia1.getValue();
 
@@ -963,12 +963,12 @@ public:
     Value arg2(MemRefTypeCast(rewriter, operands[2]));
 
     // reduction
-    auto co0 = operands[3].getDefiningOp<ConstantOp>();
+    auto co0 = operands[3].getDefiningOp<arith::ConstantOp>();
     auto ia0 = co0->getAttrOfType<IntegerAttr>("value");
     APInt arg3 = ia0.getValue();
 
     // ignore_index
-    auto co1 = operands[4].getDefiningOp<ConstantOp>();
+    auto co1 = operands[4].getDefiningOp<arith::ConstantOp>();
     auto ia1 = co1->getAttrOfType<IntegerAttr>("value");
     APInt arg4 = ia1.getValue();
 
@@ -1046,7 +1046,7 @@ public:
     Value arg0(MemRefTypeCast(rewriter, operands[0]));
     Value arg1(MemRefTypeCast(rewriter, operands[1]));
 
-    auto co = operands[2].getDefiningOp<ConstantOp>();
+    auto co = operands[2].getDefiningOp<arith::ConstantOp>();
     auto ia = co->getAttrOfType<IntegerAttr>("value");
     APInt arg2 = ia.getValue();
 

@@ -19,10 +19,10 @@ module attributes {torch.debug_module_name = "HelloWorld"}  {
     %int1 = torch.constant.int 1
     %int2 = torch.constant.int 2
     %false = torch.constant.bool false
-    %2 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<!torch.int>
-    %3 = torch.prim.ListConstruct %int2, %int2 : (!torch.int, !torch.int) -> !torch.list<!torch.int>
-    %4 = torch.prim.ListConstruct %int0, %int0 : (!torch.int, !torch.int) -> !torch.list<!torch.int>
-    %6 = "xten.conv2d_lrelu_maxpool"(%arg0, %1, %0, %2, %2, %2, %int1, %float1.000000e-01, %3, %3, %4, %2, %false) {layer_name = "conv2d_lrelu_maxpool0"} : (!torch.vtensor<[1,3,128,128],f32>, !torch.vtensor<[16,3,3,3],f32>, !torch.vtensor<[16],f32>, !torch.list<!torch.int>, !torch.list<!torch.int>, !torch.list<!torch.int>, !torch.int, !torch.float, !torch.list<!torch.int>, !torch.list<!torch.int>, !torch.list<!torch.int>, !torch.list<!torch.int>, !torch.bool) -> !torch.vtensor<[1,16,64,64],f32>
+    %2 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<int>
+    %3 = torch.prim.ListConstruct %int2, %int2 : (!torch.int, !torch.int) -> !torch.list<int>
+    %4 = torch.prim.ListConstruct %int0, %int0 : (!torch.int, !torch.int) -> !torch.list<int>
+    %6 = "xten.conv2d_lrelu_maxpool"(%arg0, %1, %0, %2, %2, %2, %int1, %float1.000000e-01, %3, %3, %4, %2, %false) {layer_name = "conv2d_lrelu_maxpool0"} : (!torch.vtensor<[1,3,128,128],f32>, !torch.vtensor<[16,3,3,3],f32>, !torch.vtensor<[16],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int, !torch.float, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool) -> !torch.vtensor<[1,16,64,64],f32>
     return %6 : !torch.vtensor<[1,16,64,64],f32>
   }
 }
