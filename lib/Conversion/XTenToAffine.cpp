@@ -25,7 +25,7 @@
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/IntegerSet.h"
@@ -328,7 +328,7 @@ public:
             auto ty = rewriter.getF32Type();
             auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
             add = builder.create<mlir::arith::AddFOp>(
-                loc, load, builder.create<ConstantOp>(loc, ty, add_const));
+                loc, load, builder.create<arith::ConstantOp>(loc, ty, add_const));
           } else {
             Torch::ConstantIntOp op;
             auto c =
@@ -336,7 +336,7 @@ public:
             auto ty = rewriter.getIntegerType(32);
             auto add_const = rewriter.getI32IntegerAttr(c.getZExtValue());
             add = builder.create<mlir::arith::AddIOp>(
-                loc, load, builder.create<ConstantOp>(loc, ty, add_const));
+                loc, load, builder.create<arith::ConstantOp>(loc, ty, add_const));
           }
           builder.create<AffineStoreOp>(loc, add, result, ident, ivs);
         });
@@ -491,7 +491,7 @@ public:
 
     target.addLegalDialect<AffineDialect, LLVM::LLVMDialect,
                            memref::MemRefDialect,
-                           StandardOpsDialect, scf::SCFDialect,
+                           func::FuncDialect, scf::SCFDialect,
                            TorchConversion::TorchConversionDialect>();
     // target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
     //    return typeConverter.isSignatureLegal(op.getType());

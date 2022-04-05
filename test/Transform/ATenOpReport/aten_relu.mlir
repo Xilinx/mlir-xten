@@ -32,7 +32,7 @@
 module {
   func @graph(%arg0: tensor<1x2x3xf32>) -> tensor<1x2x3xf32> {
     %0 = "aten.relu"(%arg0) : (tensor<1x2x3xf32>) -> tensor<1x2x3xf32>
-    "std.return"(%0) : (tensor<1x2x3xf32>) -> ()
+    "func.return"(%0) : (tensor<1x2x3xf32>) -> ()
   }
 }
 

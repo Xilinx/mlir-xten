@@ -15,6 +15,6 @@ add_mlir_library(XTenDialect
   MLIRXTenOpsIncGen
 
   LINK_LIBS PUBLIC
+  MLIRFunc
   MLIRIR
-  MLIRStandard
 )

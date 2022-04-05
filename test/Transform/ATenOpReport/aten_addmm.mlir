@@ -40,6 +40,6 @@ module {
     %0 = "aten.t"(%arg1) : (tensor<16x1024xf32>) -> tensor<1024x16xf32>
     %1 = constant 1 : i64
     %3 = "aten.addmm"(%arg2, %arg0, %0, %1, %1) : (tensor<16xf32>, tensor<1x1024xf32>, tensor<1024x16xf32>, i64, i64) -> tensor<1x16xf32>
-    "std.return"(%3) : (tensor<1x16xf32>) -> ()
+    "func.return"(%3) : (tensor<1x16xf32>) -> ()
   }
 }

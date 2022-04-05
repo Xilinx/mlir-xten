@@ -19,7 +19,7 @@ include "mlir/IR/SymbolInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
 
-class XTen_Op<string mnemonic, list<OpTrait> traits = []>
+class XTen_Op<string mnemonic, list<Trait> traits = []>
     : Op<XTen_Dialect, mnemonic, traits> {
 }
 

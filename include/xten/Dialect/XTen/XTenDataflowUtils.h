@@ -13,7 +13,7 @@
 
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/BuiltinTypes.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 
 #include "xten/Dialect/XTen/XTenOpWrapper.h"
 #include "xten/Dialect/XTen/XTenDataflowConsts.h"
@@ -69,7 +69,7 @@ namespace xilinx {
         ShapedType breakShapeInto(ShapedType initShape, unsigned int at, unsigned int into);
         ShapedType mergeShapeInto(ShapedType initShape, unsigned int at, unsigned int into);
 
-        void splitConstantInto(ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into);
+        void splitConstantInto(arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into);
 
         void deleteOpsFrom(std::vector<Operation*> &ops);
         void deleteOpsFrom(std::vector<AbsOpWrapper*> &ops);
