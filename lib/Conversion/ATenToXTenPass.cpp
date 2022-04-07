@@ -80,6 +80,9 @@ struct ATenToXTenPass : public ATenToXTenBase<ATenToXTenPass> {
     target.addLegalOp<xilinx::xten::Conv2dLReLUOp>();
     target.addLegalOp<xilinx::xten::Conv2dLReLUMaxPoolOp>();
     target.addLegalOp<xilinx::xten::Conv2dOp>();
+    target.addLegalOp<xilinx::xten::Conv2dTensorAddOp>();
+    target.addLegalOp<xilinx::xten::Conv2dTensorAddReLUOp>();
+    target.addLegalOp<xilinx::xten::Conv2dTensorAddLReLUOp>();
     target.addLegalOp<xilinx::xten::NoOp>();
     if (failed(applyPatternsAndFoldGreedily(module, /*target,*/ std::move(fusionPatterns)))) {
       emitError(UnknownLoc::get(context), "error translating or fusing ATen to XTen\n");

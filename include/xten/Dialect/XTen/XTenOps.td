@@ -417,5 +417,76 @@ def XTen_Conv2dLReLUPadMaxPoolOp: XTen_Op<"conv2d_lrelu_pad_maxpool", [NoSideEff
 	}];
 }
 
+def XTen_Conv2dTensorAddOp: XTen_Op<"conv2d_tensoradd", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        TorchIntListType:$stride,
+        TorchIntListType:$padding,
+        TorchIntListType:$dilation,
+        Torch_IntType:$groups,
+
+        AnyTorchTensorType:$ifm2
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with linear activation, then element-wise add with another tensor";
+  let description = [{
+    Convolution with linear activation, then element-wise add with another tensor.
+  }];
+}
+
+def XTen_Conv2dTensorAddReLUOp: XTen_Op<"conv2d_tensoradd_relu", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        TorchIntListType:$stride,
+        TorchIntListType:$padding,
+        TorchIntListType:$dilation,
+        Torch_IntType:$groups,
+
+        AnyTorchTensorType:$ifm2
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then ReLU";
+  let description = [{
+    Convolution with linear activation, then element-wise add with another tensor, then ReLU.
+  }];
+}
+
+def XTen_Conv2dTensorAddLReLUOp: XTen_Op<"conv2d_tensoradd_lrelu", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        TorchIntListType:$stride,
+        TorchIntListType:$padding,
+        TorchIntListType:$dilation,
+        Torch_IntType:$groups,
+
+        Torch_FloatType:$alpha, /// for lrelu
+
+        AnyTorchTensorType:$ifm2
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then leaky ReLU";
+  let description = [{
+    Convolution with linear activation, then element-wise add with another tensor, then leaky ReLU.
+  }];
+}
+
 
 #endif // #ifndef XTEN_OPS
