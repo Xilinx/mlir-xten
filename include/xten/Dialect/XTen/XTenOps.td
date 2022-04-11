@@ -427,7 +427,7 @@ def XTen_Conv2dTensorAddOp: XTen_Op<"conv2d_tensoradd", [NoSideEffect]> {
         TorchIntListType:$dilation,
         Torch_IntType:$groups,
 
-        AnyTorchTensorType:$ifm2
+        AnyTorchTensorType:$add_ifm
   );
 
   let results = (
@@ -450,7 +450,7 @@ def XTen_Conv2dTensorAddReLUOp: XTen_Op<"conv2d_tensoradd_relu", [NoSideEffect]>
         TorchIntListType:$dilation,
         Torch_IntType:$groups,
 
-        AnyTorchTensorType:$ifm2
+        AnyTorchTensorType:$add_ifm
   );
 
   let results = (
@@ -475,7 +475,7 @@ def XTen_Conv2dTensorAddLReLUOp: XTen_Op<"conv2d_tensoradd_lrelu", [NoSideEffect
 
         Torch_FloatType:$alpha, /// for lrelu
 
-        AnyTorchTensorType:$ifm2
+        AnyTorchTensorType:$add_ifm
   );
 
   let results = (
