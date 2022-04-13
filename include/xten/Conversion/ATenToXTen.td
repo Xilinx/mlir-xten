@@ -78,6 +78,11 @@ def : Pat<(Torch_AtenMulTensorOp $a, $b),
 def : Pat<(Torch_AtenAddTensorOp $a, $b, $c),
           (XTen_AddOp $a, $b)>;
 
+// prefer fusing with the right input if the attribute is present
+def : Pat<(XTen_AddOp $h, (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g, AnyAttr:$_internal_xten_fuse_with_tensoradd)),
+          (XTen_Conv2dTensorAddOp $a,$b,$c,$d,$e,$f,$g,$h)>;
+
+// otherwise fuse with the left one
 def : Pat<(XTen_AddOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g), $h),
           (XTen_Conv2dTensorAddOp $a,$b,$c,$d,$e,$f,$g,$h)>;
 
