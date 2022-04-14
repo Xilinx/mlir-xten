@@ -15,13 +15,19 @@ include "torch-mlir/Dialect/Torch/IR/TorchOps.td"
 
 include "xten/Dialect/XTen/XTenOps.td"
 
-// normalize names
+// Normalize names, so that we only have to write one pattern.
+// Each operator comes in two variants, eg torch.aten.relu and torch.aten.relu_ (with underscore)
+// PyTorch operators have an in-place variant and a by-return variant,
+// which have the same MLIR representation because of SSA, but different
+// operators.
 def : Pat<(Torch_AtenRelu_Op $a),
           (Torch_AtenReluOp $a)>;
 def : Pat<(Torch_AtenLeakyRelu_Op $a, $b),
           (Torch_AtenLeakyReluOp $a, $b)>;
 def : Pat<(Torch_AtenAdd_TensorOp $a, $b, $c),
           (Torch_AtenAddTensorOp $a, $b, $c)>;
+
+// Conversions
 
 def : Pat<(Torch_AtenConv2dOp $a,$b,$c,$d,$e,$f,$g),
           (XTen_Conv2dOp  $a,$b,$c,$d,$e,$f,$g)>;
