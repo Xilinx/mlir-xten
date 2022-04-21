@@ -49,7 +49,7 @@ std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, Torch::BaseTens
     uint64_t kernel_height = weightTy.getSizes()[2];
     uint64_t kernel_width = weightTy.getSizes()[3];
 
-    auto co = cast<mlir::arith::ConstantOp>(o.groups().getDefiningOp());
+    auto co = cast<arith::ConstantOp>(o.groups().getDefiningOp());
     auto ia = co->template getAttrOfType<IntegerAttr>("value");
     uint64_t groups = ia.getValue().getZExtValue();
     // Number of forward MACs per pixel =
