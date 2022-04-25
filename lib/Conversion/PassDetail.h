@@ -12,6 +12,11 @@
 #define XTEN_CONVERSION_PASSDETAIL_H
 
 #include "mlir/Pass/Pass.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
+#include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionDialect.h"
 
 namespace xilinx {
 namespace xten {

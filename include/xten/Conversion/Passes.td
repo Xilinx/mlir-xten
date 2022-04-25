@@ -21,11 +21,19 @@ def ATenToXTen : Pass<"aten-to-xten", "ModuleOp"> {
 def XTenToAffine : Pass<"xten-to-affine", "ModuleOp"> {
   let summary = "Convert XTen dialect to Affine dialect";
   let constructor = "xilinx::xten::createXTenToAffinePass()";
+  let dependentDialects = ["mlir::AffineDialect"];
 }
 
 def XTenToLinalg : Pass<"xten-to-linalg", "ModuleOp"> {
   let summary = "Convert XTen dialect to Linalg dialect";
   let constructor = "xilinx::xten::createXTenToLinalgPass()";
+  let dependentDialects = [
+    "linalg::LinalgDialect",
+    "bufferization::BufferizationDialect",
+    "memref::MemRefDialect",
+    "mlir::torch::Torch::TorchDialect",
+    "mlir::torch::TorchConversion::TorchConversionDialect",
+  ];
 }
 
 #endif
