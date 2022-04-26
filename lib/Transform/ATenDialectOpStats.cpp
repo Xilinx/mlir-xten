@@ -41,15 +41,12 @@ std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, Torch::BaseTens
         biasTy = o.bias().getType().template cast<Torch::BaseTensorType>();
     }
 
-
     uint64_t ofm_volume = xilinx::xten::getTensorVolume(resultTy);
-    //uint64_t ofm_depth = resultTy.getSizes()[1];
-
     uint64_t ifm_depth = inputTy.getSizes()[1];
     uint64_t kernel_height = weightTy.getSizes()[2];
     uint64_t kernel_width = weightTy.getSizes()[3];
 
-    auto co = cast<arith::ConstantOp>(o.groups().getDefiningOp());
+    auto co = o.groups().getDefiningOp();
     auto ia = co->template getAttrOfType<IntegerAttr>("value");
     uint64_t groups = ia.getValue().getZExtValue();
     // Number of forward MACs per pixel =
