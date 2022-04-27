@@ -8,15 +8,29 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: *
 // RUN: aten-opt %s --aten-op-report | FileCheck %s
-//   CHECK-LABEL:     "unknown-layer-2": {
-//   CHECK-NEXT:        "activation_in": 1024,
+//   CHECK-LABEL:     "unknown-layer-3": {
+//   CHECK-NEXT:        "activation_in": 0,
+//   CHECK-NEXT:        "activation_out": 0,
+//   CHECK-NEXT:        "reads": 0,
+//   CHECK-NEXT:        "writes": 0
+//   CHECK-LABEL:     "unknown-layer-4": {
+//   CHECK-NEXT:        "activation_in": 17408,
+//   CHECK-NEXT:        "activation_out": 16,
+//   CHECK-NEXT:        "ops:MAC": 16384,
+//   CHECK-NEXT:        "reads": 17408,
+//   CHECK-NEXT:        "writes": 16
+//   CHECK-LABEL:     "unknown-layer-5": {
+//   CHECK-NEXT:        "activation_in": 16,
+//   CHECK-NEXT:        "activation_out": 16,
+//   CHECK-NEXT:        "ops:*": 16,
+//   CHECK-NEXT:        "reads": 16,
+//   CHECK-NEXT:        "writes": 16
+//   CHECK-LABEL:     "unknown-layer-6": {
+//   CHECK-NEXT:        "activation_in": 32,
 //   CHECK-NEXT:        "activation_out": 16,
 //   CHECK-NEXT:        "ops:+": 16,
-//   CHECK-NEXT:        "ops:MAC": 16384,
-//   CHECK-NEXT:        "parameters_in": 16400,
-//   CHECK-NEXT:        "reads": 17424,
+//   CHECK-NEXT:        "reads": 32,
 //   CHECK-NEXT:        "writes": 16
 
 module attributes {torch.debug_module_name = "addmm"} {
