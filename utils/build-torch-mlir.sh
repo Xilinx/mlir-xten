@@ -16,7 +16,7 @@ BUILD_DIR=${1:-"torch-mlir-build"}
 INSTALL_DIR=${2:-"torch-mlir-install"}
 SOURCE_DIR="torch-mlir"
 
-export commithash=52ed3313b49b8f56a6dac270ee334c6dffebcaf2
+export commithash=886ad169e5da32e3a35c2936846c791cc9d6e795
 
 echo "dirs:$BUILD_DIR $INSTALL_DIR"
 git clone --depth 10000 https://github.com/llvm/torch-mlir.git ${SOURCE_DIR}

@@ -41,15 +41,12 @@ std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, Torch::BaseTens
         biasTy = o.bias().getType().template cast<Torch::BaseTensorType>();
     }
 
-
     uint64_t ofm_volume = xilinx::xten::getTensorVolume(resultTy);
-    //uint64_t ofm_depth = resultTy.getSizes()[1];
-
     uint64_t ifm_depth = inputTy.getSizes()[1];
     uint64_t kernel_height = weightTy.getSizes()[2];
     uint64_t kernel_width = weightTy.getSizes()[3];
 
-    auto co = cast<ConstantOp>(o.groups().getDefiningOp());
+    auto co = o.groups().getDefiningOp();
     auto ia = co->template getAttrOfType<IntegerAttr>("value");
     uint64_t groups = ia.getValue().getZExtValue();
     // Number of forward MACs per pixel =
@@ -921,6 +918,25 @@ std::map<std::string, uint64_t> getStatistics(Torch::AtenSumOp op) {
   return toReturn;
 }
 
+// scalar mul 
+template<>
+std::map<std::string, uint64_t> getStatistics(Torch::AtenMulScalarOp op) {
+
+  std::map<std::string, uint64_t> toReturn;
+  Torch::BaseTensorType ty = op.getOperand(0).getType().cast<Torch::BaseTensorType>();
+  uint64_t volume = xilinx::xten::getTensorVolume(ty);
+
+  toReturn["ops:*"] = volume;
+
+  toReturn["operand:0:activation_in"] = volume;
+  toReturn["result:0:activation_out"] = volume;
+
+  toReturn["reads"] = volume;
+  toReturn["writes"] = volume;
+
+  return toReturn;
+}
+
 // threshold_backward
 // template<>
 // std::map<std::string, uint64_t> getStatistics(ThresholdBackwardOp op) {
@@ -968,7 +984,7 @@ std::map<std::string, uint64_t> getATenOpStats(Operation *op)
 
 #define GET_STATS(T) \
   if (isa<T>(op)) return getStatistics<T>( cast<T>(op) );
-
+  GET_STATS(Torch::AtenMulScalarOp)
   GET_STATS(Torch::AtenAddTensorOp)
   GET_STATS(Torch::AtenAdd_TensorOp)
 //  GET_STATS(AddmmOp)

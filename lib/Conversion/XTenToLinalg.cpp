@@ -19,6 +19,7 @@
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 #include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionDialect.h"
 
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
@@ -254,7 +255,7 @@ public:
     ConversionTarget target(*context);
 
     target.addLegalDialect<AffineDialect, linalg::LinalgDialect,
-                           memref::MemRefDialect, StandardOpsDialect,
+                           memref::MemRefDialect, func::FuncDialect,
                            scf::SCFDialect, Torch::TorchDialect,
                            TorchConversion::TorchConversionDialect>();
 

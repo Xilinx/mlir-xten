@@ -9,7 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/Pass/Pass.h"
@@ -83,6 +83,7 @@ public:
 
       layerName = getLayerName(type.str(), layerToName[type.str()]);
       auto attr = StringAttr::get(module.getContext(), layerName);
+
       op->setAttr(llvm::StringRef("layer_name"), attr);
     });
   }

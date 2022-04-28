@@ -11,7 +11,7 @@
 #ifndef XTEN_OP_WRAPPER
 #define XTEN_OP_WRAPPER
 
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/Pass/Pass.h"

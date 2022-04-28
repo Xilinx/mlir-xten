@@ -52,18 +52,18 @@ namespace xilinx {
         }
 
         unsigned int Conv2dOpWrapper::getF0() {
-            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
+            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
         }
 
         unsigned int Conv2dOpWrapper::getF1() {
-            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F1_LOC];
+            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
         }
 
         unsigned int Conv2dOpWrapper::getStride() {
             Value s = this->conv.stride();
             SmallVector<int64_t, 2> stride;
             matchPattern(s, Torch::m_TorchConstantIntList(stride));
-            
+
             return stride[0];
         }
 
@@ -81,11 +81,15 @@ namespace xilinx {
         }
 
         bool Conv2dOpWrapper::isDepthWise() {
-            unsigned int groups = this->conv.groups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
-            ShapedType aShape = this->conv.input().getType().dyn_cast<ShapedType>();
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
+            //unsigned int groups = this->conv.groups().getDefiningOp<mlir::torch::Torch::IntType>().get();//.value();
+          llvm::APInt intT = this->conv.groups().getDefiningOp<mlir::torch::Torch::ConstantIntOp>().value();
+            //MLIRContext *context = intT.getContext();
+          uint64_t groups = intT.getSExtValue();
 
-            int64_t C = aShapeAR[C_LOC];
+            mlir::torch::Torch::BaseTensorType aShape = this->conv.input().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+            ArrayRef<int64_t> aShapeAR = aShape.getSizes();
+
+            uint64_t C = aShapeAR[C_LOC];
 
             return groups == C;
         }
@@ -210,11 +214,11 @@ namespace xilinx {
         }
 
         unsigned int PartialConv2dOpWrapper::getF0() {
-            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
+            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
         }
 
         unsigned int PartialConv2dOpWrapper::getF1() {
-            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F1_LOC];
+            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
         }
 
         unsigned int PartialConv2dOpWrapper::getStride() {
@@ -238,8 +242,8 @@ namespace xilinx {
 
         bool PartialConv2dOpWrapper::isDepthWise() {
             unsigned int groups = this->conv.groups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
-            ShapedType aShape = this->conv.input().getType().dyn_cast<ShapedType>();
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
+            mlir::torch::Torch::BaseTensorType aShape = this->conv.input().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+            ArrayRef<int64_t> aShapeAR = aShape.getSizes();
 
             int64_t C = aShapeAR[C_LOC];
 
@@ -358,11 +362,11 @@ namespace xilinx {
         }
 
         unsigned int Conv2dReLUOpWrapper::getF0() {
-            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
+            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
         }
 
         unsigned int Conv2dReLUOpWrapper::getF1() {
-            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F1_LOC];
+            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
         }
 
         unsigned int Conv2dReLUOpWrapper::getStride() {
@@ -387,8 +391,8 @@ namespace xilinx {
 
         bool Conv2dReLUOpWrapper::isDepthWise() {
             unsigned int groups = this->conv.groups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
-            ShapedType aShape = this->conv.input().getType().dyn_cast<ShapedType>();
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
+            mlir::torch::Torch::BaseTensorType aShape = this->conv.input().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+            ArrayRef<int64_t> aShapeAR = aShape.getSizes();
 
             int64_t C = aShapeAR[C_LOC];
 
@@ -513,11 +517,11 @@ namespace xilinx {
         }
 
         unsigned int PartialConv2dReLUOpWrapper::getF0() {
-            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
+            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
         }
 
         unsigned int PartialConv2dReLUOpWrapper::getF1() {
-            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F1_LOC];
+            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
         }
 
         unsigned int PartialConv2dReLUOpWrapper::getStride() {
@@ -542,8 +546,8 @@ namespace xilinx {
 
         bool PartialConv2dReLUOpWrapper::isDepthWise() {
             unsigned int groups = this->conv.groups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
-            ShapedType aShape = this->conv.input().getType().dyn_cast<ShapedType>();
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
+            mlir::torch::Torch::BaseTensorType aShape = this->conv.input().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+            ArrayRef<int64_t> aShapeAR = aShape.getSizes();
 
             int64_t C = aShapeAR[C_LOC];
 
@@ -663,11 +667,11 @@ namespace xilinx {
         }
 
         unsigned int PartialConv2dBatchNormReLUOpWrapper::getF0() {
-            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
+            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
         }
 
         unsigned int PartialConv2dBatchNormReLUOpWrapper::getF1() {
-            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F1_LOC];
+            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
         }
 
         unsigned int PartialConv2dBatchNormReLUOpWrapper::getStride() {
@@ -692,8 +696,8 @@ namespace xilinx {
 
         bool PartialConv2dBatchNormReLUOpWrapper::isDepthWise() {
             unsigned int groups = this->conv.groups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
-            ShapedType aShape = this->conv.input().getType().dyn_cast<ShapedType>();
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
+            mlir::torch::Torch::BaseTensorType aShape = this->conv.input().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+            ArrayRef<int64_t> aShapeAR = aShape.getSizes();
 
             int64_t C = aShapeAR[C_LOC];
 
@@ -836,11 +840,11 @@ namespace xilinx {
         }
 
         unsigned int Conv2dBatchNormReLUOpWrapper::getF0() {
-            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F0_LOC];
+            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
         }
 
         unsigned int Conv2dBatchNormReLUOpWrapper::getF1() {
-            return this->conv.weight().getType().dyn_cast<ShapedType>().getShape()[F1_LOC];
+            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
         }
 
         unsigned int Conv2dBatchNormReLUOpWrapper::getStride() {
@@ -865,8 +869,8 @@ namespace xilinx {
 
         bool Conv2dBatchNormReLUOpWrapper::isDepthWise() {
             unsigned int groups = this->conv.groups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
-            ShapedType aShape = this->conv.input().getType().dyn_cast<ShapedType>();
-            ArrayRef<int64_t> aShapeAR = aShape.getShape();
+            mlir::torch::Torch::BaseTensorType aShape = this->conv.input().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+            ArrayRef<int64_t> aShapeAR = aShape.getSizes();
 
             int64_t C = aShapeAR[C_LOC];
 
