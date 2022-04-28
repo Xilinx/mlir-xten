@@ -18,7 +18,7 @@ RUN apt-get install clang-8 lld-8 git ninja-build --assume-yes
 
 RUN pip3 install pybind11 numpy
 
-RUN pip3 install --pre torch torchvision -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
+RUN pip3 install --pre torch==1.12.0.dev20220404 torchvision==0.13.0.dev20220404 -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
 #RUN pip3 install torch==1.10.1+cpu torchvision==0.11.2+cpu torchaudio==0.10.1+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
 RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.20.6/cmake-3.20.6-linux-x86_64.tar.gz > cmake.tgz
