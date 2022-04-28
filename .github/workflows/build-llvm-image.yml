@@ -21,6 +21,11 @@ jobs:
       with:
         fetch-depth: 2
         submodules: "true"
+        
+    - name: Ccache for C++ compilation
+      uses: hendrikmuhs/ccache-action@4687d037e4d7cf725512d9b819137a3af34d39b3
+      with:
+        key: ${{ runner.os }}-clangreleaseasserts-${{ steps.get-submodule-hash.outputs.hash }}
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
