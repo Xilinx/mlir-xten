@@ -25,3 +25,5 @@ RUN curl -L https://github.com/Kitware/CMake/releases/download/v3.20.6/cmake-3.2
 RUN tar -xvf cmake.tgz
 RUN cp -r cmake*x86_64/bin/* /usr/bin
 RUN cp -r cmake*x86_64/share/* /usr/share
+
+RUN apt-get install ccache --assume-yes
