@@ -39,6 +39,8 @@ Python and TorchScript use 64-bit floating point for this type at runtime.
 
 Note: This type is not used for modeling tensor dtypes.
 
+### Torch Generator for producing valsem-random numbers
+
 ### Torch IntType
 The integer type used to model the Python `int` type in TorchScript.
 TorchScript itself models this type as a 64-bit signed integer.
@@ -179,6 +181,17 @@ E.g. is it always unicode-encoded, etc.
 ### !torch.tuple<T1, T2, T3>
 Tuple type with 0-N ordered contained types.
 
+### !torch.union<T1, T2, T3>
+Union type with 0-N alternative types.
+
+NOTE: We use the terminology "contained types" for consistency with
+PyTorch. Strictly speaking, the types aren't "contained" though.
+
+TODO: Canonicalize unions based on subtype relations, to allow
+using pointer equality to compare two unions for being the same.
+For now, `!torch.union<T1, T2>` is different from `!torch.union<T2, T1>`,
+and same for `!torch.union<T1, SubtypeOfT1>` vs `!torch.union<T1>`.
+
 ### Multi-dimensional array modeling Torch's Tensor type
 Syntax:
 
@@ -308,6 +321,11 @@ The float type is used to model the Python `float` type in TorchScript.
 Python and TorchScript use 64-bit floating point for this type at runtime.
 
 Note: This type is not used for modeling tensor dtypes.
+
+### GeneratorType
+
+Torch Generator for producing valsem-random numbers
+
 
 ### IntType
 
@@ -513,6 +531,26 @@ Tuple type with 0-N ordered contained types.
 | :-------: | :-------: | ----------- |
 | containedTypes | `::llvm::ArrayRef<::mlir::Type>` | contained types |
 
+### UnionType
+
+!torch.union<T1, T2, T3>
+
+Union type with 0-N alternative types.
+
+NOTE: We use the terminology "contained types" for consistency with
+PyTorch. Strictly speaking, the types aren't "contained" though.
+
+TODO: Canonicalize unions based on subtype relations, to allow
+using pointer equality to compare two unions for being the same.
+For now, `!torch.union<T1, T2>` is different from `!torch.union<T2, T1>`,
+and same for `!torch.union<T1, SubtypeOfT1>` vs `!torch.union<T1>`.
+
+#### Parameters:
+
+| Parameter | C++ type | Description |
+| :-------: | :-------: | ----------- |
+| containedTypes | `::llvm::ArrayRef<::mlir::Type>` | contained types |
+
 ### ValueTensorType
 
 Multi-dimensional array modeling Torch's Tensor type
@@ -698,9 +736,9 @@ Effects: MemoryEffects::Effect{}
 | `input` | Any Torch tensor type
 | `weight` | Any Torch tensor type
 | `bias` | Optional torch tensor type
-| `stride` | Int list type (int[]) of Torch IntType values
-| `padding` | Int list type (int[]) of Torch IntType values
-| `dilation` | Int list type (int[]) of Torch IntType values
+| `stride` | !torch.list<T>
+| `padding` | !torch.list<T>
+| `dilation` | !torch.list<T>
 | `groups` | Torch IntType
 | `bn_weight` | Any Torch tensor type
 | `bn_bias` | Any Torch tensor type
@@ -733,15 +771,15 @@ Effects: MemoryEffects::Effect{}
 | `input` | Any Torch tensor type
 | `weight` | Any Torch tensor type
 | `bias` | Optional torch tensor type
-| `stride` | Int list type (int[]) of Torch IntType values
-| `padding` | Int list type (int[]) of Torch IntType values
-| `dilation` | Int list type (int[]) of Torch IntType values
+| `stride` | !torch.list<T>
+| `padding` | !torch.list<T>
+| `dilation` | !torch.list<T>
 | `groups` | Torch IntType
 | `alpha` | Torch FloatType
-| `mp_kernel_size` | Int list type (int[]) of Torch IntType values
-| `mp_stride` | Int list type (int[]) of Torch IntType values
-| `mp_padding` | Int list type (int[]) of Torch IntType values
-| `mp_dilation` | Int list type (int[]) of Torch IntType values
+| `mp_kernel_size` | !torch.list<T>
+| `mp_stride` | !torch.list<T>
+| `mp_padding` | !torch.list<T>
+| `mp_dilation` | !torch.list<T>
 | `mp_ceil_mode` | Torch BoolType
 
 #### Results:
@@ -767,9 +805,9 @@ Effects: MemoryEffects::Effect{}
 | `input` | Any Torch tensor type
 | `weight` | Any Torch tensor type
 | `bias` | Optional torch tensor type
-| `stride` | Int list type (int[]) of Torch IntType values
-| `padding` | Int list type (int[]) of Torch IntType values
-| `dilation` | Int list type (int[]) of Torch IntType values
+| `stride` | !torch.list<T>
+| `padding` | !torch.list<T>
+| `dilation` | !torch.list<T>
 | `groups` | Torch IntType
 | `alpha` | Torch FloatType
 
@@ -796,9 +834,9 @@ Effects: MemoryEffects::Effect{}
 | `input` | Any Torch tensor type
 | `weight` | Any Torch tensor type
 | `bias` | Optional torch tensor type
-| `stride` | Int list type (int[]) of Torch IntType values
-| `padding` | Int list type (int[]) of Torch IntType values
-| `dilation` | Int list type (int[]) of Torch IntType values
+| `stride` | !torch.list<T>
+| `padding` | !torch.list<T>
+| `dilation` | !torch.list<T>
 | `groups` | Torch IntType
 
 #### Results:
@@ -824,9 +862,9 @@ Effects: MemoryEffects::Effect{}
 | `input` | Any Torch tensor type
 | `weight` | Any Torch tensor type
 | `bias` | Optional torch tensor type
-| `stride` | Int list type (int[]) of Torch IntType values
-| `padding` | Int list type (int[]) of Torch IntType values
-| `dilation` | Int list type (int[]) of Torch IntType values
+| `stride` | !torch.list<T>
+| `padding` | !torch.list<T>
+| `dilation` | !torch.list<T>
 | `groups` | Torch IntType
 
 #### Results:
@@ -913,9 +951,9 @@ Effects: MemoryEffects::Effect{}
 | `PartialIn` | Optional torch tensor type
 | `weight` | Any Torch tensor type
 | `bias` | Optional torch tensor type
-| `stride` | Int list type (int[]) of Torch IntType values
-| `padding` | Int list type (int[]) of Torch IntType values
-| `dilation` | Int list type (int[]) of Torch IntType values
+| `stride` | !torch.list<T>
+| `padding` | !torch.list<T>
+| `dilation` | !torch.list<T>
 | `groups` | Torch IntType
 | `bn_weight` | Any Torch tensor type
 | `bn_bias` | Any Torch tensor type
@@ -950,9 +988,9 @@ Effects: MemoryEffects::Effect{}
 | `PartialIn` | Optional torch tensor type
 | `weight` | Any Torch tensor type
 | `bias` | Optional torch tensor type
-| `stride` | Int list type (int[]) of Torch IntType values
-| `padding` | Int list type (int[]) of Torch IntType values
-| `dilation` | Int list type (int[]) of Torch IntType values
+| `stride` | !torch.list<T>
+| `padding` | !torch.list<T>
+| `dilation` | !torch.list<T>
 | `groups` | Torch IntType
 
 #### Results:
@@ -980,9 +1018,9 @@ Effects: MemoryEffects::Effect{}
 | `PartialIn` | Optional torch tensor type
 | `weight` | Any Torch tensor type
 | `bias` | Optional torch tensor type
-| `stride` | Int list type (int[]) of Torch IntType values
-| `padding` | Int list type (int[]) of Torch IntType values
-| `dilation` | Int list type (int[]) of Torch IntType values
+| `stride` | !torch.list<T>
+| `padding` | !torch.list<T>
+| `dilation` | !torch.list<T>
 | `groups` | Torch IntType
 
 #### Results:
