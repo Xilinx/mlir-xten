@@ -10,7 +10,10 @@
 
 #include "xten/Dialect/XTen/XTenOpWrapper.h"
 #include "xten/Dialect/XTen/XTenDataflowConsts.h"
+
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
+
+#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
 
 // TODO generate this file automatically
 

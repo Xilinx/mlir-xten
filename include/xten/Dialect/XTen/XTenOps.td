@@ -15,6 +15,7 @@ include "xten/Dialect/XTen/XTenBase.td"
 
 include "torch-mlir/Dialect/Torch/IR/TorchTypes.td"
 
+include "mlir/IR/EnumAttr.td"
 include "mlir/IR/SymbolInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 

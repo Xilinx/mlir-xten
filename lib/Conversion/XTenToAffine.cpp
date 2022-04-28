@@ -456,8 +456,7 @@ public:
 
   ListOption<unsigned> clLoopOrder{*this, "xten-loop-order",
                                         llvm::cl::desc("XTen loop ordering applied in operator loweing to affine loops"),
-                                        llvm::cl::ZeroOrMore,
-                                        llvm::cl::CommaSeparated};
+                                        llvm::cl::ZeroOrMore};
 
 
   // Initialize loop order from the command line or the default ordering
@@ -482,7 +481,7 @@ public:
                     XTenAddOpConversion,
                     XTenMulOpConversion>(context);
 
-    populateFunctionOpInterfaceTypeConversionPattern<FuncOp>(patterns,
+    populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(patterns,
                                                              typeConverter);
 
     ConversionTarget target(*context);

@@ -15,6 +15,7 @@
 
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Bufferization/IR/Bufferization.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/BuiltinOps.h"
 
@@ -108,7 +109,7 @@ Value TensorTypeCast(OpBuilder &builder, Value val, Type resultTy) {
       val.getLoc(), resultTy, tensor);
 }
 
-FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value> operands, ArrayRef<Type> retTys)
+func::FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value> operands, ArrayRef<Type> retTys)
 {
   Builder builder(module);
 
@@ -119,10 +120,10 @@ FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value> operands, 
   auto fnTy = builder.getFunctionType(tys, retTys);
 
   std::string fnName = getMangledFuncName(module, prefix+"_AtenAcapOp", fnTy);
-  auto fn = module.lookupSymbol<FuncOp>(fnName);
+  auto fn = module.lookupSymbol<func::FuncOp>(fnName);
 
   if (!fn) {
-    fn = FuncOp::create(builder.getUnknownLoc(), fnName, fnTy);
+    fn = func::FuncOp::create(builder.getUnknownLoc(), fnName, fnTy);
     fn.setPrivate();
     module.push_back(fn);
   }

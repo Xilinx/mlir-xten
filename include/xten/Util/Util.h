@@ -8,7 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/BuiltinTypes.h"
 
@@ -21,7 +21,7 @@ Value MemRefTypeCast(OpBuilder &builder, Value val);
 
 Value TensorTypeCast(OpBuilder &builder, Value val, Type resultTy);
 
-FuncOp getATenFn(ModuleOp module, std::string fnName, ArrayRef<Value> operands, ArrayRef<Type> retTys);
+func::FuncOp getATenFn(ModuleOp module, std::string fnName, ArrayRef<Value> operands, ArrayRef<Type> retTys);
 
 uint64_t getTensorVolume(const ShapedType ty);
 

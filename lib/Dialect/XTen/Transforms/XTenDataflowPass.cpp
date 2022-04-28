@@ -78,7 +78,7 @@ namespace xilinx {
                 }
             }
 
-            DataflowExplorer initializeLayerNameToOps(FuncOp graph) {
+            DataflowExplorer initializeLayerNameToOps(func::FuncOp graph) {
                 // TODO do we have the guarantee to be in network order?
                 std::vector<std::pair<std::string, AbsOpWrapper*>> explorerInit;
 
@@ -1149,7 +1149,7 @@ namespace xilinx {
             void runOnOperation() override {
                 ModuleOp module = getOperation();
 
-                auto graph = module.lookupSymbol<FuncOp>("forward");
+                auto graph = module.lookupSymbol<func::FuncOp>("forward");
                 if(!graph) {
                     emitError(UnknownLoc::get(module.getContext()), "Cant find graph func\n");
                     signalPassFailure();

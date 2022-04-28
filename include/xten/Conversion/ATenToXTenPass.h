@@ -12,6 +12,7 @@
 #define ATEN_TO_XTEN_H
 
 #include "mlir/Pass/Pass.h"
+#include "mlir/IR/BuiltinOps.h"
 #include <memory>
 
 namespace xilinx {

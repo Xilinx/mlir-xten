@@ -15,8 +15,11 @@
 
 #include "xten/Util/Util.h"
 
-#include "llvm/Support/Debug.h"
+#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
+
+#include "llvm/Support/Debug.h"
 
 #include <iostream>
 #include <type_traits>
@@ -50,7 +53,7 @@ std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, TensorType resu
     uint64_t kernel_height = weightTy.getShape()[2];
     uint64_t kernel_width = weightTy.getShape()[3];
 
-    auto co = cast<mlir::arith::ConstantOp>(o.groups().getDefiningOp());
+    auto co = cast<arith::ConstantOp>(o.groups().getDefiningOp());
     auto ia = co->template getAttrOfType<IntegerAttr>("value");
     uint64_t groups = ia.getValue().getZExtValue();
     // Number of forward MACs per pixel =

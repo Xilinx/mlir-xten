@@ -42,7 +42,7 @@ public:
 
     ModuleOp module = getOperation();
 
-    auto forward = module.lookupSymbol<FuncOp>("forward");
+    auto forward = module.lookupSymbol<func::FuncOp>("forward");
     if(!forward) {
       emitError(UnknownLoc::get(module.getContext()),
                 "Can't find forward function\n");
