@@ -23,31 +23,46 @@ and puts it in a form easier for later lowering to work on. Specifically:
 ## Type constraint definition
 
 ### Torch any type
+
 Represent any torch type. All the other types are sub types of Any type.
 
+
 ### Torch BoolType
+
 An immutable boolean taking values 0 or 1.
+
 
 ### Torch device
 
+
+
 ### !torch.dict[KT, VT] 
+
 Torch Dict type with key and value type.
 
+
 ### Torch FloatType
+
 The float type is used to model the Python `float` type in TorchScript.
 Python and TorchScript use 64-bit floating point for this type at runtime.
 
 Note: This type is not used for modeling tensor dtypes.
 
+
 ### Torch Generator for producing valsem-random numbers
 
+
+
 ### Torch IntType
+
 The integer type used to model the Python `int` type in TorchScript.
 TorchScript itself models this type as a 64-bit signed integer.
 
 Note: This type is not used for modeling tensor dtypes.
 
+
 ### Torch packed linear params type
+
 A weight and optional bias, packed into one value.
 
 This is used to model the
@@ -63,12 +78,18 @@ very library-call-y, runtime-y thing that embodies a number of assumptions
 about the structure of how the program will be executed, which need not hold
 for backends.
 
+
 ### !torch.list<T>
 
+
+
 ### torch.nn.Module
+
 Represents an instance of a `torch.nn.Module` with the given `className`.
 
+
 ### Multi-dimensional array modeling Torch's Tensor type
+
 Syntax:
 
 ```
@@ -157,31 +178,45 @@ sheet is:
 - `getShape()` -> `getSizes()`
 - `getElementType()` -> `getDtype()` (but be sure that `hasDtype()` though).
 
+
 ### Torch NoneType
+
 The singleton "None" type.
 
+
 ### Torch number type
+
 The Int, Float and Complex type are sub types of Number type.
+
 
 ### !torch.optional<T>
 
+
+
 ### Type modeling `ScalarType::QInt8`
+
 This is intended to be a 1:1 match for the Torch `ScalarType` types.
 
 Looking at the variety / ad-hocness (e.g. `QUInt4x2`) of that set of
 types, it is deemed preferable to import them as one-off ad-hoc types
 instead of a single parameterized type.
 
+
 ### Torch StringType
+
 An immutable string representing a sequence of characters.
 
 TODO: Figure out the exact TorchScript/PyTorch string semantics.
 E.g. is it always unicode-encoded, etc.
 
+
 ### !torch.tuple<T1, T2, T3>
+
 Tuple type with 0-N ordered contained types.
 
+
 ### !torch.union<T1, T2, T3>
+
 Union type with 0-N alternative types.
 
 NOTE: We use the terminology "contained types" for consistency with
@@ -192,7 +227,9 @@ using pointer equality to compare two unions for being the same.
 For now, `!torch.union<T1, T2>` is different from `!torch.union<T2, T1>`,
 and same for `!torch.union<T1, SubtypeOfT1>` vs `!torch.union<T1>`.
 
+
 ### Multi-dimensional array modeling Torch's Tensor type
+
 Syntax:
 
 ```
@@ -281,11 +318,14 @@ sheet is:
 - `getShape()` -> `getSizes()`
 - `getElementType()` -> `getDtype()` (but be sure that `hasDtype()` though).
 
+
 ## Type definition
 
 ### AnyType
 
 Torch any type
+
+Syntax: `!torch.any`
 
 Represent any torch type. All the other types are sub types of Any type.
 
@@ -293,11 +333,15 @@ Represent any torch type. All the other types are sub types of Any type.
 
 Torch BoolType
 
+Syntax: `!torch.bool`
+
 An immutable boolean taking values 0 or 1.
 
 ### DeviceType
 
 Torch device
+
+Syntax: `!torch.Device`
 
 
 ### DictType
@@ -317,6 +361,8 @@ Torch Dict type with key and value type.
 
 Torch FloatType
 
+Syntax: `!torch.float`
+
 The float type is used to model the Python `float` type in TorchScript.
 Python and TorchScript use 64-bit floating point for this type at runtime.
 
@@ -326,10 +372,14 @@ Note: This type is not used for modeling tensor dtypes.
 
 Torch Generator for producing valsem-random numbers
 
+Syntax: `!torch.Generator`
+
 
 ### IntType
 
 Torch IntType
+
+Syntax: `!torch.int`
 
 The integer type used to model the Python `int` type in TorchScript.
 TorchScript itself models this type as a 64-bit signed integer.
@@ -339,6 +389,8 @@ Note: This type is not used for modeling tensor dtypes.
 ### LinearParamsType
 
 Torch packed linear params type
+
+Syntax: `!torch.LinearParams`
 
 A weight and optional bias, packed into one value.
 
@@ -481,11 +533,15 @@ sheet is:
 
 Torch NoneType
 
+Syntax: `!torch.none`
+
 The singleton "None" type.
 
 ### NumberType
 
 Torch number type
+
+Syntax: `!torch.number`
 
 The Int, Float and Complex type are sub types of Number type.
 
@@ -504,6 +560,8 @@ The Int, Float and Complex type are sub types of Number type.
 
 Type modeling `ScalarType::QInt8`
 
+Syntax: `!torch.qint8`
+
 This is intended to be a 1:1 match for the Torch `ScalarType` types.
 
 Looking at the variety / ad-hocness (e.g. `QUInt4x2`) of that set of
@@ -513,6 +571,8 @@ instead of a single parameterized type.
 ### StringType
 
 Torch StringType
+
+Syntax: `!torch.str`
 
 An immutable string representing a sequence of characters.
 
