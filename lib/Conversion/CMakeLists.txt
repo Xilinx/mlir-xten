@@ -15,6 +15,7 @@ DEPENDS
 XTenConversionIncGen
 XTenDialect
 ATenToXTenIncGen
+ATenToXTenIncGen2
 
 LINK_COMPONENTS
 Core

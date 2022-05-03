@@ -47,89 +47,47 @@
 #define DEBUG_TYPE "aten-to-xten-pass"
 
 using namespace mlir;
-using namespace xilinx::xten;
-using namespace mlir::torch::Torch;
+// using namespace xilinx::xten;
+using namespace xilinx;
+using namespace mlir::torch;
 
 namespace {
 
+long getInputSize(xten::Conv2dOp &c2d) {
+  TensorType inputType = c2d.input().getType().dyn_cast<Torch::ValueTensorType>().toBuiltinTensor();
+  if (inputType == nullptr || !inputType.hasRank())
+    return 0;
+  auto shape = inputType.getShape();
+  // multiply all dimensions together
+  long result = 1;
+  for (auto it = shape.begin(); it != shape.end(); it++)
+    result *= *it;
+  return result;
+}
+
+// pick conv2d with smallest input size.
+bool fuseFirstC2dInTensorAdd(xten::Conv2dOp &c2d0, xten::Conv2dOp &c2d1) {
+  auto s0 = getInputSize(c2d0);
+  auto s1 = getInputSize(c2d1);  
+  return s0 && s1 && s0 < s1;
+}
+// adapter fun because tablegen can only bind result and not the op itself.
+bool fuseFirstC2dInTensorAdd(OpResult a, OpResult b) {
+  auto c2d0 = cast<xten::Conv2dOp>(a.getOwner());
+  auto c2d1 = cast<xten::Conv2dOp>(b.getOwner());
+  return fuseFirstC2dInTensorAdd(c2d0, c2d1);
+}
+
+namespace atenToXten {
 #include "xten/Conversion/ATenToXTen.cpp.inc"
+}
 
-/*
+namespace xtenToXtenCleanup {
+#include "xten/Conversion/ATenToXTen2ndRound.cpp.inc"
+}
 
-def : Pat<(XTen_AddOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g), $h),
-          (XTen_Conv2dTensorAddOp $a,$b,$c,$d,$e,$f,$g,$h)>;
 
-*/
-
-namespace {
-
-struct OpRefPair {
-  AtenConv2dOp *toFuse;
-  Operation *other;
-};
-
-} // namespace
-
-class AtenConv2dAnnotator : public OpConversionPattern<AtenAddTensorOp> {
-public:
-  explicit AtenConv2dAnnotator(MLIRContext *context)
-      : OpConversionPattern<AtenAddTensorOp>(context, 15) {}
-
-  LogicalResult
-  matchAndRewrite(AtenAddTensorOp tensorAdd, OpAdaptor adapter,
-                  ConversionPatternRewriter &rewriter) const override {
-
-    auto operands = adapter.getOperands();
-    auto op0source = operands[0].getDefiningOp();
-    auto op1source = operands[1].getDefiningOp();
-
-    if (!op0source || !op1source ||
-        (!isa<AtenConv2dOp>(op0source) && !isa<AtenConv2dOp>(op1source)))
-      return rewriter.notifyMatchFailure(
-          tensorAdd, "only finds tensorAdd with 1..2 conv2d inputs");
-
-    auto [opToFuse, otherOperand] =
-        selectOpsToFuseBeforeTensorAdd(op0source, op1source);
-
-    rewriter.replaceOpWithNewOp<xilinx::xten::Conv2dTensorAddOp>(
-      tensorAdd,
-      
-    );
-
-    return success();
-  }
-
-private:
-  bool shouldFuseFirstConv2d(AtenConv2dOp &c2d0, AtenConv2dOp &c2d1) const {
-    auto input0 = c2d0.input();
-    auto input1 = c2d1.input();
-
-    // todo compare input size
-
-    return false;
-  }
-
-  OpRefPair selectOpsToFuseBeforeTensorAdd(Operation *op0source,
-                                           Operation *op1source) const {
-
-    bool shouldFuseFirst = isa<AtenConv2dOp>(op0source);
-
-    if (isa<AtenConv2dOp>(op0source) && isa<AtenConv2dOp>(op1source)) {
-      // both are fusable
-      auto op0 = cast<AtenConv2dOp>(op0source);
-      auto op1 = cast<AtenConv2dOp>(op1source);
-      shouldFuseFirst = shouldFuseFirstConv2d(op0, op1);
-    }
-
-    if (shouldFuseFirst) {
-      return OpRefPair{.toFuse = dynamic_cast<AtenConv2dOp*>(op0source), .other = op1source};
-    } else {
-      return OpRefPair{.toFuse = dynamic_cast<AtenConv2dOp*>(op1source), .other = op0source};
-    }
-  }
-};
-
-struct ATenToXTenPass : public ATenToXTenBase<ATenToXTenPass> {
+struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
 
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     registry.insert<xilinx::xten::XTenDialect>();
@@ -143,8 +101,7 @@ struct ATenToXTenPass : public ATenToXTenBase<ATenToXTenPass> {
 
     // tablegen patterns
     RewritePatternSet fusionPatterns(&getContext());
-    fusionPatterns.add<AtenConv2dAnnotator>(context);
-    populateWithGenerated(fusionPatterns);
+    atenToXten::populateWithGenerated(fusionPatterns);
 
     // Perform aten specific Fusion.
     ConversionTarget target(*context);
@@ -168,6 +125,19 @@ struct ATenToXTenPass : public ATenToXTenBase<ATenToXTenPass> {
       signalPassFailure();
       assert(0);
     }
+
+    RewritePatternSet cleanupPatterns(&getContext());
+    xtenToXtenCleanup::populateWithGenerated(cleanupPatterns);
+
+    if (failed(applyPatternsAndFoldGreedily(
+            module, /*target,*/ std::move(cleanupPatterns)))) {
+      emitError(UnknownLoc::get(context),
+                "error translating or fusing ATen to XTen\n");
+      signalPassFailure();
+      assert(0);
+    }
+
+
   }
 };
 
