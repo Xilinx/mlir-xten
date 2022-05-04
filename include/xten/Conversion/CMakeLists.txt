@@ -13,8 +13,8 @@ set(LLVM_TARGET_DEFINITIONS ATenToXTen.td)
 mlir_tablegen(ATenToXTen.cpp.inc -gen-rewriters)
 add_public_tablegen_target(ATenToXTenIncGen)
 
-set(LLVM_TARGET_DEFINITIONS ATenToXTen2ndRound.td)
-mlir_tablegen(ATenToXTen2ndRound.cpp.inc -gen-rewriters)
+set(LLVM_TARGET_DEFINITIONS XTenFusions.td)
+mlir_tablegen(XTenFusions.cpp.inc -gen-rewriters)
 add_public_tablegen_target(ATenToXTenIncGen2)
 
 add_mlir_doc(Passes XTenConversionPasses ./ -gen-pass-doc)

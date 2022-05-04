@@ -15,6 +15,8 @@ include "torch-mlir/Dialect/Torch/IR/TorchOps.td"
 
 include "xten/Dialect/XTen/XTenOps.td"
 
+// note: this pass is complemented by XTenFusions.td
+
 // Normalize names, so that we only have to write one pattern.
 // Each operator comes in two variants, eg torch.aten.relu and torch.aten.relu_ (with underscore)
 // PyTorch operators have an in-place variant and a by-return variant,
