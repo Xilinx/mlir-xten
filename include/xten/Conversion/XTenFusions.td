@@ -36,7 +36,7 @@ def SelectFirstC2dInSymmetricTensorAdd : Constraint<
 // This pattern catches the case where 2 conv2ds are inputs to an add.
 // Then we callback `fuseFirstC2dInTensorAdd` to find which one to fuse.
 // If the callback is true (left c2d needs to be fused) then the pattern is applied.
-// Otherwise another pattern is applied (benefits care about that).
+// Otherwise another pattern is applied (benefits take care of that).
 def : Pat<(XTen_AddOp (XTen_Conv2dOp:$c2d0 $a,$b,$c,$d,$e,$f,$g), (XTen_Conv2dOp:$c2d1 $_,$_,$_,$_,$_,$_,$_)),
           (XTen_Conv2dTensorAddOp $a,$b,$c,$d,$e,$f,$g, $c2d1),
           [(SelectFirstC2dInSymmetricTensorAdd $c2d0, $c2d1)],

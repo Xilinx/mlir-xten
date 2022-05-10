@@ -47,7 +47,6 @@
 #define DEBUG_TYPE "aten-to-xten-pass"
 
 using namespace mlir;
-// using namespace xilinx::xten;
 using namespace xilinx;
 using namespace mlir::torch;
 
@@ -60,8 +59,8 @@ long getInputSize(xten::Conv2dOp &c2d) {
   auto shape = inputType.getShape();
   // multiply all dimensions together
   long result = 1;
-  for (auto it = shape.begin(); it != shape.end(); it++)
-    result *= *it;
+  for (auto i: shape)
+    result *= i;
   return result;
 }
 
