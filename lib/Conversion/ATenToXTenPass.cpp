@@ -64,8 +64,11 @@ long getInputSize(xten::Conv2dOp &c2d) {
   return result;
 }
 
-// pick conv2d with smallest input size.
-bool fuseFirstC2dInTensorAdd(xten::Conv2dOp &c2d0, xten::Conv2dOp &c2d1) {
+// Pick conv2d with smallest input size, because we expect that this one will need less L1 storage
+// The goal is to minimize memory transfers.
+// This might not be the best implementation, may be
+// improved later when more low-level details are known.
+bool fuseFirstC2dInTensorAddImpl(xten::Conv2dOp &c2d0, xten::Conv2dOp &c2d1) {
   auto s0 = getInputSize(c2d0);
   auto s1 = getInputSize(c2d1);  
   return s0 && s1 && s0 < s1;
@@ -74,7 +77,7 @@ bool fuseFirstC2dInTensorAdd(xten::Conv2dOp &c2d0, xten::Conv2dOp &c2d1) {
 bool fuseFirstC2dInTensorAdd(OpResult a, OpResult b) {
   auto c2d0 = cast<xten::Conv2dOp>(a.getOwner());
   auto c2d1 = cast<xten::Conv2dOp>(b.getOwner());
-  return fuseFirstC2dInTensorAdd(c2d0, c2d1);
+  return fuseFirstC2dInTensorAddImpl(c2d0, c2d1);
 }
 
 namespace atenToXten {
