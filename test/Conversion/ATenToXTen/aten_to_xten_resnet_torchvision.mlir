@@ -1,6 +1,17 @@
+//===- aten_resnet50_torchvision.mlir ---------------------------------*- MLIR -*-===//
+//
+// This file is licensed under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// (c) Copyright 2022 Xilinx Inc.
+//
+//===----------------------------------------------------------------------===//
+
 // RUN: aten-opt %s -aten-to-xten | FileCheck %s
 module attributes {torch.debug_module_name = "Model"} {
   func @forward(%arg0: !torch.vtensor<[1,3,128,128],f32>) -> !torch.vtensor<[1,1000],f32> {
+    // actual weights have been replaced with dummy dense values, which will broadcast to the correct shape.
     %0 = torch.vtensor.literal(dense<"0xDEADBEEF"> : tensor<1000xf32>) : !torch.vtensor<[1000],f32>
     %1 = torch.vtensor.literal(dense<"0xDEADBEEF"> : tensor<1000x2048xf32>) : !torch.vtensor<[1000,2048],f32>
     %2 = torch.vtensor.literal(dense<0.000000e+00> : tensor<2048xf32>) : !torch.vtensor<[2048],f32>
@@ -257,6 +268,7 @@ module attributes {torch.debug_module_name = "Model"} {
     %243 = torch.aten.adaptive_avg_pool2d %242, %69 : !torch.vtensor<[1,2048,4,4],f32>, !torch.list<int> -> !torch.vtensor<[1,2048,1,1],f32>
     %244 = torch.aten.flatten.using_ints %243, %int1, %int-1 : !torch.vtensor<[1,2048,1,1],f32>, !torch.int, !torch.int -> !torch.vtensor<[1,2048],f32>
     %245 = torch.aten.linear %244, %1, %0 : !torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.vtensor<[1000],f32> -> !torch.vtensor<[1,1000],f32>
+    // CHECK: %[[SOFTMAX:.*]] = "xten.softmax" (%245, %int-1, %none) : !torch.vtensor<[1,1000],f32>, !torch.int, !torch.none -> !torch.vtensor<[1,1000],f32>, !torch.int, !torch.none -> !torch.vtensor<[1,1000],f32>
     %246 = torch.aten.softmax.int %245, %int-1, %none : !torch.vtensor<[1,1000],f32>, !torch.int, !torch.none -> !torch.vtensor<[1,1000],f32>
     return %246 : !torch.vtensor<[1,1000],f32>
   }
