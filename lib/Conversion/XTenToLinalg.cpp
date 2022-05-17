@@ -477,6 +477,279 @@ public:
   }
 };
 
+class XTenConv2dTensorAddOpConversion : public ConversionPattern {
+public:
+  explicit XTenConv2dTensorAddOpConversion(MLIRContext *context)
+      : ConversionPattern(Conv2dTensorAddOp::getOperationName(), 1, context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto conv2d = cast<Conv2dTensorAddOp>(op);
+    auto loc = conv2d.getLoc();
+
+    Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
+    Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
+    Value bias = ToBuiltinTensorTypeCast(rewriter, operands[2]);
+
+    Type elementType =
+        input.getType().cast<RankedTensorType>().getElementType();
+    if (!elementType.isa<mlir::FloatType>())
+      return op->emitError("unimplemented: non-floating point type");
+
+    SmallVector<int64_t> paddingInts;
+    paddingInts.resize(2, 0);
+    if (!matchPattern(conv2d.padding(),
+                      Torch::m_TorchConstantIntList(paddingInts))) {
+      return rewriter.notifyMatchFailure(
+          op, "only support constant padding values");
+    }
+
+    // paddedInput. input shape change based on padding
+    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
+    input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
+
+    SmallVector<int64_t, 2> strideInts;
+    if (!matchPattern(conv2d.stride(),
+                      Torch::m_TorchConstantIntList(strideInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int strides");
+
+    SmallVector<int64_t, 2> dilationInts;
+    if (!matchPattern(conv2d.dilation(),
+                      Torch::m_TorchConstantIntList(dilationInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int dilations");
+
+    int64_t groups;
+    if (!matchPattern(conv2d.groups(), Torch::m_TorchConstantInt(&groups)))
+      return rewriter.notifyMatchFailure(op, "only support constant int group");
+
+    if (groups != 1)
+      return op->emitError("Only support groups value '1'");
+
+    auto stridesAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
+    auto dilationAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), dilationInts);
+
+    auto torchTensorTy =
+        op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
+                                                  torchTensorTy.getDtype());
+
+    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+        loc, resultTensorType.getShape(), elementType);
+
+    // Get add input feature map
+    Value add_ifm = ToBuiltinTensorTypeCast(rewriter, operands[7]);
+
+    // Change appropriate operation over here
+    Value conv2dVal = rewriter
+                               .create<linalg::Conv2DTensorAddOp>(
+                                   loc, initTensor.getType(),
+                                   ValueRange{input, add_ifm, weight, bias}, // add_ifm should be in ValueRange
+                                   initTensor, stridesAttr, dilationAttr)
+                               .getResult(0);
+
+    if (op->hasAttr("layer_name")) {
+      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
+      Operation *conv2dValOps = conv2dVal.getDefiningOp();
+      conv2dValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
+    }
+
+    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dVal,
+                                                 op->getResult(0).getType());
+    rewriter.replaceOp(op, torchTensorCast);
+    return success();
+  }
+};
+
+class XTenConv2dTensorAddReLUOpConversion : public ConversionPattern {
+public:
+  explicit XTenConv2dTensorAddReLUOpConversion(MLIRContext *context)
+      : ConversionPattern(Conv2dTensorAddReLUOp::getOperationName(), 1, context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto conv2dRelu = cast<Conv2dTensorAddReLUOp>(op);
+    auto loc = conv2dRelu.getLoc();
+
+    Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
+    Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
+    Value bias = ToBuiltinTensorTypeCast(rewriter, operands[2]);
+
+    Type elementType =
+        input.getType().cast<RankedTensorType>().getElementType();
+    if (!elementType.isa<mlir::FloatType>())
+      return op->emitError("unimplemented: non-floating point type");
+
+    SmallVector<int64_t> paddingInts;
+    paddingInts.resize(2, 0);
+    if (!matchPattern(conv2dRelu.padding(),
+                      Torch::m_TorchConstantIntList(paddingInts))) {
+      return rewriter.notifyMatchFailure(
+          op, "only support constant padding values");
+    }
+
+    // paddedInput. input shape change based on padding
+    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
+    input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
+
+    SmallVector<int64_t, 2> strideInts;
+    if (!matchPattern(conv2dRelu.stride(),
+                      Torch::m_TorchConstantIntList(strideInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int strides");
+
+    SmallVector<int64_t, 2> dilationInts;
+    if (!matchPattern(conv2dRelu.dilation(),
+                      Torch::m_TorchConstantIntList(dilationInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int dilations");
+
+    int64_t groups;
+    if (!matchPattern(conv2dRelu.groups(), Torch::m_TorchConstantInt(&groups)))
+      return rewriter.notifyMatchFailure(op, "only support constant int group");
+
+    if (groups != 1)
+      return op->emitError("Only support groups value '1'");
+
+    auto stridesAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
+    auto dilationAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), dilationInts);
+
+    auto torchTensorTy =
+        op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
+                                                  torchTensorTy.getDtype());
+
+    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+        loc, resultTensorType.getShape(), elementType);
+
+    // Get add input feature map
+    Value add_ifm = ToBuiltinTensorTypeCast(rewriter, operands[7]);
+
+    // Change appropriate operation over here
+    Value conv2dReluVal = rewriter
+                               .create<linalg::Conv2DTensorAddReluOp>(
+                                   loc, initTensor.getType(),
+                                   ValueRange{input, add_ifm, weight, bias}, // add_ifm should be in ValueRange
+                                   initTensor, stridesAttr, dilationAttr)
+                               .getResult(0);
+
+    if (op->hasAttr("layer_name")) {
+      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
+      Operation *conv2dReluValOps = conv2dReluVal.getDefiningOp();
+      conv2dReluValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
+    }
+
+    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dReluVal,
+                                                 op->getResult(0).getType());
+    rewriter.replaceOp(op, torchTensorCast);
+    return success();
+  }
+};
+
+class XTenConv2dTensorAddLReLUOpConversion : public ConversionPattern {
+public:
+  explicit XTenConv2dTensorAddLReLUOpConversion(MLIRContext *context)
+      : ConversionPattern(Conv2dTensorAddLReLUOp::getOperationName(), 1, context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto conv2dLRelu = cast<Conv2dTensorAddLReLUOp>(op);
+    auto loc = conv2dLRelu.getLoc();
+
+    Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
+    Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
+    Value bias = ToBuiltinTensorTypeCast(rewriter, operands[2]);
+
+    if (!isa<Torch::ConstantFloatOp>(operands[7].getDefiningOp()))
+      return op->emitError("Alpha, unimplemented: non-floating point type");
+
+    Type elementType =
+        input.getType().cast<RankedTensorType>().getElementType();
+    if (!elementType.isa<mlir::FloatType>())
+      return op->emitError("unimplemented: non-floating point type");
+
+    SmallVector<int64_t> paddingInts;
+    paddingInts.resize(2, 0);
+    if (!matchPattern(conv2dLRelu.padding(),
+                      Torch::m_TorchConstantIntList(paddingInts))) {
+      return rewriter.notifyMatchFailure(
+          op, "only support constant padding values");
+    }
+
+    // Getting alpha value
+    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).value();
+    auto ty = rewriter.getF32Type();
+    auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
+    Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
+
+    // paddedInput. input shape change based on padding
+    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
+    input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
+
+    SmallVector<int64_t, 2> strideInts;
+    if (!matchPattern(conv2dLRelu.stride(),
+                      Torch::m_TorchConstantIntList(strideInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int strides");
+
+    SmallVector<int64_t, 2> dilationInts;
+    if (!matchPattern(conv2dLRelu.dilation(),
+                      Torch::m_TorchConstantIntList(dilationInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int dilations");
+
+    int64_t groups;
+    if (!matchPattern(conv2dLRelu.groups(), Torch::m_TorchConstantInt(&groups)))
+      return rewriter.notifyMatchFailure(op, "only support constant int group");
+
+    if (groups != 1)
+      return op->emitError("Only support groups value '1'");
+
+    auto stridesAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
+    auto dilationAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), dilationInts);
+
+    auto torchTensorTy =
+        op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
+                                                  torchTensorTy.getDtype());
+
+    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+        loc, resultTensorType.getShape(), elementType);
+
+    // Get add input feature map
+    Value add_ifm = ToBuiltinTensorTypeCast(rewriter, operands[8]);
+
+    // Change appropriate operation over here
+    Value conv2dLReluVal = rewriter
+                               .create<linalg::Conv2DTensorAddLreluOp>(
+                                   loc, initTensor.getType(),
+                                   ValueRange{input, add_ifm, weight, bias, alpha}, // add_ifm should be in ValueRange
+                                   initTensor, stridesAttr, dilationAttr)
+                               .getResult(0);
+
+    if (op->hasAttr("layer_name")) {
+      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
+      Operation *conv2dLReluValOps = conv2dLReluVal.getDefiningOp();
+      conv2dLReluValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
+    }
+
+    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dLReluVal,
+                                                 op->getResult(0).getType());
+    rewriter.replaceOp(op, torchTensorCast);
+    return success();
+  }
+};
+
 class XTenConv2dLeakyReluMaxPoolOpConversion : public ConversionPattern {
 public:
   explicit XTenConv2dLeakyReluMaxPoolOpConversion(MLIRContext *context)
@@ -841,12 +1114,18 @@ public:
     // tablegen patterns
     RewritePatternSet patterns(context);
 
-    patterns.insert<XTenAddOpConversion, XTenMulOpConversion,
-                    XTenMMOpConversion, XTenConv2dOpConversion,
-                    XTenConv2dReluOpConversion, XTenConv2dLeakyReluOpConversion,
+    patterns.insert<XTenAddOpConversion,
+                    XTenMulOpConversion,
+                    XTenMMOpConversion,
+                    XTenConv2dOpConversion,
+                    XTenConv2dReluOpConversion,
+                    XTenConv2dLeakyReluOpConversion,
                     XTenConv2dLeakyReluMaxPoolOpConversion,
                     XTenConv2dLeakyReluPadMaxPoolOpConversion,
-                    XTenPartialConv2dReLUOpConversion>(context);
+                    XTenPartialConv2dReLUOpConversion,
+                    XTenConv2dTensorAddOpConversion,
+                    XTenConv2dTensorAddReLUOpConversion,
+                    XTenConv2dTensorAddLReLUOpConversion>(context);
 
     ConversionTarget target(*context);
 
