@@ -19,6 +19,10 @@ namespace xten {
 
 Value MemRefTypeCast(OpBuilder &builder, Value val);
 
+Value ToBuiltinTensorTypeCast(OpBuilder &builder, Value val);
+
+Value ToTorchTensorTypeCast(OpBuilder &builder, Value val, Type resultTy);
+
 Value TensorTypeCast(OpBuilder &builder, Value val, Type resultTy);
 
 func::FuncOp getATenFn(ModuleOp module, std::string fnName, ArrayRef<Value> operands, ArrayRef<Type> retTys);

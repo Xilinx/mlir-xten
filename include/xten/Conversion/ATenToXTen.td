@@ -16,23 +16,33 @@ include "torch-mlir/Dialect/Torch/IR/TorchOps.td"
 
 include "xten/Dialect/XTen/XTenOps.td"
 
+// note: this pass is complemented by XTenFusions.td
+
+// Normalize names, so that we only have to write one pattern.
+// Each operator comes in two variants, eg torch.aten.relu and torch.aten.relu_ (with underscore)
+// PyTorch operators have an in-place variant and a by-return variant,
+// which have the same MLIR representation because of SSA, but different
+// operators.
+def : Pat<(Torch_AtenRelu_Op $a),
+          (Torch_AtenReluOp $a)>;
+def : Pat<(Torch_AtenLeakyRelu_Op $a, $b),
+          (Torch_AtenLeakyReluOp $a, $b)>;
+def : Pat<(Torch_AtenAdd_TensorOp $a, $b, $c),
+          (Torch_AtenAddTensorOp $a, $b, $c)>;
+
+// Conversions
+
 def : Pat<(Torch_AtenConv2dOp $a,$b,$c,$d,$e,$f,$g),
           (XTen_Conv2dOp  $a,$b,$c,$d,$e,$f,$g)>;
 
-// def : Pat<(aten_TOp (aten_TOp $input)), (XTen_NoOp $input)>;
-
 def : Pat<(Torch_AtenReluOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g)),
-          (XTen_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g)>;
-
-def : Pat<(Torch_AtenRelu_Op (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g)),
           (XTen_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g)>;
 
 def : Pat<(Torch_AtenLeakyReluOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),$h),
           (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h)>;
 
-def : Pat<(Torch_AtenLeakyRelu_Op (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),$h),
-          (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h)>;
-
+def : Pat<(Torch_AtenConstantPadNdOp (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h), $pad,$val),
+          (XTen_Conv2dLReLUPadOp $a,$b,$c,$d,$e,$f,$g,$h,$pad,$val)>;
 // def : Pat<(aten_LeakyReluOp 
 //             (Torch_AtenBatchNormOp
 //               (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),
@@ -40,18 +50,18 @@ def : Pat<(Torch_AtenLeakyRelu_Op (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),$h),
 //           (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h)>;
 
 def : Pat<(Torch_AtenMaxPool2dOp
-            (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h),$mp2,$mp3,$mp4,$mp5,$mp6),
+            (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h),$mp2,$mp3,$mp4,$mp5,$mp6), 
           (XTen_Conv2dLReLUMaxPoolOp $a,$b,$c,$d,$e,$f,$g,$h,$mp2,$mp3,$mp4,$mp5,$mp6)>;
 
-def : Pat<(Torch_AtenReluOp
-            (Torch_AtenBatchNormOp
-              (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),
-              $a1,$a2,$a3,$a4,$a5,$a6,$a7,$a8
-            )
-          ),
-          (XTen_Conv2dBatchNormReLUOp $a,$b,$c,$d,$e,$f,$g,$a1,$a2,$a3,$a4,$a5,$a6,$a7)>;
+def : Pat<(Torch_AtenMaxPool2dOp
+            (XTen_Conv2dLReLUPadOp $a,$b,$c,$d,$e,$f,$g,$h,$pad,$val),$mp2,$mp3,$mp4,$mp5,$mp6), 
+          (XTen_Conv2dLReLUPadMaxPoolOp $a,$b,$c,$d,$e,$f,$g,$h,$pad,$val,$mp2,$mp3,$mp4,$mp5,$mp6)>;
+// def : Pat<(Torch_AtenMaxPool2dOp(
+//             Torch_AtenConstantPadNdOp 
+//               (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h),$pad, $val),$mp2,$mp3,$mp4,$mp5,$mp6), 
+//           (XTen_Conv2dLReLUMaxPoolOp $a,$b,$c,$d,$e,$f,$g,$h,$mp2,$mp3,$mp4,$mp5,$mp6)>;
 
-def : Pat<(Torch_AtenRelu_Op
+def : Pat<(Torch_AtenReluOp
             (Torch_AtenBatchNormOp
               (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),
               $a1,$a2,$a3,$a4,$a5,$a6,$a7,$a8
@@ -70,3 +80,4 @@ def : Pat<(Torch_AtenMulTensorOp $a, $b),
 
 def : Pat<(Torch_AtenAddTensorOp $a, $b, $c),
           (XTen_AddOp $a, $b)>;
+

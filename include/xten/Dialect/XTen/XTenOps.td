@@ -325,6 +325,32 @@ def XTen_Conv2dLReLUOp: XTen_Op<"conv2d_lrelu", [NoSideEffect]>,
 	}];
 }
 
+def XTen_Conv2dLReLUPadOp: XTen_Op<"conv2d_lrelu_pad", [NoSideEffect]>,
+                                   Results<(outs AnyTorchTensorType)> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        TorchIntListType:$stride,
+        TorchIntListType:$padding,
+        TorchIntListType:$dilation,
+        Torch_IntType:$groups,
+        Torch_FloatType:$alpha,
+        TorchIntListType:$pad_padding,
+        AnyTorchScalarType:$pad_value
+  );
+
+  let summary = "Convolution with Leaky ReLU plus Pad operator";
+  let description = [{
+    Fused Convolution followed by Leaky ReLU activation and Pad operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+    uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    uint64_t getResultTransferVolume(unsigned int idx, bool write);
+	}];
+}
+
 
 def XTen_Conv2dLReLUMaxPoolOp: XTen_Op<"conv2d_lrelu_maxpool", [NoSideEffect]> {
   let arguments = (
@@ -356,6 +382,111 @@ def XTen_Conv2dLReLUMaxPoolOp: XTen_Op<"conv2d_lrelu_maxpool", [NoSideEffect]> {
     uint64_t getOperandTransferVolume(unsigned int idx, bool read);
     uint64_t getResultTransferVolume(unsigned int idx, bool write);
 	}];
+}
+
+def XTen_Conv2dLReLUPadMaxPoolOp: XTen_Op<"conv2d_lrelu_pad_maxpool", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        TorchIntListType:$stride,
+        TorchIntListType:$padding,
+        TorchIntListType:$dilation,
+        Torch_IntType:$groups,
+        Torch_FloatType:$alpha,
+        TorchIntListType:$pad_padding,
+        AnyTorchScalarType:$pad_value,
+        TorchIntListType:$mp_kernel_size,
+        TorchIntListType:$mp_stride,
+        TorchIntListType:$mp_padding,
+        TorchIntListType:$mp_dilation,
+        Torch_BoolType:$mp_ceil_mode
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with Leaky ReLU plus Pad and MaxPool operator";
+  let description = [{
+    Fused Convolution followed by Leaky ReLU activation followed by compatible Pad and MaxPool operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+    uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    uint64_t getResultTransferVolume(unsigned int idx, bool write);
+	}];
+}
+
+def XTen_Conv2dTensorAddOp: XTen_Op<"conv2d_tensoradd", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        TorchIntListType:$stride,
+        TorchIntListType:$padding,
+        TorchIntListType:$dilation,
+        Torch_IntType:$groups,
+
+        AnyTorchTensorType:$add_ifm
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with linear activation, then element-wise add with another tensor";
+  let description = [{
+    Convolution with linear activation, then element-wise add with another tensor.
+  }];
+}
+
+def XTen_Conv2dTensorAddReLUOp: XTen_Op<"conv2d_tensoradd_relu", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        TorchIntListType:$stride,
+        TorchIntListType:$padding,
+        TorchIntListType:$dilation,
+        Torch_IntType:$groups,
+
+        AnyTorchTensorType:$add_ifm
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then ReLU";
+  let description = [{
+    Convolution with linear activation, then element-wise add with another tensor, then ReLU.
+  }];
+}
+
+def XTen_Conv2dTensorAddLReLUOp: XTen_Op<"conv2d_tensoradd_lrelu", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        TorchIntListType:$stride,
+        TorchIntListType:$padding,
+        TorchIntListType:$dilation,
+        Torch_IntType:$groups,
+
+        Torch_FloatType:$alpha, /// for lrelu
+
+        AnyTorchTensorType:$add_ifm
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then leaky ReLU";
+  let description = [{
+    Convolution with linear activation, then element-wise add with another tensor, then leaky ReLU.
+  }];
 }
 
 
