@@ -8,6 +8,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+// ResNet50 from Torchvision, converted to MLIR via torch-mlir (op decomposition disabled)
+// Additionally, I added a softmax layer to the end of the model.
 // RUN: aten-opt %s -aten-to-xten | FileCheck %s
 module attributes {torch.debug_module_name = "Model"} {
   func @forward(%arg0: !torch.vtensor<[1,3,128,128],f32>) -> !torch.vtensor<[1,1000],f32> {
@@ -267,8 +269,9 @@ module attributes {torch.debug_module_name = "Model"} {
     %242 = torch.aten.relu %241 : !torch.vtensor<[1,2048,4,4],f32> -> !torch.vtensor<[1,2048,4,4],f32>
     %243 = torch.aten.adaptive_avg_pool2d %242, %69 : !torch.vtensor<[1,2048,4,4],f32>, !torch.list<int> -> !torch.vtensor<[1,2048,1,1],f32>
     %244 = torch.aten.flatten.using_ints %243, %int1, %int-1 : !torch.vtensor<[1,2048,1,1],f32>, !torch.int, !torch.int -> !torch.vtensor<[1,2048],f32>
+    // CHECK: %[[LINEAR:.*]] = torch.aten.linear %{{([[:digit:]]+)}}, %{{([[:digit:]]+)}}, %{{([[:digit:]]+)}}
     %245 = torch.aten.linear %244, %1, %0 : !torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.vtensor<[1000],f32> -> !torch.vtensor<[1,1000],f32>
-    // CHECK: %[[SOFTMAX:.*]] = "xten.softmax" (%245, %int-1, %none) : !torch.vtensor<[1,1000],f32>, !torch.int, !torch.none -> !torch.vtensor<[1,1000],f32>, !torch.int, !torch.none -> !torch.vtensor<[1,1000],f32>
+    // CHECK: %[[SOFTMAX:.*]] = "xten.softmax"(%[[LINEAR]], %int-1, %none) : (!torch.vtensor<[1,1000],f32>, !torch.int, !torch.none) -> !torch.vtensor<[1,1000],f32>
     %246 = torch.aten.softmax.int %245, %int-1, %none : !torch.vtensor<[1,1000],f32>, !torch.int, !torch.none -> !torch.vtensor<[1,1000],f32>
     return %246 : !torch.vtensor<[1,1000],f32>
   }

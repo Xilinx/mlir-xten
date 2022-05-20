@@ -79,3 +79,6 @@ def : Pat<(Torch_AtenMulTensorOp $a, $b),
 
 def : Pat<(Torch_AtenAddTensorOp $a, $b, $c),
           (XTen_AddOp $a, $b)>;
+
+def : Pat<(Torch_AtenSoftmaxIntOp $a, $b, $c),
+          (XTen_SoftmaxOp $a, $b, $c)>;

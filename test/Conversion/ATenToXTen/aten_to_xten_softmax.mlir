@@ -17,8 +17,9 @@ module attributes {torch.debug_module_name = "Model"} {
   func @forward(%arg0: !torch.vtensor<[1,3,128,128],f32>) -> !torch.vtensor<[1,3,128,128],f32> {
     // CHECK: %[[DIM:.*]] = torch.constant.int -1
     %int-1 = torch.constant.int -1
+    // CHECK: %[[DTYPE:.*]] = torch.constant.none
     %none = torch.constant.none
-    // CHECK: %[[SOFTMAX:.*]] = "xten.softmax"(%[[INPUT]], %[[DIM]], %none) !torch.vtensor<[1,3,128,128],f32>, !torch.int, !torch.none -> !torch.vtensor<[1,3,128,128],f32>
+    // CHECK: %[[SOFTMAX:.*]] = "xten.softmax"(%[[INPUT]], %[[DIM]], %[[DTYPE]]) : (!torch.vtensor<[1,3,128,128],f32>, !torch.int, !torch.none) -> !torch.vtensor<[1,3,128,128],f32>
     %0 = torch.aten.softmax.int %arg0, %int-1, %none : !torch.vtensor<[1,3,128,128],f32>, !torch.int, !torch.none -> !torch.vtensor<[1,3,128,128],f32>
     return %0 : !torch.vtensor<[1,3,128,128],f32>
   }
