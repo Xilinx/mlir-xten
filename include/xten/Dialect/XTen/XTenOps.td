@@ -331,12 +331,12 @@ def XTen_Conv2dLReLUPadOp: XTen_Op<"conv2d_lrelu_pad", [NoSideEffect]>,
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        AnyTorchListOfTorchIntType:$stride,
-        AnyTorchListOfTorchIntType:$padding,
-        AnyTorchListOfTorchIntType:$dilation,
+        ListOfTorchIntType:$stride,
+        ListOfTorchIntType:$padding,
+        ListOfTorchIntType:$dilation,
         Torch_IntType:$groups,
         Torch_FloatType:$alpha,
-        AnyTorchListOfTorchIntType:$pad_padding,
+        ListOfTorchIntType:$pad_padding,
         AnyTorchScalarType:$pad_value
   );
 
@@ -389,17 +389,17 @@ def XTen_Conv2dLReLUPadMaxPoolOp: XTen_Op<"conv2d_lrelu_pad_maxpool", [NoSideEff
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        AnyTorchListOfTorchIntType:$stride,
-        AnyTorchListOfTorchIntType:$padding,
-        AnyTorchListOfTorchIntType:$dilation,
+        ListOfTorchIntType:$stride,
+        ListOfTorchIntType:$padding,
+        ListOfTorchIntType:$dilation,
         Torch_IntType:$groups,
         Torch_FloatType:$alpha,
-        AnyTorchListOfTorchIntType:$pad_padding,
+        ListOfTorchIntType:$pad_padding,
         AnyTorchScalarType:$pad_value,
-        AnyTorchListOfTorchIntType:$mp_kernel_size,
-        AnyTorchListOfTorchIntType:$mp_stride,
-        AnyTorchListOfTorchIntType:$mp_padding,
-        AnyTorchListOfTorchIntType:$mp_dilation,
+        ListOfTorchIntType:$mp_kernel_size,
+        ListOfTorchIntType:$mp_stride,
+        ListOfTorchIntType:$mp_padding,
+        ListOfTorchIntType:$mp_dilation,
         Torch_BoolType:$mp_ceil_mode
   );
 
@@ -423,9 +423,9 @@ def XTen_Conv2dTensorAddOp: XTen_Op<"conv2d_tensoradd", [NoSideEffect]> {
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        AnyTorchListOfTorchIntType:$stride,
-        AnyTorchListOfTorchIntType:$padding,
-        AnyTorchListOfTorchIntType:$dilation,
+        ListOfTorchIntType:$stride,
+        ListOfTorchIntType:$padding,
+        ListOfTorchIntType:$dilation,
         Torch_IntType:$groups,
 
         AnyTorchTensorType:$add_ifm
@@ -446,9 +446,9 @@ def XTen_Conv2dTensorAddReLUOp: XTen_Op<"conv2d_tensoradd_relu", [NoSideEffect]>
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        AnyTorchListOfTorchIntType:$stride,
-        AnyTorchListOfTorchIntType:$padding,
-        AnyTorchListOfTorchIntType:$dilation,
+        ListOfTorchIntType:$stride,
+        ListOfTorchIntType:$padding,
+        ListOfTorchIntType:$dilation,
         Torch_IntType:$groups,
 
         AnyTorchTensorType:$add_ifm
@@ -469,9 +469,9 @@ def XTen_Conv2dTensorAddLReLUOp: XTen_Op<"conv2d_tensoradd_lrelu", [NoSideEffect
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        AnyTorchListOfTorchIntType:$stride,
-        AnyTorchListOfTorchIntType:$padding,
-        AnyTorchListOfTorchIntType:$dilation,
+        ListOfTorchIntType:$stride,
+        ListOfTorchIntType:$padding,
+        ListOfTorchIntType:$dilation,
         Torch_IntType:$groups,
 
         Torch_FloatType:$alpha, /// for lrelu
