@@ -850,11 +850,12 @@ public:
                     XTenPartialConv2dReLUOpConversion>(context);
 
     ConversionTarget target(*context);
-
-    target.addLegalDialect<AffineDialect, linalg::LinalgDialect,
-                           memref::MemRefDialect, func::FuncDialect,
-                           scf::SCFDialect, Torch::TorchDialect,
-                           TorchConversion::TorchConversionDialect>();
+    
+    target.addIllegalDialect<XTenDialect>();
+    target.addLegalDialect<
+        linalg::LinalgDialect, memref::MemRefDialect, bufferization::BufferizationDialect,
+        arith::ArithmeticDialect, scf::SCFDialect, tensor::TensorDialect, Torch::TorchDialect, 
+        TorchConversion::TorchConversionDialect>();
 
     if (failed(applyPartialConversion(module, target, std::move(patterns)))) {
       emitError(UnknownLoc::get(context), "error lowering XTen to Linalg\n");
