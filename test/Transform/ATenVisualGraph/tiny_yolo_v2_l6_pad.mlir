@@ -9,25 +9,39 @@
 //===----------------------------------------------------------------------===//
 
 // RUN: aten-opt %s -aten-visual-graph='operators-supported-path=%S/../../../lib/Transform/operators_supported.json' | FileCheck %s
-// CHECK-LABEL:     "{{.*}}": {
-// CHECK-LABEL:     "connections"
-// CHECK:            {
-// CHECK-NEXT:       "from_port_id": "{{[0-9]+}}", 
-// CHECK-NEXT:       "id": "{{[0-9]+}}",
-// CHECK-NEXT:       "to_port_id": "{{[0-9]+}}"
-// CHECK-NEXT:       },
-// CHECK:            {
-// CHECK-NEXT:       "from_port_id": "{{[0-9]+}}", 
-// CHECK-NEXT:       "id": "{{[0-9]+}}",
-// CHECK-NEXT:       "to_port_id": "{{[0-9]+}}"
-// CHECK-NEXT:       },
-// CHECK:            {
-// CHECK-NEXT:       "from_port_id": "{{[0-9]+}}", 
-// CHECK-NEXT:       "id": "{{[0-9]+}}",
-// CHECK-NEXT:       "to_port_id": "{{[0-9]+}}"
-// CHECK-NEXT:       }
-// CHECK-LABEL:     "design_name": "design 1",
-
+// CHECK-LABEL:     "layers"
+// CHECK:           "name": "[[CP_NAME:constant_pad_.*]]",
+// CHECK-NEXT:      "operators": [
+// CHECK-NEXT:        {
+// CHECK-NEXT:             "id": "[[CP_ID:[0-9]+]]",
+// CHECK-NEXT:             "name": "{{.*}}",
+// CHECK-NEXT:             "operator_type": "torch.aten.constant_pad_nd",
+// CHECK-NEXT:             "ports": [
+// CHECK-NEXT:               {
+// CHECK-NEXT:                 "direction": "in",
+// CHECK-NEXT:                 "id": "{{[0-9]+}}",
+// CHECK-NEXT:                 "name": "in_0",
+// CHECK-NEXT:                 "properties": [
+// CHECK-NEXT:                   {
+// CHECK-NEXT:                     "name": "Inputs.IFMs.Tensor",
+// CHECK-NEXT:                     "tooltip": "Dimensions of Input",
+// CHECK-NEXT:                     "type": "string",
+// CHECK-NEXT:                     "value": "1x512x13x13"
+// CHECK-NEXT:                   },
+// CHECK-NEXT:                   {
+// CHECK-NEXT:                     "name": "Inputs.IFMs.type",
+// CHECK-NEXT:                     "tooltip": "Numerical type of each element of Input",
+// CHECK-NEXT:                     "type": "string",
+// CHECK-NEXT:                     "value": "float32"
+// CHECK-NEXT:                   },
+// CHECK-NEXT:                   {
+// CHECK-NEXT:                     "name": "Inputs.IFMs.Bytes",
+// CHECK-NEXT:                     "tooltip": "Size of Input in bytes",
+// CHECK-NEXT:                     "type": "long",
+// CHECK-NEXT:                     "value": "346112"
+// CHECK-NEXT:                   }
+// CHECK-NEXT:                 ]
+// CHECK-NEXT:               },
 module attributes {torch.debug_module_name = "TinyYoloV2"} {
   func @forward(%arg0: !torch.vtensor<[1,256,13,13],f32>) -> !torch.vtensor<[1,512,13,13],f32> {
     %int1 = torch.constant.int 1

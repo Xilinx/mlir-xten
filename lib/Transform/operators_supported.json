@@ -155,6 +155,11 @@
 	    ]
 	},
 	{
+	    "name" : "torch.aten.constant_pad_nd",
+	    "properties" : [
+	    ]
+	},
+	{
 	    "name" : "torch.aten.add_.Tensor",
 	    "properties" : [
 		["Computation.+", "Total number of + units in engine", "long"],
