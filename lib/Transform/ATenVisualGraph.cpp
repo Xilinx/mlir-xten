@@ -8,23 +8,24 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "xten/Transform/ATenVisualGraph.h"
 #include "PassDetail.h"
-#include "llvm/Support/Debug.h"
-#include "llvm/Support/ErrorHandling.h"
-#include "llvm/Support/JSON.h"
-#include "llvm/Support/raw_ostream.h"
-
-#include "llvm/ADT/MapVector.h"
-
-#include "mlir/Pass/Pass.h"
+#include "xten/Dialect/XTen/XTenDialect.h"
+#include "xten/Dialect/XTen/XTenOps.h"
+#include "xten/Util/Util.h"
 
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 
-#include "xten/Dialect/XTen/XTenDialect.h"
-#include "xten/Dialect/XTen/XTenOps.h"
-#include "xten/Transform/ATenVisualGraph.h"
-#include "xten/Util/Util.h"
+#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Pass/Pass.h"
+
+#include "llvm/ADT/MapVector.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/JSON.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include <algorithm>
 #include <fstream>
@@ -177,7 +178,7 @@ private:
     if (matchPattern(op, Torch::m_TorchConstantIntList(sv))) {
       for (size_t i = 0; i < sv.size(); i++)
         v.push_back(sv[i]);
-    } else if (auto co = op.getDefiningOp<mlir::arith::ConstantIntOp>()) {
+    } else if (auto co = op.getDefiningOp<arith::ConstantIntOp>()) {
       v.push_back(co.value());
     }
   }
@@ -770,8 +771,27 @@ private:
     std::string momentum_str;
     std::string eps_str;
 
-    Value momentum = batchNormOp.momentum();
-    Value eps = batchNormOp.eps();
+    if (separately_return_storage) {
+      if (storage_n)
+        *storage_n = mean_bytes + var_bytes + weight_bytes + bias_bytes;
+    } else {
+      Value input = batchNormOp.input();
+      Value output = ((Operation *)batchNormOp)->getResult(0);
+      uint64_t storage_i_o_bytes =
+          storage_bytes_of_input_and_output(input, output);
+      std::string storage_str =
+          std::to_string(var_bytes + mean_bytes + storage_i_o_bytes +
+                         weight_bytes + bias_bytes);
+      fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
+    }
+  }
+
+  template <class T>
+  void fillPropertiesSoftmaxOp(T &softmaxOp,
+                               llvm::json::Array &propertiesArray) {
+    Value dim = softmaxOp.dim();
+    uint64_t dim_v = dim.getDefiningOp<arith::ConstantIntOp>().value();
+    std::string dim_str = std::to_string(dim_v);
 
     auto momentumOp = momentum.getDefiningOp<Torch::ConstantFloatOp>();
     auto momentum_n = momentumOp.value().convertToDouble();
@@ -800,11 +820,10 @@ private:
     }
   }
 
-  template <class T>
-  void fillPropertiesSoftmaxOp(T &softmaxOp,
-                               llvm::json::Array &propertiesArray) {
-    Value dim = softmaxOp.dim();
-    uint64_t dim_v = dim.getDefiningOp<mlir::arith::ConstantIntOp>().value();
+  void fillPropertiesGatherOp(Torch::AtenGatherOp &gatherOp,
+                              llvm::json::Array &propertiesArray) {
+    Value dim = gatherOp.dim();
+    uint64_t dim_v = dim.getDefiningOp<arith::ConstantIntOp>().value();
     std::string dim_str = std::to_string(dim_v);
 
     Value input = softmaxOp.self();
@@ -818,10 +837,10 @@ private:
     fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
   }
 
-  void fillPropertiesGatherOp(Torch::AtenGatherOp &gatherOp,
-                              llvm::json::Array &propertiesArray) {
-    Value dim = gatherOp.dim();
-    uint64_t dim_v = dim.getDefiningOp<mlir::arith::ConstantIntOp>().value();
+  void fillPropertiesSliceOp(Torch::AtenSliceTensorOp &sliceOp,
+                             llvm::json::Array &propertiesArray) {
+    Value dim = sliceOp.dim();
+    uint64_t dim_v = dim.getDefiningOp<arith::ConstantIntOp>().value();
     std::string dim_str = std::to_string(dim_v);
 
     Value index = gatherOp.index();
@@ -883,8 +902,7 @@ private:
         xtenConv2dBnReluOp, propertiesArray, true, &bn_storage, 1);
 
     // fillPropertiesReLUOp<xten::Conv2dBatchNormReLUOp>(xtenConv2dBnReluOp,
-    // propertiesArray, 						      true, &relu_storage,
-    // 2);
+    // propertiesArray, true, &relu_storage, 2);
 
     uint64_t storage = conv_storage + bn_storage + relu_storage;
 
@@ -1494,7 +1512,7 @@ public:
     auto module = getOperation();
 
     // check that a function called "forward" exists
-    auto forward = module.lookupSymbol<mlir::FuncOp>("forward");
+    auto forward = module.lookupSymbol<func::FuncOp>("forward");
     if (!forward) {
       emitError(mlir::UnknownLoc::get(module.getContext()),
                 "OpReportPass failed: can't find a forward function\n");

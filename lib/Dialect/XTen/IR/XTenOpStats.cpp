@@ -15,8 +15,11 @@
 
 #include "xten/Util/Util.h"
 
-#include "llvm/Support/Debug.h"
+#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
+
+#include "llvm/Support/Debug.h"
 
 #include <iostream>
 #include <type_traits>

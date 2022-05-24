@@ -9,7 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/Pass/Pass.h"
@@ -18,6 +18,7 @@
 
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchTypes.h"
 
 #include "xten/Dialect/XTen/XTenDataflow.h"
 #include "xten/Dialect/XTen/XTenDataflowUtils.h"
@@ -77,13 +78,13 @@ namespace xilinx {
                 }
             }
 
-            DataflowExplorer initializeLayerNameToOps(FuncOp graph) {
+            DataflowExplorer initializeLayerNameToOps(func::FuncOp graph) {
                 // TODO do we have the guarantee to be in network order?
                 std::vector<std::pair<std::string, AbsOpWrapper*>> explorerInit;
 
                 graph.walk([&](Operation *op) {
-                        if(op->getAttr("name") != nullptr) {
-                            auto opName = (op->getAttr("name").dyn_cast<StringAttr>()).getValue();
+                        if(op->getAttr("layer_name") != nullptr) {
+                            auto opName = (op->getAttr("layer_name").dyn_cast<StringAttr>()).getValue();
                             AbsOpWrapper* wrappedOp = opToWrapper(op);
                             if(layerNameToOps.count(opName.str()) == 0) {
                                 layerNameToOps[opName.str()] = std::vector<AbsOpWrapper*>({wrappedOp});
@@ -136,7 +137,7 @@ namespace xilinx {
                     Operation* weights;
                     if(genOp->hasWeights()) {
                         weights = genOp->getWeights().getDefiningOp();
-                        if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(weights)) {
+                        if(auto constOp = llvm::dyn_cast<mlir::arith::ConstantOp>(weights)) {
                             splitConstantInto(constOp, nConsts, builder, PSplit, wSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -148,7 +149,7 @@ namespace xilinx {
                     Operation* biases;
                     if(genOp->hasBias()) {
                         biases = genOp->getBiases()->getDefiningOp();
-                        if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(biases)) {
+                        if(auto constOp = llvm::dyn_cast<mlir::arith::ConstantOp>(biases)) {
                             splitConstantInto(constOp, nBiases, builder, PSplit, bSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -162,7 +163,7 @@ namespace xilinx {
                         for(unsigned int i = 0; i < 4; i++) {
                             Operation* bnParam = bnParams[i].getDefiningOp();
                             std::vector<Value> nBnLoc;
-                            if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(bnParam)) {
+                            if(auto constOp = llvm::dyn_cast<mlir::arith::ConstantOp>(bnParam)) {
                                 splitConstantInto(constOp, nBnLoc, builder, PSplit, bSplitType, into);
                             } else {
                                 llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -188,9 +189,9 @@ namespace xilinx {
                     // TODO for Maxpool2d with indices, check other return types and check that assumption
                     std::vector<Type> shapes = std::vector<Type>();
                     for(unsigned int i = 0; i < op->getNumResults(); i++) {
-                        ShapedType origType = op->getResult(i).getType().dyn_cast<ShapedType>();
+                        mlir::torch::Torch::BaseTensorType origType = op->getResult(i).getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
                         assert(origType);
-                        ShapedType nReturnType = breakShapeInto(origType, C_LOC, into);
+                        mlir::torch::Torch::BaseTensorType nReturnType = breakShapeInto(origType, C_LOC, into);
                         shapes.push_back(nReturnType);
                     }
 
@@ -299,7 +300,7 @@ namespace xilinx {
                     Operation* weights;
                     if(genOp->hasWeights()) {
                          weights = genOp->getWeights().getDefiningOp();
-                        if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(weights)) {
+                        if(auto constOp = llvm::dyn_cast<mlir::arith::ConstantOp>(weights)) {
                             splitConstantInto(constOp, nConsts, builder, CaSplit, wSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -312,7 +313,7 @@ namespace xilinx {
                     Operation* biases;
                     if(genOp->hasBias()) {
                         biases = genOp->getBiases()->getDefiningOp();
-                        if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(biases)) {
+                        if(auto constOp = llvm::dyn_cast<mlir::arith::ConstantOp>(biases)) {
                             splitConstantInto(constOp, nBiases, builder, CaSplit, bSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -328,7 +329,7 @@ namespace xilinx {
                         for(unsigned int i = 0; i < 4; i++) {
                             Operation* bnParam = bnParams[i].getDefiningOp();
                             std::vector<Value> nBnLoc;
-                            if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(bnParam)) {
+                            if(auto constOp = llvm::dyn_cast<mlir::arith::ConstantOp>(bnParam)) {
                                 splitConstantInto(constOp, nBnLoc, builder, CaSplit, bSplitType, into);
                             } else {
                                 llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -350,7 +351,7 @@ namespace xilinx {
                     }
 
                     // split activations
-                    if(auto constOp = genOp->getInput().getDefiningOp<arith::ConstantOp>()) {
+                    if(auto constOp = genOp->getInput().getDefiningOp<mlir::arith::ConstantOp>()) {
                         splitConstantInto(constOp, nInputs, builder, CaSplit, aSplitType, into);
                     } else {
                         if(ConcatOp concatOp = genOp->getInput().getDefiningOp<ConcatOp>()) {
@@ -459,7 +460,7 @@ namespace xilinx {
                     Operation* weights;
                     if(genOp->hasWeights()) {
                         weights = genOp->getWeights().getDefiningOp();//->getName();
-                        if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(weights)) {
+                        if(auto constOp = llvm::dyn_cast<mlir::arith::ConstantOp>(weights)) {
                             splitConstantInto(constOp, nConsts, builder, LSplit, wSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -472,7 +473,7 @@ namespace xilinx {
                     Operation* biases;
                     if(genOp->hasBias()) {
                         biases = genOp->getBiases()->getDefiningOp();
-                        if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(biases)) {
+                        if(auto constOp = llvm::dyn_cast<mlir::arith::ConstantOp>(biases)) {
                             splitConstantInto(constOp, nBiases, builder, LSplit, bSplitType, into);
                         } else {
                             llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -487,7 +488,7 @@ namespace xilinx {
                         for(unsigned int i = 0; i < 4; i++) {
                             Operation* bnParam = bnParams[i].getDefiningOp();
                             std::vector<Value> nBnLoc;
-                            if(auto constOp = llvm::dyn_cast<arith::ConstantOp>(bnParam)) {
+                            if(auto constOp = llvm::dyn_cast<mlir::arith::ConstantOp>(bnParam)) {
                                 splitConstantInto(constOp, nBnLoc, builder, LSplit, bSplitType, into);
                             } else {
                                 llvm::outs() << "Cannot convert to ConstOp!\n";
@@ -509,8 +510,8 @@ namespace xilinx {
                     }
 
                     // Same return type here
-                    ShapedType retTypePartial = op->getResult(0).getType().dyn_cast<ShapedType>();
-                    ShapedType retTypeForward = genOp->getInput().getType().dyn_cast<ShapedType>();
+                    mlir::torch::Torch::BaseTensorType retTypePartial = op->getResult(0).getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+                    mlir::torch::Torch::BaseTensorType retTypeForward = genOp->getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
 
                     // Generate new convs
                     auto w = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(0)) : llvm::Optional<Value>();
@@ -605,9 +606,8 @@ namespace xilinx {
                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
                 //unsigned int locP = getAttrOrDefault(op, "locP", 0);
 
-                std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
+                std::string layerName = op->getAttr("layer_name").dyn_cast<StringAttr>().getValue().str();
 
-                //ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
                 uint64_t F0 = absOp->getF0();
                 // TODO fix for F1
 
@@ -638,9 +638,8 @@ namespace xilinx {
                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
                 //unsigned int locP = getAttrOrDefault(op, "locP", 0);
 
-                std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
+                std::string layerName = op->getAttr("layer_name").dyn_cast<StringAttr>().getValue().str();
 
-                //ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
                 uint64_t F0 = absOp->getF0();
                 // TODO fix for F1
 
@@ -679,7 +678,7 @@ namespace xilinx {
                 unsigned int locW = getAttrOrDefault(op, "locW", 0);
                 //unsigned int locP = getAttrOrDefault(op, "locP", 0);
 
-                std::string layerName = op->getAttr("name").dyn_cast<StringAttr>().getValue().str();
+                std::string layerName = op->getAttr("layer_name").dyn_cast<StringAttr>().getValue().str();
                 unsigned int W = this->layerNameToParams[layerName].W;
                 unsigned int L = this->layerNameToParams[layerName].L;
 
@@ -690,7 +689,6 @@ namespace xilinx {
                     WPrev = this->layerNameToParams[expl.layerIdToName[expl.layerNameToID[layerName]-1]].W;
                 }
 
-                //ShapedType aShapeIn = absOp->getInput().getType().dyn_cast<ShapedType>();
                 uint64_t F0 = absOp->getF0();
                 // TODO fix for F1
 
@@ -829,8 +827,8 @@ namespace xilinx {
                             localLines[s] = absOp->getUnderlyingOperation()->getResult(1);
                         } else {
                             unsigned int locW = getAttrOrDefault(absOp->getUnderlyingOperation(), "locW", 0);
-                            ShapedType partialRes = absOp->getUnderlyingOperation()->getResult(0).getType().dyn_cast<ShapedType>();
-                            ShapedType forwardRes = absOp->getInput().getType().dyn_cast<ShapedType>();
+                            mlir::torch::Torch::BaseTensorType partialRes = absOp->getUnderlyingOperation()->getResult(0).getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+                            mlir::torch::Torch::BaseTensorType forwardRes = absOp->getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
 
                             OpBuilder builder(absOp->getUnderlyingOperation());
 
@@ -1151,7 +1149,7 @@ namespace xilinx {
             void runOnOperation() override {
                 ModuleOp module = getOperation();
 
-                auto graph = module.lookupSymbol<FuncOp>("graph");
+                auto graph = module.lookupSymbol<func::FuncOp>("forward");
                 if(!graph) {
                     emitError(UnknownLoc::get(module.getContext()), "Cant find graph func\n");
                     signalPassFailure();

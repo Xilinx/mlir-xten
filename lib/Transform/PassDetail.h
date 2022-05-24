@@ -11,6 +11,7 @@
 #ifndef XTEN_TRANSFORM_PASSDETAIL_H
 #define XTEN_TRANSFORM_PASSDETAIL_H
 
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/Pass/Pass.h"
 
 namespace xilinx {

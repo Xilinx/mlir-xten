@@ -9,11 +9,14 @@
 //===----------------------------------------------------------------------===//
 
 include "mlir/IR/OpBase.td"
-include "mlir/Dialect/StandardOps/IR/Ops.td"
+include "mlir/IR/PatternBase.td"
+include "mlir/Dialect/Func/IR/FuncOps.td"
 
 include "torch-mlir/Dialect/Torch/IR/TorchOps.td"
 
 include "xten/Dialect/XTen/XTenOps.td"
+
+// note: this pass is complemented by XTenFusions.td
 
 // Normalize names, so that we only have to write one pattern.
 // Each operator comes in two variants, eg torch.aten.relu and torch.aten.relu_ (with underscore)
@@ -78,11 +81,3 @@ def : Pat<(Torch_AtenMulTensorOp $a, $b),
 def : Pat<(Torch_AtenAddTensorOp $a, $b, $c),
           (XTen_AddOp $a, $b)>;
 
-def : Pat<(XTen_AddOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g), $h),
-          (XTen_Conv2dTensorAddOp $a,$b,$c,$d,$e,$f,$g,$h)>;
-
-def : Pat<(Torch_AtenReluOp (XTen_Conv2dTensorAddOp $a,$b,$c,$d,$e,$f,$g,$h)),
-          (XTen_Conv2dTensorAddReLUOp $a,$b,$c,$d,$e,$f,$g,$h)>;
-
-def : Pat<(Torch_AtenLeakyReluOp (XTen_Conv2dTensorAddOp $a,$b,$c,$d,$e,$f,$g,$h), $alpha),
-          (XTen_Conv2dTensorAddLReLUOp $a,$b,$c,$d,$e,$f,$g,$alpha,$h)>;
