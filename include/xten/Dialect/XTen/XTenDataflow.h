@@ -11,6 +11,7 @@
 #ifndef XTEN_DATAFLOW_H
 #define XTEN_DATAFLOW_H
 
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/Pass/Pass.h"
 #include <memory>
 

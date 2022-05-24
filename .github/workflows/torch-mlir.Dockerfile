@@ -1,4 +1,4 @@
-FROM ghcr.io/stephenneuendorffer/mlir-xten-llvm:main AS builder
+FROM ghcr.io/xilinx/mlir-xten-llvm:main AS builder
 
 WORKDIR /build
 

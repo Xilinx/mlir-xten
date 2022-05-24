@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-##===- utils/build-llvm.sh - Build LLVM for github workflow --*- Script -*-===##
+##===- utils/build-torch-mlir.sh - Build torch-mlir for github workflow --*- Script -*-===##
 # 
 # This file licensed under the Apache License v2.0 with LLVM Exceptions.
 # See https://llvm.org/LICENSE.txt for license information.
@@ -16,13 +16,10 @@ BUILD_DIR=${1:-"torch-mlir-build"}
 INSTALL_DIR=${2:-"torch-mlir-install"}
 SOURCE_DIR="torch-mlir"
 
-export commithash=52ed3313b49b8f56a6dac270ee334c6dffebcaf2
+export tag=snapshot-20220426.416
 
 echo "dirs:$BUILD_DIR $INSTALL_DIR"
-git clone --depth 10000 https://github.com/llvm/torch-mlir.git ${SOURCE_DIR}
-pushd ${SOURCE_DIR}
-git checkout $commithash
-popd
+git clone --depth 1 https://github.com/llvm/torch-mlir.git ${SOURCE_DIR} --branch ${tag}
 
 mkdir -p $BUILD_DIR
 mkdir -p $INSTALL_DIR

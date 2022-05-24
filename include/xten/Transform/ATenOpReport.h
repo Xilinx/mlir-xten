@@ -11,8 +11,9 @@
 #ifndef ATEN_OP_REPORT_H
 #define ATEN_OP_REPORT_H
 
-#include <memory>
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/Pass/Pass.h"
+#include <memory>
 
 namespace xilinx {
 namespace xten {

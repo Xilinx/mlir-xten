@@ -16,5 +16,6 @@ add_mlir_library(XTenDialect
 
   LINK_LIBS PUBLIC
   MLIRIR
-  MLIRStandard
+  MLIRPass
+  MLIRTransforms
 )

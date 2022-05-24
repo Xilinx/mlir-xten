@@ -9,7 +9,8 @@
 //===----------------------------------------------------------------------===//
 
 include "mlir/IR/OpBase.td"
-include "mlir/Dialect/StandardOps/IR/Ops.td"
+include "mlir/IR/PatternBase.td"
+include "mlir/Dialect/Func/IR/FuncOps.td"
 
 include "torch-mlir/Dialect/Torch/IR/TorchOps.td"
 
