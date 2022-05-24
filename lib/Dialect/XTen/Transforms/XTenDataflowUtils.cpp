@@ -8,9 +8,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OperationSupport.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchTypes.h"
 
 #include "xten/Dialect/XTen/XTenDataflowUtils.h"
 #include "xten/Dialect/XTen/XTenDataflowConsts.h"
@@ -21,39 +22,41 @@ using namespace mlir;
 
 namespace xilinx {
     namespace xten {
-        ShapedType baseShapeManupulation(ShapedType initShape, unsigned int at, unsigned int into, bool manipulationType) {
-            auto shape = initShape.getShape();
+        mlir::torch::Torch::BaseTensorType baseShapeManupulation(mlir::torch::Torch::BaseTensorType initShape, unsigned int at, unsigned int into, bool manipulationType) {
+            auto shape = initShape.getSizes();
             std::vector<long> newShape = std::vector<long>(shape);
             if(manipulationType) {
                 newShape[at] = newShape[at] / into;
             } else {
                 newShape[at] = newShape[at] * into;
             }
-            shape = initShape.getShape();
+            shape = initShape.getSizes();
 
             for(uint64_t i = 0; i < newShape.size(); i++) {
                 assert(newShape[at] > 0);
             }
 
             ArrayRef<long> nShape = ArrayRef<long>(newShape);
-            ShapedType ttype = RankedTensorType::get(nShape, initShape.getElementType());
+            //ShapedType ttype = RankedTensorType::get(nShape, initShape.getElementType());
+            auto tmpType = initShape.getWithSizesAndDtype(nShape,initShape.getDtype()); // NOLF NEED CHECK
+            auto ttype = tmpType.dyn_cast<mlir::torch::Torch::BaseTensorType>(); // NOLF NEED CHECK
 
             return ttype;
         }
 
-        ShapedType breakShapeInto(ShapedType initShape, unsigned int at, unsigned int into) {
+        mlir::torch::Torch::BaseTensorType breakShapeInto(mlir::torch::Torch::BaseTensorType initShape, unsigned int at, unsigned int into) {
             return baseShapeManupulation(initShape, at, into, true);
         }
 
-        ShapedType mergeShapeInto(ShapedType initShape, unsigned int at, unsigned int into) {
+        mlir::torch::Torch::BaseTensorType mergeShapeInto(mlir::torch::Torch::BaseTensorType initShape, unsigned int at, unsigned int into) {
             return baseShapeManupulation(initShape, at, into, false);
         }
 
         // TODO most likely factor some code here
-        void splitConstantActivationsInto(arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, unsigned int loc,
+        void splitConstantActivationsInto(mlir::arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, unsigned int loc,
                                           DenseElementsAttr at, unsigned int into) {
-            ShapedType initialShape = at.getType();
-            ArrayRef<int64_t> s = initialShape.getShape();
+            mlir::torch::Torch::BaseTensorType initialShape = at.getType().dyn_cast<mlir::torch::Torch::BaseTensorType>(); // NOLF NEED CHECK
+            ArrayRef<int64_t> s = initialShape.getSizes();
 
             uint64_t C = s[CIN_LOC];
             uint64_t N = s[N_LOC];
@@ -71,7 +74,8 @@ namespace xilinx {
                 M_switch = M / into;
             }
 
-            if(initialShape.getElementType().isF32()) { // TODO more types
+            //if(initialShape.getElementType().isF32()) { // TODO more types
+            if(initialShape.getDtype().isF32()) { // TODO more types  NOLF NEED CHECK 
                 std::vector<std::vector<APFloat>> vects;
                 for(unsigned int i = 0; i < into; i++) {
                     vects.push_back(std::vector<APFloat>());
@@ -96,21 +100,21 @@ namespace xilinx {
                     assert(vects.at(i).size() == (size_t)(at.getType().getNumElements() / into));
                 }
 
-                ShapedType ttype = breakShapeInto(initialShape, loc, into);
+                mlir::torch::Torch::BaseTensorType ttype = breakShapeInto(initialShape, loc, into);
 
                 for(uint64_t i = 0; i < into; i++) {
                     DenseElementsAttr attr = DenseElementsAttr::get(ttype, vects.at(i));
-                    Operation* cst = builder.create<arith::ConstantOp>(builder.getUnknownLoc(), ttype, attr);
+                    Operation* cst = builder.create<mlir::arith::ConstantOp>(builder.getUnknownLoc(), ttype, attr);
                     ops.push_back(cst->getResult(0));
                 }
             }
         }
 
         // Splits weights into according to dim given by loc
-        void splitConstantWeightsInto(arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, unsigned int loc,
+        void splitConstantWeightsInto(mlir::arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, unsigned int loc,
                                   DenseElementsAttr at, unsigned int into) {
-            ShapedType initialShape = at.getType();
-            ArrayRef<int64_t> s = initialShape.getShape();
+            mlir::torch::Torch::BaseTensorType initialShape = at.getType().dyn_cast<mlir::torch::Torch::BaseTensorType>(); // NOLF NEED CHECK
+            ArrayRef<int64_t> s = initialShape.getSizes();
 
             uint64_t COut = s[COUT_LOC];
             uint64_t CIn = s[CIN_LOC];
@@ -132,7 +136,8 @@ namespace xilinx {
                 F1_switch = F1 / into;
             }
 
-            if(initialShape.getElementType().isF32()) { // TODO is this the only choice?
+            //if(initialShape.getElementType().isF32()) { // TODO is this the only choice?
+            if(initialShape.getDtype().isF32()) { // TODO more types  NOLF NEED CHECK 
                 std::vector<std::vector<APFloat>> vects;
                 for(unsigned int i = 0; i < into; i++) {
                     vects.push_back(std::vector<APFloat>());
@@ -159,11 +164,11 @@ namespace xilinx {
                     assert(vects.at(i).size() == (size_t)(at.getType().getNumElements() / into));
                 }
 
-                ShapedType ttype = breakShapeInto(initialShape, loc, into);
+                mlir::torch::Torch::BaseTensorType ttype = breakShapeInto(initialShape, loc, into);
 
                 for(uint64_t i = 0; i < into; i++) {
                     DenseElementsAttr attr = DenseElementsAttr::get(ttype, vects.at(i));
-                    Operation* cst = builder.create<arith::ConstantOp>(builder.getUnknownLoc(), ttype, attr);
+                    Operation* cst = builder.create<mlir::arith::ConstantOp>(builder.getUnknownLoc(), ttype, attr);
                     ops.push_back(cst->getResult(0));
                 }
             }
@@ -171,9 +176,10 @@ namespace xilinx {
 
         // loc = 0 split
         // loc > 0 generate some other 0 biases
-        void splitConstantBiasInto(arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, unsigned int loc, DenseElementsAttr at, unsigned int into) {
-            ShapedType initialShape = at.getType();
-            if(initialShape.getElementType().isF32()) { // TODO extend to more types
+        void splitConstantBiasInto(mlir::arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, unsigned int loc, DenseElementsAttr at, unsigned int into) {
+            mlir::torch::Torch::BaseTensorType initialShape = at.getType().dyn_cast<mlir::torch::Torch::BaseTensorType>(); // NOLF NEED CHECK
+            //if(initialShape.getElementType().isF32()) { // TODO extend to more types
+            if(initialShape.getDtype().isF32()) {
                 std::vector<std::vector<APFloat>> vects;
                 for(unsigned int i = 0; i < into; i++) {
                     vects.push_back(std::vector<APFloat>());
@@ -200,7 +206,7 @@ namespace xilinx {
                 }
 
                 // now splitted the dense in into parts, need to regenerate it
-                ShapedType ttype;
+                mlir::torch::Torch::BaseTensorType ttype;
                 if(loc == 0) {
                     ttype = breakShapeInto(initialShape, 0, into);
                 } else {
@@ -209,7 +215,7 @@ namespace xilinx {
 
                 for(uint64_t i = 0; i < into; i++) {
                     DenseElementsAttr attr = DenseElementsAttr::get(ttype, vects.at(i));
-                    Operation* cst = builder.create<arith::ConstantOp>(builder.getUnknownLoc(), ttype, attr);
+                    Operation* cst = builder.create<mlir::arith::ConstantOp>(builder.getUnknownLoc(), ttype, attr);
                     ops.push_back(cst->getResult(0));
                 }
             }
@@ -242,7 +248,7 @@ namespace xilinx {
             return (unsigned int )-1;
         }
 
-        void splitConstantInto(arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into) {
+        void splitConstantInto(mlir::arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into) {
             for(NamedAttribute attr: op->getAttrs()) {
                 // We Look for the Dense Attribute
                 auto at = attr.getValue().dyn_cast<DenseElementsAttr>();
@@ -285,7 +291,7 @@ namespace xilinx {
 
         // TODO double check shape propagation here
         Operation* insertConcat(OpBuilder &builder, Value prevRes, std::vector<Value> &values, unsigned int dim, bool clearPrev) {
-            ShapedType prevResType = prevRes.getType().dyn_cast<ShapedType>();
+            mlir::torch::Torch::BaseTensorType prevResType = prevRes.getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
 
             ArrayRef<Value> valuesRef = ArrayRef<Value>(values);
             ValueRange valuesRange(valuesRef);
@@ -301,7 +307,7 @@ namespace xilinx {
         }
 
         void insertSplit(OpBuilder &builder, Value prevInput, std::vector<Value> &nInputs, unsigned int dim, unsigned int into) {
-            ShapedType nShape = breakShapeInto(prevInput.getType().dyn_cast<ShapedType>(), dim, into);
+            mlir::torch::Torch::BaseTensorType nShape = breakShapeInto(prevInput.getType().dyn_cast<mlir::torch::Torch::BaseTensorType>(), dim, into);
             std::vector<Type> shapes = std::vector<Type>(into, nShape);
             ArrayRef<Type> tShapes = ArrayRef<Type>(shapes);
 
@@ -371,7 +377,7 @@ namespace xilinx {
                         nInputs.push_back(concat.getOperand(consumed));
                         consumed++;
                     } else {
-                        ShapedType opShape = concat.getOperand(consumed).getType().dyn_cast<ShapedType>();
+                        mlir::torch::Torch::BaseTensorType opShape = concat.getOperand(consumed).getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
                         Type nShape = mergeShapeInto(opShape, 0, shouldHandle);
                         std::vector<Value> values;
 

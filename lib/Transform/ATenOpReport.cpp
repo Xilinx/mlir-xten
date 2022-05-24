@@ -9,15 +9,19 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
+
+#include "xten/Transform/ATenOpReport.h"
+
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
+
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Pass/Pass.h"
+
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "mlir/Pass/Pass.h"
-
-#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
-#include "xten/Transform/ATenOpReport.h"
 
 #include <iostream>
 #include <vector>
@@ -53,7 +57,7 @@ public:
 
     llvm::json::Object top;
 
-    auto forward = getOperation().lookupSymbol<mlir::FuncOp>("forward");
+    auto forward = getOperation().lookupSymbol<func::FuncOp>("forward");
     forward.walk([&](Operation *op) {
       std::map<std::string, uint64_t> layerStatsMap;
       layerStatsMap = xilinx::xten::getATenOpStats(op);
@@ -97,9 +101,9 @@ public:
     auto module = getOperation();
 
     // check that a function called "forward" exists
-    auto forward = module.lookupSymbol<mlir::FuncOp>("forward");
+    auto forward = module.lookupSymbol<func::FuncOp>("forward");
     if (!forward) {
-      emitError(mlir::UnknownLoc::get(module.getContext()),
+      emitError(UnknownLoc::get(module.getContext()),
                 "OpReportPass failed: can't find a forward function\n");
       signalPassFailure();
       return;

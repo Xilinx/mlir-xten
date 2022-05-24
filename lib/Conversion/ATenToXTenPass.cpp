@@ -17,20 +17,19 @@
 #include "xten/Dialect/XTen/XTenOps.h"
 
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/OperationSupport.h"
-#include "mlir/Parser.h"
+//#include "mlir/Parser.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
-#include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVM.h"
-#include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVMPass.h"
+//#include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVM.h"
+//#include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVMPass.h"
 
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/STLExtras.h"
@@ -108,8 +107,8 @@ struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
     // Perform aten specific Fusion.
     ConversionTarget target(*context);
 
-    target.addLegalDialect<AffineDialect, LLVM::LLVMDialect, StandardOpsDialect,
-                           scf::SCFDialect>();
+    target.addLegalDialect<AffineDialect, LLVM::LLVMDialect,
+                           func::FuncDialect, scf::SCFDialect>();
 
     target.addLegalOp<xilinx::xten::Conv2dBatchNormReLUOp>();
     target.addLegalOp<xilinx::xten::Conv2dReLUOp>();

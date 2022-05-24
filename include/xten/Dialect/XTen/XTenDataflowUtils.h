@@ -11,13 +11,14 @@
 #ifndef XTEN_DATAFLOW_UTILS
 #define XTEN_DATAFLOW_UTILS
 
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/BuiltinTypes.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
-
 #include "xten/Dialect/XTen/XTenOpWrapper.h"
 #include "xten/Dialect/XTen/XTenDataflowConsts.h"
 #include "xten/Dialect/XTen/XTenOps.h"
+
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 
 using namespace mlir;
 
@@ -66,8 +67,8 @@ namespace xilinx {
             }
         };
 
-        ShapedType breakShapeInto(ShapedType initShape, unsigned int at, unsigned int into);
-        ShapedType mergeShapeInto(ShapedType initShape, unsigned int at, unsigned int into);
+        torch::Torch::BaseTensorType breakShapeInto(torch::Torch::BaseTensorType initShape, unsigned int at, unsigned int into);
+        torch::Torch::BaseTensorType mergeShapeInto(torch::Torch::BaseTensorType initShape, unsigned int at, unsigned int into);
 
         void splitConstantInto(arith::ConstantOp op, std::vector<Value> &ops, OpBuilder &builder, Split split, SplitType t, unsigned int into);
 

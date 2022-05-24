@@ -19,6 +19,7 @@
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 #include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionDialect.h"
 
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
@@ -1102,7 +1103,7 @@ class XTenToLinalgPass : public XTenToLinalgBase<XTenToLinalgPass> {
 
 public:
   XTenToLinalgPass() = default;
-  XTenToLinalgPass(const XTenToLinalgPass &pass){};
+  XTenToLinalgPass(const XTenToLinalgPass &pass) {};
 
   void runOnOperation() override {
 
@@ -1128,12 +1129,12 @@ public:
                     XTenConv2dTensorAddLReLUOpConversion>(context);
 
     ConversionTarget target(*context);
-
+    
     target.addIllegalDialect<XTenDialect>();
     target.addLegalDialect<
-        AffineDialect, linalg::LinalgDialect, memref::MemRefDialect, bufferization::BufferizationDialect,
-        StandardOpsDialect, arith::ArithmeticDialect, scf::SCFDialect,
-        tensor::TensorDialect, Torch::TorchDialect, TorchConversion::TorchConversionDialect>();
+        linalg::LinalgDialect, memref::MemRefDialect, bufferization::BufferizationDialect,
+        arith::ArithmeticDialect, scf::SCFDialect, tensor::TensorDialect, Torch::TorchDialect, 
+        TorchConversion::TorchConversionDialect>();
 
     if (failed(applyPartialConversion(module, target, std::move(patterns)))) {
       emitError(UnknownLoc::get(context), "error lowering XTen to Linalg\n");

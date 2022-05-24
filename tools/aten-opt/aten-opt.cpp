@@ -16,7 +16,8 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Support/FileUtilities.h"
-#include "mlir/Support/MlirOptMain.h"
+#include "mlir/Tools/mlir-opt/MlirOptMain.h"
+#include "mlir/Support/LogicalResult.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/SourceMgr.h"
@@ -42,7 +43,7 @@ int main(int argc, char **argv) {
 
   DialectRegistry registry;
   registerAllDialects(registry);
-  mlir::torch::registerAllDialects(registry);
+  mlir::registerAllDialects(registry);
   registry.insert<xilinx::xten::XTenDialect,
                   torch::Torch::TorchDialect,
                   torch::TorchConversion::TorchConversionDialect>();
