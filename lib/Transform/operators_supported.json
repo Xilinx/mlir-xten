@@ -364,6 +364,52 @@
 	    ]
 	},
 	{
+	    "name" : "xten.conv2d_lrelu_pad",
+	    "fused" : ["aten.conv2d", "torch.aten.constant_pad_nd"],
+	    "properties" : [
+		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
+		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
+		["Attributes.Weights.Bytes", "Size of weights in bytes", "long"],
+		["Attributes.Bias.Tensor", "Dimensions of bias", "string"],
+		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
+		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],
+		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
+		["Attributes.dilations", "Value of dilation", "string"],
+		["Attributes.strides", "Value of strides", "string"],		
+		["Attributes.padding", "Value of padding", "string"],    					
+		["Attributes.Alpha.Tensor", "Dimensions of alpha", "string"],
+		["Attributes.Alpha.type", "Numerical type of each alpha number", "string"],
+		["Attributes.Alpha.Bytes", "Size of alpha in bytes", "long"],
+		["Attributes.Alpha", "Value of alpha", "long"],
+		["Computation.MACs", "Total units of MAC units in engine", "long"],
+		["Computation.Comparison", "Total number of > comparator units in engine", "long"],
+		["Storage.Bytes", "Total storage required for this engine", "long"]  	
+	    ]
+	},
+	{
+	    "name" : "xten.conv2d_lrelu_pad_maxpool",
+	    "fused" : ["aten.conv2d", "torch.aten.constant_pad_nd", "aten.max_pool2d"],
+	    "properties" : [
+		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
+		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
+		["Attributes.Weights.Bytes", "Size of weights in bytes", "long"],
+		["Attributes.Bias.Tensor", "Dimensions of bias", "string"],
+		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
+		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],
+		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
+		["Attributes.dilations", "Value of dilation", "string"],
+		["Attributes.strides", "Value of strides", "string"],		
+		["Attributes.padding", "Value of padding", "string"],    					
+		["Attributes.Alpha.Tensor", "Dimensions of alpha", "string"],
+		["Attributes.Alpha.type", "Numerical type of each alpha number", "string"],
+		["Attributes.Alpha.Bytes", "Size of alpha in bytes", "long"],
+		["Attributes.Alpha", "Value of alpha", "long"],
+		["Computation.MACs", "Total units of MAC units in engine", "long"],
+		["Computation.Comparison", "Total number of > comparator units in engine", "long"],
+		["Storage.Bytes", "Total storage required for this engine", "long"]  	
+	    ]
+	},
+	{
 	    "name" : "xten.add",
 	    "properties" : [
 		["Storage.Bytes", "Total storage required for Add engine", "long"]  	 
