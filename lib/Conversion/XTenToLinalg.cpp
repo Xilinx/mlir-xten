@@ -70,6 +70,35 @@ static Value applyPad(Location loc, Value input, ArrayRef<int64_t> pad,
       .result();
 }
 
+template<class T>
+static LogicalResult processConv2d(T &conv2dOp, Location &loc, Value &input,
+                                  Type &elementType, Operation *op, 
+                                  ConversionPatternRewriter &rewriter) {
+  if (!elementType.isa<mlir::FloatType>())
+    return op->emitError("unimplemented: non-floating point type");
+
+  SmallVector<int64_t> paddingInts;
+  paddingInts.resize(2, 0);
+  if (!matchPattern(conv2dOp.padding(),
+                    Torch::m_TorchConstantIntList(paddingInts))) {
+    return rewriter.notifyMatchFailure(
+        op, "only support constant padding values");
+  }
+
+  /// paddedInput. input shape change based on padding
+  Attribute zeroAttr = rewriter.getZeroAttr(elementType);
+  input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
+
+  int64_t groups;
+  if (!matchPattern(conv2dOp.groups(), Torch::m_TorchConstantInt(&groups)))
+    return rewriter.notifyMatchFailure(op, "only support constant int group");
+
+  if (groups != 1)
+    return op->emitError("Only support groups value '1'");
+
+  return success();
+}
+
 namespace {
 
 template <class T>
@@ -318,20 +347,11 @@ public:
 
     Type elementType =
         input.getType().cast<RankedTensorType>().getElementType();
-    if (!elementType.isa<mlir::FloatType>())
-      return op->emitError("unimplemented: non-floating point type");
 
-    SmallVector<int64_t> paddingInts;
-    paddingInts.resize(2, 0);
-    if (!matchPattern(conv2dRelu.padding(),
-                      Torch::m_TorchConstantIntList(paddingInts))) {
-      return rewriter.notifyMatchFailure(
-          op, "only support constant padding values");
-    }
-
-    // paddedInput. input shape change based on padding
-    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
-    input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
+    LogicalResult result = processConv2d(conv2dRelu, loc, input, elementType, 
+        op, rewriter);
+    if (result.failed())
+      return result;
 
     SmallVector<int64_t, 2> strideInts;
     if (!matchPattern(conv2dRelu.stride(),
@@ -344,13 +364,6 @@ public:
                       Torch::m_TorchConstantIntList(dilationInts)))
       return rewriter.notifyMatchFailure(op,
                                          "only support constant int dilations");
-
-    int64_t groups;
-    if (!matchPattern(conv2dRelu.groups(), Torch::m_TorchConstantInt(&groups)))
-      return rewriter.notifyMatchFailure(op, "only support constant int group");
-
-    if (groups != 1)
-      return op->emitError("Only support groups value '1'");
 
     auto stridesAttr = DenseIntElementsAttr::get(
         RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
@@ -405,26 +418,17 @@ public:
 
     Type elementType =
         input.getType().cast<RankedTensorType>().getElementType();
-    if (!elementType.isa<mlir::FloatType>())
-      return op->emitError("unimplemented: non-floating point type");
 
-    SmallVector<int64_t> paddingInts;
-    paddingInts.resize(2, 0);
-    if (!matchPattern(conv2dLRelu.padding(),
-                      Torch::m_TorchConstantIntList(paddingInts))) {
-      return rewriter.notifyMatchFailure(
-          op, "only support constant padding values");
-    }
+    LogicalResult result = processConv2d(conv2dLRelu, loc, input, elementType, 
+        op, rewriter);
+    if (result.failed())
+      return result;
 
     // Getting alpha value
     auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).value();
     auto ty = rewriter.getF32Type();
     auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
-
-    // paddedInput. input shape change based on padding
-    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
-    input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
 
     SmallVector<int64_t, 2> strideInts;
     if (!matchPattern(conv2dLRelu.stride(),
@@ -437,13 +441,6 @@ public:
                       Torch::m_TorchConstantIntList(dilationInts)))
       return rewriter.notifyMatchFailure(op,
                                          "only support constant int dilations");
-
-    int64_t groups;
-    if (!matchPattern(conv2dLRelu.groups(), Torch::m_TorchConstantInt(&groups)))
-      return rewriter.notifyMatchFailure(op, "only support constant int group");
-
-    if (groups != 1)
-      return op->emitError("Only support groups value '1'");
 
     auto stridesAttr = DenseIntElementsAttr::get(
         RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
@@ -495,20 +492,11 @@ public:
 
     Type elementType =
         input.getType().cast<RankedTensorType>().getElementType();
-    if (!elementType.isa<mlir::FloatType>())
-      return op->emitError("unimplemented: non-floating point type");
 
-    SmallVector<int64_t> paddingInts;
-    paddingInts.resize(2, 0);
-    if (!matchPattern(conv2d.padding(),
-                      Torch::m_TorchConstantIntList(paddingInts))) {
-      return rewriter.notifyMatchFailure(
-          op, "only support constant padding values");
-    }
-
-    // paddedInput. input shape change based on padding
-    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
-    input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
+    LogicalResult result = processConv2d(conv2d, loc, input, elementType, 
+        op, rewriter);
+    if (result.failed())
+      return result;
 
     SmallVector<int64_t, 2> strideInts;
     if (!matchPattern(conv2d.stride(),
@@ -521,13 +509,6 @@ public:
                       Torch::m_TorchConstantIntList(dilationInts)))
       return rewriter.notifyMatchFailure(op,
                                          "only support constant int dilations");
-
-    int64_t groups;
-    if (!matchPattern(conv2d.groups(), Torch::m_TorchConstantInt(&groups)))
-      return rewriter.notifyMatchFailure(op, "only support constant int group");
-
-    if (groups != 1)
-      return op->emitError("Only support groups value '1'");
 
     auto stridesAttr = DenseIntElementsAttr::get(
         RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
@@ -583,20 +564,11 @@ public:
 
     Type elementType =
         input.getType().cast<RankedTensorType>().getElementType();
-    if (!elementType.isa<mlir::FloatType>())
-      return op->emitError("unimplemented: non-floating point type");
 
-    SmallVector<int64_t> paddingInts;
-    paddingInts.resize(2, 0);
-    if (!matchPattern(conv2dRelu.padding(),
-                      Torch::m_TorchConstantIntList(paddingInts))) {
-      return rewriter.notifyMatchFailure(
-          op, "only support constant padding values");
-    }
-
-    // paddedInput. input shape change based on padding
-    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
-    input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
+    LogicalResult result = processConv2d(conv2dRelu, loc, input, elementType, 
+        op, rewriter);
+    if (result.failed())
+      return result;
 
     SmallVector<int64_t, 2> strideInts;
     if (!matchPattern(conv2dRelu.stride(),
@@ -609,13 +581,6 @@ public:
                       Torch::m_TorchConstantIntList(dilationInts)))
       return rewriter.notifyMatchFailure(op,
                                          "only support constant int dilations");
-
-    int64_t groups;
-    if (!matchPattern(conv2dRelu.groups(), Torch::m_TorchConstantInt(&groups)))
-      return rewriter.notifyMatchFailure(op, "only support constant int group");
-
-    if (groups != 1)
-      return op->emitError("Only support groups value '1'");
 
     auto stridesAttr = DenseIntElementsAttr::get(
         RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
@@ -674,26 +639,17 @@ public:
 
     Type elementType =
         input.getType().cast<RankedTensorType>().getElementType();
-    if (!elementType.isa<mlir::FloatType>())
-      return op->emitError("unimplemented: non-floating point type");
 
-    SmallVector<int64_t> paddingInts;
-    paddingInts.resize(2, 0);
-    if (!matchPattern(conv2dLRelu.padding(),
-                      Torch::m_TorchConstantIntList(paddingInts))) {
-      return rewriter.notifyMatchFailure(
-          op, "only support constant padding values");
-    }
+    LogicalResult result = processConv2d(conv2dLRelu, loc, input, elementType, 
+        op, rewriter);
+    if (result.failed())
+      return result;
 
     // Getting alpha value
     auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).value();
     auto ty = rewriter.getF32Type();
     auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
-
-    // paddedInput. input shape change based on padding
-    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
-    input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
 
     SmallVector<int64_t, 2> strideInts;
     if (!matchPattern(conv2dLRelu.stride(),
@@ -706,13 +662,6 @@ public:
                       Torch::m_TorchConstantIntList(dilationInts)))
       return rewriter.notifyMatchFailure(op,
                                          "only support constant int dilations");
-
-    int64_t groups;
-    if (!matchPattern(conv2dLRelu.groups(), Torch::m_TorchConstantInt(&groups)))
-      return rewriter.notifyMatchFailure(op, "only support constant int group");
-
-    if (groups != 1)
-      return op->emitError("Only support groups value '1'");
 
     auto stridesAttr = DenseIntElementsAttr::get(
         RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
