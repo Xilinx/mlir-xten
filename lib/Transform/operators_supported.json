@@ -157,7 +157,8 @@
 	{
 	    "name" : "torch.aten.constant_pad_nd",
 	    "properties" : [
-	    ]
+		["Attributes.padding", "Value of padding", "string"]
+		]
 	},
 	{
 	    "name" : "torch.aten.add_.Tensor",

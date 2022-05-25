@@ -28,11 +28,11 @@
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
 #include <vector>
-#include <algorithm>
 
 #define DEBUG_TYPE "aten-visual-graph"
 
@@ -80,10 +80,10 @@ private:
   ///// ------------- NOTE: For TinyYolo DEMO only
   ///--------------------------------------------------------
   ///// Since Torch-Mlir doesn't propagate tensor output sizes by default, the
-  ///ATEN visualizer needs
+  /// ATEN visualizer needs
   ///// include a way to do shape propagation for now.
   ///// Code Sections marked with a DEMO label implement the shape propagation
-  ///logic, which is relevant
+  /// logic, which is relevant
   ///// to the TinyYolo DEMO only.
   bool propagate_tensor_sizes;
 
@@ -948,9 +948,9 @@ private:
 
   template <class Op>
 
-  void populateUnfusedOutputMap(Op &op, bool todo, std::string unfusedId) {
+  void populateUnfusedOutputMap(Op &op, bool isOutput, std::string unfusedId) {
     if (propagate_tensor_sizes) {
-      auto tensor_size = propagatedTensorSizesMap[op][todo]["value"];
+      auto tensor_size = propagatedTensorSizesMap[op][isOutput]["value"];
       std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" +
                                     std::to_string(tensor_size[1]) + "c" +
                                     std::to_string(tensor_size[2]) + "h" +
@@ -1074,6 +1074,13 @@ private:
       fillPropertiesGatherOp(gatherOp, propertiesArray);
     } else if (auto sliceOp = dyn_cast<Torch::AtenSliceTensorOp>(op)) {
       fillPropertiesSliceOp(sliceOp, propertiesArray);
+    } else if (auto op2 = dyn_cast<Torch::AtenConstantPadNdOp>(op)) {
+      auto padding_v = op2.pad();
+      std::vector<int64_t> padding;
+      unpack_int_list(padding_v, padding);
+      std::string padding_str = vector_to_str(padding);
+      fillPropertiesObject({"Attributes.padding", padding_str},
+                           propertiesArray);
     } else if (auto xtenConv2dOp = mlir::dyn_cast<xten::Conv2dOp>(op)) {
       fillPropertiesConvOp<xten::Conv2dOp>(xtenConv2dOp, propertiesArray);
     } else if (auto xtenConv2dBnReluOp =
