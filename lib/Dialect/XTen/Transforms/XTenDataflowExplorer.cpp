@@ -8,13 +8,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/Pass/Pass.h"
 
 #include "xten/Dialect/XTen/XTenDataflowExplorer.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchTypes.h"
 
 #include "xten/Transform/ATenOpReport.h"
 
@@ -42,11 +43,11 @@
 // TODO Many to one communication and memory when W is there is not taken into account too well
 
 // NOLF: ask Louis why getElementWidht removed from code put on slack on July 30th
-static unsigned int getElementWidth(ShapedType tensorType, bool forceINT8) {
+static unsigned int getElementWidth(mlir::torch::Torch::BaseTensorType tensorType, bool forceINT8) {
     if(forceINT8) {
         return 1;
     } else {
-        return (tensorType.getElementTypeBitWidth() / 8);
+        return (tensorType.getIntOrFloatBitWidth() / 8);
     }
 }
 
@@ -77,8 +78,8 @@ namespace xilinx {
                 this->layerIdToName[id] = pair.first;
                 this->layerNameToOps.push_back(pair.second);
 
-                ShapedType aShape = pair.second->getInput().getType().dyn_cast<ShapedType>();
-                ArrayRef<int64_t> aShapeAR = aShape.getShape();
+                mlir::torch::Torch::BaseTensorType aShape = pair.second->getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+                ArrayRef<int64_t> aShapeAR = aShape.getSizes();
 
                 int64_t C = aShapeAR[C_LOC];
                 int64_t M = aShapeAR[M_LOC];
@@ -90,8 +91,8 @@ namespace xilinx {
                 int64_t F1;
                 bool dw = pair.second->isDepthWise();
                 if(pair.second->hasWeights()) {
-                    ShapedType wShape = pair.second->getWeights().getType().dyn_cast<ShapedType>();
-                    ArrayRef<int64_t> wShapeAR = wShape.getShape();
+                    mlir::torch::Torch::BaseTensorType wShape = pair.second->getWeights().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+                    ArrayRef<int64_t> wShapeAR = wShape.getSizes();
                     COut = wShapeAR[COUT_LOC];
                     CIn = wShapeAR[CIN_LOC];
                     F0 = wShapeAR[F0_LOC];
@@ -130,7 +131,7 @@ namespace xilinx {
             }
 
             this->validTopologies = std::vector<std::vector<ModelParams>>(id, std::vector<ModelParams>());
-            ShapedType aShape = this->layerNameToOps[0]->getInput().getType().dyn_cast<ShapedType>();
+            mlir::torch::Torch::BaseTensorType aShape = this->layerNameToOps[0]->getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
             uint64_t aWidth = getElementWidth(aShape, FORCE_INT8);
             this->arch = new AIEv1(aWidth, aWidth);
         }

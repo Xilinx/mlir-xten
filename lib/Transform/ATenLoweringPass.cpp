@@ -16,18 +16,18 @@
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Affine/IR/AffineValueMap.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/BuiltinTypes.h"
-#include "mlir/Parser.h"
+#include "mlir/Parser/Parser.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 
-#include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVM.h"
-#include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVMPass.h"
+#include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
+#include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h"
 
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/STLExtras.h"
@@ -1200,9 +1200,9 @@ public:
   }
 };
 
-class ReturnOpLowering : public OpRewritePattern<ReturnOp> {
+class ReturnOpLowering : public OpRewritePattern<func::ReturnOp> {
 public:
-  using OpRewritePattern<ReturnOp>::OpRewritePattern;
+  using OpRewritePattern<func::ReturnOp>::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ReturnOp op,
                                 PatternRewriter &rewriter) const override {
@@ -1228,7 +1228,7 @@ public:
       }
       idx = idx + 1;
     }
-    rewriter.replaceOpWithNewOp<ReturnOp>(op, returnOperands);
+    rewriter.replaceOpWithNewOp<func::ReturnOp>(op, returnOperands);
     return success();
   }
 };
@@ -1320,7 +1320,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
     // Perform aten specific lowering.
     ConversionTarget target(getContext());
     target.addLegalDialect<LLVM::LLVMDialect,
-                           StandardOpsDialect,
+                           func::FuncDialect,
                            scf::SCFDialect>();
     target.addLegalOp<AffineApplyOp,
                       AffineForOp,
@@ -1335,7 +1335,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
       return (op.getType().getMemorySpace() == 0);
     });
 
-    target.addDynamicallyLegalOp<ReturnOp>([&](ReturnOp op) {
+    target.addDynamicallyLegalOp<func::ReturnOp>([&](ReturnOp op) {
       for (auto rty : op.getOperandTypes())
         if (!rty.isa<MemRefType>())
           return false;

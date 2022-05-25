@@ -15,6 +15,7 @@ include "xten/Dialect/XTen/XTenBase.td"
 
 include "torch-mlir/Dialect/Torch/IR/TorchTypes.td"
 
+include "mlir/IR/EnumAttr.td"
 include "mlir/IR/SymbolInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
@@ -108,9 +109,9 @@ def XTen_Conv2dOp: XTen_Op<"conv2d", [NoSideEffect]>,
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        TorchIntListType:$stride,
-        TorchIntListType:$padding,
-        TorchIntListType:$dilation,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
         Torch_IntType:$groups
   );
 
@@ -132,9 +133,9 @@ def XTen_PartialConv2dOp: XTen_Op<"partialconv2d", [NoSideEffect]>{
         AnyTorchOptionalTensorType:$PartialIn,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        TorchIntListType:$stride,
-        TorchIntListType:$padding,
-        TorchIntListType:$dilation,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
         Torch_IntType:$groups
   );
 
@@ -161,9 +162,9 @@ def XTen_Conv2dReLUOp: XTen_Op<"conv2d_relu", [NoSideEffect]>,
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        TorchIntListType:$stride,
-        TorchIntListType:$padding,
-        TorchIntListType:$dilation,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
         Torch_IntType:$groups
   );
 
@@ -185,9 +186,9 @@ def XTen_PartialConv2dReLUOp: XTen_Op<"partialconv2d_relu",
         AnyTorchOptionalTensorType:$PartialIn,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        TorchIntListType:$stride,
-        TorchIntListType:$padding,
-        TorchIntListType:$dilation,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
         Torch_IntType:$groups
   );
 
@@ -213,9 +214,9 @@ def XTen_Conv2dBatchNormReLUOp: XTen_Op<"conv2d_bn_relu", [NoSideEffect]>,
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        TorchIntListType:$stride,
-        TorchIntListType:$padding,
-        TorchIntListType:$dilation,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
         Torch_IntType:$groups,
         AnyTorchTensorType:$bn_weight,
         AnyTorchTensorType:$bn_bias,
@@ -245,9 +246,9 @@ def XTen_PartialConv2dBatchNormReLUOp: XTen_Op<"partialconv2d_bn_relu",
         AnyTorchOptionalTensorType:$PartialIn,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        TorchIntListType:$stride,
-        TorchIntListType:$padding,
-        TorchIntListType:$dilation,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
         Torch_IntType:$groups,
         AnyTorchTensorType:$bn_weight,
         AnyTorchTensorType:$bn_bias,
@@ -320,9 +321,9 @@ def XTen_Conv2dLReLUOp: XTen_Op<"conv2d_lrelu", [NoSideEffect]>,
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        TorchIntListType:$stride,
-        TorchIntListType:$padding,
-        TorchIntListType:$dilation,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
         Torch_IntType:$groups,
         Torch_FloatType:$alpha
   );
@@ -344,12 +345,12 @@ def XTen_Conv2dLReLUPadOp: XTen_Op<"conv2d_lrelu_pad", [NoSideEffect]>,
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        TorchIntListType:$stride,
-        TorchIntListType:$padding,
-        TorchIntListType:$dilation,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
         Torch_IntType:$groups,
         Torch_FloatType:$alpha,
-        TorchIntListType:$pad_padding,
+        Torch_ListType:$pad_padding,
         AnyTorchScalarType:$pad_value
   );
 
@@ -370,15 +371,15 @@ def XTen_Conv2dLReLUMaxPoolOp: XTen_Op<"conv2d_lrelu_maxpool", [NoSideEffect]> {
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        TorchIntListType:$stride,
-        TorchIntListType:$padding,
-        TorchIntListType:$dilation,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
         Torch_IntType:$groups,
         Torch_FloatType:$alpha,
-        TorchIntListType:$mp_kernel_size,
-        TorchIntListType:$mp_stride,
-        TorchIntListType:$mp_padding,
-        TorchIntListType:$mp_dilation,
+        Torch_ListType:$mp_kernel_size,
+        Torch_ListType:$mp_stride,
+        Torch_ListType:$mp_padding,
+        Torch_ListType:$mp_dilation,
         Torch_BoolType:$mp_ceil_mode
   );
 
@@ -402,17 +403,17 @@ def XTen_Conv2dLReLUPadMaxPoolOp: XTen_Op<"conv2d_lrelu_pad_maxpool", [NoSideEff
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
         AnyTorchOptionalTensorType:$bias,
-        TorchIntListType:$stride,
-        TorchIntListType:$padding,
-        TorchIntListType:$dilation,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
         Torch_IntType:$groups,
         Torch_FloatType:$alpha,
-        TorchIntListType:$pad_padding,
+        Torch_ListType:$pad_padding,
         AnyTorchScalarType:$pad_value,
-        TorchIntListType:$mp_kernel_size,
-        TorchIntListType:$mp_stride,
-        TorchIntListType:$mp_padding,
-        TorchIntListType:$mp_dilation,
+        Torch_ListType:$mp_kernel_size,
+        Torch_ListType:$mp_stride,
+        Torch_ListType:$mp_padding,
+        Torch_ListType:$mp_dilation,
         Torch_BoolType:$mp_ceil_mode
   );
 
@@ -429,6 +430,77 @@ def XTen_Conv2dLReLUPadMaxPoolOp: XTen_Op<"conv2d_lrelu_pad_maxpool", [NoSideEff
     uint64_t getOperandTransferVolume(unsigned int idx, bool read);
     uint64_t getResultTransferVolume(unsigned int idx, bool write);
 	}];
+}
+
+def XTen_Conv2dTensorAddOp: XTen_Op<"conv2d_tensoradd", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
+        Torch_IntType:$groups,
+
+        AnyTorchTensorType:$add_ifm
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with linear activation, then element-wise add with another tensor";
+  let description = [{
+    Convolution with linear activation, then element-wise add with another tensor.
+  }];
+}
+
+def XTen_Conv2dTensorAddReLUOp: XTen_Op<"conv2d_tensoradd_relu", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
+        Torch_IntType:$groups,
+
+        AnyTorchTensorType:$add_ifm
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then ReLU";
+  let description = [{
+    Convolution with linear activation, then element-wise add with another tensor, then ReLU.
+  }];
+}
+
+def XTen_Conv2dTensorAddLReLUOp: XTen_Op<"conv2d_tensoradd_lrelu", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
+        Torch_IntType:$groups,
+
+        Torch_FloatType:$alpha, /// for lrelu
+
+        AnyTorchTensorType:$add_ifm
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then leaky ReLU";
+  let description = [{
+    Convolution with linear activation, then element-wise add with another tensor, then leaky ReLU.
+  }];
 }
 
 

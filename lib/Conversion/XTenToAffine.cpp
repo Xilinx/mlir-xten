@@ -25,7 +25,7 @@
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/IntegerSet.h"
@@ -327,16 +327,14 @@ public:
                          .value();
             auto ty = rewriter.getF32Type();
             auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
-            add = builder.create<mlir::arith::AddFOp>(
-                loc, load, builder.create<arith::ConstantOp>(loc, ty, add_const));
+            add = builder.create<mlir::arith::AddFOp>(loc, load, builder.create<mlir::arith::ConstantOp>(loc, ty, add_const));
           } else {
             Torch::ConstantIntOp op;
             auto c =
                 cast<Torch::ConstantIntOp>(operands[1].getDefiningOp()).value();
             auto ty = rewriter.getIntegerType(32);
             auto add_const = rewriter.getI32IntegerAttr(c.getZExtValue());
-            add = builder.create<mlir::arith::AddIOp>(
-                loc, load, builder.create<arith::ConstantOp>(loc, ty, add_const));
+            add = builder.create<mlir::arith::AddIOp>(loc, load, builder.create<mlir::arith::ConstantOp>(loc, ty, add_const));
           }
           builder.create<AffineStoreOp>(loc, add, result, ident, ivs);
         });
@@ -458,8 +456,7 @@ public:
 
   ListOption<unsigned> clLoopOrder{*this, "xten-loop-order",
                                         llvm::cl::desc("XTen loop ordering applied in operator loweing to affine loops"),
-                                        llvm::cl::ZeroOrMore,
-                                        llvm::cl::CommaSeparated};
+                                        llvm::cl::ZeroOrMore};
 
 
   // Initialize loop order from the command line or the default ordering
@@ -484,14 +481,14 @@ public:
                     XTenAddOpConversion,
                     XTenMulOpConversion>(context);
 
-    populateFunctionOpInterfaceTypeConversionPattern<FuncOp>(patterns,
+    populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(patterns,
                                                              typeConverter);
 
     ConversionTarget target(*context);
 
     target.addLegalDialect<AffineDialect, LLVM::LLVMDialect,
                            memref::MemRefDialect,
-                           StandardOpsDialect, scf::SCFDialect,
+                           func::FuncDialect, scf::SCFDialect,
                            TorchConversion::TorchConversionDialect>();
     // target.addDynamicallyLegalOp<FuncOp>([&](FuncOp op) {
     //    return typeConverter.isSignatureLegal(op.getType());
@@ -501,9 +498,9 @@ public:
 
     target.addDynamicallyLegalOp<Torch::AtenConv2dOp>([&](Torch::AtenConv2dOp conv2d) {
         Value weight = conv2d.weight();
-        ShapedType weightTy = weight.getType().cast<ShapedType>();
-        uint64_t kernel_h = weightTy.getDimSize(2);
-        uint64_t kernel_w = weightTy.getDimSize(3);
+        mlir::torch::Torch::BaseTensorType weightTy = weight.getType().cast<mlir::torch::Torch::BaseTensorType>();
+        uint64_t kernel_h = weightTy.getSizes()[2]; //uint64_t kernel_h = weightTy.getDimSize(2);
+        uint64_t kernel_w = weightTy.getSizes()[3]; //uint64_t kernel_w = weightTy.getDimSize(3);
         if (kernel_h == 1 && kernel_w == 1) {
           return false;
         }

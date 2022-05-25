@@ -13,9 +13,11 @@ add_mlir_library(XTenTransforms
   Passes.cpp
 
   DEPENDS
+  MLIRXTenOpsIncGen
   XTenPassesIncGen
 
   LINK_LIBS PUBLIC
   MLIRIR
-  MLIRStandard
+  MLIRPass
+  MLIRTransforms
 )

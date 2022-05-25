@@ -9,22 +9,25 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
+#include "xten/Transform/ATenVisualGraph.h"
+#include "xten/Dialect/XTen/XTenDialect.h"
+#include "xten/Dialect/XTen/XTenOps.h"
+#include "xten/Util/Util.h"
+
+#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
+
+#include "mlir/Pass/Pass.h"
+#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+
+#include "llvm/ADT/MapVector.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "llvm/ADT/MapVector.h"
 
-#include "mlir/Pass/Pass.h"
-
-#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
-#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
-
-#include "xten/Transform/ATenVisualGraph.h"
-#include "xten/Dialect/XTen/XTenDialect.h"
-#include "xten/Dialect/XTen/XTenOps.h"
-#include "xten/Util/Util.h"
 
 #include <fstream>
 #include <iostream>
@@ -162,7 +165,7 @@ private:
       for (size_t i = 0; i < sv.size(); i++)
 	v.push_back(sv[i]);
     }
-    else if (auto co = op.getDefiningOp<mlir::arith::ConstantIntOp>()) {
+    else if (auto co = op.getDefiningOp<arith::ConstantIntOp>()) {
       v.push_back(co.value());
     }
   }
@@ -711,7 +714,7 @@ private:
   template<class T>
   void fillPropertiesSoftmaxOp(T &softmaxOp, llvm::json::Array &propertiesArray) {
       Value dim           = softmaxOp.dim();
-      uint64_t dim_v      = dim.getDefiningOp<mlir::arith::ConstantIntOp>().value();      
+      uint64_t dim_v      = dim.getDefiningOp<arith::ConstantIntOp>().value();      
       std::string dim_str = std::to_string(dim_v);
 
       Value input  = softmaxOp.self();
@@ -726,7 +729,7 @@ private:
 
   void fillPropertiesGatherOp(Torch::AtenGatherOp &gatherOp, llvm::json::Array &propertiesArray) {
       Value dim           =  gatherOp.dim();
-      uint64_t dim_v      = dim.getDefiningOp<mlir::arith::ConstantIntOp>().value();      
+      uint64_t dim_v      = dim.getDefiningOp<arith::ConstantIntOp>().value();      
       std::string dim_str = std::to_string(dim_v);
 
       Value index = gatherOp.index();
@@ -755,7 +758,7 @@ private:
 
   void fillPropertiesSliceOp(Torch::AtenSliceTensorOp &sliceOp, llvm::json::Array &propertiesArray) {
       Value dim           = sliceOp.dim();
-      uint64_t dim_v      = dim.getDefiningOp<mlir::arith::ConstantIntOp>().value();      
+      uint64_t dim_v      = dim.getDefiningOp<arith::ConstantIntOp>().value();      
       std::string dim_str = std::to_string(dim_v);
 
       Value input  = sliceOp.self();
@@ -1339,7 +1342,7 @@ public:
     auto module = getOperation();
 
     // check that a function called "forward" exists
-    auto forward = module.lookupSymbol<mlir::FuncOp>("forward");
+    auto forward = module.lookupSymbol<func::FuncOp>("forward");
     if (!forward) {
       emitError(mlir::UnknownLoc::get(module.getContext()),
                 "OpReportPass failed: can't find a forward function\n");

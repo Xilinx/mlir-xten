@@ -8,7 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// RUN: aten-opt %s -aten-op-report | FileCheck %s
+// RUN: aten-opt %s --aten-op-report | FileCheck %s
 //   CHECK-LABEL:     "{{.*}}": {
 //   CHECK-NEXT:        "activation_in": 12,
 //   CHECK-NEXT:        "activation_out": 6,
