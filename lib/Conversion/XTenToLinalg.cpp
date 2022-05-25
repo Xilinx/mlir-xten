@@ -837,7 +837,8 @@ public:
     auto loc = softmax.getLoc();
 
     Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
-    Value dim = ToBuiltinTensorTypeCast(rewriter, operands[1]);
+    auto torchDim = (operands[1].getDefiningOp<Torch::ConstantIntOp>()).value();
+    auto dim = rewriter.getI64IntegerAttr(torchDim.getSExtValue());
 
     Type elementType =
         input.getType().cast<RankedTensorType>().getElementType();
@@ -851,7 +852,7 @@ public:
         loc, resultTensorType.getShape(), elementType);
 
     Value softmaxVal =
-        rewriter.create<linalg::SoftmaxOp>(loc, initTensor.getType(), input, 0)
+        rewriter.create<linalg::SoftmaxOp>(loc, initTensor.getType(), input, dim)
             .getResult();
 
     auto torchTensorCast =
