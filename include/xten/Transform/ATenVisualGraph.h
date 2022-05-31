@@ -13,6 +13,8 @@
 
 #include <memory>
 #include "mlir/Pass/Pass.h"
+#include <map>
+#include "xten/Dialect/XTen/XTenOps.h"
 
 namespace xilinx {
 namespace xten {
