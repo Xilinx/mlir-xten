@@ -1048,6 +1048,43 @@ public:
   }
 };
 
+class XTenSoftmaxOpConversion : public ConversionPattern {
+public:
+  explicit XTenSoftmaxOpConversion(MLIRContext *context)
+      : ConversionPattern(SoftmaxOp::getOperationName(), 1, context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto softmax = cast<SoftmaxOp>(op);
+    auto loc = softmax.getLoc();
+
+    Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
+    auto torchDim = (operands[1].getDefiningOp<Torch::ConstantIntOp>()).value();
+    auto dim = rewriter.getI64IntegerAttr(torchDim.getSExtValue());
+
+    Type elementType =
+        input.getType().cast<RankedTensorType>().getElementType();
+
+    auto torchTensorTy =
+        op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
+                                                  torchTensorTy.getDtype());
+
+    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+        loc, resultTensorType.getShape(), elementType);
+
+    Value softmaxVal =
+        rewriter.create<linalg::SoftmaxOp>(loc, initTensor.getType(), input, dim)
+            .getResult();
+
+    auto torchTensorCast =
+        ToTorchTensorTypeCast(rewriter, softmaxVal, op->getResult(0).getType());
+    rewriter.replaceOp(op, torchTensorCast);
+    return success();
+  }
+};
+
 class XTenToLinalgPass : public XTenToLinalgBase<XTenToLinalgPass> {
 
 public:
@@ -1075,7 +1112,8 @@ public:
                     XTenPartialConv2dReLUOpConversion,
                     XTenConv2dTensorAddOpConversion,
                     XTenConv2dTensorAddReLUOpConversion,
-                    XTenConv2dTensorAddLReLUOpConversion>(context);
+                    XTenConv2dTensorAddLReLUOpConversion,
+                    XTenSoftmaxOpConversion>(context);
 
     ConversionTarget target(*context);
     
