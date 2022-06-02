@@ -1117,6 +1117,9 @@ private:
     } else if (auto xtenConv2dBnReluOp =
                    mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
       opInput = getInput(xtenConv2dBnReluOp);
+    } else if (auto xtenConv2dReluOp =
+                   mlir::dyn_cast<xten::Conv2dReLUOp>(op)) {
+      opInput = getInput(xtenConv2dReluOp);
     } else if (auto xtenConv2dLReluOp =
                    mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
       opInput = getInput(xtenConv2dLReluOp);
@@ -1125,6 +1128,8 @@ private:
       opInput = getInput(xtenConv2dLReluMaxPoolOp);
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUPadMaxPoolOp>(op)) {
       opInput = getInput(op2);
+    } else {
+      opInput = 0;
     }
     // TODO: expand switch table for more ops
 
@@ -1517,7 +1522,7 @@ public:
 
       auto attr_l = op->getAttrOfType<StringAttr>("layer_name");
       auto attr_n = op->getAttrOfType<StringAttr>("name");
-      // assumes layer_name is given to all nodes, might support infering layers
+      // assumes layer_name is given to all nodes, might support inferring layers
       // later
       if (!attr_l and !attr_n)
         return;
@@ -1543,7 +1548,7 @@ public:
             // ArgOp.output ----> Op.input_port_example
             // same output port goes to several next input ports -> this output
             // port should have one Port ID
-            if (connsOutToInMap[argOp].size() == 0)
+            if (connsOutToInMap[argOp].empty())
               connsOutToInMap[argOp][op] = currPortId++;
             else
               connsOutToInMap[argOp][op] =
