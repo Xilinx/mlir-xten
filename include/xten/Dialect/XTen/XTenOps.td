@@ -77,6 +77,20 @@ def XTen_MulOp: XTen_Op<"mul", []>,
   }];
 }
 
+def XTen_SoftmaxOp: XTen_Op<"softmax", []>,
+               Results<(outs AnyTorchTensorType:$output)> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        Torch_IntType:$dim,
+        AnyTorchOptionalIntType:$dtype
+  );
+
+  let summary = "Softmax operator";
+  let description = [{
+    Computes the softmax across the specified dimension.
+  }];
+}
+
 def XTen_NoOp: XTen_Op<"noop", []>,
                 Results<(outs AnyType)> {
   let arguments = (
