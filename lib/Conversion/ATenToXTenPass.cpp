@@ -22,7 +22,6 @@
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/IR/Builders.h"
-#include "mlir/IR/Operation.h"
 #include "mlir/IR/BuiltinTypes.h"
 //#include "mlir/Parser.h"
 #include "mlir/Pass/Pass.h"
@@ -42,7 +41,6 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include <algorithm>
-#include <map>
 #include <sstream>
 
 #define DEBUG_TYPE "aten-to-xten-pass"
@@ -105,7 +103,6 @@ bool fuseFirstC2dInTensorAdd(OpResult left, OpResult right) {
 
     for (Operation* op : prevOps) {
       if (worklistMap.find(op) != worklistMap.end()) {
-
         // TODO: Ignore or classify ops to avoid ancestors that are not ml ops
 
         if (worklistMap[op] < nextLen + 1) {
