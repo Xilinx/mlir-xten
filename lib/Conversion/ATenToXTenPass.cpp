@@ -22,6 +22,7 @@
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/IR/Builders.h"
+#include "mlir/IR/Operation.h"
 #include "mlir/IR/BuiltinTypes.h"
 //#include "mlir/Parser.h"
 #include "mlir/Pass/Pass.h"
@@ -41,6 +42,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include <algorithm>
+#include <map>
 #include <sstream>
 
 #define DEBUG_TYPE "aten-to-xten-pass"
@@ -51,33 +53,78 @@ using namespace mlir::torch;
 
 namespace {
 
-long getInputSize(xten::Conv2dOp &c2d) {
-  TensorType inputType = c2d.input().getType().dyn_cast<Torch::ValueTensorType>().toBuiltinTensor();
-  if (inputType == nullptr || !inputType.hasRank())
-    return 0;
-  auto shape = inputType.getShape();
-  // multiply all dimensions together
-  long result = 1;
-  for (auto i: shape)
-    result *= i;
-  return result;
+// Get ancestor ops based on operands of an mlir operation
+SmallVector<Operation*> getPreviousOps(mlir::Operation* op) {
+  SmallVector<Operation*> ancestors;
+  for (Value operand : op->getOperands()) {
+    if (Operation *ancestor = operand.getDefiningOp()) {
+      ancestors.push_back(ancestor);
+    }
+  }
+  return ancestors;
 }
 
-// Pick conv2d with smallest input size, because we expect that this one will need less L1 storage
-// The goal is to minimize memory transfers.
-// This might not be the best implementation, may be
-// improved later when more low-level details are known.
-bool fuseFirstC2dInTensorAddImpl(xten::Conv2dOp &c2d0, xten::Conv2dOp &c2d1) {
-  auto s0 = getInputSize(c2d0);
-  auto s1 = getInputSize(c2d1);  
-  return s0 && s1 && s0 < s1;
+// Adapter fun because tablegen can only bind result and not the op itself.
+bool fuseFirstC2dInTensorAdd(OpResult left, OpResult right) {
+
+  // Create map to find common ancestor node
+  SmallVector<Operation *> worklist;
+  DenseMap<Operation *, unsigned> worklistMap;
+
+  // Get left and right operation
+  Operation *leftOp = left.getOwner();
+  Operation *rightOp = right.getOwner();
+
+  // Initialize starting operation based on left op
+  worklist.push_back(leftOp);
+  worklistMap.insert(std::pair<Operation*, unsigned>(leftOp, 0));
+
+  // Iterate backwards over left op branch
+  while (!worklist.empty()) {
+    // Get next worklist element
+    Operation* nextOp = *(worklist.begin());
+    unsigned nextLen = worklistMap[nextOp];
+
+    // Get ancestor ops and push to worklist
+    SmallVector<Operation*> prevOps = getPreviousOps(nextOp);
+    for (Operation* op : prevOps) {
+      worklist.push_back(op);
+      worklistMap.insert(std::pair<Operation*, unsigned>(op, nextLen + 1));
+    }
+    worklist.erase (worklist.begin(), worklist.begin() + 1);
+  }
+
+  // Iterate backwards over right op branch
+  worklist.push_back(rightOp);
+  worklistMap.insert(std::pair<Operation*, unsigned>(rightOp, 0));
+
+  while (!worklist.empty()) {
+    Operation* nextOp = *(worklist.begin());
+    unsigned nextLen = worklistMap[nextOp];
+    SmallVector<Operation*> prevOps = getPreviousOps(nextOp);
+
+    for (Operation* op : prevOps) {
+      if (worklistMap.find(op) != worklistMap.end()) {
+
+        // TODO: Ignore or classify ops to avoid ancestors that are not ml ops
+
+        if (worklistMap[op] < nextLen + 1) {
+          // Left branch is the skip branch. Fuse right convolution op with
+          // element-wise add.
+          return false;
+        }
+        return true;
+      }
+      worklist.push_back(op);
+      worklistMap.insert(std::pair<Operation*, unsigned>(op, nextLen + 1));
+    }
+  }
+
+  // No skip connection found. Assuming right branch is skip connection.
+  // Fuse left convolution op with element-wise add.
+  return true;
 }
-// adapter fun because tablegen can only bind result and not the op itself.
-bool fuseFirstC2dInTensorAdd(OpResult a, OpResult b) {
-  auto c2d0 = cast<xten::Conv2dOp>(a.getOwner());
-  auto c2d1 = cast<xten::Conv2dOp>(b.getOwner());
-  return fuseFirstC2dInTensorAddImpl(c2d0, c2d1);
-}
+
 
 namespace atenToXten {
 #include "xten/Conversion/ATenToXTen.cpp.inc"
