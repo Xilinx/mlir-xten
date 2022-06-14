@@ -31,11 +31,11 @@ include "xten/Dialect/XTen/XTenOps.td"
 
 
 def SelectFirstC2dInSymmetricTensorAdd : Constraint<
-    CPred<"getLongestBranch($0, $1)">,
+    CPred<"isLongestBranch($0, $1)">,
     "fuse first parameter into tensor add, otherwise fuse second.">;
 
 // This pattern catches the case where 2 conv2ds are inputs to an add.
-// Then we callback `getLongestBranch` to find which one to fuse.
+// Then we callback `isLongestBranch` to find which one to fuse.
 // If the callback is true (left c2d needs to be fused) then the pattern is applied.
 // Otherwise another pattern is applied (benefits take care of that).
 def : Pat<(XTen_AddOp (XTen_Conv2dOp:$c2d0 $a,$b,$c,$d,$e,$f,$g), (XTen_Conv2dOp:$c2d1 $_,$_,$_,$_,$_,$_,$_)),

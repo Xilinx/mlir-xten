@@ -4,7 +4,7 @@
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
-// (c) Copyright 2022 Xilinx Inc.
+// (c) Copyright 2019 - 2022 Xilinx Inc.
 //
 //===----------------------------------------------------------------------===//
 
@@ -64,11 +64,13 @@ SmallVector<Operation*> getInputOps(mlir::Operation *op) {
   return ancestors;
 }
 
-// Return true if op belongs to neural network
-bool isNeuralNetworkOp(Operation *op) {  
-  return mlir::isa<xilinx::xten::Conv2dOp>(op) ||
-      mlir::isa<xilinx::xten::Conv2dReLUOp>(op) ||
-      mlir::isa<xilinx::xten::Conv2dLReLUOp>(op);
+// Ops without operands can be ignored for further processing
+// List construct ops only create constant inputs
+bool isExclusionOp(Operation *op) {
+  if ((op->getOperands().size() == 0) || 
+      (mlir::isa<Torch::PrimListConstructOp>(op)))
+    return true;
+  return false;
 }
 
 // Tablegen adapter to check which op to fuse
@@ -76,7 +78,7 @@ bool isNeuralNetworkOp(Operation *op) {
 // Traverse graph backwards and return true if the left op has a longer
 // branch than the right op. The length of the op branches is determined
 // by the first common ancestor.
-bool getLongestBranch(OpResult left, OpResult right) {
+bool isLongestBranch(OpResult left, OpResult right) {
 
   // Create map to find common ancestor node
   SmallVector<Operation *> worklist;
@@ -94,35 +96,25 @@ bool getLongestBranch(OpResult left, OpResult right) {
   worklist.push_back(leftOp);
   opDistanceMap.insert(std::pair<Operation *, unsigned>(leftOp, 0));
 
-  // TODO: Rewrite using lambda expression
-
   // Iterate backwards over left op branch
   while (!worklist.empty()) {
     auto curOp = opDistanceMap.find(worklist.front());
     SmallVector<Operation *> inputOps = getInputOps(curOp->first);
+
+    // Remove non-useful ops
+    llvm::erase_if(inputOps, [](Operation *op) {
+      return isExclusionOp(op);
+    });
+
     for (Operation *inputOp : inputOps) {
-
-      // TODO: Refactor classification at a later stage
-
-      // // Ops without operands can be ignored for further processing
-      // if (inputOp->getOperands().size() == 0)
-      //   continue;
-
-      // // Ignore list construct op
-      // if (mlir::isa<Torch::PrimListConstructOp>(inputOp))
-      //   continue;
-
-      // Only increment distance if neural network op
-      if (isNeuralNetworkOp(inputOp)) {
-        unsigned nextDistance = curOp->second + 1;
-        auto inputOpDistancePair = opDistanceMap.find(inputOp);
-        if (inputOpDistancePair == opDistanceMap.end()) {
-          worklist.push_back(inputOp);
-          opDistanceMap.insert({inputOp, nextDistance});
-        }      
-        else if (inputOpDistancePair->second < nextDistance) { // Always store longest path
-          inputOpDistancePair->second = nextDistance;
-        }
+      unsigned nextDistance = curOp->second + 1;
+      auto inputOpDistancePair = opDistanceMap.find(inputOp);
+      if (inputOpDistancePair == opDistanceMap.end()) {
+        worklist.push_back(inputOp);
+        opDistanceMap.insert({inputOp, nextDistance});
+      }      
+      else if (inputOpDistancePair->second < nextDistance) { // Always store longest path
+        inputOpDistancePair->second = nextDistance;
       }
     }
     worklist.erase(worklist.begin());
@@ -136,25 +128,28 @@ bool getLongestBranch(OpResult left, OpResult right) {
     auto curOp = opDistanceMap.find(worklist.front());
     SmallVector<Operation *> inputOps = getInputOps(curOp->first);
 
+    // Remove non-useful ops
+    llvm::erase_if(inputOps, [](Operation *op) {
+      return isExclusionOp(op);
+    });
+
     for (Operation *inputOp : inputOps) {
-      // Only increment distance if neural network op
-      if (isNeuralNetworkOp(inputOp)) {
-        unsigned nextDistance = curOp->second + 1;
-        auto inputOpDistancePair = opDistanceMap.find(inputOp);
-        if (inputOpDistancePair != opDistanceMap.end()) {
-          if (nextDistance >= inputOpDistancePair->second) {
-            // Left branch is the skip branch. Fuse right convolution op with
-            // element-wise add.
-            return false;
-          }
-          return true;
+      unsigned nextDistance = curOp->second + 1;
+      auto inputOpDistancePair = opDistanceMap.find(inputOp);
+      if (inputOpDistancePair != opDistanceMap.end()) {
+        if (nextDistance >= inputOpDistancePair->second) {
+          // Left branch is the skip branch. Fuse right convolution op with
+          // element-wise add.
+          return false;
         }
-        else {
-          worklist.push_back(inputOp);
-          opDistanceMap.insert(std::pair<Operation *, unsigned>(inputOp, nextDistance));
-        }
+        return true;
+      }
+      else {
+        worklist.push_back(inputOp);
+        opDistanceMap.insert(std::pair<Operation *, unsigned>(inputOp, nextDistance));
       }
     }
+    worklist.erase(worklist.begin());
   }
 
   // No skip connection found. Assuming right branch is skip connection.
