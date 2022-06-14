@@ -4,7 +4,7 @@
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
-// (c) Copyright 2019 Xilinx Inc.
+// (c) Copyright 2022 Xilinx Inc.
 //
 //===----------------------------------------------------------------------===//
 
@@ -22,6 +22,7 @@
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/IR/Builders.h"
+#include "mlir/IR/Operation.h"
 #include "mlir/IR/BuiltinTypes.h"
 //#include "mlir/Parser.h"
 #include "mlir/Pass/Pass.h"
@@ -43,6 +44,7 @@
 #include <algorithm>
 #include <sstream>
 
+
 #define DEBUG_TYPE "aten-to-xten-pass"
 
 using namespace mlir;
@@ -51,8 +53,8 @@ using namespace mlir::torch;
 
 namespace {
 
-// Get ancestor ops based on operands of an mlir operation
-SmallVector<Operation*> getPreviousOps(mlir::Operation* op) {
+// Get preceding ops based on operands of an mlir operation
+SmallVector<Operation*> getInputOps(mlir::Operation *op) {
   SmallVector<Operation*> ancestors;
   for (Value operand : op->getOperands()) {
     if (Operation *ancestor = operand.getDefiningOp()) {
@@ -62,58 +64,96 @@ SmallVector<Operation*> getPreviousOps(mlir::Operation* op) {
   return ancestors;
 }
 
-// Adapter fun because tablegen can only bind result and not the op itself.
-bool fuseFirstC2dInTensorAdd(OpResult left, OpResult right) {
+// Return true if op belongs to neural network
+bool isNeuralNetworkOp(Operation *op) {  
+  return mlir::isa<xilinx::xten::Conv2dOp>(op) ||
+      mlir::isa<xilinx::xten::Conv2dReLUOp>(op) ||
+      mlir::isa<xilinx::xten::Conv2dLReLUOp>(op);
+}
+
+// Tablegen adapter to check which op to fuse
+//
+// Traverse graph backwards and return true if the left op has a longer
+// branch than the right op. The length of the op branches is determined
+// by the first common ancestor.
+bool getLongestBranch(OpResult left, OpResult right) {
 
   // Create map to find common ancestor node
   SmallVector<Operation *> worklist;
-  DenseMap<Operation *, unsigned> worklistMap;
+  DenseMap<Operation *, unsigned> opDistanceMap;
 
   // Get left and right operation
   Operation *leftOp = left.getOwner();
   Operation *rightOp = right.getOwner();
 
+  // Ignore case where both ops are the same
+  if (leftOp == rightOp)
+    return true;
+
   // Initialize starting operation based on left op
   worklist.push_back(leftOp);
-  worklistMap.insert(std::pair<Operation*, unsigned>(leftOp, 0));
+  opDistanceMap.insert(std::pair<Operation *, unsigned>(leftOp, 0));
+
+  // TODO: Rewrite using lambda expression
 
   // Iterate backwards over left op branch
   while (!worklist.empty()) {
-    // Get next worklist element
-    Operation* nextOp = *(worklist.begin());
-    unsigned nextLen = worklistMap[nextOp];
+    auto curOp = opDistanceMap.find(worklist.front());
+    SmallVector<Operation *> inputOps = getInputOps(curOp->first);
+    for (Operation *inputOp : inputOps) {
 
-    // Get ancestor ops and push to worklist
-    SmallVector<Operation*> prevOps = getPreviousOps(nextOp);
-    for (Operation* op : prevOps) {
-      worklist.push_back(op);
-      worklistMap.insert(std::pair<Operation*, unsigned>(op, nextLen + 1));
+      // TODO: Refactor classification at a later stage
+
+      // // Ops without operands can be ignored for further processing
+      // if (inputOp->getOperands().size() == 0)
+      //   continue;
+
+      // // Ignore list construct op
+      // if (mlir::isa<Torch::PrimListConstructOp>(inputOp))
+      //   continue;
+
+      // Only increment distance if neural network op
+      if (isNeuralNetworkOp(inputOp)) {
+        unsigned nextDistance = curOp->second + 1;
+        auto inputOpDistancePair = opDistanceMap.find(inputOp);
+        if (inputOpDistancePair == opDistanceMap.end()) {
+          worklist.push_back(inputOp);
+          opDistanceMap.insert({inputOp, nextDistance});
+        }      
+        else if (inputOpDistancePair->second < nextDistance) { // Always store longest path
+          inputOpDistancePair->second = nextDistance;
+        }
+      }
     }
-    worklist.erase (worklist.begin(), worklist.begin() + 1);
+    worklist.erase(worklist.begin());
   }
 
   // Iterate backwards over right op branch
   worklist.push_back(rightOp);
-  worklistMap.insert(std::pair<Operation*, unsigned>(rightOp, 0));
+  opDistanceMap.insert(std::pair<Operation *, unsigned>(rightOp, 0));
 
   while (!worklist.empty()) {
-    Operation* nextOp = *(worklist.begin());
-    unsigned nextLen = worklistMap[nextOp];
-    SmallVector<Operation*> prevOps = getPreviousOps(nextOp);
+    auto curOp = opDistanceMap.find(worklist.front());
+    SmallVector<Operation *> inputOps = getInputOps(curOp->first);
 
-    for (Operation* op : prevOps) {
-      if (worklistMap.find(op) != worklistMap.end()) {
-        // TODO: Ignore or classify ops to avoid ancestors that are not ml ops
-
-        if (worklistMap[op] < nextLen + 1) {
-          // Left branch is the skip branch. Fuse right convolution op with
-          // element-wise add.
-          return false;
+    for (Operation *inputOp : inputOps) {
+      // Only increment distance if neural network op
+      if (isNeuralNetworkOp(inputOp)) {
+        unsigned nextDistance = curOp->second + 1;
+        auto inputOpDistancePair = opDistanceMap.find(inputOp);
+        if (inputOpDistancePair != opDistanceMap.end()) {
+          if (nextDistance >= inputOpDistancePair->second) {
+            // Left branch is the skip branch. Fuse right convolution op with
+            // element-wise add.
+            return false;
+          }
+          return true;
         }
-        return true;
+        else {
+          worklist.push_back(inputOp);
+          opDistanceMap.insert(std::pair<Operation *, unsigned>(inputOp, nextDistance));
+        }
       }
-      worklist.push_back(op);
-      worklistMap.insert(std::pair<Operation*, unsigned>(op, nextLen + 1));
     }
   }
 
