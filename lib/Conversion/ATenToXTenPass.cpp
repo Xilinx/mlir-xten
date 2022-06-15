@@ -4,7 +4,7 @@
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
-// (c) Copyright 2019 Xilinx Inc.
+// (c) Copyright 2019 - 2022 Xilinx Inc.
 //
 //===----------------------------------------------------------------------===//
 
@@ -22,6 +22,7 @@
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/IR/Builders.h"
+#include "mlir/IR/Operation.h"
 #include "mlir/IR/BuiltinTypes.h"
 //#include "mlir/Parser.h"
 #include "mlir/Pass/Pass.h"
@@ -43,6 +44,7 @@
 #include <algorithm>
 #include <sstream>
 
+
 #define DEBUG_TYPE "aten-to-xten-pass"
 
 using namespace mlir;
@@ -51,33 +53,98 @@ using namespace mlir::torch;
 
 namespace {
 
-long getInputSize(xten::Conv2dOp &c2d) {
-  TensorType inputType = c2d.input().getType().dyn_cast<Torch::ValueTensorType>().toBuiltinTensor();
-  if (inputType == nullptr || !inputType.hasRank())
-    return 0;
-  auto shape = inputType.getShape();
-  // multiply all dimensions together
-  long result = 1;
-  for (auto i: shape)
-    result *= i;
-  return result;
+// Get preceding useful ops based on operands of an mlir operation
+SmallVector<Operation*> getUsefulInputOps(mlir::Operation *op) {
+  SmallVector<Operation*> ancestors;
+  for (Value operand : op->getOperands()) {
+    if (Operation *ancestor = operand.getDefiningOp()) {
+      ancestors.push_back(ancestor);
+    }
+  }
+
+  // Ops without operands and list construct ops can be ignored
+  llvm::erase_if(ancestors, [](Operation *op) {
+    return (op->getOperands().empty() ||
+            mlir::isa<Torch::PrimListConstructOp>(op));
+  });
+  return ancestors;
 }
 
-// Pick conv2d with smallest input size, because we expect that this one will need less L1 storage
-// The goal is to minimize memory transfers.
-// This might not be the best implementation, may be
-// improved later when more low-level details are known.
-bool fuseFirstC2dInTensorAddImpl(xten::Conv2dOp &c2d0, xten::Conv2dOp &c2d1) {
-  auto s0 = getInputSize(c2d0);
-  auto s1 = getInputSize(c2d1);  
-  return s0 && s1 && s0 < s1;
+// Tablegen adapter to check which op to fuse
+//
+// Traverse graph backwards and return true if the left op has a longer
+// branch than the right op. The length of the op branches is determined
+// by the first common ancestor.
+bool isLongestBranch(OpResult left, OpResult right) {
+
+  // Create map to find common ancestor node
+  SmallVector<Operation *> worklist;
+  DenseMap<Operation *, unsigned> opDistanceMap;
+
+  // Get left and right operation
+  Operation *leftOp = left.getOwner();
+  Operation *rightOp = right.getOwner();
+
+  // Ignore case where both ops are the same
+  if (leftOp == rightOp)
+    return true;
+
+  // Initialize starting operation based on left op
+  worklist.push_back(leftOp);
+  opDistanceMap.insert(std::pair<Operation *, unsigned>(leftOp, 0));
+
+  // Iterate backwards over left op branch
+  while (!worklist.empty()) {
+    auto curOp = opDistanceMap.find(worklist.front());
+    SmallVector<Operation *> inputOps = getUsefulInputOps(curOp->first);
+
+    for (Operation *inputOp : inputOps) {
+      unsigned nextDistance = curOp->second + 1;
+      auto inputOpDistancePair = opDistanceMap.find(inputOp);
+      if (inputOpDistancePair == opDistanceMap.end()) {
+        worklist.push_back(inputOp);
+        opDistanceMap.insert({inputOp, nextDistance});
+      }      
+      else if (inputOpDistancePair->second < nextDistance) { // Always store longest path
+        inputOpDistancePair->second = nextDistance;
+      }
+    }
+    worklist.erase(worklist.begin());
+  }
+
+  // Iterate backwards over right op branch
+  worklist.push_back(rightOp);
+  opDistanceMap.insert(std::pair<Operation *, unsigned>(rightOp, 0));
+
+  while (!worklist.empty()) {
+    auto curOp = opDistanceMap.find(worklist.front());
+    SmallVector<Operation *> inputOps = getUsefulInputOps(curOp->first);
+
+    for (Operation *inputOp : inputOps) {
+      unsigned nextDistance = curOp->second + 1;
+      auto inputOpDistancePair = opDistanceMap.find(inputOp);
+
+      if ((inputOpDistancePair != opDistanceMap.end()) &&
+          (nextDistance >= inputOpDistancePair->second)) {
+        // Left branch is the skip branch. Fuse right convolution op with
+        // element-wise add.
+        return false;
+      }
+      else {
+        // Continue searching since we want to find the longest branch in
+        // multi-branch scenarios
+        worklist.push_back(inputOp);
+        opDistanceMap.insert(std::pair<Operation *, unsigned>(inputOp, nextDistance));
+      }
+    }
+    worklist.erase(worklist.begin());
+  }
+
+  // No skip connection found. Assuming right branch is skip connection.
+  // Fuse left convolution op with element-wise add.
+  return true;
 }
-// adapter fun because tablegen can only bind result and not the op itself.
-bool fuseFirstC2dInTensorAdd(OpResult a, OpResult b) {
-  auto c2d0 = cast<xten::Conv2dOp>(a.getOwner());
-  auto c2d1 = cast<xten::Conv2dOp>(b.getOwner());
-  return fuseFirstC2dInTensorAddImpl(c2d0, c2d1);
-}
+
 
 namespace atenToXten {
 #include "xten/Conversion/ATenToXTen.cpp.inc"
@@ -137,7 +204,6 @@ struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
       signalPassFailure();
       assert(0);
     }
-
 
   }
 };
