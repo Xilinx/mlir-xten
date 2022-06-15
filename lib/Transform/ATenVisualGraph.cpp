@@ -28,11 +28,11 @@
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
 #include <vector>
-#include <algorithm>
 
 #define DEBUG_TYPE "aten-visual-graph"
 
@@ -80,10 +80,10 @@ private:
   ///// ------------- NOTE: For TinyYolo DEMO only
   ///--------------------------------------------------------
   ///// Since Torch-Mlir doesn't propagate tensor output sizes by default, the
-  ///ATEN visualizer needs
+  /// ATEN visualizer needs
   ///// include a way to do shape propagation for now.
   ///// Code Sections marked with a DEMO label implement the shape propagation
-  ///logic, which is relevant
+  /// logic, which is relevant
   ///// to the TinyYolo DEMO only.
   bool propagate_tensor_sizes;
 
@@ -434,28 +434,34 @@ private:
     }
   }
 
-  inline Value getKernelSize(Torch::AtenMaxPool2dOp maxPoolOp) {
-    return maxPoolOp.kernel_size();
-  }
-
-  inline Value getStride(Torch::AtenMaxPool2dOp maxPoolOp) {
-    return maxPoolOp.stride();
-  }
-
-  inline Value getPadding(Torch::AtenMaxPool2dOp maxPoolOp) {
-    return maxPoolOp.padding();
-  }
-
-  inline Value getKernelSize(xten::Conv2dLReLUMaxPoolOp maxPoolOp) {
+  template <class MaxpoolOp>
+  Value getKernelSize(MaxpoolOp &maxPoolOp) {
     return maxPoolOp.mp_kernel_size();
   }
 
-  inline Value getStride(xten::Conv2dLReLUMaxPoolOp maxPoolOp) {
+  template <class MaxpoolOp>
+  Value getStride(MaxpoolOp &maxPoolOp) {
     return maxPoolOp.mp_stride();
   }
 
-  inline Value getPadding(xten::Conv2dLReLUMaxPoolOp maxPoolOp) {
+  template <class MaxpoolOp>
+  Value getPadding(MaxpoolOp &maxPoolOp) {
     return maxPoolOp.mp_padding();
+  }
+
+  template <>
+  Value getKernelSize(Torch::AtenMaxPool2dOp &maxPoolOp) {
+    return maxPoolOp.kernel_size();
+  }
+
+  template <>
+  Value getStride(Torch::AtenMaxPool2dOp &maxPoolOp) {
+    return maxPoolOp.stride();
+  }
+
+  template <>
+  Value getPadding(Torch::AtenMaxPool2dOp &maxPoolOp) {
+    return maxPoolOp.padding();
   }
 
   template <class T>
@@ -528,48 +534,35 @@ private:
     }
   }
 
-  inline Value getAlpha(Torch::AtenReluOp reluOp) {
+  template <class Op>
+  Value getAlpha(Op &reluOp) {
+    return reluOp.alpha();
+  }
+
+  template <>
+  Value getAlpha(Torch::AtenReluOp &reluOp) {
     return reluOp.self();
   }
 
-  inline Value getAlpha(xten::Conv2dLReLUMaxPoolOp reluOp) {
-    return reluOp.alpha();
+  // fetch input. Specialize if the method is named differently.
+  template <class Op>
+  Value getInput(Op op) {
+    return op.input();
   }
 
-  inline Value getAlpha(xten::Conv2dLReLUOp reluOp) {
-    return reluOp.alpha();
-  }
-
-  inline Value getInput(Torch::AtenConv2dOp cOp) {
-    return cOp.input();
-  }
-
-  inline Value getInput(Torch::AtenMaxPool2dOp cOp) {
+  template <>
+  Value getInput(Torch::AtenMaxPool2dOp cOp) {
     return cOp.self();
   }
 
-  inline Value getInput(Torch::AtenReluOp cOp) {
+  template <>
+  Value getInput(Torch::AtenReluOp cOp) {
     return cOp.self();
   }
 
-  inline Value getInput(Torch::AtenAddTensorOp cOp) {
+  template <>
+  Value getInput(Torch::AtenAddTensorOp cOp) {
     return cOp.self();
-  }
-
-  inline Value getInput(xten::Conv2dLReLUMaxPoolOp cOp) {
-    return cOp.input();
-  }
-
-  inline Value getInput(xten::Conv2dOp cOp) {
-    return cOp.input();
-  }
-
-  inline Value getInput(xten::Conv2dReLUOp cOp) {
-    return cOp.input();
-  }
-
-  inline Value getInput(xten::Conv2dLReLUOp cOp) {
-    return cOp.input();
   }
 
   template <class T>
@@ -872,108 +865,105 @@ private:
     fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
   }
 
-  void fillPropertiesOp(xten::Conv2dBatchNormReLUOp &xtenConv2dBnReluOp,
+  void fillPropertiesOp(xten::Conv2dBatchNormReLUOp &op,
                         llvm::json::Array &propertiesArray) {
     uint64_t conv_storage;
     uint64_t bn_storage;
     uint64_t relu_storage = 0;
 
-    fillPropertiesConvOp<xten::Conv2dBatchNormReLUOp>(
-        xtenConv2dBnReluOp, propertiesArray, true, &conv_storage, 0);
+    fillPropertiesConvOp<xten::Conv2dBatchNormReLUOp>(op, propertiesArray, true,
+                                                      &conv_storage, 0);
 
     fillPropertiesBatchNormOp<xten::Conv2dBatchNormReLUOp>(
-        xtenConv2dBnReluOp, propertiesArray, true, &bn_storage, 1);
+        op, propertiesArray, true, &bn_storage, 1);
 
     // fillPropertiesReLUOp<xten::Conv2dBatchNormReLUOp>(xtenConv2dBnReluOp,
-    // propertiesArray, 						      true, &relu_storage, 2);
+    // propertiesArray, true, &relu_storage, 2);
 
     uint64_t storage = conv_storage + bn_storage + relu_storage;
-
-    Value input = xtenConv2dBnReluOp.input();
-    Value output = xtenConv2dBnReluOp.getResult();
-    storage += storage_bytes_of_input_and_output(input, output);
-
-    std::string storage_str = std::to_string(storage);
-    fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
+    writeStorage(op, storage, propertiesArray);
   }
 
-  void fillPropertiesOp(xten::Conv2dLReLUMaxPoolOp &xtenConv2LReluMaxPoolOp,
+  void fillPropertiesOp(xten::Conv2dLReLUMaxPoolOp &op,
                         llvm::json::Array &propertiesArray) {
     uint64_t conv_storage;
     uint64_t lrelu_storage;
     uint64_t maxpool_storage;
 
-    fillPropertiesConvOp<xten::Conv2dLReLUMaxPoolOp>(
-        xtenConv2LReluMaxPoolOp, propertiesArray, true, &conv_storage, 0);
-    ///////// For DEMO
-    if (propagate_tensor_sizes) {
-      auto tensor_size =
-          propagatedTensorSizesMap[xtenConv2LReluMaxPoolOp][true]["value"];
-      std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" +
-                                    std::to_string(tensor_size[1]) + "c" +
-                                    std::to_string(tensor_size[2]) + "h" +
-                                    std::to_string(tensor_size[3]) + "w";
-      fusedToUnfuseOutputMap[xtenConv2LReluMaxPoolOp]["aten.conv2d"] =
-          tensor_size_str;
-    }
-    ///////////////////////////////////////
+    fillPropertiesConvOp<xten::Conv2dLReLUMaxPoolOp>(op, propertiesArray, true,
+                                                     &conv_storage, 0);
+    populateUnfusedOutputMap(op, true, "aten.conv2d");
 
-    fillPropertiesReLUOp<xten::Conv2dLReLUMaxPoolOp>(
-        xtenConv2LReluMaxPoolOp, propertiesArray, true, &lrelu_storage, 1);
+    fillPropertiesReLUOp<xten::Conv2dLReLUMaxPoolOp>(op, propertiesArray, true,
+                                                     &lrelu_storage, 1);
 
     fillPropertiesMaxPool2dOp<xten::Conv2dLReLUMaxPoolOp>(
-        xtenConv2LReluMaxPoolOp, propertiesArray, true, &maxpool_storage, 2);
-    ///////// For DEMO
-    if (propagate_tensor_sizes) {
-      auto tensor_size =
-          propagatedTensorSizesMap[xtenConv2LReluMaxPoolOp][false]["value"];
-      std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" +
-                                    std::to_string(tensor_size[1]) + "c" +
-                                    std::to_string(tensor_size[2]) + "h" +
-                                    std::to_string(tensor_size[3]) + "w";
-      fusedToUnfuseOutputMap[xtenConv2LReluMaxPoolOp]["aten.max_pool2d"] =
-          tensor_size_str;
-    }
-    ///////////////////////////////////////
+        op, propertiesArray, true, &maxpool_storage, 2);
+    populateUnfusedOutputMap(op, false, "aten.max_pool2d");
 
     uint64_t storage = conv_storage + maxpool_storage + lrelu_storage;
-
-    Value input = xtenConv2LReluMaxPoolOp.input();
-    Value output = xtenConv2LReluMaxPoolOp.getResult();
-    storage += storage_bytes_of_input_and_output(input, output);
-
-    std::string storage_str = std::to_string(storage);
-    fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
+    writeStorage(op, storage, propertiesArray);
   }
 
-  void fillPropertiesOp(xten::Conv2dLReLUOp &xtenConv2dLReluOp,
+  void fillPropertiesOp(xten::Conv2dLReLUPadMaxPoolOp &op,
+                        llvm::json::Array &propertiesArray) {
+    // todo pad attributes are missing
+    // todo remove duplication
+
+    uint64_t conv_storage;
+    uint64_t lrelu_storage;
+    uint64_t maxpool_storage;
+
+    fillPropertiesConvOp<xten::Conv2dLReLUPadMaxPoolOp>(op, propertiesArray,
+                                                        true, &conv_storage, 0);
+    populateUnfusedOutputMap(op, true, "aten.conv2d");
+
+    fillPropertiesReLUOp<xten::Conv2dLReLUPadMaxPoolOp>(
+        op, propertiesArray, true, &lrelu_storage, 1);
+
+    fillPropertiesMaxPool2dOp<xten::Conv2dLReLUPadMaxPoolOp>(
+        op, propertiesArray, true, &maxpool_storage, 2);
+
+    populateUnfusedOutputMap(op, false, "aten.max_pool2d");
+
+    uint64_t storage = conv_storage + maxpool_storage + lrelu_storage;
+    writeStorage(op, storage, propertiesArray);
+  }
+
+  void fillPropertiesOp(xten::Conv2dLReLUOp &op,
                         llvm::json::Array &propertiesArray) {
     uint64_t conv_storage;
     uint64_t lrelu_storage;
 
-    fillPropertiesConvOp<xten::Conv2dLReLUOp>(
-        xtenConv2dLReluOp, propertiesArray, true, &conv_storage, 0);
+    fillPropertiesConvOp<xten::Conv2dLReLUOp>(op, propertiesArray, true,
+                                              &conv_storage, 0);
 
-    /////// For DEMO
+    populateUnfusedOutputMap(op, true, "aten.conv2d");
+
+    fillPropertiesReLUOp<xten::Conv2dLReLUOp>(op, propertiesArray, true,
+                                              &lrelu_storage, 1);
+
+    writeStorage(op, conv_storage + lrelu_storage, propertiesArray);
+  }
+
+  template <class Op>
+
+  void populateUnfusedOutputMap(Op &op, bool isOutput, std::string unfusedId) {
     if (propagate_tensor_sizes) {
-      auto tensor_size =
-          propagatedTensorSizesMap[xtenConv2dLReluOp][false]["value"];
+      auto tensor_size = propagatedTensorSizesMap[op][isOutput]["value"];
       std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" +
                                     std::to_string(tensor_size[1]) + "c" +
                                     std::to_string(tensor_size[2]) + "h" +
                                     std::to_string(tensor_size[3]) + "w";
-      fusedToUnfuseOutputMap[xtenConv2dLReluOp]["aten.conv2d"] =
-          tensor_size_str;
+      fusedToUnfuseOutputMap[op][unfusedId] = tensor_size_str;
     }
-    ///////////////////////////////////////
+  }
 
-    fillPropertiesReLUOp<xten::Conv2dLReLUOp>(
-        xtenConv2dLReluOp, propertiesArray, true, &lrelu_storage, 1);
-
-    uint64_t storage = conv_storage + lrelu_storage;
-
-    Value input = xtenConv2dLReluOp.input();
-    Value output = xtenConv2dLReluOp.getResult();
+  template <class Op>
+  void writeStorage(Op &op, uint64_t storage,
+                    llvm::json::Array &propertiesArray) {
+    Value input = getInput(op);
+    Value output = op.getResult();
     storage += storage_bytes_of_input_and_output(input, output);
 
     std::string storage_str = std::to_string(storage);
@@ -1084,6 +1074,13 @@ private:
       fillPropertiesGatherOp(gatherOp, propertiesArray);
     } else if (auto sliceOp = dyn_cast<Torch::AtenSliceTensorOp>(op)) {
       fillPropertiesSliceOp(sliceOp, propertiesArray);
+    } else if (auto op2 = dyn_cast<Torch::AtenConstantPadNdOp>(op)) {
+      auto padding_v = op2.pad();
+      std::vector<int64_t> padding;
+      unpack_int_list(padding_v, padding);
+      std::string padding_str = vector_to_str(padding);
+      fillPropertiesObject({"Attributes.padding", padding_str},
+                           propertiesArray);
     } else if (auto xtenConv2dOp = mlir::dyn_cast<xten::Conv2dOp>(op)) {
       fillPropertiesConvOp<xten::Conv2dOp>(xtenConv2dOp, propertiesArray);
     } else if (auto xtenConv2dBnReluOp =
@@ -1097,6 +1094,8 @@ private:
       fillPropertiesOp(xtenConv2dLReluMaxPoolOp, propertiesArray);
     } else if (auto xtenAddOp = mlir::dyn_cast<xten::AddOp>(op)) {
       // fillPropertiesBinaryALUOp<xten::AddOp>(xtenAddOp, propertiesArray);
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUPadMaxPoolOp>(op)) {
+      fillPropertiesOp(op2, propertiesArray);
     }
 
     return propertiesArray;
@@ -1118,12 +1117,19 @@ private:
     } else if (auto xtenConv2dBnReluOp =
                    mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
       opInput = getInput(xtenConv2dBnReluOp);
+    } else if (auto xtenConv2dReluOp =
+                   mlir::dyn_cast<xten::Conv2dReLUOp>(op)) {
+      opInput = getInput(xtenConv2dReluOp);
     } else if (auto xtenConv2dLReluOp =
                    mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
       opInput = getInput(xtenConv2dLReluOp);
     } else if (auto xtenConv2dLReluMaxPoolOp =
                    mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
       opInput = getInput(xtenConv2dLReluMaxPoolOp);
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUPadMaxPoolOp>(op)) {
+      opInput = getInput(op2);
+    } else {
+      opInput = 0;
     }
     // TODO: expand switch table for more ops
 
@@ -1516,7 +1522,7 @@ public:
 
       auto attr_l = op->getAttrOfType<StringAttr>("layer_name");
       auto attr_n = op->getAttrOfType<StringAttr>("name");
-      // assumes layer_name is given to all nodes, might support infering layers
+      // assumes layer_name is given to all nodes, might support inferring layers
       // later
       if (!attr_l and !attr_n)
         return;
@@ -1542,7 +1548,7 @@ public:
             // ArgOp.output ----> Op.input_port_example
             // same output port goes to several next input ports -> this output
             // port should have one Port ID
-            if (connsOutToInMap[argOp].size() == 0)
+            if (connsOutToInMap[argOp].empty())
               connsOutToInMap[argOp][op] = currPortId++;
             else
               connsOutToInMap[argOp][op] =

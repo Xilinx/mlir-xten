@@ -10,8 +10,8 @@
 		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
 		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],		
 		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
-		["Attributes.dilations", "Value of dilation", "string"],
-		["Attributes.strides", "Value of strides", "string"],		
+		["Attributes.dilation", "Value of dilation", "string"],
+		["Attributes.stride", "Value of strides", "string"],		
 		["Attributes.padding", "Value of padding", "string"],    
 		["Computation.MACs", "Total number of MAC units in engine", "long"],
 		["Storage.Bytes", "Total storage required for Convolution engine", "long"]
@@ -21,7 +21,7 @@
 	    "name" : "torch.aten.max_pool2d",
 	    "properties" : [		
 		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
-		["Attributes.strides", "Value of strides", "string"],		
+		["Attributes.stride", "Value of strides", "string"],		
 		["Attributes.padding", "Value of padding", "string"],    
 		["Computation.Vec Max", "Total number of Vec-Max units in engine", "long"],
 		["Storage.Bytes", "Total storage required for MaxPool2D engine", "long"]
@@ -155,6 +155,12 @@
 	    ]
 	},
 	{
+	    "name" : "torch.aten.constant_pad_nd",
+	    "properties" : [
+		["Attributes.padding", "Value of padding", "string"]
+		]
+	},
+	{
 	    "name" : "torch.aten.add_.Tensor",
 	    "properties" : [
 		["Computation.+", "Total number of + units in engine", "long"],
@@ -268,8 +274,8 @@
 		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
 		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],
 		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
-		["Attributes.dilations", "Value of dilation", "string"],
-		["Attributes.strides", "Value of strides", "string"],		
+		["Attributes.dilation", "Value of dilation", "string"],
+		["Attributes.stride", "Value of strides", "string"],		
 		["Attributes.padding", "Value of padding", "string"],
 		["Computation.MACs", "Total units of MAC units in engine", "long"],		
 		["Storage.Bytes", "Total storage required for this engine", "string"] 
@@ -286,8 +292,8 @@
 		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
 		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],
 		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
-		["Attributes.dilations", "Value of dilation", "string"],
-		["Attributes.strides", "Value of strides", "string"],		
+		["Attributes.dilation", "Value of dilation", "string"],
+		["Attributes.stride", "Value of strides", "string"],		
 		["Attributes.padding", "Value of padding", "string"],    		
 		["Attributes.Mean.Tensor", "Dimensions of mean", "string"],
 		["Attributes.Mean.type", "Numerical type of each Means number", "string"],
@@ -308,8 +314,8 @@
 		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
 		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],
 		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
-		["Attributes.dilations", "Value of dilation", "string"],
-		["Attributes.strides", "Value of strides", "string"],		
+		["Attributes.dilation", "Value of dilation", "string"],
+		["Attributes.stride", "Value of strides", "string"],		
 		["Attributes.padding", "Value of padding", "string"],    		
 		["Computation.MACs", "Total units of MAC units in engine", "long"],
 		["Computation.Comparison", "Total number of > comparator units in engine", "long"],		
@@ -336,6 +342,28 @@
 	    ]
 	},
 	{
+	    "name" : "xten.conv2d_tensoradd_relu",
+	    "fused" : ["aten.conv2d", "torch.aten.add.Tensor", "aten.relu"],
+	    "properties" : [
+		["Attributes.Other.Tensor", "Dimensions of second tensor", "string"],
+		["Attributes.Other.type", "Numerical type of each Tensor element", "string"],
+		["Attributes.Other.Bytes", "Size of second tensor in bytes", "long"],		
+		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
+		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
+		["Attributes.Weights.Bytes", "Size of weights in bytes", "long"],
+		["Attributes.Bias.Tensor", "Dimensions of bias", "string"],
+		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
+		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],
+		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
+		["Attributes.dilation", "Value of dilation", "string"],
+		["Attributes.stride", "Value of strides", "string"],		
+		["Attributes.padding", "Value of padding", "string"],    		
+		["Computation.MACs", "Total units of MAC units in engine", "long"],
+		["Computation.Comparison", "Total number of > comparator units in engine", "long"],		
+		["Storage.Bytes", "Total storage required for this engine", "long"]  		
+	    ]
+	},
+	{
 	    "name" : "xten.conv2d_lrelu_maxpool",
 	    "fused" : ["aten.conv2d", "aten.max_pool2d"],
 	    "properties" : [
@@ -346,8 +374,54 @@
 		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
 		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],
 		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
-		["Attributes.dilations", "Value of dilation", "string"],
-		["Attributes.strides", "Value of strides", "string"],		
+		["Attributes.dilation", "Value of dilation", "string"],
+		["Attributes.stride", "Value of strides", "string"],		
+		["Attributes.padding", "Value of padding", "string"],    					
+		["Attributes.Alpha.Tensor", "Dimensions of alpha", "string"],
+		["Attributes.Alpha.type", "Numerical type of each alpha number", "string"],
+		["Attributes.Alpha.Bytes", "Size of alpha in bytes", "long"],
+		["Attributes.Alpha", "Value of alpha", "long"],
+		["Computation.MACs", "Total units of MAC units in engine", "long"],
+		["Computation.Comparison", "Total number of > comparator units in engine", "long"],
+		["Storage.Bytes", "Total storage required for this engine", "long"]  	
+	    ]
+	},
+	{
+	    "name" : "xten.conv2d_lrelu_pad",
+	    "fused" : ["aten.conv2d", "torch.aten.constant_pad_nd"],
+	    "properties" : [
+		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
+		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
+		["Attributes.Weights.Bytes", "Size of weights in bytes", "long"],
+		["Attributes.Bias.Tensor", "Dimensions of bias", "string"],
+		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
+		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],
+		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
+		["Attributes.dilation", "Value of dilation", "string"],
+		["Attributes.stride", "Value of strides", "string"],		
+		["Attributes.padding", "Value of padding", "string"],    					
+		["Attributes.Alpha.Tensor", "Dimensions of alpha", "string"],
+		["Attributes.Alpha.type", "Numerical type of each alpha number", "string"],
+		["Attributes.Alpha.Bytes", "Size of alpha in bytes", "long"],
+		["Attributes.Alpha", "Value of alpha", "long"],
+		["Computation.MACs", "Total units of MAC units in engine", "long"],
+		["Computation.Comparison", "Total number of > comparator units in engine", "long"],
+		["Storage.Bytes", "Total storage required for this engine", "long"]  	
+	    ]
+	},
+	{
+	    "name" : "xten.conv2d_lrelu_pad_maxpool",
+	    "fused" : ["aten.conv2d", "torch.aten.constant_pad_nd", "aten.max_pool2d"],
+	    "properties" : [
+		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
+		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
+		["Attributes.Weights.Bytes", "Size of weights in bytes", "long"],
+		["Attributes.Bias.Tensor", "Dimensions of bias", "string"],
+		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
+		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],
+		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
+		["Attributes.dilation", "Value of dilation", "string"],
+		["Attributes.stride", "Value of strides", "string"],		
 		["Attributes.padding", "Value of padding", "string"],    					
 		["Attributes.Alpha.Tensor", "Dimensions of alpha", "string"],
 		["Attributes.Alpha.type", "Numerical type of each alpha number", "string"],
