@@ -53,24 +53,21 @@ using namespace mlir::torch;
 
 namespace {
 
-// Get preceding ops based on operands of an mlir operation
-SmallVector<Operation*> getInputOps(mlir::Operation *op) {
+// Get preceding useful ops based on operands of an mlir operation
+SmallVector<Operation*> getUsefulInputOps(mlir::Operation *op) {
   SmallVector<Operation*> ancestors;
   for (Value operand : op->getOperands()) {
     if (Operation *ancestor = operand.getDefiningOp()) {
       ancestors.push_back(ancestor);
     }
   }
-  return ancestors;
-}
 
-// Ops without operands can be ignored for further processing
-// List construct ops only create constant inputs
-bool isExclusionOp(Operation *op) {
-  if ((op->getOperands().size() == 0) || 
-      (mlir::isa<Torch::PrimListConstructOp>(op)))
-    return true;
-  return false;
+  // Ops without operands and list construct ops can be ignored
+  llvm::erase_if(ancestors, [](Operation *op) {
+    return (op->getOperands().empty() ||
+            mlir::isa<Torch::PrimListConstructOp>(op));
+  });
+  return ancestors;
 }
 
 // Tablegen adapter to check which op to fuse
@@ -99,12 +96,7 @@ bool isLongestBranch(OpResult left, OpResult right) {
   // Iterate backwards over left op branch
   while (!worklist.empty()) {
     auto curOp = opDistanceMap.find(worklist.front());
-    SmallVector<Operation *> inputOps = getInputOps(curOp->first);
-
-    // Remove non-useful ops
-    llvm::erase_if(inputOps, [](Operation *op) {
-      return isExclusionOp(op);
-    });
+    SmallVector<Operation *> inputOps = getUsefulInputOps(curOp->first);
 
     for (Operation *inputOp : inputOps) {
       unsigned nextDistance = curOp->second + 1;
@@ -126,23 +118,17 @@ bool isLongestBranch(OpResult left, OpResult right) {
 
   while (!worklist.empty()) {
     auto curOp = opDistanceMap.find(worklist.front());
-    SmallVector<Operation *> inputOps = getInputOps(curOp->first);
-
-    // Remove non-useful ops
-    llvm::erase_if(inputOps, [](Operation *op) {
-      return isExclusionOp(op);
-    });
+    SmallVector<Operation *> inputOps = getUsefulInputOps(curOp->first);
 
     for (Operation *inputOp : inputOps) {
       unsigned nextDistance = curOp->second + 1;
       auto inputOpDistancePair = opDistanceMap.find(inputOp);
-      if (inputOpDistancePair != opDistanceMap.end()) {
-        if (nextDistance >= inputOpDistancePair->second) {
-          // Left branch is the skip branch. Fuse right convolution op with
-          // element-wise add.
-          return false;
-        }
-        return true;
+
+      if ((inputOpDistancePair != opDistanceMap.end()) &&
+          (nextDistance >= inputOpDistancePair->second)) {
+        // Left branch is the skip branch. Fuse right convolution op with
+        // element-wise add.
+        return false;
       }
       else {
         worklist.push_back(inputOp);
@@ -216,7 +202,6 @@ struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
       signalPassFailure();
       assert(0);
     }
-
 
   }
 };
