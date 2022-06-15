@@ -131,6 +131,8 @@ bool isLongestBranch(OpResult left, OpResult right) {
         return false;
       }
       else {
+        // Continue searching since we want to find the longest branch in
+        // multi-branch scenarios
         worklist.push_back(inputOp);
         opDistanceMap.insert(std::pair<Operation *, unsigned>(inputOp, nextDistance));
       }
