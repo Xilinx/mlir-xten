@@ -97,9 +97,9 @@ bool isLongestBranch(OpResult left, OpResult right) {
   while (!worklist.empty()) {
     auto curOp = opDistanceMap.find(worklist.front());
     SmallVector<Operation *> inputOps = getUsefulInputOps(curOp->first);
+    unsigned nextDistance = curOp->second + 1;
 
     for (Operation *inputOp : inputOps) {
-      unsigned nextDistance = curOp->second + 1;
       auto inputOpDistancePair = opDistanceMap.find(inputOp);
       if (inputOpDistancePair == opDistanceMap.end()) {
         worklist.push_back(inputOp);
@@ -119,9 +119,9 @@ bool isLongestBranch(OpResult left, OpResult right) {
   while (!worklist.empty()) {
     auto curOp = opDistanceMap.find(worklist.front());
     SmallVector<Operation *> inputOps = getUsefulInputOps(curOp->first);
+    unsigned nextDistance = curOp->second + 1;
 
     for (Operation *inputOp : inputOps) {
-      unsigned nextDistance = curOp->second + 1;
       auto inputOpDistancePair = opDistanceMap.find(inputOp);
 
       if ((inputOpDistancePair != opDistanceMap.end()) &&
