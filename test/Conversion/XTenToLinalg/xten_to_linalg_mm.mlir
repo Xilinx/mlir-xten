@@ -9,11 +9,11 @@
 //===----------------------------------------------------------------------===//
 
 // RUN: aten-opt %s -xten-to-linalg | FileCheck %s
-// CHECK: %[[OUT:.*]] = memref.alloc() : memref<32x32xf32>
-// CHECK: linalg.matmul ins(%{{.*}}, %{{.*}} : memref<32x32xf32>, memref<32x32xf32>) outs(%[[OUT]] : memref<32x32xf32>)
+// CHECK: %[[OUT:.*]] = memref.alloc() : memref<1x64xf32>
+// CHECK: linalg.matmul ins(%{{.*}}, %{{.*}} : memref<1x32xf32>, memref<32x64xf32>) outs(%[[OUT]] : memref<1x64xf32>)
 module  {
-  func @myFunc(%arg0: !torch.vtensor<[32,32],f32>, %arg1: !torch.vtensor<[32,32],f32>) -> !torch.vtensor<[?,?],f32> {
-    %0 = "xten.mm"(%arg0, %arg1) : (!torch.vtensor<[32,32],f32>, !torch.vtensor<[32,32],f32>) -> !torch.vtensor<[?,?],f32>
-    return %0 : !torch.vtensor<[?,?],f32>
+  func @myFunc(%arg0: !torch.vtensor<[1,32],f32>, %arg1: !torch.vtensor<[32,64],f32>) -> !torch.vtensor<[1,64],f32> {
+    %0 = "xten.mm"(%arg0, %arg1) : (!torch.vtensor<[1,32],f32>, !torch.vtensor<[32,64],f32>) -> !torch.vtensor<[1,64],f32>
+    return %0 : !torch.vtensor<[1,64],f32>
   }
 }

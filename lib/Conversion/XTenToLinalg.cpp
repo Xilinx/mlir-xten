@@ -202,7 +202,8 @@ public:
     auto oper0Ty = operands[0].getType().cast<Torch::BaseTensorType>();
     auto oper1Ty = operands[1].getType().cast<Torch::BaseTensorType>();
     auto dtype = tTy.getDtype();
-    std::vector<int64_t> sizes{oper0Ty.getSizes()[1], oper1Ty.getSizes()[0]};
+    std::vector<int64_t> sizes{oper0Ty.getSizes()[0], oper1Ty.getSizes()[1]};
+
     auto memRefTy = mlir::MemRefType::get(sizes, dtype, {}, 0);
 
     auto A = MemRefTypeCast(rewriter, operands[0]);
