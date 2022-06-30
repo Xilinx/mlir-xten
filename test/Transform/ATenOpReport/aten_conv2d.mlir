@@ -19,7 +19,7 @@
 //   CHECK-NEXT:     "writes": 65536
 
 module attributes {torch.debug_module_name = "conv_2d_7x7"} {
-  func @forward(%arg0: !torch.vtensor<[1,2,128,128],f32>, %arg1: !torch.vtensor<[16,2,7,7],f32>, %arg2: !torch.vtensor<[16],f32>) -> !torch.vtensor<[1,16,64,64],f32> {
+  func.func @forward(%arg0: !torch.vtensor<[1,2,128,128],f32>, %arg1: !torch.vtensor<[16,2,7,7],f32>, %arg2: !torch.vtensor<[16],f32>) -> !torch.vtensor<[1,16,64,64],f32> {
     %int2 = torch.constant.int 2
     %int3 = torch.constant.int 3
     %int1 = torch.constant.int 1

@@ -34,7 +34,7 @@
 //   CHECK-NEXT:        "writes": 16
 
 module attributes {torch.debug_module_name = "addmm"} {
-  func @forward(%arg0: !torch.vtensor<[1,1024],f32>, %arg1: !torch.vtensor<[16,1024],f32>, %arg2: !torch.vtensor<[1,16],f32>, %arg3: !torch.vtensor<[1,16],f32>) -> !torch.vtensor<[1,16],f32> {
+  func.func @forward(%arg0: !torch.vtensor<[1,1024],f32>, %arg1: !torch.vtensor<[16,1024],f32>, %arg2: !torch.vtensor<[1,16],f32>, %arg3: !torch.vtensor<[1,16],f32>) -> !torch.vtensor<[1,16],f32> {
     %int2 = torch.constant.int 2
     %int0 = torch.constant.int 0
     %int1 = torch.constant.int 1
