@@ -20,6 +20,7 @@
 
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/IR/Operation.h"
 #include "mlir/Pass/Pass.h"
 
 #include "llvm/ADT/MapVector.h"
@@ -753,7 +754,7 @@ private:
     return propertiesArray;
   }
 
-  Value getInput(Operation *op) {
+  Value getInputFromErasedPtr(Operation *op) {
     Value opInput;
 
     if (auto op2 = dyn_cast<Torch::AtenConv2dOp>(op)) {
@@ -1156,14 +1157,14 @@ public:
     unsigned currentOp = 0;
     unsigned currPortId = 0;
     forward.walk([&](Operation *op) {
-      if (not opIsValid(op))
+      if (!opIsValid(op))
         return;
 
       auto attr_l = op->getAttrOfType<StringAttr>("layer_name");
       auto attr_n = op->getAttrOfType<StringAttr>("name");
       // assumes layer_name is given to all nodes, might support inferring
       // layers later
-      if (!attr_l and !attr_n)
+      if (!attr_l && !attr_n)
         return;
       auto attr = attr_l ? attr_l : attr_n;
 
@@ -1204,7 +1205,7 @@ public:
         bool isInput = true;
         bool isOutput = not isInput;
         if (currentOp == 0) {
-          Value cInput = getInput(op);
+          Value cInput = getInputFromErasedPtr(op);
           Torch::BaseTensorType inputTy =
               cInput.getType().cast<Torch::BaseTensorType>();
           o = inputTy.getSizes()[0];
@@ -1261,7 +1262,7 @@ public:
       if (connsInToOutMap.find(op) == connsInToOutMap.end()) {
         // For the first input Ops (aka source Ops) in the NN graph
         connsInToOutMap[op][op] = currPortId++;
-        inputOpToIFMValue[op] = getInput(op);
+        inputOpToIFMValue[op] = getInputFromErasedPtr(op);
       }
       if (connsOutToInMap.find(op) == connsOutToInMap.end())
         connsOutToInMap[op][op] = currPortId++;
