@@ -487,20 +487,26 @@ private:
     bool isLeakyReLU = !isa<Torch::AtenReluOp>(op);
     if (isLeakyReLU) {
       Value alpha = getAlpha(op);
-
-      auto torchTy = Torch::ValueTensorType::get(alpha.getType().getContext(),
-                                                 {1}, alpha.getType());
-      bytes += props.appendTypeInfo("Attributes.Alpha", torchTy);
-
       std::string alpha_str;
+      std::string alpha_type_str;
+      uint64_t alpha_bytes = 0;
+
       if (auto co = alpha.getDefiningOp<Torch::ConstantFloatOp>()) {
         alpha_str = std::to_string(co.value().convertToDouble());
+        alpha_bytes = sizeof(double);
+        alpha_type_str = "float" + std::to_string(alpha_bytes);
       } else {
         int64_t val = alpha.getDefiningOp<arith::ConstantIntOp>().value();
         alpha_str = std::to_string(val);
+        alpha_bytes = alpha.getType().dyn_cast<const IntegerType>().getWidth();
+        alpha_type_str = "int" + std::to_string(alpha_bytes);
       }
-
+      
+      props.append("Attributes.Alpha.Tensor", "1");
+      props.append("Attributes.Alpha.type", alpha_type_str);
+      props.append("Attributes.Alpha.Bytes", std::to_string(alpha_bytes));
       props.append("Attributes.Alpha", alpha_str);
+      bytes += alpha_bytes;
     }
 
     std::map<std::string, uint64_t> layerStatsMap = getLayerStatsMap(op);
