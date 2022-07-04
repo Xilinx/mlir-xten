@@ -9,7 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 // RUN: aten-opt %s -xten-to-linalg | FileCheck %s
-// CHECK: linalg.conv_2d_tensor_add {dilation = dense<1> : tensor<2xi64>, stride = dense<1> : tensor<2xi64>} ins({{.*}}, {{.*}}, {{.*}}, {{.*}} : tensor<1x2x130x130xf32>, tensor<1x16x128x128xf32>, tensor<16x2x3x3xf32>, tensor<16xf32>) outs({{.*}} : tensor<1x16x128x128xf32>) -> tensor<1x16x128x128xf32>
+// CHECK: linalg.conv_2d_tensor_add {dilations = dense<1> : tensor<2xi64>, strides = dense<1> : tensor<2xi64>} ins({{.*}}, {{.*}}, {{.*}}, {{.*}} : tensor<1x2x130x130xf32>, tensor<1x16x128x128xf32>, tensor<16x2x3x3xf32>, tensor<16xf32>) outs({{.*}} : tensor<1x16x128x128xf32>) -> tensor<1x16x128x128xf32>
 
 module attributes {torch.debug_module_name = "model"} {
   func @forward(%arg0: !torch.vtensor<[1,2,128,128],f32>) -> !torch.vtensor<[1,16,128,128],f32> {
