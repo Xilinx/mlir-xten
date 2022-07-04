@@ -156,6 +156,7 @@ public:
       propertyObject["unfused_operator_type"] = opTypeStr;
       propertyObject["unfused_operator_id"] = std::to_string(unfusedOpId);
     }
+    // TODO sort by name to make ordering independent of code.
     propertiesArray.push_back(llvm::json::Value(std::move(propertyObject)));
   }
 
@@ -406,27 +407,29 @@ private:
     Value weight = op.weight();
     Value bias = op.bias();
 
-    Torch::BaseTensorType weightTy =
-        weight.getType().cast<Torch::BaseTensorType>();
-    uint64_t kernel_h = weightTy.getSizes()[2];
-    uint64_t kernel_w = weightTy.getSizes()[3];
-
-    std::string kernel_shape =
-        std::to_string(kernel_h) + "," + std::to_string(kernel_w);
-
-    props.append("Attributes.kernel shape", kernel_shape);
-    props.appendIntList("Attributes.padding", op.padding());
-    props.appendIntList("Attributes.dilation", op.dilation());
-    props.appendIntList("Attributes.stride", op.stride());
-
-    std::map<std::string, uint64_t> layerStatsMap = getLayerStatsMap(op);
-    props.append("Computations.MAC", std::to_string(layerStatsMap["ops:MAC"]));
-
     // note that the shape originally was written out as ?o?c?h?w,
     // now it's ?x?x?x? like everywhere else.
     auto bytes = 0;
     bytes += props.appendTypeInfo("Attributes.Weights", weight.getType());
     bytes += props.appendTypeInfo("Attributes.Bias", bias.getType());
+
+
+    Torch::BaseTensorType weightTy =
+        weight.getType().cast<Torch::BaseTensorType>();
+
+    // h,w
+    std::string kernel_shape =
+        std::to_string( weightTy.getSizes()[2]) 
+        + "," + std::to_string( weightTy.getSizes()[3]);
+
+    props.append("Attributes.kernel shape", kernel_shape);
+    props.appendIntList("Attributes.padding", op.padding());
+    props.appendIntList("Attributes.stride", op.stride());
+    props.appendIntList("Attributes.dilation", op.dilation());
+
+    std::map<std::string, uint64_t> layerStatsMap = getLayerStatsMap(op);
+    props.append("Computations.MAC", std::to_string(layerStatsMap["ops:MAC"]));
+
     props.appendStorageAttr(op, bytes);
     return bytes;
   }
@@ -474,8 +477,6 @@ private:
     std::map<std::string, uint64_t> layerStatsMap = getLayerStatsMap(op);
     props.append("Computations.Vec MAX",
                  std::to_string(layerStatsMap["ops:>"]));
-    props.append("Computations.Vec MAX",
-                 std::to_string(layerStatsMap["ops:>"]));
 
     props.appendStorageAttr(op, bytes);
     return bytes;
@@ -501,7 +502,8 @@ private:
         alpha_bytes = alpha.getType().dyn_cast<const IntegerType>().getWidth();
         alpha_type_str = "int" + std::to_string(alpha_bytes);
       }
-      
+      alpha_bytes /= BYTE_SIZE_IN_BIT;
+
       props.append("Attributes.Alpha.Tensor", "1");
       props.append("Attributes.Alpha.type", alpha_type_str);
       props.append("Attributes.Alpha.Bytes", std::to_string(alpha_bytes));
