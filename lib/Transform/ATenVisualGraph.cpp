@@ -20,6 +20,7 @@
 
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/IR/Operation.h"
 #include "mlir/Pass/Pass.h"
 
 #include "llvm/ADT/MapVector.h"
@@ -42,6 +43,184 @@ using namespace xilinx;
 using namespace mlir::torch;
 
 namespace {
+
+template <class Op>
+Value getAlpha(Op &reluOp) {
+  return reluOp.alpha();
+}
+
+template <>
+Value getAlpha(Torch::AtenReluOp &reluOp) {
+  return reluOp.self();
+}
+
+// fetch input. Specialize if the method is named differently.
+template <class Op>
+Value getInput(Op op) {
+  return *op.getODSOperands(0).begin();
+}
+
+inline std::string vector_to_str(std::vector<int64_t> vec_input,
+                                 std::string separator = ",") {
+  std::string vec_str = "";
+  for (auto v : vec_input)
+    vec_str += std::to_string(v) + separator;
+
+  if (not vec_str.empty())
+    vec_str.pop_back();
+  return vec_str;
+}
+
+void unpack_int_list(const Value &op, std::vector<int64_t> &v) {
+  SmallVector<int64_t, 2> sv;
+  if (matchPattern(op, Torch::m_TorchConstantIntList(sv))) {
+    for (size_t i = 0; i < sv.size(); i++)
+      v.push_back(sv[i]);
+  } else if (auto co = op.getDefiningOp<arith::ConstantIntOp>()) {
+    v.push_back(co.value());
+  }
+}
+
+inline std::string typeStr(Torch::BaseTensorType attrType) {
+  /* aborts if type is not number type (Int or Float) */
+  if (attrType.hasDtype()) {
+    auto dtype = attrType.getOptionalDtype();
+    if (IntegerType type = dtype.dyn_cast<IntegerType>()) {
+      return "int" + std::to_string(type.getWidth());
+    } else if (FloatType type = dtype.dyn_cast<FloatType>()) {
+      return "float" + std::to_string(type.getWidth());
+    }
+  }
+  return "";
+}
+
+#define BYTE_SIZE_IN_BIT 8
+inline uint64_t total_bytes(Torch::BaseTensorType attrType,
+                            uint64_t total_inputs) {
+  /* aborts if type is not number type (Int or Float) */
+  uint64_t bit_width = 0;
+  if (attrType.hasDtype()) {
+    auto dtype = attrType.getOptionalDtype();
+    if (IntegerType type = dtype.dyn_cast<IntegerType>()) {
+      bit_width = type.getWidth();
+    } else if (FloatType type = dtype.dyn_cast<FloatType>()) {
+      bit_width = type.getWidth();
+    }
+  }
+  return (bit_width / BYTE_SIZE_IN_BIT) * total_inputs;
+}
+
+uint64_t numBytes(const mlir::Type &ty) {
+  Torch::BaseTensorType torchTy = ty.cast<Torch::BaseTensorType>();
+  uint64_t volume = xilinx::xten::getTensorVolume(torchTy);
+  return total_bytes(torchTy, volume);
+}
+
+uint64_t storageOfInputAndOutput(Value input, Value output) {
+  return numBytes(input.getType()) + numBytes(output.getType());
+}
+
+std::string sizesToString(Torch::BaseTensorType &torchTy) {
+  std::string shape = "";
+  for (auto &d : torchTy.getSizes()) {
+    shape += std::to_string(d) + "x";
+  }
+  shape.pop_back();
+  return shape;
+}
+
+/// Properties for a particular op
+class JsonPropertiesBuilder {
+private:
+  llvm::json::Array &propertiesArray;
+  int numSubOps = 0;
+  int unfusedOpId;
+  /// type of the unfused op. May be null.
+  const char *opTypeStr;
+
+public:
+  JsonPropertiesBuilder(llvm::json::Array &propertiesArray)
+      : propertiesArray(propertiesArray), unfusedOpId(-1), opTypeStr(nullptr) {}
+
+  JsonPropertiesBuilder(llvm::json::Array &propertiesArray,
+                        const char *opTypeStr, int unfusedOpId)
+      : propertiesArray(propertiesArray), unfusedOpId(unfusedOpId),
+        opTypeStr(opTypeStr) {}
+
+  // append a single property
+  void append(std::string name, std::string value) {
+    llvm::json::Object propertyObject;
+    propertyObject["name"] = name;
+    propertyObject["value"] = value;
+    if (isFused()) {
+      propertyObject["unfused_operator_type"] = opTypeStr;
+      propertyObject["unfused_operator_id"] = std::to_string(unfusedOpId);
+    }
+    // TODO sort by name to make ordering independent of code.
+    propertiesArray.push_back(llvm::json::Value(std::move(propertyObject)));
+  }
+
+  int64_t appendTypeInfo(const std::string &prefix, const mlir::Type &ty) {
+
+    if (ty.isa<Torch::NoneType>()) {
+      append(prefix + ".Tensor", "");
+      append(prefix + ".type", "None");
+      append(prefix + ".Bytes", "0");
+      return 0;
+    }
+
+    Torch::BaseTensorType torchTy = ty.cast<Torch::BaseTensorType>();
+
+    uint64_t volume = xilinx::xten::getTensorVolume(torchTy);
+    uint64_t bytes = total_bytes(torchTy, volume);
+
+    append(prefix + ".Tensor", sizesToString(torchTy));
+    append(prefix + ".type", typeStr(torchTy));
+    append(prefix + ".Bytes", std::to_string(bytes));
+    return bytes;
+  }
+
+  void appendFloatValue(std::string name, const mlir::Value &value) {
+    auto valueOp = value.getDefiningOp<Torch::ConstantFloatOp>();
+    auto valueStr = std::to_string(valueOp.value().convertToDouble());
+    append(name, valueStr);
+  }
+
+  void appendIntValue(std::string name, const mlir::Value &value) {
+    auto valueOp = value.getDefiningOp<arith::ConstantIntOp>();
+    auto valueStr = std::to_string(valueOp.value());
+    append(name, valueStr);
+  }
+
+  void appendIntList(std::string name, const mlir::Value &value) {
+    std::vector<int64_t> vec;
+    unpack_int_list(value, vec);
+    append(name, vector_to_str(vec));
+  }
+
+  void appendBytesAttr(int64_t bytes) {
+    append("Storage.Bytes", std::to_string(bytes));
+  }
+
+  JsonPropertiesBuilder nextFusedOp(const char *typeStr) {
+    return JsonPropertiesBuilder(propertiesArray, typeStr, numSubOps++);
+  }
+
+  bool isFused() {
+    return unfusedOpId >= 0;
+  }
+
+  template <class Op>
+  void appendStorageAttr(Op &op, uint64_t bytes) {
+    if (!isFused()) {
+      Value input = getInput(op);
+      Value output = ((Operation *)op)->getResult(0);
+      uint64_t storageIoBytes = storageOfInputAndOutput(input, output);
+      appendBytesAttr(bytes + storageIoBytes);
+    }
+  }
+};
+
 struct ATenVisualGraphPass : public ATenVisualGraphBase<ATenVisualGraphPass> {
 
 private:
@@ -77,24 +256,6 @@ private:
 
   std::unordered_map<Operation *, Value> inputOpToIFMValue;
 
-  ///// ------------- NOTE: For TinyYolo DEMO only
-  ///--------------------------------------------------------
-  ///// Since Torch-Mlir doesn't propagate tensor output sizes by default, the
-  /// ATEN visualizer needs
-  ///// include a way to do shape propagation for now.
-  ///// Code Sections marked with a DEMO label implement the shape propagation
-  /// logic, which is relevant
-  ///// to the TinyYolo DEMO only.
-  bool propagate_tensor_sizes;
-
-  std::unordered_map<
-      Operation *,
-      std::unordered_map<
-          bool, std::unordered_map<std::string, std::vector<uint64_t>>>>
-      propagatedTensorSizesMap;
-
-  std::unordered_map<Operation *, std::string> propagatedTensorTypeMap;
-  ///////////////////////
 
   unsigned currentDesign = 1;
 
@@ -158,30 +319,6 @@ private:
     fusedToUnfuseOutputMap.clear();
     inputOpToIFMValue.clear();
 
-    // For DEMO
-    propagatedTensorSizesMap.clear();
-    propagatedTensorTypeMap.clear();
-  }
-
-  inline std::string vector_to_str(std::vector<int64_t> vec_input,
-                                   std::string separator = ",") {
-    std::string vec_str = "";
-    for (auto v : vec_input)
-      vec_str += std::to_string(v) + separator;
-
-    if (not vec_str.empty())
-      vec_str.pop_back();
-    return vec_str;
-  }
-
-  void unpack_int_list(const Value &op, std::vector<int64_t> &v) {
-    SmallVector<int64_t, 2> sv;
-    if (matchPattern(op, Torch::m_TorchConstantIntList(sv))) {
-      for (size_t i = 0; i < sv.size(); i++)
-        v.push_back(sv[i]);
-    } else if (auto co = op.getDefiningOp<arith::ConstantIntOp>()) {
-      v.push_back(co.value());
-    }
   }
 
   std::map<std::string, uint64_t> getLayerStatsMap(Operation *op) {
@@ -220,218 +357,60 @@ private:
     return propertiesInfo.find(getOperationNameStr(op)) != propertiesInfo.end();
   }
 
-  inline std::string typeStr(Torch::BaseTensorType attrType) {
-    /* aborts if type is not number type (Int or Float) */
-    if (attrType.hasDtype()) {
-      auto dtype = attrType.getOptionalDtype();
-      if (IntegerType type = dtype.dyn_cast<IntegerType>()) {
-        return "int" + std::to_string(type.getWidth());
-      } else if (FloatType type = dtype.dyn_cast<FloatType>()) {
-        return "float" + std::to_string(type.getWidth());
-      }
-    }
-    return "";
-  }
-
-#define BYTE_SIZE_IN_BIT 8
-  inline uint64_t total_bytes(Torch::BaseTensorType attrType,
-                              uint64_t total_inputs) {
-    /* aborts if type is not number type (Int or Float) */
-    uint64_t bit_width = 0;
-    if (attrType.hasDtype()) {
-      auto dtype = attrType.getOptionalDtype();
-      if (IntegerType type = dtype.dyn_cast<IntegerType>()) {
-        bit_width = type.getWidth();
-      } else if (FloatType type = dtype.dyn_cast<FloatType>()) {
-        bit_width = type.getWidth();
-      }
-    }
-    return (bit_width / BYTE_SIZE_IN_BIT) * total_inputs;
-  }
-
-  uint64_t storage_bytes_of_input_and_output(Value input, Value output) {
-    uint64_t storage_n = 0;
-
-    Torch::BaseTensorType inputTy =
-        input.getType().cast<Torch::BaseTensorType>();
-    Torch::BaseTensorType outputTy =
-        output.getType().cast<Torch::BaseTensorType>();
-
-    uint64_t i_num_inputs = xilinx::xten::getTensorVolume(inputTy);
-    uint64_t o_num_inputs = xilinx::xten::getTensorVolume(outputTy);
-
-    uint64_t input_bytes = total_bytes(inputTy, i_num_inputs);
-    uint64_t output_bytes = total_bytes(outputTy, o_num_inputs);
-
-    storage_n = input_bytes + output_bytes;
-    return storage_n;
-  }
-
-  void fillPropertiesObject(std::vector<std::string> properties_vec,
-                            llvm::json::Array &propertiesArray,
-                            bool is_fused = false, std::string opTypeStr = "",
-                            unsigned unfused_op_id = 0) {
-    llvm::json::Object propertyObject;
-    propertyObject["name"] = properties_vec[0];
-    propertyObject["value"] = properties_vec[1];
-    if (is_fused) {
-      propertyObject["unfused_operator_type"] = opTypeStr;
-      propertyObject["unfused_operator_id"] = std::to_string(unfused_op_id);
-    }
-    propertiesArray.push_back(llvm::json::Value(std::move(propertyObject)));
+  template <class T>
+  void fillPropertiesUnaryALUOp(T &op, JsonPropertiesBuilder &&props) {
+    props.appendStorageAttr(op, 0);
   }
 
   template <class T>
-  void fillPropertiesUnaryALUOp(T &aluOp, llvm::json::Array &propertiesArray) {
-    Value input = aluOp.self();
-    Value output = aluOp.getResult();
+  void fillPropertiesBinaryALUOp(T &op, JsonPropertiesBuilder &&props) {
+    Value other = op.other();
 
-    uint64_t storage_i_o_bytes =
-        storage_bytes_of_input_and_output(input, output);
-    std::string storage_str = std::to_string(storage_i_o_bytes);
+    auto volume_bytes =
+        props.appendTypeInfo("Attributes.Other", other.getType());
 
-    fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
+    props.appendStorageAttr(op, volume_bytes);
+  }
+
+  void fillPropertiesCatOp(Torch::AtenCatOp &op,
+                           JsonPropertiesBuilder &&props) {
+    props.appendStorageAttr(op, 0);
+
+    //    std::string storage_str = ""; // what?
+    //  fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
   }
 
   template <class T>
-  void fillPropertiesBinaryALUOp(T &aluOp, llvm::json::Array &propertiesArray) {
-    Value input = aluOp.self();
-    Value other = aluOp.other();
-    Value output = aluOp.getResult();
+  uint64_t fillPropertiesConvOp(T &op, JsonPropertiesBuilder &&props) {
 
-    Torch::BaseTensorType otherTy =
-        other.getType().cast<Torch::BaseTensorType>();
-    std::string other_t_shape = "";
-    for (auto &d : otherTy.getSizes())
-      other_t_shape += std::to_string(d) + "x";
-    other_t_shape.pop_back();
+    Value weight = op.weight();
+    Value bias = op.bias();
 
-    uint64_t other_bytes = xilinx::xten::getTensorVolume(otherTy);
-    uint64_t storage_i_o_bytes =
-        storage_bytes_of_input_and_output(input, output);
+    // note that the shape originally was written out as ?o?c?h?w,
+    // now it's ?x?x?x? like everywhere else.
+    auto bytes = 0;
+    bytes += props.appendTypeInfo("Attributes.Weights", weight.getType());
+    bytes += props.appendTypeInfo("Attributes.Bias", bias.getType());
 
-    std::string other_bytes_str = std::to_string(other_bytes);
-    std::string storage_str = std::to_string(storage_i_o_bytes + other_bytes);
 
-    fillPropertiesObject({"Attributes.Other.Tensor", other_t_shape},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Other.type", typeStr(otherTy)},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Other.Bytes", other_bytes_str},
-                         propertiesArray);
-
-    fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
-  }
-
-  void fillPropertiesCatOp(Torch::AtenCatOp &catOp,
-                           llvm::json::Array &propertiesArray) {
-    std::string storage_str = "";
-
-    fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
-  }
-
-  template <class T>
-  void fillPropertiesConvOp(T &convolutionOp,
-                            llvm::json::Array &propertiesArray,
-                            bool separately_return_storage = false,
-                            uint64_t *storage_n = nullptr,
-                            unsigned unfused_op_id = 0) {
-
-    std::vector<int64_t> padding;
-    std::vector<int64_t> stride;
-    std::vector<int64_t> dilation;
-    unpack_int_list(convolutionOp.padding(), padding);
-    unpack_int_list(convolutionOp.stride(), stride);
-    unpack_int_list(convolutionOp.dilation(), dilation);
-
-    Value weight = convolutionOp.weight();
     Torch::BaseTensorType weightTy =
         weight.getType().cast<Torch::BaseTensorType>();
-    Value bias = convolutionOp.bias();
-    Torch::BaseTensorType biasTy;
-    bool biasIsNone = bias.getType().isa<Torch::NoneType>();
-    if (not biasIsNone)
-      biasTy = bias.getType().cast<Torch::BaseTensorType>();
 
-    uint64_t weight_o = weightTy.getSizes()[0];
-    uint64_t weight_c = weightTy.getSizes()[1];
-    uint64_t kernel_h = weightTy.getSizes()[2];
-    uint64_t kernel_w = weightTy.getSizes()[3];
-
-    uint64_t total_inputs = kernel_h * kernel_w * weight_o * weight_c;
-    uint64_t bias_num_inputs =
-        biasIsNone ? 0 : xilinx::xten::getTensorVolume(biasTy);
-
-    uint64_t weight_bytes = total_bytes(weightTy, total_inputs);
-    uint64_t bias_bytes = biasIsNone ? 0 : total_bytes(biasTy, bias_num_inputs);
-
+    // h,w
     std::string kernel_shape =
-        std::to_string(kernel_h) + "," + std::to_string(kernel_w);
-    std::string weight_t_shape =
-        std::to_string(weight_o) + "o" + std::to_string(weight_c) + "c" +
-        std::to_string(kernel_h) + "h" + std::to_string(kernel_w) + "w";
-    std::string shape_bytes_str = std::to_string(weight_bytes);
-    std::string bias_t_shape = std::to_string(bias_num_inputs);
-    std::string bias_bytes_str = std::to_string(bias_bytes);
-    std::string bias_type_str = biasIsNone ? "None" : typeStr(biasTy);
+        std::to_string( weightTy.getSizes()[2]) 
+        + "," + std::to_string( weightTy.getSizes()[3]);
 
-    fillPropertiesObject({"Attributes.Weights.Tensor", weight_t_shape},
-                         propertiesArray, separately_return_storage,
-                         "aten.conv2d", unfused_op_id);
-    fillPropertiesObject({"Attributes.Weights.type", typeStr(weightTy)},
-                         propertiesArray, separately_return_storage,
-                         "aten.conv2d", unfused_op_id);
-    fillPropertiesObject({"Attributes.Weights.Bytes", shape_bytes_str},
-                         propertiesArray, separately_return_storage,
-                         "aten.conv2d", unfused_op_id);
-    fillPropertiesObject({"Attributes.Bias.Tensor", bias_t_shape},
-                         propertiesArray, separately_return_storage,
-                         "aten.conv2d", unfused_op_id);
-    fillPropertiesObject({"Attributes.Bias.type", bias_type_str},
-                         propertiesArray, separately_return_storage,
-                         "aten.conv2d", unfused_op_id);
-    fillPropertiesObject({"Attributes.Bias.Bytes", bias_bytes_str},
-                         propertiesArray, separately_return_storage,
-                         "aten.conv2d", unfused_op_id);
+    props.append("Attributes.kernel shape", kernel_shape);
+    props.appendIntList("Attributes.padding", op.padding());
+    props.appendIntList("Attributes.stride", op.stride());
+    props.appendIntList("Attributes.dilation", op.dilation());
 
-    std::string padding_str = vector_to_str(padding);
-    std::string stride_str = vector_to_str(stride);
-    std::string dilation_str = vector_to_str(dilation);
+    std::map<std::string, uint64_t> layerStatsMap = getLayerStatsMap(op);
+    props.append("Computations.MAC", std::to_string(layerStatsMap["ops:MAC"]));
 
-    fillPropertiesObject({"Attributes.kernel shape", kernel_shape},
-                         propertiesArray, separately_return_storage,
-                         "aten.conv2d", unfused_op_id);
-    fillPropertiesObject({"Attributes.padding", padding_str}, propertiesArray,
-                         separately_return_storage, "aten.conv2d",
-                         unfused_op_id);
-    fillPropertiesObject({"Attributes.stride", stride_str}, propertiesArray,
-                         separately_return_storage, "aten.conv2d",
-                         unfused_op_id);
-    fillPropertiesObject({"Attributes.dilation", dilation_str}, propertiesArray,
-                         separately_return_storage, "aten.conv2d",
-                         unfused_op_id);
-
-    std::map<std::string, uint64_t> layerStatsMap;
-    layerStatsMap = getLayerStatsMap(convolutionOp);
-
-    std::string comp_mac_str = std::to_string(layerStatsMap["ops:MAC"]);
-    fillPropertiesObject({"Computations.MAC", comp_mac_str}, propertiesArray,
-                         separately_return_storage, "aten.conv2d",
-                         unfused_op_id);
-
-    if (separately_return_storage) {
-      if (storage_n)
-        *storage_n = weight_bytes + bias_bytes;
-    } else {
-      Value input = convolutionOp.input();
-      Value output = ((Operation *)convolutionOp)->getResult(0);
-      uint64_t storage_i_o_bytes =
-          storage_bytes_of_input_and_output(input, output);
-
-      std::string storage_str =
-          std::to_string(storage_i_o_bytes + bias_bytes + weight_bytes);
-      fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
-    }
+    props.appendStorageAttr(op, bytes);
+    return bytes;
   }
 
   template <class MaxpoolOp>
@@ -465,221 +444,67 @@ private:
   }
 
   template <class T>
-  void fillPropertiesMaxPool2dOp(T &maxPool2dOp,
-                                 llvm::json::Array &propertiesArray,
-                                 bool separately_return_storage = false,
-                                 uint64_t *storage_n = nullptr,
-                                 unsigned unfused_op_id = 0) {
-    Value input;
-    Value output;
-    Value kernel_shape_v;
-    Value padding_v;
-    Value stride_v;
+  uint64_t fillPropertiesMaxPool2dOp(T &op, JsonPropertiesBuilder &&props) {
 
-    auto mOp = maxPool2dOp;
-    input = getInput(mOp);
-    kernel_shape_v = getKernelSize(mOp);
-    stride_v = getStride(mOp);
-    padding_v = getPadding(mOp);
+    uint64_t bytes =
+        0; // FIXME is always zero, was already the case before refactoring
 
-    output = ((Operation *)maxPool2dOp)->getResult(0);
+    props.appendIntList("Attributes.kernel shape", getKernelSize(op));
+    props.appendIntList("Attributes.padding", getPadding(op));
+    props.appendIntList("Attributes.stride", getStride(op));
 
-    uint64_t maxpool_storage_bytes = 0;
-    std::vector<int64_t> kernel_shape;
-    std::vector<int64_t> padding;
-    std::vector<int64_t> stride;
+    std::map<std::string, uint64_t> layerStatsMap = getLayerStatsMap(op);
+    props.append("Computations.Vec MAX",
+                 std::to_string(layerStatsMap["ops:>"]));
 
-    unpack_int_list(kernel_shape_v, kernel_shape);
-    unpack_int_list(padding_v, padding);
-    unpack_int_list(stride_v, stride);
-
-    ////////////////For DEMO
-    if (padding[0] != padding[1] and padding[0] == 0) {
-      padding.push_back(0);
-      padding.push_back(1);
-    }
-    ///////////////////////
-
-    std::string kernel_str = vector_to_str(kernel_shape);
-    std::string padding_str = vector_to_str(padding);
-    std::string stride_str = vector_to_str(stride);
-
-    fillPropertiesObject({"Attributes.kernel shape", kernel_str},
-                         propertiesArray, separately_return_storage,
-                         "aten.max_pool2d");
-    fillPropertiesObject({"Attributes.padding", padding_str}, propertiesArray,
-                         separately_return_storage, "aten.max_pool2d");
-    fillPropertiesObject({"Attributes.stride", stride_str}, propertiesArray,
-                         separately_return_storage, "aten.max_pool2d");
-
-    std::map<std::string, uint64_t> layerStatsMap;
-    layerStatsMap = getLayerStatsMap(maxPool2dOp);
-
-    fillPropertiesObject(
-        {"Computations.Vec MAX", std::to_string(layerStatsMap["ops:>"])},
-        propertiesArray, separately_return_storage, "max_pool2d");
-
-    if (separately_return_storage) {
-      if (storage_n)
-        *storage_n = maxpool_storage_bytes;
-    } else {
-      Value input = getInput(maxPool2dOp);
-      Value output = ((Operation *)maxPool2dOp)->getResult(0);
-      uint64_t storage_i_o_bytes =
-          storage_bytes_of_input_and_output(input, output);
-
-      std::string storage_str =
-          std::to_string(maxpool_storage_bytes + storage_i_o_bytes);
-      fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
-    }
-  }
-
-  template <class Op>
-  Value getAlpha(Op &reluOp) {
-    return reluOp.alpha();
-  }
-
-  template <>
-  Value getAlpha(Torch::AtenReluOp &reluOp) {
-    return reluOp.self();
-  }
-
-  // fetch input. Specialize if the method is named differently.
-  template <class Op>
-  Value getInput(Op op) {
-    return op.input();
-  }
-
-  template <>
-  Value getInput(Torch::AtenMaxPool2dOp cOp) {
-    return cOp.self();
-  }
-
-  template <>
-  Value getInput(Torch::AtenReluOp cOp) {
-    return cOp.self();
-  }
-
-  template <>
-  Value getInput(Torch::AtenAddTensorOp cOp) {
-    return cOp.self();
+    props.appendStorageAttr(op, bytes);
+    return bytes;
   }
 
   template <class T>
-  void fillPropertiesReLUOp(T &reluOp, llvm::json::Array &propertiesArray,
-                            bool separately_return_storage = false,
-                            uint64_t *storage_n = nullptr,
-                            unsigned unfused_op_id = 0) {
-    uint64_t relu_storage_bytes = 0;
-    bool isLeakyReLU = not isa<Torch::AtenReluOp>(reluOp);
+  uint64_t fillPropertiesReLUOp(T &op, JsonPropertiesBuilder &&props) {
+    uint64_t bytes = 0;
+    bool isLeakyReLU = !isa<Torch::AtenReluOp>(op);
     if (isLeakyReLU) {
+      Value alpha = getAlpha(op);
       std::string alpha_str;
       std::string alpha_type_str;
-
-      Value alpha = getAlpha(reluOp);
       uint64_t alpha_bytes = 0;
 
       if (auto co = alpha.getDefiningOp<Torch::ConstantFloatOp>()) {
+        alpha_str = std::to_string(co.value().convertToDouble());
         alpha_bytes = sizeof(double);
-        auto alpha_n = co.value().convertToDouble();
-
-        alpha_str = std::to_string(alpha_n);
         alpha_type_str = "float" + std::to_string(alpha_bytes);
       } else {
-        std::vector<int64_t> alpha_vec;
-        unpack_int_list(alpha, alpha_vec);
+        int64_t val = alpha.getDefiningOp<arith::ConstantIntOp>().value();
+        alpha_str = std::to_string(val);
         alpha_bytes = alpha.getType().dyn_cast<const IntegerType>().getWidth();
-
-        alpha_str = alpha_vec.size() != 0 ? std::to_string(alpha_vec[0]) : "";
         alpha_type_str = "int" + std::to_string(alpha_bytes);
       }
-
       alpha_bytes /= BYTE_SIZE_IN_BIT;
 
-      std::string alpha_t_shape = std::to_string(1);
-      std::string alpha_bytes_str = std::to_string(alpha_bytes);
-
-      fillPropertiesObject({"Attributes.Alpha.Tensor", alpha_t_shape},
-                           propertiesArray, separately_return_storage,
-                           "aten.lrelu", unfused_op_id);
-      fillPropertiesObject({"Attributes.Alpha.type", alpha_type_str},
-                           propertiesArray, separately_return_storage,
-                           "aten.lrelu", unfused_op_id);
-      fillPropertiesObject({"Attributes.Alpha.Bytes", alpha_bytes_str},
-                           propertiesArray, separately_return_storage,
-                           "aten.lrelu", unfused_op_id);
-      fillPropertiesObject({"Attributes.Alpha", alpha_str}, propertiesArray,
-                           separately_return_storage, "aten.lrelu",
-                           unfused_op_id);
-
-      relu_storage_bytes += alpha_bytes;
+      props.append("Attributes.Alpha.Tensor", "1");
+      props.append("Attributes.Alpha.type", alpha_type_str);
+      props.append("Attributes.Alpha.Bytes", std::to_string(alpha_bytes));
+      props.append("Attributes.Alpha", alpha_str);
+      bytes += alpha_bytes;
     }
 
-    std::map<std::string, uint64_t> layerStatsMap;
-    layerStatsMap = getLayerStatsMap(reluOp);
+    std::map<std::string, uint64_t> layerStatsMap = getLayerStatsMap(op);
+    props.append("Computations.Comparison",
+                 std::to_string(layerStatsMap["ops:>"]));
 
-    std::string comp_mac_str = std::to_string(layerStatsMap["ops:>"]);
-    fillPropertiesObject({"Computations.Comparison", comp_mac_str},
-                         propertiesArray, separately_return_storage,
-                         isLeakyReLU ? "aten.lrelu" : "aten.relu",
-                         unfused_op_id);
-
-    if (separately_return_storage) {
-      if (storage_n)
-        *storage_n = relu_storage_bytes;
-    } else {
-      Value input = getInput(reluOp);
-      Value output = ((Operation *)reluOp)->getResult(0);
-      uint64_t storage_i_o_bytes =
-          storage_bytes_of_input_and_output(input, output);
-
-      std::string storage_str =
-          std::to_string(relu_storage_bytes + storage_i_o_bytes);
-      fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
-    }
+    props.appendStorageAttr(op, bytes);
+    return bytes;
   }
 
-  void fillPropertiesLinearOp(Torch::AtenLinearOp &linearOp,
-                              llvm::json::Array &propertiesArray) {
-    Value weight = linearOp.weight();
-    Value bias = linearOp.bias();
-
-    Torch::BaseTensorType weightTy =
-        weight.getType().cast<Torch::BaseTensorType>();
-    Torch::BaseTensorType biasTy = bias.getType().cast<Torch::BaseTensorType>();
-
-    uint64_t weight_num_inputs = xilinx::xten::getTensorVolume(weightTy);
-    uint64_t bias_num_inputs = xilinx::xten::getTensorVolume(biasTy);
-
-    uint64_t weight_bytes = total_bytes(weightTy, weight_num_inputs);
-    uint64_t bias_bytes = total_bytes(biasTy, bias_num_inputs);
-
-    std::string weight_t_shape = std::to_string(weight_num_inputs);
-    std::string weight_bytes_str = std::to_string(weight_bytes);
-    std::string bias_t_shape = std::to_string(bias_num_inputs);
-    std::string bias_bytes_str = std::to_string(bias_bytes);
-
-    fillPropertiesObject({"Attributes.Weights.Tensor", weight_t_shape},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Weights.type", typeStr(weightTy)},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Weights.Bytes", weight_bytes_str},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Bias.Tensor", bias_t_shape},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Bias.type", typeStr(biasTy)},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Bias.Bytes", bias_bytes_str},
-                         propertiesArray);
-
-    Value input = linearOp.input();
-    Value output = linearOp.getResult();
-
-    uint64_t storage_i_o_bytes =
-        storage_bytes_of_input_and_output(input, output);
-    std::string storage_str = std::to_string(storage_i_o_bytes);
-
-    fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
+  void fillPropertiesLinearOp(Torch::AtenLinearOp &op,
+                              JsonPropertiesBuilder &&props) {
+    auto bytes = 0;
+    bytes +=
+        props.appendTypeInfo("Attributes.Weights", op.weight().getType());
+    bytes += props.appendTypeInfo("Attributes.Bias", op.bias().getType());
+    props.appendStorageAttr(op, bytes);
   }
 
   inline Value getBnWeight(Torch::AtenBatchNormOp bnOp) {
@@ -699,275 +524,72 @@ private:
   }
 
   template <class T>
-  void fillPropertiesBatchNormOp(T &batchNormOp,
-                                 llvm::json::Array &propertiesArray,
-                                 bool separately_return_storage = false,
-                                 uint64_t *storage_n = nullptr,
-                                 unsigned unfused_op_id = 0) {
-    Value weight = getBnWeight(batchNormOp);
-    Value bias = getBnBias(batchNormOp);
+  uint64_t fillPropertiesBatchNormOp(T &op, JsonPropertiesBuilder &&props) {
+    uint64_t bytes = 0;
+    bytes +=
+        props.appendTypeInfo("Attributes.Weights", getBnWeight(op).getType());
+    bytes += props.appendTypeInfo("Attributes.Bias", getBnBias(op).getType());
+    bytes +=
+        props.appendTypeInfo("Attributes.Weights", op.running_mean().getType());
+    bytes +=
+        props.appendTypeInfo("Attributes.Variance", op.running_var().getType());
+    props.appendStorageAttr(op, bytes);
 
-    Torch::BaseTensorType weightTy =
-        weight.getType().cast<Torch::BaseTensorType>();
-    Torch::BaseTensorType biasTy = bias.getType().cast<Torch::BaseTensorType>();
-
-    Value r_mean = batchNormOp.running_mean();
-    Torch::BaseTensorType meanTy =
-        r_mean.getType().cast<Torch::BaseTensorType>();
-    Value r_var = batchNormOp.running_var();
-    Torch::BaseTensorType varTy = r_var.getType().cast<Torch::BaseTensorType>();
-
-    uint64_t weight_num_inputs = xilinx::xten::getTensorVolume(weightTy);
-    uint64_t bias_num_inputs = xilinx::xten::getTensorVolume(biasTy);
-    uint64_t mean_num_inputs = xilinx::xten::getTensorVolume(meanTy);
-    uint64_t var_num_inputs = xilinx::xten::getTensorVolume(varTy);
-
-    uint64_t weight_bytes = total_bytes(weightTy, weight_num_inputs);
-    uint64_t bias_bytes = total_bytes(biasTy, bias_num_inputs);
-    uint64_t mean_bytes = total_bytes(meanTy, mean_num_inputs);
-    uint64_t var_bytes = total_bytes(varTy, var_num_inputs);
-
-    std::string weight_t_shape = std::to_string(weight_num_inputs);
-    std::string weight_bytes_str = std::to_string(weight_bytes);
-    std::string bias_t_shape = std::to_string(bias_num_inputs);
-    std::string bias_bytes_str = std::to_string(bias_bytes);
-    std::string mean_t_shape = std::to_string(mean_num_inputs);
-    std::string mean_bytes_str = std::to_string(mean_bytes);
-    std::string var_t_shape = std::to_string(var_num_inputs);
-    std::string var_bytes_str = std::to_string(var_bytes);
-
-    fillPropertiesObject({"Attributes.Weights.Tensor", weight_t_shape},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Weights.type", typeStr(weightTy)},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Weights.Bytes", weight_bytes_str},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Bias.Tensor", bias_t_shape},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Bias.type", typeStr(biasTy)},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Bias.Bytes", bias_bytes_str},
-                         propertiesArray);
-
-    fillPropertiesObject({"Attributes.Mean.Tensor", mean_t_shape},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Mean.type", typeStr(meanTy)},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Mean.Bytes", mean_bytes_str},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Variance.Tensor", var_t_shape},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Variance.type", typeStr(varTy)},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Variance.Bytes", var_bytes_str},
-                         propertiesArray);
-
-    std::string momentum_str;
-    std::string eps_str;
-
-    Value momentum = batchNormOp.momentum();
-    Value eps = batchNormOp.eps();
-
-    auto momentumOp = momentum.getDefiningOp<Torch::ConstantFloatOp>();
-    auto momentum_n = momentumOp.value().convertToDouble();
-    momentum_str = std::to_string(momentum_n);
-
-    auto epsOp = eps.getDefiningOp<Torch::ConstantFloatOp>();
-    auto eps_n = epsOp.value().convertToDouble();
-    eps_str = std::to_string(eps_n);
-
-    fillPropertiesObject({"Attributes.eps", eps_str}, propertiesArray);
-    fillPropertiesObject({"Attributes.momentum", momentum_str},
-                         propertiesArray);
-
-    if (separately_return_storage) {
-      if (storage_n)
-        *storage_n = mean_bytes + var_bytes + weight_bytes + bias_bytes;
-    } else {
-      Value input = batchNormOp.input();
-      Value output = ((Operation *)batchNormOp)->getResult(0);
-      uint64_t storage_i_o_bytes =
-          storage_bytes_of_input_and_output(input, output);
-      std::string storage_str =
-          std::to_string(var_bytes + mean_bytes + storage_i_o_bytes +
-                         weight_bytes + bias_bytes);
-      fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
-    }
+    props.appendFloatValue("Attributes.eps", op.eps());
+    props.appendFloatValue("Attributes.momentum", op.momentum());
+    return bytes;
   }
 
   template <class T>
-  void fillPropertiesSoftmaxOp(T &softmaxOp,
-                               llvm::json::Array &propertiesArray) {
-    Value dim = softmaxOp.dim();
-    uint64_t dim_v = dim.getDefiningOp<arith::ConstantIntOp>().value();
-    std::string dim_str = std::to_string(dim_v);
-
-    Value input = softmaxOp.self();
-    Value output = softmaxOp.getResult();
-
-    uint64_t storage_i_o_bytes =
-        storage_bytes_of_input_and_output(input, output);
-    std::string storage_str = std::to_string(storage_i_o_bytes);
-
-    fillPropertiesObject({"Attributes.dim", dim_str}, propertiesArray);
-    fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
+  void fillPropertiesSoftmaxOp(T &op, JsonPropertiesBuilder &&props) {
+    props.appendIntValue("Attributes.dim", op.dim());
+    props.appendStorageAttr(op, 0);
   }
 
-  void fillPropertiesGatherOp(Torch::AtenGatherOp &gatherOp,
-                              llvm::json::Array &propertiesArray) {
-    Value dim = gatherOp.dim();
-    uint64_t dim_v = dim.getDefiningOp<arith::ConstantIntOp>().value();
-    std::string dim_str = std::to_string(dim_v);
-
-    Value index = gatherOp.index();
-    Torch::BaseTensorType indexTy =
-        index.getType().cast<Torch::BaseTensorType>();
-
-    uint64_t index_num_inputs = xilinx::xten::getTensorVolume(indexTy);
-    uint64_t index_bytes = total_bytes(indexTy, index_num_inputs);
-
-    std::string index_t_shape = std::to_string(index_num_inputs);
-    std::string index_bytes_str = std::to_string(index_bytes);
-
-    Value input = gatherOp.self();
-    Value output = gatherOp.getResult();
-
-    uint64_t storage_i_o_bytes =
-        storage_bytes_of_input_and_output(input, output);
-    std::string storage_str = std::to_string(storage_i_o_bytes);
-
-    fillPropertiesObject({"Attributes.dim", dim_str}, propertiesArray);
-
-    fillPropertiesObject({"Attributes.Index.Tensor", index_t_shape},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Index.type", typeStr(indexTy)},
-                         propertiesArray);
-    fillPropertiesObject({"Attributes.Index.Bytes", index_bytes_str},
-                         propertiesArray);
-
-    fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
+  void fillPropertiesGatherOp(Torch::AtenGatherOp &op,
+                              JsonPropertiesBuilder &&props) {
+    props.appendIntValue("Attributes.dim", op.dim());
+    props.appendStorageAttr(op, 0);
+    props.appendTypeInfo("Attributes.Index", op.index().getType());
   }
 
-  void fillPropertiesSliceOp(Torch::AtenSliceTensorOp &sliceOp,
-                             llvm::json::Array &propertiesArray) {
-    Value dim = sliceOp.dim();
-    uint64_t dim_v = dim.getDefiningOp<arith::ConstantIntOp>().value();
-    std::string dim_str = std::to_string(dim_v);
-
-    Value input = sliceOp.self();
-    Value output = sliceOp.getResult();
-
-    uint64_t storage_i_o_bytes =
-        storage_bytes_of_input_and_output(input, output);
-    std::string storage_str = std::to_string(storage_i_o_bytes);
-
-    fillPropertiesObject({"Attributes.dim", dim_str}, propertiesArray);
-    fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
+  void fillPropertiesSliceOp(Torch::AtenSliceTensorOp &op,
+                             JsonPropertiesBuilder &&props) {
+    props.appendIntValue("Attributes.dim", op.dim());
+    props.appendStorageAttr(op, 0);
   }
 
   void fillPropertiesOp(xten::Conv2dBatchNormReLUOp &op,
-                        llvm::json::Array &propertiesArray) {
-    uint64_t conv_storage;
-    uint64_t bn_storage;
-    uint64_t relu_storage = 0;
+                        JsonPropertiesBuilder &&props) {
+    uint64_t storage = 0;
+    storage += fillPropertiesConvOp<xten::Conv2dBatchNormReLUOp>(
+        op, props.nextFusedOp("aten.conv2d"));
+    storage += fillPropertiesBatchNormOp<xten::Conv2dBatchNormReLUOp>(
+        op, props.nextFusedOp("torch.aten.batch_norm"));
 
-    fillPropertiesConvOp<xten::Conv2dBatchNormReLUOp>(op, propertiesArray, true,
-                                                      &conv_storage, 0);
 
-    fillPropertiesBatchNormOp<xten::Conv2dBatchNormReLUOp>(
-        op, propertiesArray, true, &bn_storage, 1);
-
-    // fillPropertiesReLUOp<xten::Conv2dBatchNormReLUOp>(xtenConv2dBnReluOp,
-    // propertiesArray, true, &relu_storage, 2);
-
-    uint64_t storage = conv_storage + bn_storage + relu_storage;
-    writeStorage(op, storage, propertiesArray);
-  }
-
-  void fillPropertiesOp(xten::Conv2dLReLUMaxPoolOp &op,
-                        llvm::json::Array &propertiesArray) {
-    uint64_t conv_storage;
-    uint64_t lrelu_storage;
-    uint64_t maxpool_storage;
-
-    fillPropertiesConvOp<xten::Conv2dLReLUMaxPoolOp>(op, propertiesArray, true,
-                                                     &conv_storage, 0);
-    populateUnfusedOutputMap(op, true, "aten.conv2d");
-
-    fillPropertiesReLUOp<xten::Conv2dLReLUMaxPoolOp>(op, propertiesArray, true,
-                                                     &lrelu_storage, 1);
-
-    fillPropertiesMaxPool2dOp<xten::Conv2dLReLUMaxPoolOp>(
-        op, propertiesArray, true, &maxpool_storage, 2);
-    populateUnfusedOutputMap(op, false, "aten.max_pool2d");
-
-    uint64_t storage = conv_storage + maxpool_storage + lrelu_storage;
-    writeStorage(op, storage, propertiesArray);
-  }
-
-  void fillPropertiesOp(xten::Conv2dLReLUPadMaxPoolOp &op,
-                        llvm::json::Array &propertiesArray) {
-    // todo pad attributes are missing
-    // todo remove duplication
-
-    uint64_t conv_storage;
-    uint64_t lrelu_storage;
-    uint64_t maxpool_storage;
-
-    fillPropertiesConvOp<xten::Conv2dLReLUPadMaxPoolOp>(op, propertiesArray,
-                                                        true, &conv_storage, 0);
-    populateUnfusedOutputMap(op, true, "aten.conv2d");
-
-    fillPropertiesReLUOp<xten::Conv2dLReLUPadMaxPoolOp>(
-        op, propertiesArray, true, &lrelu_storage, 1);
-
-    fillPropertiesMaxPool2dOp<xten::Conv2dLReLUPadMaxPoolOp>(
-        op, propertiesArray, true, &maxpool_storage, 2);
-
-    populateUnfusedOutputMap(op, false, "aten.max_pool2d");
-
-    uint64_t storage = conv_storage + maxpool_storage + lrelu_storage;
-    writeStorage(op, storage, propertiesArray);
-  }
-
-  void fillPropertiesOp(xten::Conv2dLReLUOp &op,
-                        llvm::json::Array &propertiesArray) {
-    uint64_t conv_storage;
-    uint64_t lrelu_storage;
-
-    fillPropertiesConvOp<xten::Conv2dLReLUOp>(op, propertiesArray, true,
-                                              &conv_storage, 0);
-
-    populateUnfusedOutputMap(op, true, "aten.conv2d");
-
-    fillPropertiesReLUOp<xten::Conv2dLReLUOp>(op, propertiesArray, true,
-                                              &lrelu_storage, 1);
-
-    writeStorage(op, conv_storage + lrelu_storage, propertiesArray);
+    props.appendStorageAttr(op, storage);
   }
 
   template <class Op>
+  void fillPropertiesOpC2dActMaxpool(Op &op, const char *actTypeStr,
+                                     JsonPropertiesBuilder &&props) {
+    uint64_t storage = 0;
+    storage += fillPropertiesConvOp(op, props.nextFusedOp("aten.conv2d"));
+    storage += fillPropertiesReLUOp(op, props.nextFusedOp(actTypeStr));
+    storage +=
+        fillPropertiesMaxPool2dOp(op, props.nextFusedOp("aten.max_pool2d"));
 
-  void populateUnfusedOutputMap(Op &op, bool isOutput, std::string unfusedId) {
-    if (propagate_tensor_sizes) {
-      auto tensor_size = propagatedTensorSizesMap[op][isOutput]["value"];
-      std::string tensor_size_str = std::to_string(tensor_size[0]) + "n" +
-                                    std::to_string(tensor_size[1]) + "c" +
-                                    std::to_string(tensor_size[2]) + "h" +
-                                    std::to_string(tensor_size[3]) + "w";
-      fusedToUnfuseOutputMap[op][unfusedId] = tensor_size_str;
-    }
+    props.appendStorageAttr(op, storage);
   }
 
   template <class Op>
-  void writeStorage(Op &op, uint64_t storage,
-                    llvm::json::Array &propertiesArray) {
-    Value input = getInput(op);
-    Value output = op.getResult();
-    storage += storage_bytes_of_input_and_output(input, output);
-
-    std::string storage_str = std::to_string(storage);
-    fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
+  void fillPropertiesOpC2dAct(Op &op, const char *actTypeStr,
+                              JsonPropertiesBuilder &&props) {
+    uint64_t storage = 0;
+    storage += fillPropertiesConvOp(op, props.nextFusedOp("aten.conv2d"));
+    storage += fillPropertiesReLUOp(op, props.nextFusedOp(actTypeStr));
+    props.appendStorageAttr(op, storage);
   }
 
   llvm::json::Object emitJSONSchema() {
@@ -1037,95 +659,90 @@ private:
 
   llvm::json::Array fillProperties(Operation *op) {
     llvm::json::Array propertiesArray;
-    if (auto convolutionOp = dyn_cast<Torch::AtenConv2dOp>(op)) {
-      fillPropertiesConvOp<Torch::AtenConv2dOp>(convolutionOp, propertiesArray);
-    } else if (auto maxPoolOp = dyn_cast<Torch::AtenMaxPool2dOp>(op)) {
-      fillPropertiesMaxPool2dOp<Torch::AtenMaxPool2dOp>(maxPoolOp,
-                                                        propertiesArray);
-    } else if (auto reluOp = dyn_cast<Torch::AtenReluOp>(op)) {
-      fillPropertiesReLUOp<Torch::AtenReluOp>(reluOp, propertiesArray);
-    } else if (auto batchNormOp = dyn_cast<Torch::AtenBatchNormOp>(op)) {
-      fillPropertiesBatchNormOp<Torch::AtenBatchNormOp>(batchNormOp,
-                                                        propertiesArray);
-    } else if (auto linearOp = dyn_cast<Torch::AtenLinearOp>(op)) {
-      fillPropertiesLinearOp(linearOp, propertiesArray);
-    } else if (auto sizeOp = dyn_cast<Torch::AtenSizeOp>(op)) {
-      fillPropertiesUnaryALUOp<Torch::AtenSizeOp>(sizeOp, propertiesArray);
-    } else if (auto catOp = dyn_cast<Torch::AtenCatOp>(op)) {
-      fillPropertiesCatOp(catOp, propertiesArray);
-    } else if (auto negOp = dyn_cast<Torch::AtenNegOp>(op)) {
-      fillPropertiesUnaryALUOp<Torch::AtenNegOp>(negOp, propertiesArray);
-    } else if (auto sigmoidOp = dyn_cast<Torch::AtenSigmoidOp>(op)) {
-      fillPropertiesUnaryALUOp<Torch::AtenSigmoidOp>(sigmoidOp,
-                                                     propertiesArray);
-    } else if (auto sinOp = dyn_cast<Torch::AtenSinOp>(op)) {
-      fillPropertiesUnaryALUOp<Torch::AtenSinOp>(sinOp, propertiesArray);
-    } else if (auto tanhOp = dyn_cast<Torch::AtenTanhOp>(op)) {
-      fillPropertiesUnaryALUOp<Torch::AtenTanhOp>(tanhOp, propertiesArray);
-    } else if (auto expOp = dyn_cast<Torch::AtenExpOp>(op)) {
-      fillPropertiesUnaryALUOp<Torch::AtenExpOp>(expOp, propertiesArray);
-    } else if (auto addOp = dyn_cast<Torch::AtenAddTensorOp>(op)) {
-      fillPropertiesBinaryALUOp<Torch::AtenAddTensorOp>(addOp, propertiesArray);
-    } else if (auto mulOp = dyn_cast<Torch::AtenMulTensorOp>(op)) {
-      fillPropertiesBinaryALUOp<Torch::AtenMulTensorOp>(mulOp, propertiesArray);
-    } else if (auto divOp = dyn_cast<Torch::AtenDivTensorOp>(op)) {
-      fillPropertiesBinaryALUOp<Torch::AtenDivTensorOp>(divOp, propertiesArray);
-    } else if (auto gatherOp = dyn_cast<Torch::AtenGatherOp>(op)) {
-      fillPropertiesGatherOp(gatherOp, propertiesArray);
-    } else if (auto sliceOp = dyn_cast<Torch::AtenSliceTensorOp>(op)) {
-      fillPropertiesSliceOp(sliceOp, propertiesArray);
+    auto props = JsonPropertiesBuilder(propertiesArray);
+    if (auto op2 = dyn_cast<Torch::AtenConv2dOp>(op)) {
+      fillPropertiesConvOp<Torch::AtenConv2dOp>(op2, std::move(props));
+    } else if (auto op2 = dyn_cast<Torch::AtenMaxPool2dOp>(op)) {
+      fillPropertiesMaxPool2dOp<Torch::AtenMaxPool2dOp>(op2, std::move(props));
+    } else if (auto op2 = dyn_cast<Torch::AtenReluOp>(op)) {
+      fillPropertiesReLUOp<Torch::AtenReluOp>(op2, std::move(props));
+    } else if (auto op2 = dyn_cast<Torch::AtenBatchNormOp>(op)) {
+      fillPropertiesBatchNormOp<Torch::AtenBatchNormOp>(op2, std::move(props));
+    } else if (auto op2 = dyn_cast<Torch::AtenLinearOp>(op)) {
+      fillPropertiesLinearOp(op2, std::move(props));
+    } else if (auto op2 = dyn_cast<Torch::AtenSizeOp>(op)) {
+      fillPropertiesUnaryALUOp<Torch::AtenSizeOp>(op2, std::move(props));
+    } else if (auto op2 = dyn_cast<Torch::AtenCatOp>(op)) {
+      fillPropertiesCatOp(op2, std::move(props));
+    } else if (auto op2 = dyn_cast<Torch::AtenNegOp>(op)) {
+      fillPropertiesUnaryALUOp<Torch::AtenNegOp>(op2, std::move(props));
+    } else if (auto op2 = dyn_cast<Torch::AtenSigmoidOp>(op)) {
+      fillPropertiesUnaryALUOp<Torch::AtenSigmoidOp>(op2, std::move(props));
+
+    } else if (auto op2 = dyn_cast<Torch::AtenSinOp>(op)) {
+      fillPropertiesUnaryALUOp<Torch::AtenSinOp>(op2, std::move(props));
+
+    } else if (auto op2 = dyn_cast<Torch::AtenTanhOp>(op)) {
+      fillPropertiesUnaryALUOp<Torch::AtenTanhOp>(op2, std::move(props));
+
+    } else if (auto op2 = dyn_cast<Torch::AtenExpOp>(op)) {
+      fillPropertiesUnaryALUOp<Torch::AtenExpOp>(op2, std::move(props));
+
+    } else if (auto op2 = dyn_cast<Torch::AtenAddTensorOp>(op)) {
+      fillPropertiesBinaryALUOp<Torch::AtenAddTensorOp>(op2, std::move(props));
+
+    } else if (auto op2 = dyn_cast<Torch::AtenMulTensorOp>(op)) {
+      fillPropertiesBinaryALUOp<Torch::AtenMulTensorOp>(op2, std::move(props));
+
+    } else if (auto op2 = dyn_cast<Torch::AtenDivTensorOp>(op)) {
+      fillPropertiesBinaryALUOp<Torch::AtenDivTensorOp>(op2, std::move(props));
+
+    } else if (auto op2 = dyn_cast<Torch::AtenGatherOp>(op)) {
+      fillPropertiesGatherOp(op2, std::move(props));
+
+    } else if (auto op2 = dyn_cast<Torch::AtenSliceTensorOp>(op)) {
+      fillPropertiesSliceOp(op2, std::move(props));
     } else if (auto op2 = dyn_cast<Torch::AtenConstantPadNdOp>(op)) {
-      auto padding_v = op2.pad();
-      std::vector<int64_t> padding;
-      unpack_int_list(padding_v, padding);
-      std::string padding_str = vector_to_str(padding);
-      fillPropertiesObject({"Attributes.padding", padding_str},
-                           propertiesArray);
-    } else if (auto xtenConv2dOp = mlir::dyn_cast<xten::Conv2dOp>(op)) {
-      fillPropertiesConvOp<xten::Conv2dOp>(xtenConv2dOp, propertiesArray);
-    } else if (auto xtenConv2dBnReluOp =
-                   mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
-      fillPropertiesOp(xtenConv2dBnReluOp, propertiesArray);
-    } else if (auto xtenConv2dLReluOp =
-                   mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
-      fillPropertiesOp(xtenConv2dLReluOp, propertiesArray);
-    } else if (auto xtenConv2dLReluMaxPoolOp =
-                   mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
-      fillPropertiesOp(xtenConv2dLReluMaxPoolOp, propertiesArray);
-    } else if (auto xtenAddOp = mlir::dyn_cast<xten::AddOp>(op)) {
-      // fillPropertiesBinaryALUOp<xten::AddOp>(xtenAddOp, propertiesArray);
+      props.appendIntList("Attributes.padding", op2.pad());
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dOp>(op)) {
+      fillPropertiesConvOp<xten::Conv2dOp>(op2, std::move(props));
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
+      fillPropertiesOp(op2, std::move(props));
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
+      fillPropertiesOpC2dAct(op2, "aten.lrelu", std::move(props));
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
+      fillPropertiesOpC2dActMaxpool(op2, "aten.lrelu", std::move(props));
+    } else if (auto op2 = mlir::dyn_cast<xten::AddOp>(op)) {
+      // fillPropertiesBinaryALUOp<xten::AddOp>(xtenAddOp, std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUPadMaxPoolOp>(op)) {
-      fillPropertiesOp(op2, propertiesArray);
+      // todo pad attributes are missing
+      fillPropertiesOpC2dActMaxpool(op2, "aten.lrelu", std::move(props));
     }
 
     return propertiesArray;
   }
 
-  Value getInput(Operation *op) {
+  Value getInputFromErasedPtr(Operation *op) {
     Value opInput;
 
-    if (auto convolutionOp = dyn_cast<Torch::AtenConv2dOp>(op)) {
-      opInput = getInput(convolutionOp);
-    } else if (auto maxPoolOp = dyn_cast<Torch::AtenMaxPool2dOp>(op)) {
-      opInput = getInput(maxPoolOp);
-    } else if (auto reluOp = dyn_cast<Torch::AtenReluOp>(op)) {
-      opInput = getInput(reluOp);
-    } else if (auto addOp = dyn_cast<Torch::AtenAddTensorOp>(op)) {
-      opInput = getInput(addOp); // TODO: add Tensor technically has two inputs
-    } else if (auto xtenConv2dOp = mlir::dyn_cast<xten::Conv2dOp>(op)) {
-      opInput = getInput(xtenConv2dOp);
-    } else if (auto xtenConv2dBnReluOp =
-                   mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
-      opInput = getInput(xtenConv2dBnReluOp);
-    } else if (auto xtenConv2dReluOp =
-                   mlir::dyn_cast<xten::Conv2dReLUOp>(op)) {
-      opInput = getInput(xtenConv2dReluOp);
-    } else if (auto xtenConv2dLReluOp =
-                   mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
-      opInput = getInput(xtenConv2dLReluOp);
-    } else if (auto xtenConv2dLReluMaxPoolOp =
-                   mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
-      opInput = getInput(xtenConv2dLReluMaxPoolOp);
+    if (auto op2 = dyn_cast<Torch::AtenConv2dOp>(op)) {
+      opInput = getInput(op2);
+    } else if (auto op2 = dyn_cast<Torch::AtenMaxPool2dOp>(op)) {
+      opInput = getInput(op2);
+    } else if (auto op2 = dyn_cast<Torch::AtenReluOp>(op)) {
+      opInput = getInput(op2);
+    } else if (auto op2 = dyn_cast<Torch::AtenAddTensorOp>(op)) {
+      opInput = getInput(op2); // TODO: add Tensor technically has two inputs
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dOp>(op)) {
+      opInput = getInput(op2);
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
+      opInput = getInput(op2);
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dReLUOp>(op)) {
+      opInput = getInput(op2);
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
+      opInput = getInput(op2);
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
+      opInput = getInput(op2);
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUPadMaxPoolOp>(op)) {
       opInput = getInput(op2);
     } else {
@@ -1135,50 +752,6 @@ private:
 
     return opInput;
   }
-
-  //////////// For DEMO
-  std::vector<int64_t> getOutputTensorDivFactors(Operation *op) {
-    std::vector<int64_t> n_stride = {1, 1};
-
-    if (auto xtenConv2dOp = mlir::dyn_cast<xten::Conv2dOp>(op)) {
-    } else if (auto xtenConv2dBnReluOp =
-                   mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
-    } else if (auto xtenConv2dLReluOp =
-                   mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
-    } else if (auto xtenConv2dLReluMaxPoolOp =
-                   mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
-      Value stride = xtenConv2dLReluMaxPoolOp.mp_stride();
-      std::vector<int64_t> v_stride;
-      unpack_int_list(stride, v_stride);
-      n_stride = v_stride;
-    }
-    return n_stride;
-  }
-
-  uint64_t getChannelsOut(Operation *op) {
-    uint64_t cout = 0;
-    Value weight;
-    if (auto xtenConv2dOp = mlir::dyn_cast<xten::Conv2dOp>(op)) {
-      weight = xtenConv2dOp.weight();
-    } else if (auto xtenConv2dBnReluOp =
-                   mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
-      weight = xtenConv2dBnReluOp.weight();
-    } else if (auto xtenConv2dLReluOp =
-                   mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
-      weight = xtenConv2dLReluOp.weight();
-    } else if (auto xtenConv2dLReluMaxPoolOp =
-                   mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
-      weight = xtenConv2dLReluMaxPoolOp.weight();
-    } else {
-      return 0;
-    }
-
-    Torch::BaseTensorType weightTy =
-        weight.getType().cast<Torch::BaseTensorType>();
-    cout = weightTy.getSizes()[0];
-    return cout;
-  }
-  ///////////////////////////////////////////////
 
   void fillPortProperties(Operation *op, bool isInput,
                           llvm::json::Array &portPropsArray,
@@ -1223,40 +796,16 @@ private:
               .getType();
       Torch::BaseTensorType sizeResultTy =
           resultTy.dyn_cast<Torch::BaseTensorType>();
-      if (not sizeResultTy)
+      if (!sizeResultTy)
         return;
 
       if (sizeResultTy.hasSizes()) {
-        std::vector<int64_t> size_vec;
-        total_inputs = 1;
-        for (auto dim : sizeResultTy.getSizes()) {
-          size_vec.push_back(dim);
-          total_inputs *= dim;
-        }
-
-        value_str = vector_to_str(size_vec, "x");
+        total_inputs = xilinx::xten::getTensorVolume(sizeResultTy);
+        value_str = sizesToString(sizeResultTy);
         type_str = typeStr(sizeResultTy);
         bytes_str = std::to_string(total_bytes(sizeResultTy, total_inputs));
       }
 
-      ///////// For TinyYolo-DEMO only
-      if (propagate_tensor_sizes) {
-        auto value_v = propagatedTensorSizesMap[op][isInput]["value"];
-        auto bit_width = propagatedTensorSizesMap[op][isInput]["type"][0];
-        uint64_t n, c, h, w;
-        n = value_v[0];
-        c = value_v[1];
-        h = value_v[2];
-        w = value_v[3];
-        total_inputs = n * c * h * w;
-
-        value_str = std::to_string(n) + "n" + std::to_string(c) + "c" +
-                    std::to_string(h) + "h" + std::to_string(w) + "w";
-        type_str = propagatedTensorTypeMap[op];
-        bytes_str =
-            std::to_string((bit_width / BYTE_SIZE_IN_BIT) * total_inputs);
-      }
-      /////////////////////////////////////////
 
       portPropsObject["name"] = port_name_prefix + ".Tensor";
       portPropsObject["tooltip"] = "Dimensions of " + port_type_str;
@@ -1292,24 +841,7 @@ private:
 
       llvm::json::Array portPropsArray;
 
-      ///////// For DEMO only
-      if (propagate_tensor_sizes) {
-        fillPortProperties(op, true, portPropsArray);
-
-        /*For each fused operator, also add to JSON model sub-outputs of unfused
-         * parts of fused op  */
-        auto op_name = getOperationNameStr(op);
-        if (fusedOpToUnfusedOpsMap.find(op_name) !=
-            fusedOpToUnfusedOpsMap.end()) {
-          unsigned unfused_id = 1;
-          for (auto unfused_op_name : fusedOpToUnfusedOpsMap[op_name]) {
-            fillPortProperties(op, true, portPropsArray, true, unfused_op_name,
-                               unfused_id++);
-          }
-        }
-      } ////////////////////////////////////////////////
-      else
-        fillPortProperties(op_input.first, true, portPropsArray);
+      fillPortProperties(op_input.first, true, portPropsArray);
 
       portObject["properties"] = llvm::json::Value(std::move(portPropsArray));
       portsArray.push_back(llvm::json::Value(std::move(portObject)));
@@ -1448,12 +980,6 @@ public:
           "Path of JSON file that has list of operators supported (REQUIRED)"),
       llvm::cl::init("-")};
 
-  Option<bool> ATenPropagateTensorSizesFlag{
-      *this, "propagate-tensor-sizes",
-      llvm::cl::desc("Boolean flag to indicate if pass should propagate tensor "
-                     "sizes (only works with Tiny Yolo)"),
-      llvm::cl::init(false)};
-
   ATenVisualGraphPass(const ATenVisualGraphPass &pass) : output(o) {}
 
   ATenVisualGraphPass() : output(o) {}
@@ -1493,7 +1019,6 @@ public:
 
   void runOnOperation() override {
     initProperties();
-    propagate_tensor_sizes = ATenPropagateTensorSizesFlag;
 
     // I don't change anything
     markAllAnalysesPreserved();
@@ -1510,21 +1035,18 @@ public:
     }
 
     clearAllDataStructures();
-    //////For DEMO
-    Operation *prevOp = nullptr;
-    /////////
 
     unsigned currentOp = 0;
     unsigned currPortId = 0;
     forward.walk([&](Operation *op) {
-      if (not opIsValid(op))
+      if (!opIsValid(op))
         return;
 
       auto attr_l = op->getAttrOfType<StringAttr>("layer_name");
       auto attr_n = op->getAttrOfType<StringAttr>("name");
-      // assumes layer_name is given to all nodes, might support inferring layers
-      // later
-      if (!attr_l and !attr_n)
+      // assumes layer_name is given to all nodes, might support inferring
+      // layers later
+      if (!attr_l && !attr_n)
         return;
       auto attr = attr_l ? attr_l : attr_n;
 
@@ -1557,61 +1079,6 @@ public:
         }
       }
 
-      // ------------- For DEMO
-      if (propagate_tensor_sizes) {
-        uint64_t o, c, h, w;
-        uint64_t bit_width;
-        std::string type_str;
-        bool isInput = true;
-        bool isOutput = not isInput;
-        if (currentOp == 0) {
-          Value cInput = getInput(op);
-          Torch::BaseTensorType inputTy =
-              cInput.getType().cast<Torch::BaseTensorType>();
-          o = inputTy.getSizes()[0];
-          c = inputTy.getSizes()[1];
-          h = inputTy.getSizes()[2];
-          w = inputTy.getSizes()[3];
-          bit_width = total_bytes(inputTy, 1) * BYTE_SIZE_IN_BIT;
-          type_str = typeStr(inputTy);
-
-        } else {
-          auto input_v = propagatedTensorSizesMap[prevOp][isOutput]["value"];
-          o = input_v[0];
-          c = input_v[1];
-          h = input_v[2];
-          w = input_v[3];
-          bit_width = propagatedTensorSizesMap[prevOp][isOutput]["type"][0];
-          type_str = propagatedTensorTypeMap[prevOp];
-        }
-
-        auto stride_v = getOutputTensorDivFactors(op);
-        uint64_t o2, c2, h2, w2;
-
-        o2 = o;
-        c2 = getChannelsOut(op);
-        h2 = h / stride_v[0];
-        w2 = w / stride_v[1];
-
-        propagatedTensorSizesMap[op][isInput]["value"] = {o, c, h, w};
-        propagatedTensorSizesMap[op][isOutput]["value"] = {o2, c2, h2, w2};
-
-        propagatedTensorSizesMap[op][isInput]["type"] = {bit_width};
-        propagatedTensorSizesMap[op][isOutput]["type"] = {bit_width};
-
-        propagatedTensorTypeMap[op] = type_str;
-
-        std::string inputStr = std::to_string(o) + "o" + std::to_string(c) +
-                               "c" + std::to_string(h) + "h" +
-                               std::to_string(w) + "w";
-        std::string outputStr = std::to_string(o2) + "o" + std::to_string(c2) +
-                                "c" + std::to_string(h2) + "h" +
-                                std::to_string(w2) + "w";
-
-        prevOp = op;
-      }
-      //////////////////////////////////////
-
       updateOperatorTypes(op);
       currentOp++;
     });
@@ -1622,7 +1089,7 @@ public:
       if (connsInToOutMap.find(op) == connsInToOutMap.end()) {
         // For the first input Ops (aka source Ops) in the NN graph
         connsInToOutMap[op][op] = currPortId++;
-        inputOpToIFMValue[op] = getInput(op);
+        inputOpToIFMValue[op] = getInputFromErasedPtr(op);
       }
       if (connsOutToInMap.find(op) == connsOutToInMap.end())
         connsOutToInMap[op][op] = currPortId++;
