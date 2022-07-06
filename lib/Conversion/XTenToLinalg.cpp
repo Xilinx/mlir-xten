@@ -22,7 +22,6 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
-#include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Tensor/Utils/Utils.h"
@@ -70,20 +69,22 @@ static Value applyPad(Location loc, Value input, ArrayRef<int64_t> pad,
       .result();
 }
 
+/// Return a zero-initialized tensor of given size and dtype.
+static Value zeroInit(ArrayRef<int64_t> sizes, mlir::Type elementType, Location loc,
+                         ConversionPatternRewriter &rewriter) {
+  Value initTensor = rewriter.create<linalg::InitTensorOp>(loc, sizes, elementType);
+  Value c0float = rewriter.create<arith::ConstantOp>(
+      loc, FloatAttr::get(elementType, 0.0));
+  return rewriter.create<linalg::FillOp>(loc, c0float, initTensor)
+      .getResult(0);
+}
+
 /// Return an aten bias (vtensor or none) converted to a standard bias tensor.
 static Value convertBias(Operation *op, Value atenBias, Location loc,
                          ConversionPatternRewriter &rewriter) {
   if (atenBias.getType().isa<Torch::NoneType>()) {
-    auto outputTy =
-        op->getResult(0).getType().dyn_cast<torch::Torch::BaseTensorType>();
-    assert(outputTy);
-    auto elementType = outputTy.getDtype();
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
-        loc, outputTy.getSizes()[1], elementType);
-    Value c0float = rewriter.create<arith::ConstantOp>(
-        loc, FloatAttr::get(elementType, 0.0));
-    return rewriter.create<linalg::FillOp>(loc, c0float, initTensor)
-        .getResult(0);
+    auto resultTy= op->getResult(0).getType().dyn_cast<torch::Torch::BaseTensorType>();
+    return zeroInit(resultTy.getSizes()[1], resultTy.getDtype(), loc, rewriter);
   }
   return ToBuiltinTensorTypeCast(rewriter, atenBias);
 }
@@ -255,21 +256,19 @@ public:
     auto tTy = resultTy.cast<Torch::BaseTensorType>();
     auto oper0Ty = operands[0].getType().cast<Torch::BaseTensorType>();
     auto oper1Ty = operands[1].getType().cast<Torch::BaseTensorType>();
-    auto dtype = tTy.getDtype();
     std::vector<int64_t> sizes{oper0Ty.getSizes()[0], oper1Ty.getSizes()[1]};
 
-    auto memRefTy = mlir::MemRefType::get(sizes, dtype, {}, 0);
+    Value A = ToBuiltinTensorTypeCast(rewriter, operands[0]);
+    Value B = ToBuiltinTensorTypeCast(rewriter, operands[1]);
+    Value C = zeroInit(tTy.getSizes(), tTy.getDtype(), loc, rewriter);
 
-    auto A = MemRefTypeCast(rewriter, operands[0]);
-    auto B = MemRefTypeCast(rewriter, operands[1]);
-    auto C = rewriter.create<memref::AllocOp>(loc, memRefTy);
-    rewriter
-        .create<linalg::MatmulOp>(loc, TypeRange{}, ValueRange{A, B},
+    auto mulOp = rewriter
+        .create<linalg::MatmulOp>(loc, C.getType(), ValueRange{A, B},
                                   ValueRange{C})
         .getResult(0);
 
     auto tensor_cast =
-        TensorTypeCast(rewriter, C->getResult(0), op->getResult(0).getType());
+        ToTorchTensorTypeCast(rewriter, mulOp, resultTy);
     rewriter.replaceOp(op, tensor_cast);
 
     return success();
@@ -1149,7 +1148,7 @@ public:
     
     target.addIllegalDialect<XTenDialect>();
     target.addLegalDialect<
-        linalg::LinalgDialect, memref::MemRefDialect, bufferization::BufferizationDialect,
+        linalg::LinalgDialect,
         arith::ArithmeticDialect, scf::SCFDialect, tensor::TensorDialect, Torch::TorchDialect, 
         TorchConversion::TorchConversionDialect>();
 
