@@ -18,18 +18,6 @@ include "xten/Dialect/XTen/XTenOps.td"
 
 // note: this pass is complemented by XTenFusions.td
 
-// Normalize names, so that we only have to write one pattern.
-// Each operator comes in two variants, eg torch.aten.relu and torch.aten.relu_ (with underscore)
-// PyTorch operators have an in-place variant and a by-return variant,
-// which have the same MLIR representation because of SSA, but different
-// operators.
-def : Pat<(Torch_AtenRelu_Op $a),
-          (Torch_AtenReluOp $a)>;
-def : Pat<(Torch_AtenLeakyRelu_Op $a, $b),
-          (Torch_AtenLeakyReluOp $a, $b)>;
-def : Pat<(Torch_AtenAdd_TensorOp $a, $b, $c),
-          (Torch_AtenAddTensorOp $a, $b, $c)>;
-
 // Conversions
 
 def : Pat<(Torch_AtenConv2dOp $a,$b,$c,$d,$e,$f,$g),
@@ -78,6 +66,7 @@ def : Pat<(Torch_AtenMmOp $a, $b),
 def : Pat<(Torch_AtenMulTensorOp $a, $b),
           (XTen_MulOp $a, $b)>;
 
+// TODO: verify that $c == 1.
 def : Pat<(Torch_AtenAddTensorOp $a, $b, $c),
           (XTen_AddOp $a, $b)>;
 
