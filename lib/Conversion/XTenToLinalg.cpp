@@ -74,7 +74,7 @@ static Value zeroInit(ArrayRef<int64_t> sizes, mlir::Type elementType, Location 
                          ConversionPatternRewriter &rewriter) {
   Value initTensor = rewriter.create<linalg::InitTensorOp>(loc, sizes, elementType);
   Value c0float = rewriter.create<arith::ConstantOp>(
-      loc, FloatAttr::get(elementType, 0.0));
+      loc, rewriter.getZeroAttr(elementType));
   return rewriter.create<linalg::FillOp>(loc, c0float, initTensor)
       .getResult(0);
 }
@@ -101,7 +101,7 @@ static Value getBiasedInit(Operation *op, Value atenBias, Location loc,
 
   if (atenBias.getType().isa<Torch::NoneType>()) {
     Value c0float = rewriter.create<arith::ConstantOp>(
-        loc, FloatAttr::get(elementType, 0.0));
+        loc, rewriter.getZeroAttr(elementType));
     return rewriter.create<linalg::FillOp>(loc, c0float, initTensor)
         .getResult(0);
   }
