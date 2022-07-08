@@ -45,13 +45,23 @@ using namespace mlir::torch;
 namespace {
 
 template <class Op>
-Value getAlpha(Op &reluOp) {
+llvm::Optional<Value> getAlpha(Op &reluOp) {
   return reluOp.alpha();
 }
 
 template <>
-Value getAlpha(Torch::AtenReluOp &reluOp) {
-  return reluOp.self();
+llvm::Optional<Value> getAlpha(Torch::AtenReluOp &reluOp) {
+  return {};
+}
+
+template <>
+llvm::Optional<Value> getAlpha(xten::Conv2dReLUOp &reluOp) {
+  return {};
+}
+
+template <>
+llvm::Optional<Value> getAlpha(xten::Conv2dTensorAddReLUOp &reluOp) {
+  return {};
 }
 
 // fetch input. Specialize if the method is named differently.
@@ -363,13 +373,27 @@ private:
   }
 
   template <class T>
-  void fillPropertiesBinaryALUOp(T &op, JsonPropertiesBuilder &&props) {
-    Value other = op.other();
-
+  void fillOther(T &op, Value v, JsonPropertiesBuilder &props) {
     auto volume_bytes =
-        props.appendTypeInfo("Attributes.Other", other.getType());
-
+        props.appendTypeInfo("Attributes.Other", v.getType());
     props.appendStorageAttr(op, volume_bytes);
+  }
+
+  template <class T>
+  void fillPropertiesBinaryALUOp(T &op, JsonPropertiesBuilder &&props) {
+    fillOther(op, op.other(), props);
+  }
+
+  void fillProperties(Torch::AtenMmOp &op, JsonPropertiesBuilder &&props) {
+    fillOther(op, op.mat2(), props);
+  }
+
+  void fillProperties(xten::MMOp &op, JsonPropertiesBuilder &&props) {
+    fillOther(op, op.y(), props);
+  }
+
+  void fillProperties(xten::AddOp &op, JsonPropertiesBuilder &&props) {
+    fillOther(op, op.input1(), props);
   }
 
   void fillPropertiesCatOp(Torch::AtenCatOp &op,
@@ -464,9 +488,9 @@ private:
   template <class T>
   uint64_t fillPropertiesReLUOp(T &op, JsonPropertiesBuilder &&props) {
     uint64_t bytes = 0;
-    bool isLeakyReLU = !isa<Torch::AtenReluOp>(op);
-    if (isLeakyReLU) {
-      Value alpha = getAlpha(op);
+    auto alphaOpt = getAlpha(op);
+    if (alphaOpt) {
+      Value alpha = *alphaOpt;
       std::string alpha_str;
       std::string alpha_type_str;
       uint64_t alpha_bytes = 0;
@@ -678,28 +702,20 @@ private:
       fillPropertiesUnaryALUOp<Torch::AtenNegOp>(op2, std::move(props));
     } else if (auto op2 = dyn_cast<Torch::AtenSigmoidOp>(op)) {
       fillPropertiesUnaryALUOp<Torch::AtenSigmoidOp>(op2, std::move(props));
-
     } else if (auto op2 = dyn_cast<Torch::AtenSinOp>(op)) {
       fillPropertiesUnaryALUOp<Torch::AtenSinOp>(op2, std::move(props));
-
     } else if (auto op2 = dyn_cast<Torch::AtenTanhOp>(op)) {
       fillPropertiesUnaryALUOp<Torch::AtenTanhOp>(op2, std::move(props));
-
     } else if (auto op2 = dyn_cast<Torch::AtenExpOp>(op)) {
       fillPropertiesUnaryALUOp<Torch::AtenExpOp>(op2, std::move(props));
-
     } else if (auto op2 = dyn_cast<Torch::AtenAddTensorOp>(op)) {
       fillPropertiesBinaryALUOp<Torch::AtenAddTensorOp>(op2, std::move(props));
-
     } else if (auto op2 = dyn_cast<Torch::AtenMulTensorOp>(op)) {
       fillPropertiesBinaryALUOp<Torch::AtenMulTensorOp>(op2, std::move(props));
-
     } else if (auto op2 = dyn_cast<Torch::AtenDivTensorOp>(op)) {
       fillPropertiesBinaryALUOp<Torch::AtenDivTensorOp>(op2, std::move(props));
-
     } else if (auto op2 = dyn_cast<Torch::AtenGatherOp>(op)) {
       fillPropertiesGatherOp(op2, std::move(props));
-
     } else if (auto op2 = dyn_cast<Torch::AtenSliceTensorOp>(op)) {
       fillPropertiesSliceOp(op2, std::move(props));
     } else if (auto op2 = dyn_cast<Torch::AtenConstantPadNdOp>(op)) {
@@ -709,7 +725,7 @@ private:
     } else if (auto op2 = dyn_cast<Torch::AtenSqueezeDimOp>(op)) {
       // TODO: fill properties
     } else if (auto op2 = dyn_cast<Torch::AtenMmOp>(op)) {
-      // TODO: fill properties
+      fillProperties(op2, std::move(props));
     } else if (auto op2 = dyn_cast<Torch::Aten_SoftmaxOp>(op)) {
       // TODO: fill properties
     } else if (auto op2 = dyn_cast<Torch::AtenArgmaxOp>(op)) {
@@ -720,12 +736,16 @@ private:
       fillPropertiesOp(op2, std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUOp>(op)) {
       fillPropertiesOpC2dAct(op2, "aten.lrelu", std::move(props));
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dReLUOp>(op)) {
+      fillPropertiesOpC2dAct(op2, "aten.relu", std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
       fillPropertiesOpC2dActMaxpool(op2, "aten.lrelu", std::move(props));
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dTensorAddReLUOp>(op)) {
+      fillPropertiesOpC2dAct(op2, "aten.relu", std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::AddOp>(op)) {
-      // fillPropertiesBinaryALUOp<xten::AddOp>(xtenAddOp, std::move(props));
+      fillProperties(op2, std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::MMOp>(op)) {
-      // TODO: fill properties
+      fillProperties(op2, std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUPadMaxPoolOp>(op)) {
       // todo pad attributes are missing
       fillPropertiesOpC2dActMaxpool(op2, "aten.lrelu", std::move(props));
