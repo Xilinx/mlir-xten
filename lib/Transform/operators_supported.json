@@ -28,6 +28,22 @@
 	    ]		
 	},
 	{
+	    "name" : "torch.aten.mean.dim",
+	    "properties" : [
+		["Attributes.dim", "List of dimensions to reduce", "string"],
+		["Attributes.keepdim", "If true, the mean dimensions are kept", "string"],
+		["Computation.Vec Max", "Total number of Vec-Max units in engine", "long"],
+		["Storage.Bytes", "Total storage required for Mean engine", "long"]
+	    ]
+	},
+	{
+	    "name" : "torch.aten.squeeze.dim",
+	    "properties" : [
+		["Attributes.dim", "The dimension of size 1 to remove", "int"],
+		["Storage.Bytes", "Total storage required for Squeeze engine", "long"]
+	    ]
+	},
+	{
 	    "name" : "torch.aten.leaky_relu",
 	    "properties" : [
 		["Attributes.Alpha.Tensor", "Dimensions of alpha", "string"],
@@ -108,6 +124,13 @@
 	    ]
 	},
 	{
+	    "name" : "torch.aten._softmax",
+	    "properties" : [
+		["Attributes.dim", "Value of dimension along which Softmax is computed", "long"],
+		["Storage.Bytes", "Total storage required for Softmax engine", "string"]
+	    ]
+	},
+	{
 	    "name" : "torch.aten.log_softmax",
 	    "properties" : [
 		["Attributes.dim", "Value of dimension along which Softmax is computed", "long"],
@@ -132,12 +155,19 @@
 		["Computation.MACs", "Total number of MAC units in engine", "long"],		
 		["Storage.Bytes", "Total storage required for Linear engine", "string"]	
 	    ]
-	},		
+	},
 	{
 	    "name" : "torch.aten.maximum",
 	    "properties" : [
 		["Computation.Max", "Total number of Max units in engine", "long"],
 		["Storage.Bytes",   "Total storage required for Max engine", "long"]
+	    ]
+	},
+	{
+	    "name" : "torch.aten.mm",
+	    "properties" : [
+		["Computation.*", "Total number of * units in engine", "long"],
+		["Storage.Bytes", "Total storage required for Mul engine", "long"]
 	    ]
 	},
 	{
@@ -436,6 +466,12 @@
 	    "name" : "xten.add",
 	    "properties" : [
 		["Storage.Bytes", "Total storage required for Add engine", "long"]  	 
+	    ]
+	},
+	{
+	    "name" : "xten.mm",
+	    "properties" : [
+		["Storage.Bytes", "Total storage required for matmul engine", "long"]
 	    ]
 	}	
     ]    
