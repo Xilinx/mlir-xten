@@ -705,15 +705,15 @@ private:
     } else if (auto op2 = dyn_cast<Torch::AtenConstantPadNdOp>(op)) {
       props.appendIntList("Attributes.padding", op2.pad());
     } else if (auto op2 = dyn_cast<Torch::AtenMeanDimOp>(op)) {
-      // props.appendIntList("Attributes.padding", op2.pad());
+      // TODO: fill properties
     } else if (auto op2 = dyn_cast<Torch::AtenSqueezeDimOp>(op)) {
-      // props.appendIntList("Attributes.padding", op2.pad());
+      // TODO: fill properties
     } else if (auto op2 = dyn_cast<Torch::AtenMmOp>(op)) {
-      // props.appendIntList("Attributes.padding", op2.pad());
+      // TODO: fill properties
     } else if (auto op2 = dyn_cast<Torch::Aten_SoftmaxOp>(op)) {
-      // props.appendIntList("Attributes.padding", op2.pad());
+      // TODO: fill properties
     } else if (auto op2 = dyn_cast<Torch::AtenArgmaxOp>(op)) {
-      // props.appendIntList("Attributes.padding", op2.pad());
+      // TODO: fill properties
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dOp>(op)) {
       fillPropertiesConvOp<xten::Conv2dOp>(op2, std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dBatchNormReLUOp>(op)) {
@@ -725,7 +725,7 @@ private:
     } else if (auto op2 = mlir::dyn_cast<xten::AddOp>(op)) {
       // fillPropertiesBinaryALUOp<xten::AddOp>(xtenAddOp, std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::MMOp>(op)) {
-      // fillPropertiesBinaryALUOp<xten::MMOp>(xtenAddOp, std::move(props));
+      // TODO: fill properties
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUPadMaxPoolOp>(op)) {
       // todo pad attributes are missing
       fillPropertiesOpC2dActMaxpool(op2, "aten.lrelu", std::move(props));
