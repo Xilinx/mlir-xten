@@ -60,6 +60,16 @@ llvm::Optional<Value> getAlpha(xten::Conv2dReLUOp &reluOp) {
 }
 
 template <>
+llvm::Optional<Value> getAlpha(xten::Conv2dReLUMaxPoolOp &reluOp) {
+  return {};
+}
+
+template <>
+llvm::Optional<Value> getAlpha(xten::Conv2dReLUPadMaxPoolOp &reluOp) {
+  return {};
+}
+
+template <>
 llvm::Optional<Value> getAlpha(xten::Conv2dTensorAddReLUOp &reluOp) {
   return {};
 }
@@ -740,6 +750,8 @@ private:
       fillPropertiesOpC2dAct(op2, "aten.relu", std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
       fillPropertiesOpC2dActMaxpool(op2, "aten.lrelu", std::move(props));
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dReLUMaxPoolOp>(op)) {
+      fillPropertiesOpC2dActMaxpool(op2, "aten.relu", std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dTensorAddReLUOp>(op)) {
       fillPropertiesOpC2dAct(op2, "aten.relu", std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::AddOp>(op)) {
@@ -749,6 +761,9 @@ private:
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUPadMaxPoolOp>(op)) {
       // todo pad attributes are missing
       fillPropertiesOpC2dActMaxpool(op2, "aten.lrelu", std::move(props));
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dReLUPadMaxPoolOp>(op)) {
+      // todo pad attributes are missing
+      fillPropertiesOpC2dActMaxpool(op2, "aten.relu", std::move(props));
     }
 
     return propertiesArray;
@@ -776,6 +791,10 @@ private:
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUMaxPoolOp>(op)) {
       opInput = getInput(op2);
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dLReLUPadMaxPoolOp>(op)) {
+      opInput = getInput(op2);
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dReLUMaxPoolOp>(op)) {
+      opInput = getInput(op2);
+    } else if (auto op2 = mlir::dyn_cast<xten::Conv2dReLUPadMaxPoolOp>(op)) {
       opInput = getInput(op2);
     } else {
       opInput = 0;
