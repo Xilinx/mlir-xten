@@ -31,6 +31,9 @@ def : Pat<(Torch_AtenLeakyReluOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),$h),
 
 def : Pat<(Torch_AtenConstantPadNdOp (XTen_Conv2dLReLUOp $a,$b,$c,$d,$e,$f,$g,$h), $pad,$val),
           (XTen_Conv2dLReLUPadOp $a,$b,$c,$d,$e,$f,$g,$h,$pad,$val)>;
+
+def : Pat<(Torch_AtenConstantPadNdOp (XTen_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g), $pad,$val),
+          (XTen_Conv2dReLUPadOp $a,$b,$c,$d,$e,$f,$g,$pad,$val)>;
 // def : Pat<(aten_LeakyReluOp 
 //             (Torch_AtenBatchNormOp
 //               (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g),
