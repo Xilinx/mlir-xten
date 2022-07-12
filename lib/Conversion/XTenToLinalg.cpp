@@ -1035,7 +1035,6 @@ public:
   }
 };
 
-// lrelu leaky relu
 class XTenConv2dReluMaxPoolOpConversion : public ConversionPattern {
 public:
   explicit XTenConv2dReluMaxPoolOpConversion(MLIRContext *context)
@@ -1337,8 +1336,6 @@ public:
     return success();
   }
 };
-
-// lrelu leaky relu
 
 class XTenPartialConv2dReLUOpConversion : public ConversionPattern {
 public:
