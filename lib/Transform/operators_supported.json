@@ -417,6 +417,25 @@
 	    ]
 	},
 	{
+	    "name" : "xten.conv2d_relu_maxpool",
+	    "fused" : ["aten.conv2d", "aten.max_pool2d"],
+	    "properties" : [
+		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
+		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
+		["Attributes.Weights.Bytes", "Size of weights in bytes", "long"],
+		["Attributes.Bias.Tensor", "Dimensions of bias", "string"],
+		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
+		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],
+		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
+		["Attributes.dilation", "Value of dilation", "string"],
+		["Attributes.stride", "Value of strides", "string"],
+		["Attributes.padding", "Value of padding", "string"],
+		["Computation.MACs", "Total units of MAC units in engine", "long"],
+		["Computation.Comparison", "Total number of > comparator units in engine", "long"],
+		["Storage.Bytes", "Total storage required for this engine", "long"]
+	    ]
+	},
+	{
 	    "name" : "xten.conv2d_lrelu_pad",
 	    "fused" : ["aten.conv2d", "torch.aten.constant_pad_nd"],
 	    "properties" : [
@@ -460,6 +479,25 @@
 		["Computation.MACs", "Total units of MAC units in engine", "long"],
 		["Computation.Comparison", "Total number of > comparator units in engine", "long"],
 		["Storage.Bytes", "Total storage required for this engine", "long"]  	
+	    ]
+	},
+	{
+	    "name" : "xten.conv2d_relu_pad_maxpool",
+	    "fused" : ["aten.conv2d", "torch.aten.constant_pad_nd", "aten.max_pool2d"],
+	    "properties" : [
+		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
+		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
+		["Attributes.Weights.Bytes", "Size of weights in bytes", "long"],
+		["Attributes.Bias.Tensor", "Dimensions of bias", "string"],
+		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
+		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],
+		["Attributes.kernel shape", "Dimensions of kernel/filter", "string"],
+		["Attributes.dilation", "Value of dilation", "string"],
+		["Attributes.stride", "Value of strides", "string"],
+		["Attributes.padding", "Value of padding", "string"],
+		["Computation.MACs", "Total units of MAC units in engine", "long"],
+		["Computation.Comparison", "Total number of > comparator units in engine", "long"],
+		["Storage.Bytes", "Total storage required for this engine", "long"]
 	    ]
 	},
 	{

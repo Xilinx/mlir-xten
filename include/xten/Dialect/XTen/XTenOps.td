@@ -366,6 +366,97 @@ def XTen_Conv2dLReLUPadOp: XTen_Op<"conv2d_lrelu_pad", [NoSideEffect]>,
 }
 
 
+def XTen_Conv2dReLUPadOp: XTen_Op<"conv2d_relu_pad", [NoSideEffect]>,
+                                   Results<(outs AnyTorchTensorType)> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
+        Torch_IntType:$groups,
+        Torch_ListType:$pad_padding,
+        AnyTorchScalarType:$pad_value
+  );
+
+  let summary = "Convolution with ReLU plus Pad operator";
+  let description = [{
+    Fused Convolution followed by Leaky ReLU activation and Pad operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+    uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    uint64_t getResultTransferVolume(unsigned int idx, bool write);
+	}];
+}
+
+
+def XTen_Conv2dReLUMaxPoolOp: XTen_Op<"conv2d_relu_maxpool", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
+        Torch_IntType:$groups,
+        Torch_ListType:$mp_kernel_size,
+        Torch_ListType:$mp_stride,
+        Torch_ListType:$mp_padding,
+        Torch_ListType:$mp_dilation,
+        Torch_BoolType:$mp_ceil_mode
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with ReLU plus MaxPool operator";
+  let description = [{
+    Fused Convolution followed by ReLU activation followed by compatible MaxPool operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+    uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    uint64_t getResultTransferVolume(unsigned int idx, bool write);
+	}];
+}
+
+def XTen_Conv2dReLUPadMaxPoolOp: XTen_Op<"conv2d_relu_pad_maxpool", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
+        Torch_IntType:$groups,
+        Torch_ListType:$pad_padding,
+        AnyTorchScalarType:$pad_value,
+        Torch_ListType:$mp_kernel_size,
+        Torch_ListType:$mp_stride,
+        Torch_ListType:$mp_padding,
+        Torch_ListType:$mp_dilation,
+        Torch_BoolType:$mp_ceil_mode
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with ReLU plus Pad and MaxPool operator";
+  let description = [{
+    Fused Convolution followed by ReLU activation followed by compatible Pad and MaxPool operator
+  }];
+  let extraClassDeclaration = [{
+    std::map<std::string, uint64_t> getStatistics();
+    uint64_t getOperandTransferVolume(unsigned int idx, bool read);
+    uint64_t getResultTransferVolume(unsigned int idx, bool write);
+	}];
+}
+
+
 def XTen_Conv2dLReLUMaxPoolOp: XTen_Op<"conv2d_lrelu_maxpool", [NoSideEffect]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
