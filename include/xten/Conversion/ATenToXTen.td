@@ -84,3 +84,11 @@ def : Pat<(Torch_AtenAddTensorOp $a, $b, $c),
 
 def : Pat<(Torch_AtenSoftmaxIntOp $a, $b, $c),
           (XTen_SoftmaxOp $a, $b, $c)>;
+
+def SelectGlobalAvgPool2D : Constraint<
+    CPred<"isGlobalAvgPool2D($0, $1)">,
+    "check if attributes are valid for global average pool">;
+
+def : Pat<(Torch_AtenMeanDimOp $input, $dims, $keepdim, $reduce),
+          (XTen_GlobalAvgPool2D $input),
+          [(SelectGlobalAvgPool2D $dims, $keepdim)]>;

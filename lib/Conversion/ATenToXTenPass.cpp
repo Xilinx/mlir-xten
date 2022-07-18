@@ -44,7 +44,6 @@
 #include <algorithm>
 #include <sstream>
 
-
 #define DEBUG_TYPE "aten-to-xten-pass"
 
 using namespace mlir;
@@ -145,6 +144,30 @@ bool isLongestBranch(OpResult left, OpResult right) {
   return true;
 }
 
+
+// Tablegen adapter to check if attributes allow a conversion from `ReduceMean` to
+// GlobalAveragePool`.
+bool isGlobalAvgPool2D(Value dims, Value keepdims) {
+
+  // Get defining operands
+  Torch::PrimListConstructOp dimsOp = llvm::dyn_cast<Torch::PrimListConstructOp>(dims.getDefiningOp());
+  Torch::ConstantBoolOp keepdimsOp = llvm::dyn_cast<Torch::ConstantBoolOp>(keepdims.getDefiningOp());
+
+  if (!dimsOp || !keepdimsOp)
+    return false;
+
+  SmallVector<APInt> axes;
+  for (Value operand : dimsOp.getOperands()) {
+    if (auto axesValue = llvm::dyn_cast<Torch::ConstantIntOp>(operand.getDefiningOp()))
+      axes.push_back(axesValue.value());
+  }
+
+  // Check that arguments match expectations for global average pool
+  if (keepdimsOp.value() == 1 && axes.size() == 2 && axes[0] == 2 && axes[1] == 3)
+    return true;
+
+  return false;
+}
 
 namespace atenToXten {
 #include "xten/Conversion/ATenToXTen.cpp.inc"
