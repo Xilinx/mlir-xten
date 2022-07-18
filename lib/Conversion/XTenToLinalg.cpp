@@ -1416,6 +1416,40 @@ public:
   }
 };
 
+class XTenGlobalAveragePool2DOpConversion : public ConversionPattern {
+public:
+  explicit XTenGlobalAveragePool2DOpConversion(MLIRContext *context)
+      : ConversionPattern(GlobalAveragePool2D::getOperationName(), 1, context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto globalaveragepool2d = cast<GlobalAveragePool2D>(op);
+    auto loc = globalaveragepool2d.getLoc();
+
+    Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
+    Type elementType =
+        input.getType().cast<RankedTensorType>().getElementType();
+
+    auto torchTensorTy =
+        op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
+                                                  torchTensorTy.getDtype());
+
+    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+        loc, resultTensorType.getShape(), elementType);
+
+    Value globalavgVal =
+        rewriter.create<linalg::GlobalAveragePool2DOp>(loc, initTensor.getType(), input)
+            .getResult();
+
+    auto torchTensorCast =
+        ToTorchTensorTypeCast(rewriter, globalavgVal, op->getResult(0).getType());
+    rewriter.replaceOp(op, torchTensorCast);
+    return success();
+  }
+};
+
 class XTenToLinalgPass : public XTenToLinalgBase<XTenToLinalgPass> {
 
 public:
@@ -1446,7 +1480,8 @@ public:
                     XTenConv2dTensorAddOpConversion,
                     XTenConv2dTensorAddReLUOpConversion,
                     XTenConv2dTensorAddLReLUOpConversion,
-                    XTenSoftmaxOpConversion>(context);
+                    XTenSoftmaxOpConversion,
+                    XTenGlobalAveragePool2DOpConversion>(context);
 
     ConversionTarget target(*context);
     

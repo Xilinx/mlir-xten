@@ -147,7 +147,7 @@ bool isLongestBranch(OpResult left, OpResult right) {
 
 // Tablegen adapter to check if attributes allow a conversion from `ReduceMean` to
 // GlobalAveragePool`.
-bool isGlobalAvgPool2D(Value dims, Value keepdims) {
+bool isGlobalAveragePool2D(Value dims, Value keepdims) {
 
   // Get defining operands
   Torch::PrimListConstructOp dimsOp = llvm::dyn_cast<Torch::PrimListConstructOp>(dims.getDefiningOp());
