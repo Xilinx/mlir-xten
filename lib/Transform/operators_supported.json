@@ -331,7 +331,7 @@
 		["Computation.MACs", "Total units of MAC units in engine", "long"],
 		["Computation.Comparison", "Total number of > comparator units in engine", "long"],		
 		["Storage.Bytes", "Total storage required for this engine", "string"]		
-	    ]	    
+	    ]
 	}, 
 	{
 	    "name" : "xten.conv2d_relu",
@@ -511,6 +511,10 @@
 	    "properties" : [
 		["Storage.Bytes", "Total storage required for matmul engine", "long"]
 	    ]
-	}	
+	},
+	{
+	    "name" : "xten.globalaveragepool2d",
+	    "properties" : []
+	}
     ]    
 }
