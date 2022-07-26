@@ -738,6 +738,8 @@ private:
       fillProperties(op2, std::move(props));
     } else if (auto op2 = dyn_cast<Torch::Aten_SoftmaxOp>(op)) {
       // TODO: fill properties
+    } else if (auto op2 = dyn_cast<xten::GlobalAveragePool2D>(op)) {
+      // TODO: fill properties
     } else if (auto op2 = dyn_cast<Torch::AtenArgmaxOp>(op)) {
       // TODO: fill properties
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dOp>(op)) {

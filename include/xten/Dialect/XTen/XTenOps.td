@@ -99,7 +99,8 @@ def XTen_GlobalAveragePool2D: XTen_Op<"globalaveragepool2d", [NoSideEffect]>,
 
   let summary = "GlobalAveragePool2D operator";
   let description = [{
-    Computes the average pool along the spatial dimensions.
+    Computes the average pool along the spatial dimensions. Rank of the input
+    and output are equivalent. Spatial dimensions are collapsed to one.
   }];
 }
 

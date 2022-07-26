@@ -148,7 +148,6 @@ bool isLongestBranch(OpResult left, OpResult right) {
 // to `GlobalAveragePool`.
 bool isReduceMeanGlobalAveragePool2D(Value dims, Value keepdims) {
 
-  // Get defining operands
   Torch::PrimListConstructOp dimsOp =
       llvm::dyn_cast<Torch::PrimListConstructOp>(dims.getDefiningOp());
   Torch::ConstantBoolOp keepdimsOp =
