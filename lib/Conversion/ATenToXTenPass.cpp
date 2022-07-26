@@ -18,12 +18,12 @@
 
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/SCF.h"
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/IR/Builders.h"
-#include "mlir/IR/Operation.h"
 #include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/Operation.h"
 //#include "mlir/Parser.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
@@ -44,7 +44,6 @@
 #include <algorithm>
 #include <sstream>
 
-
 #define DEBUG_TYPE "aten-to-xten-pass"
 
 using namespace mlir;
@@ -54,8 +53,8 @@ using namespace mlir::torch;
 namespace {
 
 // Get preceding useful ops based on operands of an mlir operation
-SmallVector<Operation*> getUsefulInputOps(mlir::Operation *op) {
-  SmallVector<Operation*> ancestors;
+SmallVector<Operation *> getUsefulInputOps(mlir::Operation *op) {
+  SmallVector<Operation *> ancestors;
   for (Value operand : op->getOperands()) {
     if (Operation *ancestor = operand.getDefiningOp()) {
       ancestors.push_back(ancestor);
@@ -104,8 +103,8 @@ bool isLongestBranch(OpResult left, OpResult right) {
       if (inputOpDistancePair == opDistanceMap.end()) {
         worklist.push_back(inputOp);
         opDistanceMap.insert({inputOp, nextDistance});
-      }      
-      else if (inputOpDistancePair->second < nextDistance) { // Always store longest path
+      } else if (inputOpDistancePair->second <
+                 nextDistance) { // Always store longest path
         inputOpDistancePair->second = nextDistance;
       }
     }
@@ -129,12 +128,12 @@ bool isLongestBranch(OpResult left, OpResult right) {
         // Left branch is the skip branch. Fuse right convolution op with
         // element-wise add.
         return false;
-      }
-      else {
+      } else {
         // Continue searching since we want to find the longest branch in
         // multi-branch scenarios
         worklist.push_back(inputOp);
-        opDistanceMap.insert(std::pair<Operation *, unsigned>(inputOp, nextDistance));
+        opDistanceMap.insert(
+            std::pair<Operation *, unsigned>(inputOp, nextDistance));
       }
     }
     worklist.erase(worklist.begin());
@@ -145,6 +144,52 @@ bool isLongestBranch(OpResult left, OpResult right) {
   return true;
 }
 
+// Tablegen adapter to check if attributes allow a conversion from `ReduceMean`
+// to `GlobalAveragePool`.
+bool isReduceMeanGlobalAveragePool2D(Value dims, Value keepdims) {
+
+  Torch::PrimListConstructOp dimsOp =
+      llvm::dyn_cast<Torch::PrimListConstructOp>(dims.getDefiningOp());
+  Torch::ConstantBoolOp keepdimsOp =
+      llvm::dyn_cast<Torch::ConstantBoolOp>(keepdims.getDefiningOp());
+
+  if (!dimsOp || !keepdimsOp)
+    return false;
+
+  SmallVector<APInt> axes;
+  for (Value operand : dimsOp.getOperands()) {
+    if (auto axesValue =
+            llvm::dyn_cast<Torch::ConstantIntOp>(operand.getDefiningOp()))
+      axes.push_back(axesValue.value());
+  }
+
+  // Check that arguments match expectations for global average pool
+  if (keepdimsOp.value() == 1 && axes.size() == 2 && axes[0] == 2 &&
+      axes[1] == 3)
+    return true;
+
+  return false;
+}
+
+// Tablegen adapter to check if attributes allow a conversion from `AveragePool`
+// to `GlobalAveragePool`.
+bool isAdaptiveAvgPoolGlobalAveragePool2D(Value outsizes) {
+  Torch::PrimListConstructOp outsizesOp =
+      llvm::dyn_cast<Torch::PrimListConstructOp>(outsizes.getDefiningOp());
+
+  SmallVector<APInt> dims;
+  for (Value operand : outsizesOp.getOperands()) {
+    if (auto axesValue =
+            llvm::dyn_cast<Torch::ConstantIntOp>(operand.getDefiningOp()))
+      dims.push_back(axesValue.value());
+  }
+
+  // Check that arguments match expectations for global average pool
+  if (dims.size() == 2 && dims[0] == 1 && dims[1] == 1)
+    return true;
+
+  return false;
+}
 
 namespace atenToXten {
 #include "xten/Conversion/ATenToXTen.cpp.inc"
@@ -153,7 +198,6 @@ namespace atenToXten {
 namespace xtenToXtenCleanup {
 #include "xten/Conversion/XTenFusions.cpp.inc"
 }
-
 
 struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
 
@@ -174,8 +218,8 @@ struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
     // Perform aten specific Fusion.
     ConversionTarget target(*context);
 
-    target.addLegalDialect<AffineDialect, LLVM::LLVMDialect,
-                           func::FuncDialect, scf::SCFDialect>();
+    target.addLegalDialect<AffineDialect, LLVM::LLVMDialect, func::FuncDialect,
+                           scf::SCFDialect>();
 
     target.addLegalOp<xilinx::xten::Conv2dBatchNormReLUOp>();
     target.addLegalOp<xilinx::xten::Conv2dReLUOp>();
@@ -204,7 +248,6 @@ struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
       signalPassFailure();
       assert(0);
     }
-
   }
 };
 

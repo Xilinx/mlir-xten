@@ -84,3 +84,20 @@ def : Pat<(Torch_AtenAddTensorOp $a, $b, $c),
 
 def : Pat<(Torch_AtenSoftmaxIntOp $a, $b, $c),
           (XTen_SoftmaxOp $a, $b, $c)>;
+
+// Convert to global average pool based on constraints
+def CheckReduceMean : Constraint<
+    CPred<"isReduceMeanGlobalAveragePool2D($0, $1)">,
+    "check if attributes are valid for global average pool">;
+
+def : Pat<(Torch_AtenMeanDimOp $input, $dims, $keepdim, $reduce),
+          (XTen_GlobalAveragePool2D $input),
+          [(CheckReduceMean $dims, $keepdim)]>;
+
+def CheckAdaptiveAvgPool : Constraint<
+    CPred<"isAdaptiveAvgPoolGlobalAveragePool2D($0)">,
+    "check if attributes are valid for global average pool">;
+
+def : Pat<(Torch_AtenAdaptiveAvgPool2dOp $input, $outsizes),
+          (XTen_GlobalAveragePool2D $input),
+          [(CheckAdaptiveAvgPool $outsizes)]>;

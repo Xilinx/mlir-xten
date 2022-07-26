@@ -91,6 +91,19 @@ def XTen_SoftmaxOp: XTen_Op<"softmax", []>,
   }];
 }
 
+def XTen_GlobalAveragePool2D: XTen_Op<"globalaveragepool2d", [NoSideEffect]>,
+               Results<(outs AnyTorchTensorType:$output)> {
+  let arguments = (
+    ins AnyTorchTensorType:$input
+  );
+
+  let summary = "GlobalAveragePool2D operator";
+  let description = [{
+    Computes the average pool along the spatial dimensions. Rank of the input
+    and output are equivalent. Spatial dimensions are collapsed to one.
+  }];
+}
+
 def XTen_NoOp: XTen_Op<"noop", []>,
                 Results<(outs AnyType)> {
   let arguments = (
