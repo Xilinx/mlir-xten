@@ -18,6 +18,15 @@ include "xten/Dialect/XTen/XTenOps.td"
 
 // note: this pass is complemented by XTenFusions.td
 
+// Helper Check Functions
+def CheckTrue : Constraint<
+    CPred<"llvm::dyn_cast<Torch::ConstantBoolOp>($0.getDefiningOp()).value()">,
+    "check to see if it is torch.constant.bool true">;
+
+def CheckFalse : Constraint<
+    CPred<"!llvm::dyn_cast<Torch::ConstantBoolOp>($0.getDefiningOp()).value()">,
+    "check to see if it is torch.constant.bool false">;
+
 // Conversions
 
 def : Pat<(Torch_AtenConv2dOp $a,$b,$c,$d,$e,$f,$g),
@@ -93,6 +102,14 @@ def CheckReduceMean : Constraint<
 def : Pat<(Torch_AtenMeanDimOp $input, $dims, $keepdim, $reduce),
           (XTen_GlobalAveragePool2D $input),
           [(CheckReduceMean $dims, $keepdim)]>;
+
+def CheckAvgPool2D : Constraint<
+    CPred<"isAvgPoolGlobalAveragePool2D($0, $1, $2, $3)">,
+    "check if attributes of AvgPool2D are valid for global average pool">;
+
+def : Pat<(Torch_AtenAvgPool2dOp $input, $kernel_size, $stride, $padding, (Torch_ConstantBoolOp:$ceil_mode $cm), (Torch_ConstantBoolOp:$count_padding $cp), (Torch_ConstantNoneOp)),
+          (XTen_GlobalAveragePool2D $input),
+          [(CheckAvgPool2D $input, $kernel_size, $stride, $padding), (CheckFalse $ceil_mode), (CheckTrue $count_padding)]>;
 
 def CheckAdaptiveAvgPool : Constraint<
     CPred<"isAdaptiveAvgPoolGlobalAveragePool2D($0)">,
