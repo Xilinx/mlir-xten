@@ -607,5 +607,21 @@ def XTen_Conv2dTensorAddLReLUOp: XTen_Op<"conv2d_tensoradd_lrelu", [NoSideEffect
   }];
 }
 
+def XTen_LinearOp: XTen_Op<"linear", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Applies a linear function Y = XA^T+B to the input function";
+  let description = [{
+    Applies a linear function to the input Y = XA^T+B. Represents a fully connected layer.
+  }];
+}
 
 #endif // #ifndef XTEN_OPS

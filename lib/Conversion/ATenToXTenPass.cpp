@@ -11,6 +11,7 @@
 #include "PassDetail.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
+#include "torch-mlir/Dialect/Torch/Utils/Utils.h"
 
 #include "xten/Conversion/ATenToXTenPass.h"
 #include "xten/Dialect/XTen/XTenDialect.h"
@@ -189,6 +190,13 @@ bool isAdaptiveAvgPoolGlobalAveragePool2D(Value outsizes) {
     return true;
 
   return false;
+}
+
+bool checkLinearForXten(Value input, Value weights, Value bias) {
+  // The input and weights must be or rank 2 and the bias must be
+  // of rank 1
+  return Torch::getTensorRank(input) == 2 &&
+         Torch::getTensorRank(weights) == 2 && Torch::getTensorRank(bias) == 1;
 }
 
 namespace atenToXten {
