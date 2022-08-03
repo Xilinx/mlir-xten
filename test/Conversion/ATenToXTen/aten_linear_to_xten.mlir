@@ -31,3 +31,31 @@ func @invalid_lowering(%arg0: !torch.vtensor<[3,4,2048],f32>, %arg1: !torch.vten
 // CHECK-NEXT:     return %[[R0]] : !torch.vtensor<[3,4,1000],f32>
 // CHECK-NEXT:  }
 }
+
+// If we receive an optional bias tensor we should just pass it along
+func @lowering_with_bias_optional(%arg0: !torch.vtensor<[1,2048],f32>, %arg1: !torch.vtensor<[1000,2048],f32>) -> !torch.vtensor<[1,1000],f32> attributes {input_names = ["x", "fc.weight", "fc.bias"], output_names = ["y"]} {
+    %none = torch.constant.none
+    %optional_tensor = torch.derefine %none: !torch.none to !torch.optional<tensor>
+    %0 = torch.aten.linear %arg0, %arg1, %optional_tensor : !torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.optional<tensor> -> !torch.vtensor<[1,1000],f32>
+    return %0 : !torch.vtensor<[1,1000],f32>
+    
+// CHECK-LABEL: func @lowering_with_bias_optional
+// CHECK-NEXT:     %[[NONE:.+]] = torch.constant.none
+// CHECK-NEXT:     %[[OPTIONAL:.+]] = torch.derefine %[[NONE]] : !torch.none to !torch.optional<tensor>
+// CHECK-NEXT:     %[[R0:.+]] = "xten.linear"(%arg0, %arg1, %[[OPTIONAL]]) : (!torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.optional<tensor>) -> !torch.vtensor<[1,1000],f32>
+// CHECK-NEXT:     return %[[R0]] : !torch.vtensor<[1,1000],f32>
+// CHECK-NEXT:  }
+}
+
+// If we receive an none as a bias tensor we should just pass it along, similar to the other test cases
+func @lowering_with_bias_none(%arg0: !torch.vtensor<[1,2048],f32>, %arg1: !torch.vtensor<[1000,2048],f32>) -> !torch.vtensor<[1,1000],f32> attributes {input_names = ["x", "fc.weight", "fc.bias"], output_names = ["y"]} {
+    %none = torch.constant.none
+    %0 = torch.aten.linear %arg0, %arg1, %none : !torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.none -> !torch.vtensor<[1,1000],f32>
+    return %0 : !torch.vtensor<[1,1000],f32>
+    
+// CHECK-LABEL: func @lowering_with_bias_none
+// CHECK-NEXT:     %[[NONE:.+]] = torch.constant.none
+// CHECK-NEXT:     %[[R0:.+]] = "xten.linear"(%arg0, %arg1, %[[NONE]]) : (!torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.none) -> !torch.vtensor<[1,1000],f32>
+// CHECK-NEXT:     return %[[R0]] : !torch.vtensor<[1,1000],f32>
+// CHECK-NEXT:  }
+}

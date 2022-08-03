@@ -193,10 +193,13 @@ bool isAdaptiveAvgPoolGlobalAveragePool2D(Value outsizes) {
 }
 
 bool checkLinearForXten(Value input, Value weights, Value bias) {
-  // The input and weights must be or rank 2 and the bias must be
-  // of rank 1
-  return Torch::getTensorRank(input) == 2 &&
-         Torch::getTensorRank(weights) == 2 && Torch::getTensorRank(bias) == 1;
+  // Ensure that when the bias is given, it is of rank 1
+  if (bias.getType().isa<Torch::BaseTensorType>() &&
+      Torch::getTensorRank(bias) != 1) {
+    return false;
+  }
+  // The input and weights must be or rank 2
+  return Torch::getTensorRank(input) == 2 && Torch::getTensorRank(weights) == 2;
 }
 
 namespace atenToXten {

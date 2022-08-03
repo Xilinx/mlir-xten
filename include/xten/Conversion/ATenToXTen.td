@@ -107,7 +107,8 @@ def CheckLinearForXten : Constraint<
     "Only specific ranks for tensors are supported.\n"
     "Check the ranks of the inputs:\n"
     "    y = A*B^T + C\n"
-    "Where rank(A) == 2, rank(B) == 2 and rank(C) == 1">;
+    "Where rank(A) == 2, rank(B) == 2 and rank(C) == 1.\n"
+    "Note, C must be defined. It cannot be set to none">;
 
 def : Pat<(Torch_AtenLinearOp $input, $weights, $bias),
           (XTen_LinearOp  $input, $weights, $bias),
