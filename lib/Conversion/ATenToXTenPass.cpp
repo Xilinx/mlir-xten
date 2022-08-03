@@ -260,6 +260,9 @@ struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
     target.addLegalOp<xilinx::xten::Conv2dTensorAddOp>();
     target.addLegalOp<xilinx::xten::Conv2dTensorAddReLUOp>();
     target.addLegalOp<xilinx::xten::Conv2dTensorAddLReLUOp>();
+    target.addLegalOp<xilinx::xten::Conv2dTensorAddAveragePoolOp>();
+    target.addLegalOp<xilinx::xten::Conv2dTensorAddReLUAveragePoolOp>();
+    target.addLegalOp<xilinx::xten::Conv2dTensorAddLReLUAveragePoolOp>();
     target.addLegalOp<xilinx::xten::NoOp>();
     if (failed(applyPatternsAndFoldGreedily(
             module, /*target,*/ std::move(fusionPatterns)))) {
