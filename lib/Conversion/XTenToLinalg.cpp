@@ -82,8 +82,10 @@ static Value zeroInit(ArrayRef<int64_t> sizes, mlir::Type elementType, Location 
 /// Return an aten bias (vtensor or none) converted to a standard bias tensor.
 static Value convertBias(Operation *op, Value atenBias, Location loc,
                          ConversionPatternRewriter &rewriter) {
-  if (atenBias.getType().isa<Torch::NoneType>()) {
-    auto resultTy= op->getResult(0).getType().dyn_cast<torch::Torch::BaseTensorType>();
+  if (atenBias.getType().isa<Torch::NoneType>() ||
+      atenBias.getType().isa<Torch::OptionalType>()) {
+    auto resultTy =
+        op->getResult(0).getType().dyn_cast<torch::Torch::BaseTensorType>();
     return zeroInit(resultTy.getSizes()[1], resultTy.getDtype(), loc, rewriter);
   }
   return ToBuiltinTensorTypeCast(rewriter, atenBias);
@@ -1450,6 +1452,39 @@ public:
   }
 };
 
+class XTenLinearOpConversion : public OpConversionPattern<LinearOp> {
+public:
+  using OpConversionPattern::OpConversionPattern;
+
+  LogicalResult
+  matchAndRewrite(LinearOp op, OpAdaptor /*adaptor*/,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto loc = op.getLoc();
+
+    // Cast the input arguments to default tensor type and convert bias
+    // to an empty tensor if not given.
+    Value input = ToBuiltinTensorTypeCast(rewriter, op.input());
+    Value weights = ToBuiltinTensorTypeCast(rewriter, op.weight());
+    Value bias = convertBias(op, op.bias(), loc, rewriter);
+
+    // Create the linalg version of linear
+    auto resultType = op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto linalgOp = rewriter.create<linalg::LinearOp>(
+        loc,
+        RankedTensorType::get(resultType.getSizes(), resultType.getDtype()),
+        input, weights, bias);
+
+    // We need to convert from the default tensor type to torch tensor before
+    // replacing
+    auto resultTorchTensorCast =
+        ToTorchTensorTypeCast(rewriter, linalgOp, op->getResult(0).getType());
+
+    rewriter.replaceOp(op, resultTorchTensorCast);
+
+    return success();
+  }
+};
+
 class XTenToLinalgPass : public XTenToLinalgBase<XTenToLinalgPass> {
 
 public:
@@ -1466,22 +1501,16 @@ public:
     // tablegen patterns
     RewritePatternSet patterns(context);
 
-    patterns.insert<XTenAddOpConversion,
-                    XTenMulOpConversion,
-                    XTenMMOpConversion,
-                    XTenConv2dOpConversion,
-                    XTenConv2dReluOpConversion,
-                    XTenConv2dLeakyReluOpConversion,
-                    XTenConv2dLeakyReluMaxPoolOpConversion,
-                    XTenConv2dLeakyReluPadMaxPoolOpConversion,
-                    XTenConv2dReluMaxPoolOpConversion,
-                    XTenConv2dReluPadMaxPoolOpConversion,
-                    XTenPartialConv2dReLUOpConversion,
-                    XTenConv2dTensorAddOpConversion,
-                    XTenConv2dTensorAddReLUOpConversion,
-                    XTenConv2dTensorAddLReLUOpConversion,
-                    XTenSoftmaxOpConversion,
-                    XTenGlobalAveragePool2DOpConversion>(context);
+    patterns.insert<
+        XTenAddOpConversion, XTenMulOpConversion, XTenMMOpConversion,
+        XTenConv2dOpConversion, XTenConv2dReluOpConversion,
+        XTenConv2dLeakyReluOpConversion, XTenConv2dLeakyReluMaxPoolOpConversion,
+        XTenConv2dLeakyReluPadMaxPoolOpConversion,
+        XTenConv2dReluMaxPoolOpConversion, XTenConv2dReluPadMaxPoolOpConversion,
+        XTenPartialConv2dReLUOpConversion, XTenConv2dTensorAddOpConversion,
+        XTenConv2dTensorAddReLUOpConversion,
+        XTenConv2dTensorAddLReLUOpConversion, XTenSoftmaxOpConversion,
+        XTenGlobalAveragePool2DOpConversion, XTenLinearOpConversion>(context);
 
     ConversionTarget target(*context);
     
