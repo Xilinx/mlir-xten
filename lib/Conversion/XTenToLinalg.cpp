@@ -85,7 +85,7 @@ static Value convertBias(Operation *op, Value atenBias, Location loc,
   if (atenBias.getType().isa<Torch::NoneType>() ||
       atenBias.getType().isa<Torch::OptionalType>()) {
     auto resultTy =
-        op->getResult(0).getType().dyn_cast<torch::Torch::BaseTensorType>();
+        op->getResult(0).getType().cast<torch::Torch::BaseTensorType>();
     return zeroInit(resultTy.getSizes()[1], resultTy.getDtype(), loc, rewriter);
   }
   return ToBuiltinTensorTypeCast(rewriter, atenBias);
