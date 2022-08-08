@@ -607,5 +607,79 @@ def XTen_Conv2dTensorAddLReLUOp: XTen_Op<"conv2d_tensoradd_lrelu", [NoSideEffect
   }];
 }
 
+def XTen_Conv2dTensorAddAveragePoolOp: XTen_Op<"conv2d_tensoradd_averagepool", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
+        Torch_IntType:$groups,
+
+        AnyTorchTensorType:$add_ifm
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then average pool.";
+  let description = [{
+    Convolution with linear activation, then element-wise add with another
+    tensor, then average pool.
+  }];
+}
+
+def XTen_Conv2dTensorAddReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_relu_averagepool", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
+        Torch_IntType:$groups,
+
+        AnyTorchTensorType:$add_ifm
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then ReLU, then average pool.";
+  let description = [{
+    Convolution with linear activation, then element-wise add with another
+    tensor, then ReLU, then average pool.
+  }];
+}
+
+def XTen_Conv2dTensorAddLReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_lrelu_averagepool", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias,
+        Torch_ListType:$stride,
+        Torch_ListType:$padding,
+        Torch_ListType:$dilation,
+        Torch_IntType:$groups,
+
+        Torch_FloatType:$alpha, /// for lrelu
+
+        AnyTorchTensorType:$add_ifm
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then leaky ReLU, then average pool.";
+  let description = [{
+    Convolution with linear activation, then element-wise add with another
+    tensor, then leaky ReLU, then average pool.
+  }];
+}
+
 
 #endif // #ifndef XTEN_OPS

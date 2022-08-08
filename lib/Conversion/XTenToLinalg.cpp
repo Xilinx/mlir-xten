@@ -715,6 +715,238 @@ public:
   }
 };
 
+class XTenConv2dTensorAddAveragePoolOpConversion : public ConversionPattern {
+public:
+  explicit XTenConv2dTensorAddAveragePoolOpConversion(MLIRContext *context)
+      : ConversionPattern(Conv2dTensorAddAveragePoolOp::getOperationName(), 1,
+                          context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto conv2d = cast<Conv2dTensorAddAveragePoolOp>(op);
+    auto loc = conv2d.getLoc();
+
+    Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
+    Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
+    Value bias = convertBias(op, operands[2], loc, rewriter);
+
+    Type elementType =
+        input.getType().cast<RankedTensorType>().getElementType();
+
+    LogicalResult result =
+        processConv2d(conv2d, loc, input, elementType, op, rewriter);
+    if (result.failed())
+      return result;
+
+    SmallVector<int64_t, 2> strideInts;
+    if (!matchPattern(conv2d.stride(),
+                      Torch::m_TorchConstantIntList(strideInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int strides");
+
+    SmallVector<int64_t, 2> dilationInts;
+    if (!matchPattern(conv2d.dilation(),
+                      Torch::m_TorchConstantIntList(dilationInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int dilations");
+
+    auto stridesAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
+    auto dilationAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), dilationInts);
+
+    auto torchTensorTy =
+        op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
+                                                  torchTensorTy.getDtype());
+
+    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+        loc, resultTensorType.getShape(), elementType);
+
+    // Get add input feature map
+    Value addIfm = ToBuiltinTensorTypeCast(rewriter, operands[7]);
+
+    // Change appropriate operation over here
+    Value conv2dAveragePoolVal =
+        rewriter
+            .create<linalg::Conv2dTensorAddAveragePoolOp>(
+                loc, initTensor.getType(), input, addIfm, weight, bias,
+                initTensor, stridesAttr, dilationAttr)
+            .getResult();
+
+    if (op->hasAttr("layer_name")) {
+      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
+      Operation *conv2dValOps = conv2dAveragePoolVal.getDefiningOp();
+      conv2dValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
+    }
+
+    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dAveragePoolVal,
+                                                 op->getResult(0).getType());
+    rewriter.replaceOp(op, torchTensorCast);
+    return success();
+  }
+};
+
+class XTenConv2dTensorAddReLUAveragePoolOpConversion
+    : public ConversionPattern {
+public:
+  explicit XTenConv2dTensorAddReLUAveragePoolOpConversion(MLIRContext *context)
+      : ConversionPattern(Conv2dTensorAddReLUAveragePoolOp::getOperationName(),
+                          1, context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto conv2dRelu = cast<Conv2dTensorAddReLUAveragePoolOp>(op);
+    auto loc = conv2dRelu.getLoc();
+
+    Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
+    Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
+    Value bias = convertBias(op, operands[2], loc, rewriter);
+
+    Type elementType =
+        input.getType().cast<RankedTensorType>().getElementType();
+
+    LogicalResult result =
+        processConv2d(conv2dRelu, loc, input, elementType, op, rewriter);
+    if (result.failed())
+      return result;
+
+    SmallVector<int64_t, 2> strideInts;
+    if (!matchPattern(conv2dRelu.stride(),
+                      Torch::m_TorchConstantIntList(strideInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int strides");
+
+    SmallVector<int64_t, 2> dilationInts;
+    if (!matchPattern(conv2dRelu.dilation(),
+                      Torch::m_TorchConstantIntList(dilationInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int dilations");
+
+    auto stridesAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
+    auto dilationAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), dilationInts);
+
+    auto torchTensorTy =
+        op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
+                                                  torchTensorTy.getDtype());
+
+    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+        loc, resultTensorType.getShape(), elementType);
+
+    // Get add input feature map
+    Value addIfm = ToBuiltinTensorTypeCast(rewriter, operands[7]);
+
+    // Change appropriate operation over here
+    Value conv2dReluAveragePoolVal =
+        rewriter
+            .create<linalg::Conv2dTensorAddReluAveragePoolOp>(
+                loc, initTensor.getType(), input, addIfm, weight, bias,
+                initTensor, stridesAttr, dilationAttr)
+            .getResult();
+
+    if (op->hasAttr("layer_name")) {
+      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
+      Operation *conv2dReluValOps = conv2dReluAveragePoolVal.getDefiningOp();
+      conv2dReluValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
+    }
+
+    auto torchTensorCast = ToTorchTensorTypeCast(
+        rewriter, conv2dReluAveragePoolVal, op->getResult(0).getType());
+    rewriter.replaceOp(op, torchTensorCast);
+    return success();
+  }
+};
+
+class XTenConv2dTensorAddLReLUAveragePoolOpConversion
+    : public ConversionPattern {
+public:
+  explicit XTenConv2dTensorAddLReLUAveragePoolOpConversion(MLIRContext *context)
+      : ConversionPattern(Conv2dTensorAddLReLUAveragePoolOp::getOperationName(),
+                          1, context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto conv2dLRelu = cast<Conv2dTensorAddLReLUAveragePoolOp>(op);
+    auto loc = conv2dLRelu.getLoc();
+
+    Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
+    Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
+    Value bias = convertBias(op, operands[2], loc, rewriter);
+
+    if (!isa<Torch::ConstantFloatOp>(operands[7].getDefiningOp()))
+      return op->emitError("Alpha, unimplemented: non-floating point type");
+
+    Type elementType =
+        input.getType().cast<RankedTensorType>().getElementType();
+
+    LogicalResult result =
+        processConv2d(conv2dLRelu, loc, input, elementType, op, rewriter);
+    if (result.failed())
+      return result;
+
+    // Getting alpha value
+    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).value();
+    auto ty = rewriter.getF32Type();
+    auto addCst = rewriter.getFloatAttr(ty, c.convertToDouble());
+    Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, addCst);
+
+    SmallVector<int64_t, 2> strideInts;
+    if (!matchPattern(conv2dLRelu.stride(),
+                      Torch::m_TorchConstantIntList(strideInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int strides");
+
+    SmallVector<int64_t, 2> dilationInts;
+    if (!matchPattern(conv2dLRelu.dilation(),
+                      Torch::m_TorchConstantIntList(dilationInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int dilations");
+
+    auto stridesAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
+    auto dilationAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), dilationInts);
+
+    auto torchTensorTy =
+        op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
+                                                  torchTensorTy.getDtype());
+
+    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+        loc, resultTensorType.getShape(), elementType);
+
+    // Get add input feature map
+    Value addIfm = ToBuiltinTensorTypeCast(rewriter, operands[8]);
+
+    // Change appropriate operation over here
+    Value conv2dAddLReluAvgPoolVal =
+        rewriter
+            .create<linalg::Conv2dTensorAddLreluAveragePoolOp>(
+                loc, initTensor.getType(), input, addIfm, weight, bias, alpha,
+                initTensor, stridesAttr, dilationAttr)
+            .getResult();
+
+    if (op->hasAttr("layer_name")) {
+      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
+      Operation *conv2dAddLReluAvgPoolValOp =
+          conv2dAddLReluAvgPoolVal.getDefiningOp();
+      conv2dAddLReluAvgPoolValOp->setAttr(llvm::StringRef("layer_name"),
+                                          attrVal);
+    }
+
+    auto torchTensorCast = ToTorchTensorTypeCast(
+        rewriter, conv2dAddLReluAvgPoolVal, op->getResult(0).getType());
+    rewriter.replaceOp(op, torchTensorCast);
+    return success();
+  }
+};
+
 class XTenConv2dLeakyReluMaxPoolOpConversion : public ConversionPattern {
 public:
   explicit XTenConv2dLeakyReluMaxPoolOpConversion(MLIRContext *context)
@@ -1481,7 +1713,10 @@ public:
                     XTenConv2dTensorAddReLUOpConversion,
                     XTenConv2dTensorAddLReLUOpConversion,
                     XTenSoftmaxOpConversion,
-                    XTenGlobalAveragePool2DOpConversion>(context);
+                    XTenGlobalAveragePool2DOpConversion,
+                    XTenConv2dTensorAddAveragePoolOpConversion,
+                    XTenConv2dTensorAddReLUAveragePoolOpConversion,
+                    XTenConv2dTensorAddLReLUAveragePoolOpConversion>(context);
 
     ConversionTarget target(*context);
     
