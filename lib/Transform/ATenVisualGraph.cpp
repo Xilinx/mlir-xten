@@ -532,11 +532,10 @@ private:
     return bytes;
   }
 
-  void fillPropertiesLinearOp(Torch::AtenLinearOp &op,
-                              JsonPropertiesBuilder &&props) {
+  template <typename LinearOpType>
+  void fillPropertiesLinearOp(LinearOpType &op, JsonPropertiesBuilder &&props) {
     auto bytes = 0;
-    bytes +=
-        props.appendTypeInfo("Attributes.Weights", op.weight().getType());
+    bytes += props.appendTypeInfo("Attributes.Weights", op.weight().getType());
     bytes += props.appendTypeInfo("Attributes.Bias", op.bias().getType());
     props.appendStorageAttr(op, bytes);
   }
@@ -740,6 +739,8 @@ private:
       // TODO: fill properties
     } else if (auto op2 = dyn_cast<xten::GlobalAveragePool2D>(op)) {
       // TODO: fill properties
+    } else if (auto op2 = dyn_cast<xten::LinearOp>(op)) {
+      fillPropertiesLinearOp(op2, std::move(props));
     } else if (auto op2 = dyn_cast<Torch::AtenArgmaxOp>(op)) {
       // TODO: fill properties
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dOp>(op)) {
