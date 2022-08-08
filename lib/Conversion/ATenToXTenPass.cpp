@@ -9,6 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
+#include "torch-mlir/Conversion/Utils/Utils.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 #include "torch-mlir/Dialect/Torch/Utils/Utils.h"
@@ -186,10 +187,39 @@ bool isAdaptiveAvgPoolGlobalAveragePool2D(Value outsizes) {
   }
 
   // Check that arguments match expectations for global average pool
-  if (dims.size() == 2 && dims[0] == 1 && dims[1] == 1)
-    return true;
+  return dims.size() == 2 && dims[0] == 1 && dims[1] == 1;
+}
 
-  return false;
+/// Currently a specific version of the avg pool will be adapted to the global
+/// average pool
+bool isAvgPoolGlobalAveragePool2D(Value input, Value kernelSize, Value stride,
+                                  Value padding) {
+  // For now only deal with 4D tensors
+  if (Torch::getTensorRank(input) != 4) {
+    return false;
+  }
+  auto inputType = input.getType().cast<Torch::ValueTensorType>();
+
+  // The trailing two dimensions are the expected kernel size
+  auto expectedKernelSize = inputType.getSizes().take_back(2);
+  // Convert the ArrayRef to a SmallVector so we can use the List Matching
+  // function
+  llvm::SmallVector<int64_t, 2> expectedKernel;
+  llvm::for_each(expectedKernelSize, [&expectedKernel](int64_t value) {
+    expectedKernel.push_back(value);
+  });
+
+  if (!Torch::isConstantIntListMatching(kernelSize, expectedKernel)) {
+    return false;
+  }
+
+  SmallVector<int64_t, 2> expectedStride = {1, 1};
+  if (!Torch::isConstantIntListMatching(stride, expectedStride)) {
+    return false;
+  }
+
+  SmallVector<int64_t, 2> expectedPadding = {0, 0};
+  return Torch::isConstantIntListMatching(padding, expectedPadding);
 }
 
 bool checkLinearForXten(Value input, Value weights, Value bias) {
@@ -240,6 +270,9 @@ struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
     target.addLegalOp<xilinx::xten::Conv2dTensorAddOp>();
     target.addLegalOp<xilinx::xten::Conv2dTensorAddReLUOp>();
     target.addLegalOp<xilinx::xten::Conv2dTensorAddLReLUOp>();
+    target.addLegalOp<xilinx::xten::Conv2dTensorAddAveragePoolOp>();
+    target.addLegalOp<xilinx::xten::Conv2dTensorAddReLUAveragePoolOp>();
+    target.addLegalOp<xilinx::xten::Conv2dTensorAddLReLUAveragePoolOp>();
     target.addLegalOp<xilinx::xten::NoOp>();
     if (failed(applyPatternsAndFoldGreedily(
             module, /*target,*/ std::move(fusionPatterns)))) {

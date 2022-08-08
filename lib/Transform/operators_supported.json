@@ -528,6 +528,18 @@
 		["Computation.MACs", "Total number of MAC units in engine", "long"],		
 		["Storage.Bytes", "Total storage required for Linear engine", "string"]	
 	    ]
+	},
+	{
+	    "name" : "xten.conv2d_tensor_add_averagepool",
+	    "properties" : []
+	},
+	{
+	    "name" : "xten.conv2d_tensor_add_relu_averagepool",
+	    "properties" : []
+	},
+	{
+	    "name" : "xten.conv2d_tensor_add_lrelu_averagepool",
+	    "properties" : []
 	}
     ]    
 }

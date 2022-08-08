@@ -63,20 +63,20 @@ static Value applyPad(Location loc, Value input, ArrayRef<int64_t> pad,
 
   Value padValue = rewriter.create<arith::ConstantOp>(loc, padAttr);
 
-  return tensor::createPadScalarOp(
-             RankedTensorType::get(paddedShape, inputETy), input, padValue,
-             lowIndices, highIndices, /*nofold=*/false, loc, rewriter)
+  return tensor::createPadScalarOp(RankedTensorType::get(paddedShape, inputETy),
+                                   input, padValue, lowIndices, highIndices,
+                                   /*nofold=*/false, loc, rewriter)
       .result();
 }
 
 /// Return a zero-initialized tensor of given size and dtype.
-static Value zeroInit(ArrayRef<int64_t> sizes, mlir::Type elementType, Location loc,
-                         ConversionPatternRewriter &rewriter) {
-  Value initTensor = rewriter.create<linalg::InitTensorOp>(loc, sizes, elementType);
+static Value zeroInit(ArrayRef<int64_t> sizes, mlir::Type elementType,
+                      Location loc, ConversionPatternRewriter &rewriter) {
+  Value initTensor =
+      rewriter.create<linalg::InitTensorOp>(loc, sizes, elementType);
   Value c0float = rewriter.create<arith::ConstantOp>(
       loc, rewriter.getZeroAttr(elementType));
-  return rewriter.create<linalg::FillOp>(loc, c0float, initTensor)
-      .getResult(0);
+  return rewriter.create<linalg::FillOp>(loc, c0float, initTensor).getResult(0);
 }
 
 /// Return an aten bias (vtensor or none) converted to a standard bias tensor.
@@ -91,9 +91,10 @@ static Value convertBias(Operation *op, Value atenBias, Location loc,
   return ToBuiltinTensorTypeCast(rewriter, atenBias);
 }
 
-/// Produces an output-dimensioned tensor, initialized with an aten bias (vtensor or none).
+/// Produces an output-dimensioned tensor, initialized with an aten bias
+/// (vtensor or none).
 static Value getBiasedInit(Operation *op, Value atenBias, Location loc,
-                         ConversionPatternRewriter &rewriter) {
+                           ConversionPatternRewriter &rewriter) {
   auto outputTy =
       op->getResult(0).getType().dyn_cast<torch::Torch::BaseTensorType>();
   assert(outputTy);
@@ -109,8 +110,8 @@ static Value getBiasedInit(Operation *op, Value atenBias, Location loc,
   }
   auto bias = ToBuiltinTensorTypeCast(rewriter, atenBias);
   auto biasType = bias.getType().cast<RankedTensorType>();
-  assert (biasType.getRank() == 1);
-  assert (elementType == biasType.getElementType());
+  assert(biasType.getRank() == 1);
+  assert(elementType == biasType.getElementType());
 
   auto resultRank = initTensor.getType().cast<RankedTensorType>().getRank();
   SmallVector<AffineMap> indexingMaps = {
@@ -120,19 +121,19 @@ static Value getBiasedInit(Operation *op, Value atenBias, Location loc,
       rewriter.getMultiDimIdentityMap(resultRank)};
   SmallVector<StringRef> iteratorTypes(resultRank, "parallel");
   return rewriter
-             .create<linalg::GenericOp>(
-                 loc, initTensor.getType(), bias, initTensor, indexingMaps,
-                 iteratorTypes,
-                 [](OpBuilder &b, Location loc, ValueRange args) {
-                   b.create<linalg::YieldOp>(loc, args[0]);
-                 })
-             .getResult(0);
+      .create<linalg::GenericOp>(
+          loc, initTensor.getType(), bias, initTensor, indexingMaps,
+          iteratorTypes,
+          [](OpBuilder &b, Location loc, ValueRange args) {
+            b.create<linalg::YieldOp>(loc, args[0]);
+          })
+      .getResult(0);
 }
 
-template<class T>
+template <class T>
 static LogicalResult processConv2d(T &conv2dOp, Location &loc, Value &input,
-                                  Type &elementType, Operation *op, 
-                                  ConversionPatternRewriter &rewriter) {
+                                   Type &elementType, Operation *op,
+                                   ConversionPatternRewriter &rewriter) {
   if (!elementType.isa<mlir::FloatType>())
     return op->emitError("unimplemented: non-floating point type");
 
@@ -140,8 +141,8 @@ static LogicalResult processConv2d(T &conv2dOp, Location &loc, Value &input,
   paddingInts.resize(2, 0);
   if (!matchPattern(conv2dOp.padding(),
                     Torch::m_TorchConstantIntList(paddingInts))) {
-    return rewriter.notifyMatchFailure(
-        op, "only support constant padding values");
+    return rewriter.notifyMatchFailure(op,
+                                       "only support constant padding values");
   }
 
   /// paddedInput. input shape change based on padding
@@ -187,16 +188,19 @@ public:
     auto identMap = rewriter.getMultiDimIdentityMap(rank);
     SmallVector<AffineMap, 4> indexMap(3, identMap);
 
-    auto linalgOp = rewriter.create<linalg::GenericOp>(
-        loc, C.getType(), inputTensors, outputTensors, indexMap,
-        SmallVector<StringRef>(rank, getParallelIteratorTypeName()), "",
-        static_cast<const T *>(this)->getDefaultLibraryFunc(),
-        [&](OpBuilder &nestedBuilder, Location nestedLoc,
-            ValueRange blockArgs) {
-          auto result = static_cast<const T *>(this)->emitBinaryOp(
-              op, elementTy, rewriter, blockArgs[0], blockArgs[1]);
-          nestedBuilder.create<linalg::YieldOp>(loc, result);
-        }).getResult(0);
+    auto linalgOp =
+        rewriter
+            .create<linalg::GenericOp>(
+                loc, C.getType(), inputTensors, outputTensors, indexMap,
+                SmallVector<StringRef>(rank, getParallelIteratorTypeName()), "",
+                static_cast<const T *>(this)->getDefaultLibraryFunc(),
+                [&](OpBuilder &nestedBuilder, Location nestedLoc,
+                    ValueRange blockArgs) {
+                  auto result = static_cast<const T *>(this)->emitBinaryOp(
+                      op, elementTy, rewriter, blockArgs[0], blockArgs[1]);
+                  nestedBuilder.create<linalg::YieldOp>(loc, result);
+                })
+            .getResult(0);
 
     auto torchTensorCast =
         ToTorchTensorTypeCast(rewriter, linalgOp, op->getResult(0).getType());
@@ -265,12 +269,11 @@ public:
     Value C = zeroInit(tTy.getSizes(), tTy.getDtype(), loc, rewriter);
 
     auto mulOp = rewriter
-        .create<linalg::MatmulOp>(loc, C.getType(), ValueRange{A, B},
-                                  ValueRange{C})
-        .getResult(0);
+                     .create<linalg::MatmulOp>(loc, C.getType(),
+                                               ValueRange{A, B}, ValueRange{C})
+                     .getResult(0);
 
-    auto tensor_cast =
-        ToTorchTensorTypeCast(rewriter, mulOp, resultTy);
+    auto tensor_cast = ToTorchTensorTypeCast(rewriter, mulOp, resultTy);
     rewriter.replaceOp(op, tensor_cast);
 
     return success();
@@ -365,8 +368,8 @@ public:
     Type elementType =
         input.getType().cast<RankedTensorType>().getElementType();
 
-    LogicalResult result = processConv2d(conv2dRelu, loc, input, elementType, 
-        op, rewriter);
+    LogicalResult result =
+        processConv2d(conv2dRelu, loc, input, elementType, op, rewriter);
     if (result.failed())
       return result;
 
@@ -436,8 +439,8 @@ public:
     Type elementType =
         input.getType().cast<RankedTensorType>().getElementType();
 
-    LogicalResult result = processConv2d(conv2dLRelu, loc, input, elementType, 
-        op, rewriter);
+    LogicalResult result =
+        processConv2d(conv2dLRelu, loc, input, elementType, op, rewriter);
     if (result.failed())
       return result;
 
@@ -510,8 +513,8 @@ public:
     Type elementType =
         input.getType().cast<RankedTensorType>().getElementType();
 
-    LogicalResult result = processConv2d(conv2d, loc, input, elementType, 
-        op, rewriter);
+    LogicalResult result =
+        processConv2d(conv2d, loc, input, elementType, op, rewriter);
     if (result.failed())
       return result;
 
@@ -544,12 +547,14 @@ public:
     Value add_ifm = ToBuiltinTensorTypeCast(rewriter, operands[7]);
 
     // Change appropriate operation over here
-    Value conv2dVal = rewriter
-                               .create<linalg::Conv2DTensorAddOp>(
-                                   loc, initTensor.getType(),
-                                   ValueRange{input, add_ifm, weight, bias}, // add_ifm should be in ValueRange
-                                   initTensor, stridesAttr, dilationAttr)
-                               .getResult(0);
+    Value conv2dVal =
+        rewriter
+            .create<linalg::Conv2DTensorAddOp>(
+                loc, initTensor.getType(),
+                ValueRange{input, add_ifm, weight,
+                           bias}, // add_ifm should be in ValueRange
+                initTensor, stridesAttr, dilationAttr)
+            .getResult(0);
 
     if (op->hasAttr("layer_name")) {
       auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
@@ -557,8 +562,8 @@ public:
       conv2dValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
     }
 
-    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dVal,
-                                                 op->getResult(0).getType());
+    auto torchTensorCast =
+        ToTorchTensorTypeCast(rewriter, conv2dVal, op->getResult(0).getType());
     rewriter.replaceOp(op, torchTensorCast);
     return success();
   }
@@ -567,7 +572,8 @@ public:
 class XTenConv2dTensorAddReLUOpConversion : public ConversionPattern {
 public:
   explicit XTenConv2dTensorAddReLUOpConversion(MLIRContext *context)
-      : ConversionPattern(Conv2dTensorAddReLUOp::getOperationName(), 1, context) {}
+      : ConversionPattern(Conv2dTensorAddReLUOp::getOperationName(), 1,
+                          context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
@@ -582,8 +588,8 @@ public:
     Type elementType =
         input.getType().cast<RankedTensorType>().getElementType();
 
-    LogicalResult result = processConv2d(conv2dRelu, loc, input, elementType, 
-        op, rewriter);
+    LogicalResult result =
+        processConv2d(conv2dRelu, loc, input, elementType, op, rewriter);
     if (result.failed())
       return result;
 
@@ -616,12 +622,14 @@ public:
     Value add_ifm = ToBuiltinTensorTypeCast(rewriter, operands[7]);
 
     // Change appropriate operation over here
-    Value conv2dReluVal = rewriter
-                               .create<linalg::Conv2DTensorAddReluOp>(
-                                   loc, initTensor.getType(),
-                                   ValueRange{input, add_ifm, weight, bias}, // add_ifm should be in ValueRange
-                                   initTensor, stridesAttr, dilationAttr)
-                               .getResult(0);
+    Value conv2dReluVal =
+        rewriter
+            .create<linalg::Conv2DTensorAddReluOp>(
+                loc, initTensor.getType(),
+                ValueRange{input, add_ifm, weight,
+                           bias}, // add_ifm should be in ValueRange
+                initTensor, stridesAttr, dilationAttr)
+            .getResult(0);
 
     if (op->hasAttr("layer_name")) {
       auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
@@ -639,7 +647,8 @@ public:
 class XTenConv2dTensorAddLReLUOpConversion : public ConversionPattern {
 public:
   explicit XTenConv2dTensorAddLReLUOpConversion(MLIRContext *context)
-      : ConversionPattern(Conv2dTensorAddLReLUOp::getOperationName(), 1, context) {}
+      : ConversionPattern(Conv2dTensorAddLReLUOp::getOperationName(), 1,
+                          context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
@@ -657,8 +666,8 @@ public:
     Type elementType =
         input.getType().cast<RankedTensorType>().getElementType();
 
-    LogicalResult result = processConv2d(conv2dLRelu, loc, input, elementType, 
-        op, rewriter);
+    LogicalResult result =
+        processConv2d(conv2dLRelu, loc, input, elementType, op, rewriter);
     if (result.failed())
       return result;
 
@@ -697,12 +706,14 @@ public:
     Value add_ifm = ToBuiltinTensorTypeCast(rewriter, operands[8]);
 
     // Change appropriate operation over here
-    Value conv2dLReluVal = rewriter
-                               .create<linalg::Conv2DTensorAddLreluOp>(
-                                   loc, initTensor.getType(),
-                                   ValueRange{input, add_ifm, weight, bias, alpha}, // add_ifm should be in ValueRange
-                                   initTensor, stridesAttr, dilationAttr)
-                               .getResult(0);
+    Value conv2dLReluVal =
+        rewriter
+            .create<linalg::Conv2DTensorAddLreluOp>(
+                loc, initTensor.getType(),
+                ValueRange{input, add_ifm, weight, bias,
+                           alpha}, // add_ifm should be in ValueRange
+                initTensor, stridesAttr, dilationAttr)
+            .getResult(0);
 
     if (op->hasAttr("layer_name")) {
       auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
@@ -712,6 +723,238 @@ public:
 
     auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dLReluVal,
                                                  op->getResult(0).getType());
+    rewriter.replaceOp(op, torchTensorCast);
+    return success();
+  }
+};
+
+class XTenConv2dTensorAddAveragePoolOpConversion : public ConversionPattern {
+public:
+  explicit XTenConv2dTensorAddAveragePoolOpConversion(MLIRContext *context)
+      : ConversionPattern(Conv2dTensorAddAveragePoolOp::getOperationName(), 1,
+                          context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto conv2d = cast<Conv2dTensorAddAveragePoolOp>(op);
+    auto loc = conv2d.getLoc();
+
+    Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
+    Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
+    Value bias = convertBias(op, operands[2], loc, rewriter);
+
+    Type elementType =
+        input.getType().cast<RankedTensorType>().getElementType();
+
+    LogicalResult result =
+        processConv2d(conv2d, loc, input, elementType, op, rewriter);
+    if (result.failed())
+      return result;
+
+    SmallVector<int64_t, 2> strideInts;
+    if (!matchPattern(conv2d.stride(),
+                      Torch::m_TorchConstantIntList(strideInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int strides");
+
+    SmallVector<int64_t, 2> dilationInts;
+    if (!matchPattern(conv2d.dilation(),
+                      Torch::m_TorchConstantIntList(dilationInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int dilations");
+
+    auto stridesAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
+    auto dilationAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), dilationInts);
+
+    auto torchTensorTy =
+        op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
+                                                  torchTensorTy.getDtype());
+
+    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+        loc, resultTensorType.getShape(), elementType);
+
+    // Get add input feature map
+    Value addIfm = ToBuiltinTensorTypeCast(rewriter, operands[7]);
+
+    // Change appropriate operation over here
+    Value conv2dAveragePoolVal =
+        rewriter
+            .create<linalg::Conv2dTensorAddAveragePoolOp>(
+                loc, initTensor.getType(), input, addIfm, weight, bias,
+                initTensor, stridesAttr, dilationAttr)
+            .getResult();
+
+    if (op->hasAttr("layer_name")) {
+      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
+      Operation *conv2dValOps = conv2dAveragePoolVal.getDefiningOp();
+      conv2dValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
+    }
+
+    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dAveragePoolVal,
+                                                 op->getResult(0).getType());
+    rewriter.replaceOp(op, torchTensorCast);
+    return success();
+  }
+};
+
+class XTenConv2dTensorAddReLUAveragePoolOpConversion
+    : public ConversionPattern {
+public:
+  explicit XTenConv2dTensorAddReLUAveragePoolOpConversion(MLIRContext *context)
+      : ConversionPattern(Conv2dTensorAddReLUAveragePoolOp::getOperationName(),
+                          1, context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto conv2dRelu = cast<Conv2dTensorAddReLUAveragePoolOp>(op);
+    auto loc = conv2dRelu.getLoc();
+
+    Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
+    Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
+    Value bias = convertBias(op, operands[2], loc, rewriter);
+
+    Type elementType =
+        input.getType().cast<RankedTensorType>().getElementType();
+
+    LogicalResult result =
+        processConv2d(conv2dRelu, loc, input, elementType, op, rewriter);
+    if (result.failed())
+      return result;
+
+    SmallVector<int64_t, 2> strideInts;
+    if (!matchPattern(conv2dRelu.stride(),
+                      Torch::m_TorchConstantIntList(strideInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int strides");
+
+    SmallVector<int64_t, 2> dilationInts;
+    if (!matchPattern(conv2dRelu.dilation(),
+                      Torch::m_TorchConstantIntList(dilationInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int dilations");
+
+    auto stridesAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
+    auto dilationAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), dilationInts);
+
+    auto torchTensorTy =
+        op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
+                                                  torchTensorTy.getDtype());
+
+    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+        loc, resultTensorType.getShape(), elementType);
+
+    // Get add input feature map
+    Value addIfm = ToBuiltinTensorTypeCast(rewriter, operands[7]);
+
+    // Change appropriate operation over here
+    Value conv2dReluAveragePoolVal =
+        rewriter
+            .create<linalg::Conv2dTensorAddReluAveragePoolOp>(
+                loc, initTensor.getType(), input, addIfm, weight, bias,
+                initTensor, stridesAttr, dilationAttr)
+            .getResult();
+
+    if (op->hasAttr("layer_name")) {
+      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
+      Operation *conv2dReluValOps = conv2dReluAveragePoolVal.getDefiningOp();
+      conv2dReluValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
+    }
+
+    auto torchTensorCast = ToTorchTensorTypeCast(
+        rewriter, conv2dReluAveragePoolVal, op->getResult(0).getType());
+    rewriter.replaceOp(op, torchTensorCast);
+    return success();
+  }
+};
+
+class XTenConv2dTensorAddLReLUAveragePoolOpConversion
+    : public ConversionPattern {
+public:
+  explicit XTenConv2dTensorAddLReLUAveragePoolOpConversion(MLIRContext *context)
+      : ConversionPattern(Conv2dTensorAddLReLUAveragePoolOp::getOperationName(),
+                          1, context) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto conv2dLRelu = cast<Conv2dTensorAddLReLUAveragePoolOp>(op);
+    auto loc = conv2dLRelu.getLoc();
+
+    Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
+    Value weight = ToBuiltinTensorTypeCast(rewriter, operands[1]);
+    Value bias = convertBias(op, operands[2], loc, rewriter);
+
+    if (!isa<Torch::ConstantFloatOp>(operands[7].getDefiningOp()))
+      return op->emitError("Alpha, unimplemented: non-floating point type");
+
+    Type elementType =
+        input.getType().cast<RankedTensorType>().getElementType();
+
+    LogicalResult result =
+        processConv2d(conv2dLRelu, loc, input, elementType, op, rewriter);
+    if (result.failed())
+      return result;
+
+    // Getting alpha value
+    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).value();
+    auto ty = rewriter.getF32Type();
+    auto addCst = rewriter.getFloatAttr(ty, c.convertToDouble());
+    Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, addCst);
+
+    SmallVector<int64_t, 2> strideInts;
+    if (!matchPattern(conv2dLRelu.stride(),
+                      Torch::m_TorchConstantIntList(strideInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int strides");
+
+    SmallVector<int64_t, 2> dilationInts;
+    if (!matchPattern(conv2dLRelu.dilation(),
+                      Torch::m_TorchConstantIntList(dilationInts)))
+      return rewriter.notifyMatchFailure(op,
+                                         "only support constant int dilations");
+
+    auto stridesAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), strideInts);
+    auto dilationAttr = DenseIntElementsAttr::get(
+        RankedTensorType::get({2}, rewriter.getI64Type()), dilationInts);
+
+    auto torchTensorTy =
+        op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
+                                                  torchTensorTy.getDtype());
+
+    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+        loc, resultTensorType.getShape(), elementType);
+
+    // Get add input feature map
+    Value addIfm = ToBuiltinTensorTypeCast(rewriter, operands[8]);
+
+    // Change appropriate operation over here
+    Value conv2dAddLReluAvgPoolVal =
+        rewriter
+            .create<linalg::Conv2dTensorAddLreluAveragePoolOp>(
+                loc, initTensor.getType(), input, addIfm, weight, bias, alpha,
+                initTensor, stridesAttr, dilationAttr)
+            .getResult();
+
+    if (op->hasAttr("layer_name")) {
+      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
+      Operation *conv2dAddLReluAvgPoolValOp =
+          conv2dAddLReluAvgPoolVal.getDefiningOp();
+      conv2dAddLReluAvgPoolValOp->setAttr(llvm::StringRef("layer_name"),
+                                          attrVal);
+    }
+
+    auto torchTensorCast = ToTorchTensorTypeCast(
+        rewriter, conv2dAddLReluAvgPoolVal, op->getResult(0).getType());
     rewriter.replaceOp(op, torchTensorCast);
     return success();
   }
@@ -845,15 +1088,18 @@ public:
         APFloat::getLargest(
             elementType.cast<mlir::FloatType>().getFloatSemantics(),
             /*Negative=*/true));
-    Value initValue = rewriter.create<arith::ConstantOp>(loc, smallestFPValueAttr);
-    Value filledInitTensor = rewriter.create<linalg::FillOp>(loc, initValue, initTensor).getResult(0);
+    Value initValue =
+        rewriter.create<arith::ConstantOp>(loc, smallestFPValueAttr);
+    Value filledInitTensor =
+        rewriter.create<linalg::FillOp>(loc, initValue, initTensor)
+            .getResult(0);
 
     Value conv2dLReluMaxpoolVal =
         rewriter
             .create<linalg::Conv2DLreluMaxpoolOp>(
                 loc, initTensor.getType(),
-                ValueRange{input, weight, bias, alpha}, filledInitTensor, stridesAttr,
-                dilationAttr, mp_kernel_sizeAttr, mp_stridesAttr,
+                ValueRange{input, weight, bias, alpha}, filledInitTensor,
+                stridesAttr, dilationAttr, mp_kernel_sizeAttr, mp_stridesAttr,
                 mp_paddingAttr, mp_dilationAttr)
             .getResult(0);
 
@@ -1011,15 +1257,18 @@ public:
         APFloat::getLargest(
             elementType.cast<mlir::FloatType>().getFloatSemantics(),
             /*Negative=*/true));
-    Value initValue = rewriter.create<arith::ConstantOp>(loc, smallestFPValueAttr);
-    Value filledInitTensor = rewriter.create<linalg::FillOp>(loc, initValue, initTensor).getResult(0);
+    Value initValue =
+        rewriter.create<arith::ConstantOp>(loc, smallestFPValueAttr);
+    Value filledInitTensor =
+        rewriter.create<linalg::FillOp>(loc, initValue, initTensor)
+            .getResult(0);
 
     Value conv2dLReluPadMaxpoolVal =
         rewriter
             .create<linalg::Conv2DLreluMaxpoolOp>(
                 loc, initTensor.getType(),
-                ValueRange{input, weight, bias, alpha}, filledInitTensor, stridesAttr,
-                dilationAttr, mp_kernel_sizeAttr, mp_stridesAttr,
+                ValueRange{input, weight, bias, alpha}, filledInitTensor,
+                stridesAttr, dilationAttr, mp_kernel_sizeAttr, mp_stridesAttr,
                 pad_mp_paddingAttr, mp_dilationAttr)
             .getResult(0);
 
@@ -1040,8 +1289,8 @@ public:
 class XTenConv2dReluMaxPoolOpConversion : public ConversionPattern {
 public:
   explicit XTenConv2dReluMaxPoolOpConversion(MLIRContext *context)
-      : ConversionPattern(Conv2dReLUMaxPoolOp::getOperationName(), 1,
-                          context) {}
+      : ConversionPattern(Conv2dReLUMaxPoolOp::getOperationName(), 1, context) {
+  }
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
@@ -1156,16 +1405,18 @@ public:
         APFloat::getLargest(
             elementType.cast<mlir::FloatType>().getFloatSemantics(),
             /*Negative=*/true));
-    Value initValue = rewriter.create<arith::ConstantOp>(loc, smallestFPValueAttr);
-    Value filledInitTensor = rewriter.create<linalg::FillOp>(loc, initValue, initTensor).getResult(0);
+    Value initValue =
+        rewriter.create<arith::ConstantOp>(loc, smallestFPValueAttr);
+    Value filledInitTensor =
+        rewriter.create<linalg::FillOp>(loc, initValue, initTensor)
+            .getResult(0);
 
     Value conv2dReluMaxpoolVal =
         rewriter
             .create<linalg::Conv2DReluMaxpoolOp>(
-                loc, initTensor.getType(),
-                ValueRange{input, weight, bias}, filledInitTensor, stridesAttr,
-                dilationAttr, mp_kernel_sizeAttr, mp_stridesAttr,
-                mp_paddingAttr, mp_dilationAttr)
+                loc, initTensor.getType(), ValueRange{input, weight, bias},
+                filledInitTensor, stridesAttr, dilationAttr, mp_kernel_sizeAttr,
+                mp_stridesAttr, mp_paddingAttr, mp_dilationAttr)
             .getResult(0);
 
     if (op->hasAttr("layer_name")) {
@@ -1174,8 +1425,8 @@ public:
       conv2dReluMaxpoolOps->setAttr(llvm::StringRef("layer_name"), attrVal);
     }
 
-    auto torchTensorCast = ToTorchTensorTypeCast(
-        rewriter, conv2dReluMaxpoolVal, op->getResult(0).getType());
+    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dReluMaxpoolVal,
+                                                 op->getResult(0).getType());
     rewriter.replaceOp(op, torchTensorCast);
     return success();
   }
@@ -1313,16 +1564,18 @@ public:
         APFloat::getLargest(
             elementType.cast<mlir::FloatType>().getFloatSemantics(),
             /*Negative=*/true));
-    Value initValue = rewriter.create<arith::ConstantOp>(loc, smallestFPValueAttr);
-    Value filledInitTensor = rewriter.create<linalg::FillOp>(loc, initValue, initTensor).getResult(0);
+    Value initValue =
+        rewriter.create<arith::ConstantOp>(loc, smallestFPValueAttr);
+    Value filledInitTensor =
+        rewriter.create<linalg::FillOp>(loc, initValue, initTensor)
+            .getResult(0);
 
     Value conv2dReluPadMaxpoolVal =
         rewriter
             .create<linalg::Conv2DReluMaxpoolOp>(
-                loc, initTensor.getType(),
-                ValueRange{input, weight, bias}, filledInitTensor, stridesAttr,
-                dilationAttr, mp_kernel_sizeAttr, mp_stridesAttr,
-                pad_mp_paddingAttr, mp_dilationAttr)
+                loc, initTensor.getType(), ValueRange{input, weight, bias},
+                filledInitTensor, stridesAttr, dilationAttr, mp_kernel_sizeAttr,
+                mp_stridesAttr, pad_mp_paddingAttr, mp_dilationAttr)
             .getResult(0);
 
     if (op->hasAttr("layer_name")) {
@@ -1408,7 +1661,8 @@ public:
         loc, resultTensorType.getShape(), elementType);
 
     Value softmaxVal =
-        rewriter.create<linalg::SoftmaxOp>(loc, initTensor.getType(), input, dim)
+        rewriter
+            .create<linalg::SoftmaxOp>(loc, initTensor.getType(), input, dim)
             .getResult();
 
     auto torchTensorCast =
@@ -1421,7 +1675,8 @@ public:
 class XTenGlobalAveragePool2DOpConversion : public ConversionPattern {
 public:
   explicit XTenGlobalAveragePool2DOpConversion(MLIRContext *context)
-      : ConversionPattern(GlobalAveragePool2D::getOperationName(), 1, context) {}
+      : ConversionPattern(GlobalAveragePool2D::getOperationName(), 1, context) {
+  }
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
@@ -1441,12 +1696,13 @@ public:
     Value initTensor = rewriter.create<linalg::InitTensorOp>(
         loc, resultTensorType.getShape(), elementType);
 
-    Value globalavgVal =
-        rewriter.create<linalg::GlobalAveragePool2DOp>(loc, initTensor.getType(), input)
-            .getResult();
+    Value globalavgVal = rewriter
+                             .create<linalg::GlobalAveragePool2DOp>(
+                                 loc, initTensor.getType(), input)
+                             .getResult();
 
-    auto torchTensorCast =
-        ToTorchTensorTypeCast(rewriter, globalavgVal, op->getResult(0).getType());
+    auto torchTensorCast = ToTorchTensorTypeCast(rewriter, globalavgVal,
+                                                 op->getResult(0).getType());
     rewriter.replaceOp(op, torchTensorCast);
     return success();
   }
@@ -1489,7 +1745,7 @@ class XTenToLinalgPass : public XTenToLinalgBase<XTenToLinalgPass> {
 
 public:
   XTenToLinalgPass() = default;
-  XTenToLinalgPass(const XTenToLinalgPass &pass) {};
+  XTenToLinalgPass(const XTenToLinalgPass &pass){};
 
   void runOnOperation() override {
 
@@ -1510,15 +1766,19 @@ public:
         XTenPartialConv2dReLUOpConversion, XTenConv2dTensorAddOpConversion,
         XTenConv2dTensorAddReLUOpConversion,
         XTenConv2dTensorAddLReLUOpConversion, XTenSoftmaxOpConversion,
-        XTenGlobalAveragePool2DOpConversion, XTenLinearOpConversion>(context);
+        XTenGlobalAveragePool2DOpConversion,
+        XTenConv2dTensorAddAveragePoolOpConversion,
+        XTenConv2dTensorAddReLUAveragePoolOpConversion,
+        XTenConv2dTensorAddLReLUAveragePoolOpConversion,
+        XTenLinearOpConversion>(context);
 
     ConversionTarget target(*context);
-    
+
     target.addIllegalDialect<XTenDialect>();
-    target.addLegalDialect<
-        linalg::LinalgDialect,
-        arith::ArithmeticDialect, scf::SCFDialect, tensor::TensorDialect, Torch::TorchDialect, 
-        TorchConversion::TorchConversionDialect>();
+    target.addLegalDialect<linalg::LinalgDialect, arith::ArithmeticDialect,
+                           scf::SCFDialect, tensor::TensorDialect,
+                           Torch::TorchDialect,
+                           TorchConversion::TorchConversionDialect>();
 
     if (failed(applyPartialConversion(module, target, std::move(patterns)))) {
       emitError(UnknownLoc::get(context), "error lowering XTen to Linalg\n");
