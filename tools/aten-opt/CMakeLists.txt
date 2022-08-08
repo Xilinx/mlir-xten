@@ -28,6 +28,7 @@ set(LIBS
   TorchMLIRTorchUtils
   TorchMLIRTorchPasses
   TorchMLIRTorchConversionPasses
+  TorchMLIRConversionUtils
   TorchMLIRTorchToLinalg
   TorchMLIRTorchToSCF
   TorchMLIRTorchToStd

@@ -515,6 +515,18 @@
 	{
 	    "name" : "xten.globalaveragepool2d",
 	    "properties" : []
+	},
+	{
+	    "name" : "xten.conv2d_tensor_add_averagepool",
+	    "properties" : []
+	},
+	{
+	    "name" : "xten.conv2d_tensor_add_relu_averagepool",
+	    "properties" : []
+	},
+	{
+	    "name" : "xten.conv2d_tensor_add_lrelu_averagepool",
+	    "properties" : []
 	}
     ]    
 }
