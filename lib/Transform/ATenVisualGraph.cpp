@@ -806,8 +806,10 @@ private:
       opInput = getInput(op2);
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dReLUPadMaxPoolOp>(op)) {
       opInput = getInput(op2);
+    } else if (auto op2 = mlir::dyn_cast<Torch::AtenFlattenUsingIntsOp>(op)) {
+      opInput = getInput(op2);
     } else {
-      opInput = 0;
+      llvm_unreachable("Unhandled op");
     }
     // TODO: expand switch table for more ops
 
