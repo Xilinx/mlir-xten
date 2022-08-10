@@ -770,7 +770,7 @@ public:
     // Change appropriate operation over here
     Value conv2dAveragePoolVal =
         rewriter
-            .create<linalg::Conv2dTensorAddAveragePoolOp>(
+            .create<linalg::Conv2dTensorAddGlobalAveragePoolOp>(
                 loc, initTensor.getType(), input, addIfm, weight, bias,
                 initTensor, stridesAttr, dilationAttr)
             .getResult();
@@ -844,7 +844,7 @@ public:
     // Change appropriate operation over here
     Value conv2dReluAveragePoolVal =
         rewriter
-            .create<linalg::Conv2dTensorAddReluAveragePoolOp>(
+            .create<linalg::Conv2dTensorAddReluGlobalAveragePoolOp>(
                 loc, initTensor.getType(), input, addIfm, weight, bias,
                 initTensor, stridesAttr, dilationAttr)
             .getResult();
@@ -927,7 +927,7 @@ public:
     // Change appropriate operation over here
     Value conv2dAddLReluAvgPoolVal =
         rewriter
-            .create<linalg::Conv2dTensorAddLreluAveragePoolOp>(
+            .create<linalg::Conv2dTensorAddLreluGlobalAveragePoolOp>(
                 loc, initTensor.getType(), input, addIfm, weight, bias, alpha,
                 initTensor, stridesAttr, dilationAttr)
             .getResult();

@@ -607,7 +607,7 @@ def XTen_Conv2dTensorAddLReLUOp: XTen_Op<"conv2d_tensoradd_lrelu", [NoSideEffect
   }];
 }
 
-def XTen_Conv2dTensorAddAveragePoolOp: XTen_Op<"conv2d_tensoradd_averagepool", [NoSideEffect]> {
+def XTen_Conv2dTensorAddAveragePoolOp: XTen_Op<"conv2d_tensoradd_globalaveragepool", [NoSideEffect]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -624,14 +624,14 @@ def XTen_Conv2dTensorAddAveragePoolOp: XTen_Op<"conv2d_tensoradd_averagepool", [
       outs AnyTorchTensorType:$output
   );
 
-  let summary = "Convolution with linear activation, then element-wise add with another tensor, then average pool.";
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then global average pool.";
   let description = [{
     Convolution with linear activation, then element-wise add with another
     tensor, then average pool.
   }];
 }
 
-def XTen_Conv2dTensorAddReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_relu_averagepool", [NoSideEffect]> {
+def XTen_Conv2dTensorAddReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_relu_globalaveragepool", [NoSideEffect]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -648,14 +648,14 @@ def XTen_Conv2dTensorAddReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_relu_averag
       outs AnyTorchTensorType:$output
   );
 
-  let summary = "Convolution with linear activation, then element-wise add with another tensor, then ReLU, then average pool.";
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then ReLU, then global average pool.";
   let description = [{
     Convolution with linear activation, then element-wise add with another
     tensor, then ReLU, then average pool.
   }];
 }
 
-def XTen_Conv2dTensorAddLReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_lrelu_averagepool", [NoSideEffect]> {
+def XTen_Conv2dTensorAddLReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_lrelu_globalaveragepool", [NoSideEffect]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -674,7 +674,7 @@ def XTen_Conv2dTensorAddLReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_lrelu_aver
       outs AnyTorchTensorType:$output
   );
 
-  let summary = "Convolution with linear activation, then element-wise add with another tensor, then leaky ReLU, then average pool.";
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then leaky ReLU, then global average pool.";
   let description = [{
     Convolution with linear activation, then element-wise add with another
     tensor, then leaky ReLU, then average pool.
