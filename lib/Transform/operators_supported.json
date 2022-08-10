@@ -517,15 +517,15 @@
 	    "properties" : []
 	},
 	{
-	    "name" : "xten.conv2d_tensor_add_averagepool",
+	    "name" : "xten.conv2d_tensoradd_averagepool",
 	    "properties" : []
 	},
 	{
-	    "name" : "xten.conv2d_tensor_add_relu_averagepool",
+	    "name" : "xten.conv2d_tensoradd_relu_averagepool",
 	    "properties" : []
 	},
 	{
-	    "name" : "xten.conv2d_tensor_add_lrelu_averagepool",
+	    "name" : "xten.conv2d_tensoradd_lrelu_averagepool",
 	    "properties" : []
 	}
     ]    
