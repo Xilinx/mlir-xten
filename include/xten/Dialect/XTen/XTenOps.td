@@ -607,7 +607,7 @@ def XTen_Conv2dTensorAddLReLUOp: XTen_Op<"conv2d_tensoradd_lrelu", [NoSideEffect
   }];
 }
 
-def XTen_Conv2dTensorAddAveragePoolOp: XTen_Op<"conv2d_tensoradd_averagepool", [NoSideEffect]> {
+def XTen_Conv2dTensorAddGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_globalaveragepool", [NoSideEffect]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -623,32 +623,15 @@ def XTen_Conv2dTensorAddAveragePoolOp: XTen_Op<"conv2d_tensoradd_averagepool", [
   let results = (
       outs AnyTorchTensorType:$output
   );
-  let summary = "Convolution with linear activation, then element-wise add with another tensor, then average pool.";
+
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then global average pool.";
   let description = [{
     Convolution with linear activation, then element-wise add with another
     tensor, then average pool.
   }];
 }
 
-def XTen_LinearOp: XTen_Op<"linear", [NoSideEffect]> {
-  let arguments = (
-    ins AnyTorchTensorType:$input,
-        AnyTorchTensorType:$weight,
-        AnyTorchOptionalTensorType:$bias
-  );
-
-  let results = (
-      outs AnyTorchTensorType:$output
-  );
-
-  let summary = "Applies a linear function Y = XA^T+B to the input function";
-  let description = [{
-    Applies a linear function to the input Y = XA^T+B. Represents a fully connected layer.
-  }];
-}
-
-
-def XTen_Conv2dTensorAddReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_relu_averagepool", [NoSideEffect]> {
+def XTen_Conv2dTensorAddReLUGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_relu_globalaveragepool", [NoSideEffect]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -665,14 +648,14 @@ def XTen_Conv2dTensorAddReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_relu_averag
       outs AnyTorchTensorType:$output
   );
 
-  let summary = "Convolution with linear activation, then element-wise add with another tensor, then ReLU, then average pool.";
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then ReLU, then global average pool.";
   let description = [{
     Convolution with linear activation, then element-wise add with another
     tensor, then ReLU, then average pool.
   }];
 }
 
-def XTen_Conv2dTensorAddLReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_lrelu_averagepool", [NoSideEffect]> {
+def XTen_Conv2dTensorAddLReLUGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_lrelu_globalaveragepool", [NoSideEffect]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -691,10 +674,27 @@ def XTen_Conv2dTensorAddLReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_lrelu_aver
       outs AnyTorchTensorType:$output
   );
 
-  let summary = "Convolution with linear activation, then element-wise add with another tensor, then leaky ReLU, then average pool.";
+  let summary = "Convolution with linear activation, then element-wise add with another tensor, then leaky ReLU, then global average pool.";
   let description = [{
     Convolution with linear activation, then element-wise add with another
     tensor, then leaky ReLU, then average pool.
+  }];
+}
+
+def XTen_LinearOp: XTen_Op<"linear", [NoSideEffect]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias
+  );
+
+  let results = (
+      outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Applies a linear function Y = XA^T+B to the input function";
+  let description = [{
+    Applies a linear function to the input Y = XA^T+B. Represents a fully connected layer.
   }];
 }
 

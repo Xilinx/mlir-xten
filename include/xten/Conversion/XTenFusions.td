@@ -64,10 +64,10 @@ def : Pat<(Torch_AtenLeakyReluOp (XTen_Conv2dTensorAddOp $a,$b,$c,$d,$e,$f,$g,$h
 
 // This adds an average pool after the add (+ (leaky) relu)
 def : Pat<(XTen_GlobalAveragePool2D (XTen_Conv2dTensorAddOp $a,$b,$c,$d,$e,$f,$g,$h)),
-          (XTen_Conv2dTensorAddAveragePoolOp $a,$b,$c,$d,$e,$f,$g,$h)>;
+          (XTen_Conv2dTensorAddGlobalAveragePoolOp $a,$b,$c,$d,$e,$f,$g,$h)>;
 
 def : Pat<(XTen_GlobalAveragePool2D (XTen_Conv2dTensorAddReLUOp $a,$b,$c,$d,$e,$f,$g,$h)),
-          (XTen_Conv2dTensorAddReLUAveragePoolOp $a,$b,$c,$d,$e,$f,$g,$h)>;
+          (XTen_Conv2dTensorAddReLUGlobalAveragePoolOp $a,$b,$c,$d,$e,$f,$g,$h)>;
 
 def : Pat<(XTen_GlobalAveragePool2D (XTen_Conv2dTensorAddLReLUOp $a,$b,$c,$d,$e,$f,$g,$alpha,$h)),
-          (XTen_Conv2dTensorAddLReLUAveragePoolOp $a,$b,$c,$d,$e,$f,$g,$alpha,$h)>;
+          (XTen_Conv2dTensorAddLReLUGlobalAveragePoolOp $a,$b,$c,$d,$e,$f,$g,$alpha,$h)>;

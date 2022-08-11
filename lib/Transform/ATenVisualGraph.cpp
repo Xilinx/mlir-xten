@@ -767,13 +767,15 @@ private:
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dReLUPadMaxPoolOp>(op)) {
       // todo pad attributes are missing
       fillPropertiesOpC2dActMaxpool(op2, "aten.relu", std::move(props));
-    } else if (auto op2 = dyn_cast<xten::Conv2dTensorAddAveragePoolOp>(op)) {
+    } else if (auto op2 =
+                   dyn_cast<xten::Conv2dTensorAddGlobalAveragePoolOp>(op)) {
       // TODO: fill properties
     } else if (auto op2 =
-                   dyn_cast<xten::Conv2dTensorAddReLUAveragePoolOp>(op)) {
+                   dyn_cast<xten::Conv2dTensorAddReLUGlobalAveragePoolOp>(op)) {
       // TODO: fill properties
     } else if (auto op2 =
-                   dyn_cast<xten::Conv2dTensorAddLReLUAveragePoolOp>(op)) {
+                   dyn_cast<xten::Conv2dTensorAddLReLUGlobalAveragePoolOp>(
+                       op)) {
       // TODO: fill properties
     }
 
@@ -807,8 +809,10 @@ private:
       opInput = getInput(op2);
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dReLUPadMaxPoolOp>(op)) {
       opInput = getInput(op2);
+    } else if (auto op2 = mlir::dyn_cast<Torch::AtenFlattenUsingIntsOp>(op)) {
+      opInput = getInput(op2);
     } else {
-      opInput = 0;
+      llvm_unreachable("Unhandled op");
     }
     // TODO: expand switch table for more ops
 
