@@ -766,13 +766,15 @@ private:
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dReLUPadMaxPoolOp>(op)) {
       // todo pad attributes are missing
       fillPropertiesOpC2dActMaxpool(op2, "aten.relu", std::move(props));
-    } else if (auto op2 = dyn_cast<xten::Conv2dTensorAddAveragePoolOp>(op)) {
+    } else if (auto op2 =
+                   dyn_cast<xten::Conv2dTensorAddGlobalAveragePoolOp>(op)) {
       // TODO: fill properties
     } else if (auto op2 =
-                   dyn_cast<xten::Conv2dTensorAddReLUAveragePoolOp>(op)) {
+                   dyn_cast<xten::Conv2dTensorAddReLUGlobalAveragePoolOp>(op)) {
       // TODO: fill properties
     } else if (auto op2 =
-                   dyn_cast<xten::Conv2dTensorAddLReLUAveragePoolOp>(op)) {
+                   dyn_cast<xten::Conv2dTensorAddLReLUGlobalAveragePoolOp>(
+                       op)) {
       // TODO: fill properties
     }
 
