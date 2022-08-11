@@ -607,7 +607,7 @@ def XTen_Conv2dTensorAddLReLUOp: XTen_Op<"conv2d_tensoradd_lrelu", [NoSideEffect
   }];
 }
 
-def XTen_Conv2dTensorAddAveragePoolOp: XTen_Op<"conv2d_tensoradd_globalaveragepool", [NoSideEffect]> {
+def XTen_Conv2dTensorAddGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_globalaveragepool", [NoSideEffect]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -631,7 +631,7 @@ def XTen_Conv2dTensorAddAveragePoolOp: XTen_Op<"conv2d_tensoradd_globalaveragepo
   }];
 }
 
-def XTen_Conv2dTensorAddReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_relu_globalaveragepool", [NoSideEffect]> {
+def XTen_Conv2dTensorAddReLUGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_relu_globalaveragepool", [NoSideEffect]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -655,7 +655,7 @@ def XTen_Conv2dTensorAddReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_relu_global
   }];
 }
 
-def XTen_Conv2dTensorAddLReLUAveragePoolOp: XTen_Op<"conv2d_tensoradd_lrelu_globalaveragepool", [NoSideEffect]> {
+def XTen_Conv2dTensorAddLReLUGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_lrelu_globalaveragepool", [NoSideEffect]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,

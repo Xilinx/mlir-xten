@@ -715,16 +715,19 @@ public:
   }
 };
 
-class XTenConv2dTensorAddAveragePoolOpConversion : public ConversionPattern {
+class XTenConv2dTensorAddGlobalAveragePoolOpConversion
+    : public ConversionPattern {
 public:
-  explicit XTenConv2dTensorAddAveragePoolOpConversion(MLIRContext *context)
-      : ConversionPattern(Conv2dTensorAddAveragePoolOp::getOperationName(), 1,
-                          context) {}
+  explicit XTenConv2dTensorAddGlobalAveragePoolOpConversion(
+      MLIRContext *context)
+      : ConversionPattern(
+            Conv2dTensorAddGlobalAveragePoolOp::getOperationName(), 1,
+            context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const override {
-    auto conv2d = cast<Conv2dTensorAddAveragePoolOp>(op);
+    auto conv2d = cast<Conv2dTensorAddGlobalAveragePoolOp>(op);
     auto loc = conv2d.getLoc();
 
     Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
@@ -788,17 +791,19 @@ public:
   }
 };
 
-class XTenConv2dTensorAddReLUAveragePoolOpConversion
+class XTenConv2dTensorAddReLUGlobalAveragePoolOpConversion
     : public ConversionPattern {
 public:
-  explicit XTenConv2dTensorAddReLUAveragePoolOpConversion(MLIRContext *context)
-      : ConversionPattern(Conv2dTensorAddReLUAveragePoolOp::getOperationName(),
-                          1, context) {}
+  explicit XTenConv2dTensorAddReLUGlobalAveragePoolOpConversion(
+      MLIRContext *context)
+      : ConversionPattern(
+            Conv2dTensorAddReLUGlobalAveragePoolOp::getOperationName(), 1,
+            context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const override {
-    auto conv2dRelu = cast<Conv2dTensorAddReLUAveragePoolOp>(op);
+    auto conv2dRelu = cast<Conv2dTensorAddReLUGlobalAveragePoolOp>(op);
     auto loc = conv2dRelu.getLoc();
 
     Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
@@ -862,17 +867,19 @@ public:
   }
 };
 
-class XTenConv2dTensorAddLReLUAveragePoolOpConversion
+class XTenConv2dTensorAddLReLUGlobalAveragePoolOpConversion
     : public ConversionPattern {
 public:
-  explicit XTenConv2dTensorAddLReLUAveragePoolOpConversion(MLIRContext *context)
-      : ConversionPattern(Conv2dTensorAddLReLUAveragePoolOp::getOperationName(),
-                          1, context) {}
+  explicit XTenConv2dTensorAddLReLUGlobalAveragePoolOpConversion(
+      MLIRContext *context)
+      : ConversionPattern(
+            Conv2dTensorAddLReLUGlobalAveragePoolOp::getOperationName(), 1,
+            context) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const override {
-    auto conv2dLRelu = cast<Conv2dTensorAddLReLUAveragePoolOp>(op);
+    auto conv2dLRelu = cast<Conv2dTensorAddLReLUGlobalAveragePoolOp>(op);
     auto loc = conv2dLRelu.getLoc();
 
     Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
@@ -1698,25 +1705,19 @@ public:
     // tablegen patterns
     RewritePatternSet patterns(context);
 
-    patterns.insert<XTenAddOpConversion,
-                    XTenMulOpConversion,
-                    XTenMMOpConversion,
-                    XTenConv2dOpConversion,
-                    XTenConv2dReluOpConversion,
-                    XTenConv2dLeakyReluOpConversion,
-                    XTenConv2dLeakyReluMaxPoolOpConversion,
-                    XTenConv2dLeakyReluPadMaxPoolOpConversion,
-                    XTenConv2dReluMaxPoolOpConversion,
-                    XTenConv2dReluPadMaxPoolOpConversion,
-                    XTenPartialConv2dReLUOpConversion,
-                    XTenConv2dTensorAddOpConversion,
-                    XTenConv2dTensorAddReLUOpConversion,
-                    XTenConv2dTensorAddLReLUOpConversion,
-                    XTenSoftmaxOpConversion,
-                    XTenGlobalAveragePool2DOpConversion,
-                    XTenConv2dTensorAddAveragePoolOpConversion,
-                    XTenConv2dTensorAddReLUAveragePoolOpConversion,
-                    XTenConv2dTensorAddLReLUAveragePoolOpConversion>(context);
+    patterns.insert<
+        XTenAddOpConversion, XTenMulOpConversion, XTenMMOpConversion,
+        XTenConv2dOpConversion, XTenConv2dReluOpConversion,
+        XTenConv2dLeakyReluOpConversion, XTenConv2dLeakyReluMaxPoolOpConversion,
+        XTenConv2dLeakyReluPadMaxPoolOpConversion,
+        XTenConv2dReluMaxPoolOpConversion, XTenConv2dReluPadMaxPoolOpConversion,
+        XTenPartialConv2dReLUOpConversion, XTenConv2dTensorAddOpConversion,
+        XTenConv2dTensorAddReLUOpConversion,
+        XTenConv2dTensorAddLReLUOpConversion, XTenSoftmaxOpConversion,
+        XTenGlobalAveragePool2DOpConversion,
+        XTenConv2dTensorAddGlobalAveragePoolOpConversion,
+        XTenConv2dTensorAddReLUGlobalAveragePoolOpConversion,
+        XTenConv2dTensorAddLReLUGlobalAveragePoolOpConversion>(context);
 
     ConversionTarget target(*context);
     
