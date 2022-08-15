@@ -222,6 +222,16 @@ bool isAvgPoolGlobalAveragePool2D(Value input, Value kernelSize, Value stride,
   return Torch::isConstantIntListMatching(padding, expectedPadding);
 }
 
+bool checkLinearForXten(Value input, Value weights, Value bias) {
+  // Ensure that when the bias is given, it is of rank 1
+  if (bias.getType().isa<Torch::BaseTensorType>() &&
+      Torch::getTensorRank(bias) != 1) {
+    return false;
+  }
+  // The input and weights must be or rank 2
+  return Torch::getTensorRank(input) == 2 && Torch::getTensorRank(weights) == 2;
+}
+
 namespace atenToXten {
 #include "xten/Conversion/ATenToXTen.cpp.inc"
 }

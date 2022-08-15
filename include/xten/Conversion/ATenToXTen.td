@@ -118,3 +118,15 @@ def CheckAdaptiveAvgPool : Constraint<
 def : Pat<(Torch_AtenAdaptiveAvgPool2dOp $input, $outsizes),
           (XTen_GlobalAveragePool2D $input),
           [(CheckAdaptiveAvgPool $outsizes)]>;
+
+def CheckLinearForXten : Constraint<
+    CPred<"checkLinearForXten($0, $1, $2)">,
+    "Only specific ranks for tensors are supported.\n"
+    "Check the ranks of the inputs:\n"
+    "    y = A*B^T + C\n"
+    "Where rank(A) == 2, rank(B) == 2 and rank(C) == 1.\n"
+    "Note, C must be defined. It cannot be set to none">;
+
+def : Pat<(Torch_AtenLinearOp $input, $weights, $bias),
+          (XTen_LinearOp  $input, $weights, $bias),
+          [(CheckLinearForXten $input, $weights, $bias)]>;

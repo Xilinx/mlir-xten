@@ -517,6 +517,19 @@
 	    "properties" : []
 	},
 	{
+	    "name" : "xten.linear",
+	    "properties" : [
+		["Attributes.Weights.Tensor", "Dimensions of weights" , "string"],
+		["Attributes.Weights.type", "Numerical type of each Weights number" , "string"],
+		["Attributes.Weights.Bytes", "Size of weights in bytes", "long"],
+		["Attributes.Bias.Tensor", "Dimensions of bias", "string"],
+		["Attributes.Bias.type", "Numerical type of each Bias number", "string"],
+		["Attributes.Bias.Bytes", "Size of bias in bytes", "long"],
+		["Computation.MACs", "Total number of MAC units in engine", "long"],		
+		["Storage.Bytes", "Total storage required for Linear engine", "string"]	
+	    ]
+	},
+	{
 	    "name" : "xten.conv2d_tensoradd_globalaveragepool",
 	    "properties" : []
 	},
