@@ -53,7 +53,7 @@ static Value applyPad(Location loc, Value input, ArrayRef<int64_t> pad,
   SmallVector<int64_t, 4> paddedShape;
   SmallVector<OpFoldResult, 8> lowIndices;
   SmallVector<OpFoldResult, 8> highIndices;
-  for (int i = 0, s = inputShape.size(); i < s; i++) {
+  for (size_t i = 0, s = inputShape.size(); i < s; i++) {
     auto lowPad = pad[i];
     auto highPad = pad[i];
     paddedShape.push_back(inputShape[i] + highPad + lowPad);
@@ -161,6 +161,15 @@ static LogicalResult processConv2d(T &conv2dOp, Location &loc, Value &input,
 
 namespace {
 
+// Propagate the layer_name attribute from an XTen op to the
+// corresponding LinAlg operation.
+void propagateLayerName(Operation *srcOp, Operation *destOp) {
+  auto attrVal = srcOp->getAttrOfType<StringAttr>("layer_name");
+  if (attrVal) {
+    destOp->setAttr(llvm::StringRef("layer_name"), attrVal);
+  }
+}
+
 template <class T>
 class XTenBinaryOpConversion : public ConversionPattern {
 public:
@@ -201,6 +210,7 @@ public:
                   nestedBuilder.create<linalg::YieldOp>(loc, result);
                 })
             .getResult(0);
+    propagateLayerName(op, linalgOp.getDefiningOp());
 
     auto torchTensorCast =
         ToTorchTensorTypeCast(rewriter, linalgOp, op->getResult(0).getType());
@@ -223,8 +233,7 @@ public:
                      Value b) const {
     if (elementTy.isa<FloatType>())
       return rewriter.create<mlir::arith::AddFOp>(op->getLoc(), a, b);
-    else
-      return rewriter.create<mlir::arith::AddIOp>(op->getLoc(), a, b);
+    return rewriter.create<mlir::arith::AddIOp>(op->getLoc(), a, b);
   }
 };
 
@@ -272,6 +281,7 @@ public:
                      .create<linalg::MatmulOp>(loc, C.getType(),
                                                ValueRange{A, B}, ValueRange{C})
                      .getResult(0);
+    propagateLayerName(op, mulOp.getDefiningOp());
 
     auto tensor_cast = ToTorchTensorTypeCast(rewriter, mulOp, resultTy);
     rewriter.replaceOp(op, tensor_cast);
@@ -342,6 +352,7 @@ public:
                 loc, biasInitTensor.getType(), ValueRange{input, weight},
                 biasInitTensor, stridesAttr, dilationAttr)
             .getResult(0);
+    propagateLayerName(op, conv2dVal.getDefiningOp());
 
     auto torchTensorCast =
         ToTorchTensorTypeCast(rewriter, conv2dVal, op->getResult(0).getType());
@@ -404,12 +415,7 @@ public:
                                           ValueRange{input, weight, bias},
                                           initTensor, stridesAttr, dilationAttr)
             .getResult(0);
-
-    if (op->hasAttr("layer_name")) {
-      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
-      Operation *conv2dReluValOps = conv2dReluVal.getDefiningOp();
-      conv2dReluValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
-    }
+    propagateLayerName(op, conv2dReluVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dReluVal,
                                                  op->getResult(0).getType());
@@ -481,12 +487,7 @@ public:
                                    ValueRange{input, weight, bias, alpha},
                                    initTensor, stridesAttr, dilationAttr)
                                .getResult(0);
-
-    if (op->hasAttr("layer_name")) {
-      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
-      Operation *conv2dLReluValOps = conv2dLReluVal.getDefiningOp();
-      conv2dLReluValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
-    }
+    propagateLayerName(op, conv2dLReluVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dLReluVal,
                                                  op->getResult(0).getType());
@@ -555,12 +556,7 @@ public:
                            bias}, // add_ifm should be in ValueRange
                 initTensor, stridesAttr, dilationAttr)
             .getResult(0);
-
-    if (op->hasAttr("layer_name")) {
-      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
-      Operation *conv2dValOps = conv2dVal.getDefiningOp();
-      conv2dValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
-    }
+    propagateLayerName(op, conv2dVal.getDefiningOp());
 
     auto torchTensorCast =
         ToTorchTensorTypeCast(rewriter, conv2dVal, op->getResult(0).getType());
@@ -630,12 +626,7 @@ public:
                            bias}, // add_ifm should be in ValueRange
                 initTensor, stridesAttr, dilationAttr)
             .getResult(0);
-
-    if (op->hasAttr("layer_name")) {
-      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
-      Operation *conv2dReluValOps = conv2dReluVal.getDefiningOp();
-      conv2dReluValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
-    }
+    propagateLayerName(op, conv2dReluVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dReluVal,
                                                  op->getResult(0).getType());
@@ -714,12 +705,7 @@ public:
                            alpha}, // add_ifm should be in ValueRange
                 initTensor, stridesAttr, dilationAttr)
             .getResult(0);
-
-    if (op->hasAttr("layer_name")) {
-      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
-      Operation *conv2dLReluValOps = conv2dLReluVal.getDefiningOp();
-      conv2dLReluValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
-    }
+    propagateLayerName(op, conv2dLReluVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dLReluVal,
                                                  op->getResult(0).getType());
@@ -790,12 +776,7 @@ public:
                 loc, initTensor.getType(), input, addIfm, weight, bias,
                 initTensor, stridesAttr, dilationAttr)
             .getResult();
-
-    if (op->hasAttr("layer_name")) {
-      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
-      Operation *conv2dValOps = conv2dAveragePoolVal.getDefiningOp();
-      conv2dValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
-    }
+    propagateLayerName(op, conv2dAveragePoolVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dAveragePoolVal,
                                                  op->getResult(0).getType());
@@ -866,12 +847,7 @@ public:
                 loc, initTensor.getType(), input, addIfm, weight, bias,
                 initTensor, stridesAttr, dilationAttr)
             .getResult();
-
-    if (op->hasAttr("layer_name")) {
-      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
-      Operation *conv2dReluValOps = conv2dReluAveragePoolVal.getDefiningOp();
-      conv2dReluValOps->setAttr(llvm::StringRef("layer_name"), attrVal);
-    }
+    propagateLayerName(op, conv2dReluAveragePoolVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(
         rewriter, conv2dReluAveragePoolVal, op->getResult(0).getType());
@@ -951,14 +927,7 @@ public:
                 loc, initTensor.getType(), input, addIfm, weight, bias, alpha,
                 initTensor, stridesAttr, dilationAttr)
             .getResult();
-
-    if (op->hasAttr("layer_name")) {
-      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
-      Operation *conv2dAddLReluAvgPoolValOp =
-          conv2dAddLReluAvgPoolVal.getDefiningOp();
-      conv2dAddLReluAvgPoolValOp->setAttr(llvm::StringRef("layer_name"),
-                                          attrVal);
-    }
+    propagateLayerName(op, conv2dAddLReluAvgPoolVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(
         rewriter, conv2dAddLReluAvgPoolVal, op->getResult(0).getType());
@@ -1109,12 +1078,7 @@ public:
                 stridesAttr, dilationAttr, mp_kernel_sizeAttr, mp_stridesAttr,
                 mp_paddingAttr, mp_dilationAttr)
             .getResult(0);
-
-    if (op->hasAttr("layer_name")) {
-      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
-      Operation *conv2dReluMaxpoolOps = conv2dLReluMaxpoolVal.getDefiningOp();
-      conv2dReluMaxpoolOps->setAttr(llvm::StringRef("layer_name"), attrVal);
-    }
+    propagateLayerName(op, conv2dLReluMaxpoolVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(
         rewriter, conv2dLReluMaxpoolVal, op->getResult(0).getType());
@@ -1278,13 +1242,7 @@ public:
                 stridesAttr, dilationAttr, mp_kernel_sizeAttr, mp_stridesAttr,
                 pad_mp_paddingAttr, mp_dilationAttr)
             .getResult(0);
-
-    if (op->hasAttr("layer_name")) {
-      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
-      Operation *conv2dLReluPadMaxpoolOps =
-          conv2dLReluPadMaxpoolVal.getDefiningOp();
-      conv2dLReluPadMaxpoolOps->setAttr(llvm::StringRef("layer_name"), attrVal);
-    }
+    propagateLayerName(op, conv2dLReluPadMaxpoolVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(
         rewriter, conv2dLReluPadMaxpoolVal, op->getResult(0).getType());
@@ -1425,12 +1383,7 @@ public:
                 filledInitTensor, stridesAttr, dilationAttr, mp_kernel_sizeAttr,
                 mp_stridesAttr, mp_paddingAttr, mp_dilationAttr)
             .getResult(0);
-
-    if (op->hasAttr("layer_name")) {
-      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
-      Operation *conv2dReluMaxpoolOps = conv2dReluMaxpoolVal.getDefiningOp();
-      conv2dReluMaxpoolOps->setAttr(llvm::StringRef("layer_name"), attrVal);
-    }
+    propagateLayerName(op, conv2dReluMaxpoolVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dReluMaxpoolVal,
                                                  op->getResult(0).getType());
@@ -1584,13 +1537,7 @@ public:
                 filledInitTensor, stridesAttr, dilationAttr, mp_kernel_sizeAttr,
                 mp_stridesAttr, pad_mp_paddingAttr, mp_dilationAttr)
             .getResult(0);
-
-    if (op->hasAttr("layer_name")) {
-      auto attrVal = op->getAttr("layer_name").cast<StringAttr>();
-      Operation *conv2dReluPadMaxpoolOps =
-          conv2dReluPadMaxpoolVal.getDefiningOp();
-      conv2dReluPadMaxpoolOps->setAttr(llvm::StringRef("layer_name"), attrVal);
-    }
+    propagateLayerName(op, conv2dReluPadMaxpoolVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(
         rewriter, conv2dReluPadMaxpoolVal, op->getResult(0).getType());
@@ -1671,6 +1618,7 @@ public:
         rewriter
             .create<linalg::SoftmaxOp>(loc, initTensor.getType(), input, dim)
             .getResult();
+    propagateLayerName(op, softmaxVal.getDefiningOp());
 
     auto torchTensorCast =
         ToTorchTensorTypeCast(rewriter, softmaxVal, op->getResult(0).getType());
@@ -1707,6 +1655,7 @@ public:
                              .create<linalg::GlobalAveragePool2DOp>(
                                  loc, initTensor.getType(), input)
                              .getResult();
+    propagateLayerName(op, globalavgVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(rewriter, globalavgVal,
                                                  op->getResult(0).getType());
@@ -1732,15 +1681,19 @@ public:
 
     // Create the linalg version of linear
     auto resultType = op->getResult(0).getType().cast<Torch::BaseTensorType>();
-    auto linalgOp = rewriter.create<linalg::LinearOp>(
-        loc,
-        RankedTensorType::get(resultType.getSizes(), resultType.getDtype()),
-        input, weights, bias);
+    Value linearVal = rewriter
+                          .create<linalg::LinearOp>(
+                              loc,
+                              RankedTensorType::get(resultType.getSizes(),
+                                                    resultType.getDtype()),
+                              input, weights, bias)
+                          .getResult();
+    propagateLayerName(op, linearVal.getDefiningOp());
 
     // We need to convert from the default tensor type to torch tensor before
     // replacing
     auto resultTorchTensorCast =
-        ToTorchTensorTypeCast(rewriter, linalgOp, op->getResult(0).getType());
+        ToTorchTensorTypeCast(rewriter, linearVal, op->getResult(0).getType());
 
     rewriter.replaceOp(op, resultTorchTensorCast);
 
