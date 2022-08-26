@@ -76,7 +76,7 @@ namespace xilinx {
         }
 
         bool Conv2dOpWrapper::hasBias() {
-            return this->getBiases().hasValue();
+            return this->getBiases().has_value();
         }
 
         bool Conv2dOpWrapper::hasBN() {
@@ -108,22 +108,22 @@ namespace xilinx {
         Operation* Conv2dOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                             llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                             llvm::Optional<ArrayRef<Value>> bn) {
-            assert(weight.hasValue());
+            assert(weight.has_value());
 
             if(this->hasBias()) {
-                assert(bias.hasValue());
+                assert(bias.has_value());
             }
 
-            Value biasVal = bias.hasValue() ? bias.getValue() : this->conv.bias();
+            Value biasVal = bias.has_value() ? bias.value() : this->conv.bias();
 
             Operation* op = this->getUnderlyingOperation();
-            if(firstInPartialChain || partialIn.hasValue()) {
-                Value chainIn = (partialIn.hasValue()) ? partialIn.getValue() : Value();
+            if(firstInPartialChain || partialIn.has_value()) {
+                Value chainIn = (partialIn.has_value()) ? partialIn.value() : Value();
                 Operation* nOp =  builder.create<PartialConv2dOp>(builder.getUnknownLoc(),
                                                                   returnType,
                                                                   input,
                                                                   chainIn,
-                                                                  weight.getValue(),
+                                                                  weight.value(),
                                                                   biasVal,
                                                                   this->conv.stride(),
                                                                   this->conv.padding(),
@@ -137,7 +137,7 @@ namespace xilinx {
                 Operation* nOp = builder.create<Conv2dOp>(builder.getUnknownLoc(),
                                                           returnType,
                                                           input,
-                                                          weight.getValue(),
+                                                          weight.value(),
                                                           biasVal,
                                                           this->conv.stride(),
                                                           this->conv.padding(),
@@ -153,9 +153,9 @@ namespace xilinx {
         Operation* Conv2dOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) {
             Operation* op;
 
-            if(resTypes.hasValue()) {
+            if(resTypes.has_value()) {
                 op =  builder.create<PartialConv2dOp>(builder.getUnknownLoc(),
-                                                      resTypes.getValue(),
+                                                      resTypes.value(),
                                                       this->getInput(),
                                                       nullptr,
                                                       this->getWeights(),
@@ -236,7 +236,7 @@ namespace xilinx {
         }
 
         bool PartialConv2dOpWrapper::hasBias() {
-            return this->getBiases().hasValue();
+            return this->getBiases().has_value();
         }
 
         bool PartialConv2dOpWrapper::hasBN() {
@@ -264,16 +264,16 @@ namespace xilinx {
         Operation* PartialConv2dOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                                    llvm::Optional<Value> bias, llvm::Optional<Value> partialIn,
                                                    bool firstInPartialChain, llvm::Optional<ArrayRef<Value>> bn) {
-            assert(weight.hasValue());
+            assert(weight.has_value());
             if(this->hasBias()) {
-                assert(bias.hasValue());
+                assert(bias.has_value());
             }
 
-            Value biasVal = bias.hasValue() ? bias.getValue() : this->conv.bias();
+            Value biasVal = bias.has_value() ? bias.value() : this->conv.bias();
 
             Value chainIn;
-            if(partialIn.hasValue()) {
-                chainIn = partialIn.getValue();
+            if(partialIn.has_value()) {
+                chainIn = partialIn.value();
             } else if(this->conv.PartialIn()){
                 chainIn = this->conv.PartialIn();
             } else {
@@ -286,7 +286,7 @@ namespace xilinx {
                                                               returnType,
                                                               input,
                                                               chainIn,
-                                                              weight.getValue(),
+                                                              weight.value(),
                                                               biasVal,
                                                               this->conv.stride(),
                                                               this->conv.padding(),
@@ -300,9 +300,9 @@ namespace xilinx {
         Operation* PartialConv2dOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) {
             Operation* op;
 
-            if(resTypes.hasValue()) {
+            if(resTypes.has_value()) {
                 op = builder.create<PartialConv2dOp>(builder.getUnknownLoc(),
-                                                     resTypes.getValue(),
+                                                     resTypes.value(),
                                                      this->getInput(),
                                                      this->conv.PartialIn(),
                                                      this->getWeights(),
@@ -385,7 +385,7 @@ namespace xilinx {
         }
 
         bool Conv2dReLUOpWrapper::hasBias() {
-            return this->getBiases().hasValue();
+            return this->getBiases().has_value();
         }
 
         bool Conv2dReLUOpWrapper::hasBN() {
@@ -413,22 +413,22 @@ namespace xilinx {
         Operation* Conv2dReLUOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
                                                 llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                                 llvm::Optional<ArrayRef<Value>> bn) {
-            assert(weight.hasValue());
+            assert(weight.has_value());
 
             if(this->hasBias()) {
-                assert(bias.hasValue());
+                assert(bias.has_value());
             }
 
             Operation* op = this->getUnderlyingOperation();
-            Value biasVal = (bias.hasValue()) ? bias.getValue() : this->conv.bias();
+            Value biasVal = (bias.has_value()) ? bias.value() : this->conv.bias();
 
-            if(firstInPartialChain || partialIn.hasValue()) {
-                Value chainIn = (partialIn.hasValue()) ? partialIn.getValue() : Value();
+            if(firstInPartialChain || partialIn.has_value()) {
+                Value chainIn = (partialIn.has_value()) ? partialIn.value() : Value();
                 Operation* nOp =  builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
                                                                       returnType,
                                                                       input,
                                                                       chainIn,
-                                                                      weight.getValue(),
+                                                                      weight.value(),
                                                                       biasVal,
                                                                       this->conv.stride(),
                                                                       this->conv.padding(),
@@ -441,7 +441,7 @@ namespace xilinx {
                 Operation* nOp = builder.create<Conv2dReLUOp>(builder.getUnknownLoc(),
                                                               returnType,
                                                               input,
-                                                              weight.getValue(),
+                                                              weight.value(),
                                                               biasVal,
                                                               this->conv.stride(),
                                                               this->conv.padding(),
@@ -456,9 +456,9 @@ namespace xilinx {
         Operation* Conv2dReLUOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) {
             Operation* op;
 
-            if(resTypes.hasValue()) {
+            if(resTypes.has_value()) {
                 op =  builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
-                                                          resTypes.getValue(),
+                                                          resTypes.value(),
                                                           this->getInput(),
                                                           Value(),
                                                           this->getWeights(),
@@ -540,7 +540,7 @@ namespace xilinx {
         }
 
         bool PartialConv2dReLUOpWrapper::hasBias() {
-            return this->getBiases().hasValue();
+            return this->getBiases().has_value();
         }
 
         bool PartialConv2dReLUOpWrapper::hasBN() {
@@ -569,29 +569,29 @@ namespace xilinx {
                                                        llvm::Optional<Value> weight, llvm::Optional<Value> bias,
                                                        llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                                        llvm::Optional<ArrayRef<Value>> bn) {
-            assert(weight.hasValue());
+            assert(weight.has_value());
 
             if(this->hasBias()) {
-                assert(bias.hasValue());
+                assert(bias.has_value());
             }
 
             Value chainIn;
-            if(partialIn.hasValue()) {
-                chainIn = partialIn.getValue();
+            if(partialIn.has_value()) {
+                chainIn = partialIn.value();
             } else if(this->conv.PartialIn()){
                 chainIn = this->conv.PartialIn();
             } else {
                 chainIn = Value();
             }
 
-            Value biasVal = bias.hasValue() ? bias.getValue() : this->conv.bias();
+            Value biasVal = bias.has_value() ? bias.value() : this->conv.bias();
 
             Operation* op = this->getUnderlyingOperation();
             Operation* nOp = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
                                                                  returnType,
                                                                  input,
                                                                  chainIn,
-                                                                 weight.getValue(),
+                                                                 weight.value(),
                                                                  biasVal,
                                                                  this->conv.stride(),
                                                                  this->conv.padding(),
@@ -604,9 +604,9 @@ namespace xilinx {
         Operation* PartialConv2dReLUOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) {
             Operation* op;
 
-            if(resTypes.hasValue()) {
+            if(resTypes.has_value()) {
                 op = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
-                                                         resTypes.getValue(),
+                                                         resTypes.value(),
                                                          this->getInput(),
                                                          this->conv.PartialIn(),
                                                          this->getWeights(),
@@ -690,7 +690,7 @@ namespace xilinx {
         }
 
         bool PartialConv2dBatchNormReLUOpWrapper::hasBias() {
-            return this->getBiases().hasValue();
+            return this->getBiases().has_value();
         }
 
         bool PartialConv2dBatchNormReLUOpWrapper::hasBN() {
@@ -719,39 +719,39 @@ namespace xilinx {
                                                                 llvm::Optional<Value> weight, llvm::Optional<Value> bias,
                                                                 llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                                                 llvm::Optional<ArrayRef<Value>> bn) {
-            assert(weight.hasValue());
-            assert(bn.hasValue());
+            assert(weight.has_value());
+            assert(bn.has_value());
 
             if(this->hasBias()) {
-                assert(bias.hasValue());
+                assert(bias.has_value());
             }
 
             Value chainIn;
-            if(partialIn.hasValue()) {
-                chainIn = partialIn.getValue();
+            if(partialIn.has_value()) {
+                chainIn = partialIn.value();
             } else if(this->conv.PartialIn()){
                 chainIn = this->conv.PartialIn();
             } else {
                 chainIn = Value();
             }
 
-            Value biasVal = bias.hasValue() ? bias.getValue() : this->conv.bias();
+            Value biasVal = bias.has_value() ? bias.value() : this->conv.bias();
 
             Operation* op = this->getUnderlyingOperation();
             Operation* nOp = builder.create<PartialConv2dBatchNormReLUOp>(builder.getUnknownLoc(),
                                                                           returnType,
                                                                           input,
                                                                           chainIn,
-                                                                          weight.getValue(),
+                                                                          weight.value(),
                                                                           biasVal,
                                                                           this->conv.stride(),
                                                                           this->conv.padding(),
                                                                           this->conv.dilation(),
                                                                           this->conv.groups(),
-                                                                          bn.getValue()[0],
-                                                                          bn.getValue()[1],
-                                                                          bn.getValue()[2],
-                                                                          bn.getValue()[3],
+                                                                          bn.value()[0],
+                                                                          bn.value()[1],
+                                                                          bn.value()[2],
+                                                                          bn.value()[3],
                                                                           this->conv.training(),
                                                                           this->conv.momentum(),
                                                                           this->conv.eps());
@@ -762,9 +762,9 @@ namespace xilinx {
 
         Operation* PartialConv2dBatchNormReLUOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) {
             Operation* op;
-            if(resTypes.hasValue()) {
+            if(resTypes.has_value()) {
                 op = builder.create<PartialConv2dBatchNormReLUOp>(builder.getUnknownLoc(),
-                                                                  resTypes.getValue(),
+                                                                  resTypes.value(),
                                                                   this->getInput(),
                                                                   this->conv.PartialIn(),
                                                                   this->getWeights(),
@@ -863,7 +863,7 @@ namespace xilinx {
         }
 
         bool Conv2dBatchNormReLUOpWrapper::hasBias() {
-            return this->getBiases().hasValue();
+            return this->getBiases().has_value();
         }
 
         bool Conv2dBatchNormReLUOpWrapper::hasBN() {
@@ -892,32 +892,32 @@ namespace xilinx {
                                                                 llvm::Optional<Value> weight, llvm::Optional<Value> bias,
                                                                 llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                                                 llvm::Optional<ArrayRef<Value>> bn) {
-            assert(weight.hasValue());
-            assert(bn.hasValue());
+            assert(weight.has_value());
+            assert(bn.has_value());
 
             if(this->hasBias()) {
-                assert(bias.hasValue());
+                assert(bias.has_value());
             }
 
-            Value biasVal = bias.hasValue() ? bias.getValue() : this->conv.bias();
+            Value biasVal = bias.has_value() ? bias.value() : this->conv.bias();
 
             Operation* op = this->getUnderlyingOperation();
-            if(firstInPartialChain || partialIn.hasValue()) {
-                Value chainIn = (partialIn.hasValue()) ? partialIn.getValue() : Value();
+            if(firstInPartialChain || partialIn.has_value()) {
+                Value chainIn = (partialIn.has_value()) ? partialIn.value() : Value();
                 Operation* nOp =  builder.create<PartialConv2dBatchNormReLUOp>(builder.getUnknownLoc(),
                                                                                returnType,
                                                                                input,
                                                                                chainIn,
-                                                                               weight.getValue(),
+                                                                               weight.value(),
                                                                                biasVal,
                                                                                this->conv.stride(),
                                                                                this->conv.padding(),
                                                                                this->conv.dilation(),
                                                                                this->conv.groups(),
-                                                                               bn.getValue()[0],
-                                                                               bn.getValue()[1],
-                                                                               bn.getValue()[2],
-                                                                               bn.getValue()[3],
+                                                                               bn.value()[0],
+                                                                               bn.value()[1],
+                                                                               bn.value()[2],
+                                                                               bn.value()[3],
                                                                                this->conv.training(),
                                                                                this->conv.momentum(),
                                                                                this->conv.eps());
@@ -928,16 +928,16 @@ namespace xilinx {
                 Operation* nOp = builder.create<Conv2dBatchNormReLUOp>(builder.getUnknownLoc(),
                                                                        returnType,
                                                                        input,
-                                                                       weight.getValue(),
+                                                                       weight.value(),
                                                                        biasVal,
                                                                        this->conv.stride(),
                                                                        this->conv.padding(),
                                                                        this->conv.dilation(),
                                                                        this->conv.groups(),
-                                                                       bn.getValue()[0],
-                                                                       bn.getValue()[1],
-                                                                       bn.getValue()[2],
-                                                                       bn.getValue()[3],
+                                                                       bn.value()[0],
+                                                                       bn.value()[1],
+                                                                       bn.value()[2],
+                                                                       bn.value()[3],
                                                                        this->conv.training(),
                                                                        this->conv.momentum(),
                                                                        this->conv.eps());
@@ -951,9 +951,9 @@ namespace xilinx {
         Operation* Conv2dBatchNormReLUOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) {
             Operation* op;
 
-            if(resTypes.hasValue()) {
+            if(resTypes.has_value()) {
                 op =  builder.create<PartialConv2dBatchNormReLUOp>(builder.getUnknownLoc(),
-                                                                   resTypes.getValue(),
+                                                                   resTypes.value(),
                                                                    this->getInput(),
                                                                    Value(),
                                                                    this->getWeights(),
@@ -1078,10 +1078,10 @@ namespace xilinx {
                                                           llvm::Optional<Value> weight, llvm::Optional<Value> bias,
                                                           llvm::Optional<Value> partialIn, bool firstInPartialChain,
                                                           llvm::Optional<ArrayRef<Value>> bn) {
-            assert(!weight.hasValue());
-            assert(!bias.hasValue());
+            assert(!weight.has_value());
+            assert(!bias.has_value());
             assert(!firstInPartialChain);
-            assert(!partialIn.hasValue());
+            assert(!partialIn.has_value());
 
             Operation* op = this->getUnderlyingOperation();
             Operation* nOp =  builder.create<Torch::AtenMaxPool2dOp>(builder.getUnknownLoc(), returnType, input,
@@ -1096,7 +1096,7 @@ namespace xilinx {
         }
 
         Operation* MaxPool2dOpWrapper::wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> typeRes) {
-            assert(!typeRes.hasValue());
+            assert(!typeRes.has_value());
 
             Operation* op =  builder.create<Torch::AtenMaxPool2dOp>(builder.getUnknownLoc(),
                                                                     this->getUnderlyingOperation()->getResultTypes(),
