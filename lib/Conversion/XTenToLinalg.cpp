@@ -67,7 +67,7 @@ static Value applyPad(Location loc, Value input, ArrayRef<int64_t> pad,
   return tensor::createPadScalarOp(RankedTensorType::get(paddedShape, inputETy),
                                    input, padValue, lowIndices, highIndices,
                                    /*nofold=*/false, loc, rewriter)
-      .result();
+      .getResult();
 }
 
 /// Return a zero-initialized tensor of given size and dtype.

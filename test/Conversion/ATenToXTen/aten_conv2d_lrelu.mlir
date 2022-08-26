@@ -15,7 +15,7 @@
 // CHECK: [[FUSED:%.]] = "xten.conv2d_lrelu"(%arg0, [[WGTS]], [[BIAS]], [[LIST1]], [[LIST1]], [[LIST1]], %int1, %float2.320000e-01) : (!torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[16,2,1,1],f32>, !torch.vtensor<[16],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int, !torch.float) -> !torch.vtensor<[1,16,130,130],f32>
 // CHECK: return [[FUSED]] : !torch.vtensor<[1,16,130,130],f32>
 module attributes {torch.debug_module_name = "model"}  {
-  func @forward(%arg0: !torch.vtensor<[1,2,128,128],f32>) -> !torch.vtensor<[1,16,130,130],f32> {
+  func.func @forward(%arg0: !torch.vtensor<[1,2,128,128],f32>) -> !torch.vtensor<[1,16,130,130],f32> {
     %int1 = torch.constant.int 1
     %alpha = torch.constant.float 0.232
     %0 = torch.vtensor.literal(dense<"0xDEADBEEF"> : tensor<16x2x1x1xf32>) : !torch.vtensor<[16,2,1,1],f32>
