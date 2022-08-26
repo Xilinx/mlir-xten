@@ -28,7 +28,7 @@ set(LIBS
   TorchMLIRTorchConversionPasses
   TorchMLIRTorchToLinalg
   TorchMLIRTorchToSCF
-  TorchMLIRTorchToStd
+  TorchMLIRTorchToArith
   TorchMLIRTorchToTosa
   TorchMLIRConversionPasses
   TorchMLIRRefBackend

@@ -25,6 +25,9 @@ if(POLICY CMP0116)
 endif()
 
 project(pytorch_mlir LANGUAGES CXX C)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 find_package(MLIR REQUIRED CONFIG)
 find_package(Python3 COMPONENTS Interpreter Development)
