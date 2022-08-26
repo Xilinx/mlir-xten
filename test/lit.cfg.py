@@ -46,7 +46,7 @@ llvm_config.use_default_substitutions()
 # excludes: A list of directories to exclude from the testsuite. The 'Inputs'
 # subdirectories contain auxiliary inputs for various tests in their parent
 # directories.
-config.excludes = ['Inputs', 'Examples', 'CMakeLists.txt', 'README.txt', 'LICENSE.txt', 'XTenToAffine', 'XTenToLinalg']
+config.excludes = ['Inputs', 'Examples', 'CMakeLists.txt', 'README.txt', 'LICENSE.txt', 'XTenToAffine', 'ATenOpReport']
 
 # test_source_root: The root path where tests are located.
 config.test_source_root = os.path.dirname(__file__)
@@ -60,7 +60,6 @@ llvm_config.with_environment('PATH', config.llvm_tools_dir, append_path=True)
 
 tool_dirs = [config.aie_tools_dir, config.llvm_tools_dir]
 tools = [
-    'test.exe',
     'aten-opt'
 ]
 

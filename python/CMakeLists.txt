@@ -28,6 +28,7 @@ target_link_libraries(_xten
   TorchMLIRTorchDialect
   TorchMLIRTorchConversionDialect
   TorchMLIRTorchUtils
+  TorchMLIRConversionUtils
   ${Python3_LIBRARIES}
   ${dialect_libs}
   ${conversion_libs}

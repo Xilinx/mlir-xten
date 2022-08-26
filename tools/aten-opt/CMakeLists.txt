@@ -21,11 +21,14 @@ set(LIBS
   XTenTransforms
   XTenUtil
   TorchMLIRInitAll
+  TorchMLIRTMTensorPasses
+  TorchMLIRTMTensorDialect
   TorchMLIRTorchDialect
   TorchMLIRTorchConversionDialect
   TorchMLIRTorchUtils
   TorchMLIRTorchPasses
   TorchMLIRTorchConversionPasses
+  TorchMLIRConversionUtils
   TorchMLIRTorchToLinalg
   TorchMLIRTorchToSCF
   TorchMLIRTorchToArith
