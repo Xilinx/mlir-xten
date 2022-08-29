@@ -552,8 +552,8 @@ public:
         rewriter
             .create<linalg::Conv2DTensorAddOp>(
                 loc, initTensor.getType(),
-                ValueRange{input, add_ifm, weight,
-                           bias}, // add_ifm should be in ValueRange
+                ValueRange{input, weight, bias,
+                           add_ifm}, // add_ifm should be in ValueRange
                 initTensor, stridesAttr, dilationAttr)
             .getResult(0);
     propagateLayerName(op, conv2dVal.getDefiningOp());
@@ -622,8 +622,8 @@ public:
         rewriter
             .create<linalg::Conv2DTensorAddReluOp>(
                 loc, initTensor.getType(),
-                ValueRange{input, add_ifm, weight,
-                           bias}, // add_ifm should be in ValueRange
+                ValueRange{input, weight, bias,
+                           add_ifm}, // add_ifm should be in ValueRange
                 initTensor, stridesAttr, dilationAttr)
             .getResult(0);
     propagateLayerName(op, conv2dReluVal.getDefiningOp());
@@ -701,7 +701,7 @@ public:
         rewriter
             .create<linalg::Conv2DTensorAddLreluOp>(
                 loc, initTensor.getType(),
-                ValueRange{input, add_ifm, weight, bias,
+                ValueRange{input, weight, bias, add_ifm,
                            alpha}, // add_ifm should be in ValueRange
                 initTensor, stridesAttr, dilationAttr)
             .getResult(0);
