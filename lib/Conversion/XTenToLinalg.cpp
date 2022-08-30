@@ -772,10 +772,11 @@ public:
     // Change appropriate operation over here
     Value conv2dAveragePoolVal =
         rewriter
-            .create<linalg::Conv2dTensorAddGlobalAveragePoolOp>(
-                loc, initTensor.getType(), input, addIfm, weight, bias,
-                initTensor, stridesAttr, dilationAttr)
-            .getResult();
+            .create<linalg::Conv2DTensorAddGlobalaveragepoolOp>(
+                loc, initTensor.getType(),
+                ValueRange{input, weight, bias, addIfm}, initTensor,
+                stridesAttr, dilationAttr)
+            .getResult(0);
     propagateLayerName(op, conv2dAveragePoolVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(rewriter, conv2dAveragePoolVal,
@@ -843,10 +844,11 @@ public:
     // Change appropriate operation over here
     Value conv2dReluAveragePoolVal =
         rewriter
-            .create<linalg::Conv2dTensorAddReluGlobalAveragePoolOp>(
-                loc, initTensor.getType(), input, addIfm, weight, bias,
-                initTensor, stridesAttr, dilationAttr)
-            .getResult();
+            .create<linalg::Conv2DTensorAddReluGlobalaveragepoolOp>(
+                loc, initTensor.getType(),
+                ValueRange{input, weight, bias, addIfm}, initTensor,
+                stridesAttr, dilationAttr)
+            .getResult(0);
     propagateLayerName(op, conv2dReluAveragePoolVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(
@@ -923,10 +925,11 @@ public:
     // Change appropriate operation over here
     Value conv2dAddLReluAvgPoolVal =
         rewriter
-            .create<linalg::Conv2dTensorAddLreluGlobalAveragePoolOp>(
-                loc, initTensor.getType(), input, addIfm, weight, bias, alpha,
+            .create<linalg::Conv2DTensorAddLreluGlobalaveragepoolOp>(
+                loc, initTensor.getType(), 
+                ValueRange{input, weight, bias, addIfm, alpha},
                 initTensor, stridesAttr, dilationAttr)
-            .getResult();
+            .getResult(0);
     propagateLayerName(op, conv2dAddLReluAvgPoolVal.getDefiningOp());
 
     auto torchTensorCast = ToTorchTensorTypeCast(
