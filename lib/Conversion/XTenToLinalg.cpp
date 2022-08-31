@@ -926,9 +926,9 @@ public:
     Value conv2dAddLReluAvgPoolVal =
         rewriter
             .create<linalg::Conv2DTensorAddLreluGlobalaveragepoolOp>(
-                loc, initTensor.getType(), 
-                ValueRange{input, weight, bias, addIfm, alpha},
-                initTensor, stridesAttr, dilationAttr)
+                loc, initTensor.getType(),
+                ValueRange{input, weight, bias, addIfm, alpha}, initTensor,
+                stridesAttr, dilationAttr)
             .getResult(0);
     propagateLayerName(op, conv2dAddLReluAvgPoolVal.getDefiningOp());
 
@@ -1683,14 +1683,18 @@ public:
     Value bias = convertBias(op, op.bias(), loc, rewriter);
 
     // Create the linalg version of linear
-    auto resultType = op->getResult(0).getType().cast<Torch::BaseTensorType>();
-    Value linearVal = rewriter
-                          .create<linalg::LinearOp>(
-                              loc,
-                              RankedTensorType::get(resultType.getSizes(),
-                                                    resultType.getDtype()),
-                              input, weights, bias)
-                          .getResult();
+    auto torchResultType =
+        op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultType = RankedTensorType::get(torchResultType.getSizes(),
+                                            torchResultType.getDtype());
+    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+        loc, resultType.getShape(), resultType.getElementType());
+
+    Value linearVal =
+        rewriter
+            .create<linalg::LinearOp>(
+                loc, resultType, ValueRange{input, weights, bias}, initTensor)
+            .getResult(0);
     propagateLayerName(op, linearVal.getDefiningOp());
 
     // We need to convert from the default tensor type to torch tensor before
