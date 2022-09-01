@@ -146,6 +146,45 @@ bool isLongestBranch(OpResult left, OpResult right) {
   return true;
 }
 
+long getSize(TensorType &t) {
+  auto shape = t.getShape();
+  long result = 1;
+  for (auto i : shape)
+    result *= i;
+  return result;
+}
+
+// Returns the IFM size of the conv2d.
+long getInputSize(xten::Conv2dOp &c2d) {
+  TensorType inputType = c2d.input()
+                             .getType()
+                             .dyn_cast<Torch::ValueTensorType>()
+                             .toBuiltinTensor();
+  if (inputType == nullptr || !inputType.hasRank())
+    return 0;
+  return getSize(inputType);
+}
+
+// Tablegen adapter to determine if conv2d a is preferred over conv2d b
+// for chaining with a subsequent tensor add.
+bool fuseFirstC2dInTensorAdd(OpResult a, OpResult b) {
+  auto c2d0 = cast<xten::Conv2dOp>(a.getOwner());
+  auto c2d1 = cast<xten::Conv2dOp>(b.getOwner());
+
+  auto s0 = getInputSize(c2d0);
+  auto s1 = getInputSize(c2d1);
+  if (s0 && s1 && s0 != s1) {
+    // the one with the smallest input should be chained with the conv2d.
+    // This can be beneficial if it allows data used to produce that input to
+    // be no longer required in memory by the time the fused conv2d+add
+    // starts executing. Such patterns are found in resnet.
+    return s0 < s1;
+  }
+
+  // no clear size difference, so use longest path as a tie-breaker
+  return isLongestBranch(a, b);
+}
+
 // Tablegen adapter to check if attributes allow a conversion from `ReduceMean`
 // to `GlobalAveragePool`.
 bool isReduceMeanGlobalAveragePool2D(Value dims, Value keepdims) {
