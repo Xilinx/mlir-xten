@@ -20,7 +20,7 @@
 // CHECK-SAME: %[[C2D1a]])
 
 module attributes {torch.debug_module_name = "model"}  {
-  func @forward(%arg0: !torch.vtensor<[1,2,128,128],f32>, %arg1: !torch.vtensor<[1,2,128,128],f32>) -> !torch.vtensor<[1,2,128,128],f32> {
+  func.func @forward(%arg0: !torch.vtensor<[1,2,128,128],f32>, %arg1: !torch.vtensor<[1,2,128,128],f32>) -> !torch.vtensor<[1,2,128,128],f32> {
     %int1 = torch.constant.int 1
     %int2 = torch.constant.int 2
     %weight = torch.vtensor.literal(dense<"0xDEADBEEF"> : tensor<2x2x3x3xf32>) : !torch.vtensor<[2,2,3,3],f32>
