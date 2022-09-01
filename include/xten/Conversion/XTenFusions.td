@@ -31,7 +31,7 @@ include "xten/Dialect/XTen/XTenOps.td"
 
 
 def SelectFirstC2dInSymmetricTensorAdd : Constraint<
-    CPred<"isLongestBranch($0, $1)">,
+    CPred<"fuseFirstC2dInTensorAdd($0, $1)">,
     "fuse first parameter into tensor add, otherwise fuse second.">;
 
 // This pattern catches the case where 2 conv2ds are inputs to an add.
