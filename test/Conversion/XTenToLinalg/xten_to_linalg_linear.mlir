@@ -10,13 +10,13 @@
 
 // RUN: aten-opt %s -xten-to-linalg | FileCheck %s
 
-func @test_convert_linear(%arg0: !torch.vtensor<[1,2048],f32>, %arg1: !torch.vtensor<[1000,2048],f32>, %arg2: !torch.vtensor<[1000],f32>) -> !torch.vtensor<[1,1000],f32> {
+func.func @test_convert_linear(%arg0: !torch.vtensor<[1,2048],f32>, %arg1: !torch.vtensor<[1000,2048],f32>, %arg2: !torch.vtensor<[1000],f32>) -> !torch.vtensor<[1,1000],f32> {
     %0 = "xten.linear"(%arg0, %arg1, %arg2) : (!torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.vtensor<[1000],f32>) -> !torch.vtensor<[1,1000],f32>
     return %0 : !torch.vtensor<[1,1000],f32>
 // CHECK: linalg.linear ins({{.+}} : tensor<1x2048xf32>, {{.+}} : tensor<1000x2048xf32>, {{.+}} : tensor<1000xf32>) -> tensor<1x1000xf32>
 }
 
-func @test_convert_linear_bias_optional(%arg0: !torch.vtensor<[1,2048],f32>, %arg1: !torch.vtensor<[1000,2048],f32>) -> !torch.vtensor<[1,1000],f32> {
+func.func @test_convert_linear_bias_optional(%arg0: !torch.vtensor<[1,2048],f32>, %arg1: !torch.vtensor<[1000,2048],f32>) -> !torch.vtensor<[1,1000],f32> {
     %none = torch.constant.none
     %optional_tensor = torch.derefine %none: !torch.none to !torch.optional<tensor>
     %0 = "xten.linear"(%arg0, %arg1, %optional_tensor) : (!torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.optional<tensor>) -> !torch.vtensor<[1,1000],f32>
@@ -27,7 +27,7 @@ func @test_convert_linear_bias_optional(%arg0: !torch.vtensor<[1,2048],f32>, %ar
 // CHECK: linalg.linear ins({{.+}} : tensor<1x2048xf32>, {{.+}} : tensor<1000x2048xf32>, %[[ZEROED]] : tensor<1000xf32>) -> tensor<1x1000xf32>
 }
 
-func @test_convert_linear_bias_none(%arg0: !torch.vtensor<[1,2048],f32>, %arg1: !torch.vtensor<[1000,2048],f32>) -> !torch.vtensor<[1,1000],f32> {
+func.func @test_convert_linear_bias_none(%arg0: !torch.vtensor<[1,2048],f32>, %arg1: !torch.vtensor<[1000,2048],f32>) -> !torch.vtensor<[1,1000],f32> {
     %none = torch.constant.none
     %0 = "xten.linear"(%arg0, %arg1, %none) : (!torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.none) -> !torch.vtensor<[1,1000],f32>
     return %0 : !torch.vtensor<[1,1000],f32>

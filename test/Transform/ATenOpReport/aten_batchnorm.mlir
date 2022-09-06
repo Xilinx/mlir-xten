@@ -22,7 +22,7 @@
 //   CHECK-NEXT:          "writes": 103320
 
 module attributes {torch.debug_module_name = "batch_norm"} {
-  func @forward(%arg0: !torch.vtensor<[42,123,4,5],f32>) -> !torch.vtensor<[42,123,4,5],f32> {
+  func.func @forward(%arg0: !torch.vtensor<[42,123,4,5],f32>) -> !torch.vtensor<[42,123,4,5],f32> {
     %0 = torch.vtensor.literal(dense<0.000000e+00> : tensor<123xf32>) : !torch.vtensor<[123],f32>
     %1 = torch.vtensor.literal(dense<1.000000e+00> : tensor<123xf32>) : !torch.vtensor<[123],f32>
     %true = torch.constant.bool true

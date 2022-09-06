@@ -10,7 +10,7 @@
 
 // RUN: aten-opt %s -aten-to-xten | FileCheck %s
 
-func @test_reduce_mean(%arg0: !torch.vtensor<[1,2048,7,7],f32>) -> !torch.vtensor<[1,2048,1,1],f32> {
+func.func @test_reduce_mean(%arg0: !torch.vtensor<[1,2048,7,7],f32>) -> !torch.vtensor<[1,2048,1,1],f32> {
     %int2 = torch.constant.int 2
     %int3 = torch.constant.int 3
     %list = torch.prim.ListConstruct %int2, %int3 : (!torch.int, !torch.int) -> !torch.list<int>
@@ -19,7 +19,7 @@ func @test_reduce_mean(%arg0: !torch.vtensor<[1,2048,7,7],f32>) -> !torch.vtenso
     %0 = torch.aten.mean.dim %arg0, %list, %true, %none {layer_name = "mean.dim0"} : !torch.vtensor<[1,2048,7,7],f32>, !torch.list<int>, !torch.bool, !torch.none -> !torch.vtensor<[1,2048,1,1],f32>
     return %0 : !torch.vtensor<[1,2048,1,1],f32>
 
-// CHECK-LABEL: func @test_reduce_mean
+// CHECK-LABEL: func.func @test_reduce_mean
 // CHECK-SAME:  ([[PARAM_0_:%.+]]: !torch.vtensor<[1,2048,7,7],f32>) -> !torch.vtensor<[1,2048,1,1],f32> {
 // CHECK-NEXT:     [[VAR_0_:%.+]] = "xten.globalaveragepool2d"([[PARAM_0_]]) : (!torch.vtensor<[1,2048,7,7],f32>) -> !torch.vtensor<[1,2048,1,1],f32>
 // CHECK-NEXT:     return [[VAR_0_]] : !torch.vtensor<[1,2048,1,1],f32>

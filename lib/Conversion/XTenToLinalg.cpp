@@ -22,7 +22,8 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
-#include "mlir/Dialect/SCF/SCF.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Tensor/Utils/Utils.h"
 #include "mlir/Pass/Pass.h"
@@ -66,7 +67,7 @@ static Value applyPad(Location loc, Value input, ArrayRef<int64_t> pad,
   return tensor::createPadScalarOp(RankedTensorType::get(paddedShape, inputETy),
                                    input, padValue, lowIndices, highIndices,
                                    /*nofold=*/false, loc, rewriter)
-      .result();
+      .getResult();
 }
 
 /// Return a zero-initialized tensor of given size and dtype.

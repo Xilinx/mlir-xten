@@ -16,7 +16,7 @@
 // CHECK: %[[C2D:.*]] = "xten.conv2d"(%[[IN1:.*]], %{{[^,]*}}, %none, %[[INT2L]], %[[INT1L]], %[[INT1L]], %[[INT1]]) : (!torch.vtensor<[1,2,256,256],f32>, !torch.vtensor<[2,2,3,3],f32>, !torch.none, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int) -> !torch.vtensor<[1,2,128,128],f32>
 // CHECK: %[[OUT:.*]] = "xten.conv2d_tensoradd_lrelu"(%[[IN2:.*]], %{{[^,]*}}, %none, %[[INT1L]], %[[INT1L]], %[[INT1L]], %[[INT1]], %float4.000000e-01, %[[C2D]]) : (!torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[2,2,3,3],f32>, !torch.none, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int, !torch.float, !torch.vtensor<[1,2,128,128],f32>) -> !torch.vtensor<[1,2,128,128],f32>
 module attributes {torch.debug_module_name = "model"}  {
-  func @forward(%arg0: !torch.vtensor<[1,2,128,128],f32>) -> !torch.vtensor<[1,2,128,128],f32> {
+  func.func @forward(%arg0: !torch.vtensor<[1,2,128,128],f32>) -> !torch.vtensor<[1,2,128,128],f32> {
     %int1 = torch.constant.int 1
     %int2 = torch.constant.int 2
     %alpha = torch.constant.float 0.4

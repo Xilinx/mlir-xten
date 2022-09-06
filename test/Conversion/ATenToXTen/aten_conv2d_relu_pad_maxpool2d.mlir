@@ -18,7 +18,7 @@
 // CHECK: [[FUSED:%.]] = "xten.conv2d_relu_pad_maxpool"(%arg0, [[WGTS]], [[BIAS]], [[LIST2]], [[LIST3]], [[LIST1]], %int1, [[LIST0101]], %float-3.402820e38, %4, %2, %6, %3, %false) : (!torch.vtensor<[1,3,224,224],f32>, !torch.vtensor<[64,3,7,7],f32>, !torch.vtensor<[64],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int, !torch.list<int>, !torch.float, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool) -> !torch.vtensor<[1,64,56,56],f32>
 // CHECK: return [[FUSED]] :
 module attributes {torch.debug_module_name = "model"} {
-  func @forward(%arg0: !torch.vtensor<[1,3,224,224],f32>) -> !torch.vtensor<[1,64,56,56],f32> {
+  func.func @forward(%arg0: !torch.vtensor<[1,3,224,224],f32>) -> !torch.vtensor<[1,64,56,56],f32> {
     %float-3.402820e38 = torch.constant.float -3.4028234663852886E+38
     %false = torch.constant.bool false
     %int2 = torch.constant.int 2

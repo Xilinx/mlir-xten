@@ -10,7 +10,7 @@
 
 // RUN: aten-opt %s -xten-to-linalg | FileCheck %s
 module attributes {torch.debug_module_name = "Model"} {
-  func @forward(%arg0: !torch.vtensor<[1,3,128,128],f32>) -> !torch.vtensor<[1,3,128,128],f32> {
+  func.func @forward(%arg0: !torch.vtensor<[1,3,128,128],f32>) -> !torch.vtensor<[1,3,128,128],f32> {
     %int-1 = torch.constant.int -1
     %none = torch.constant.none
     // CHECK: linalg.softmax {dim = -1 : i64} ins({{.*}} : tensor<1x3x128x128xf32>) -> tensor<1x3x128x128xf32>
