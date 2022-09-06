@@ -20,7 +20,7 @@
 
 
 module attributes {torch.debug_module_name = "conv_2d_3x3"} {
-  func @forward(%arg0: !torch.vtensor<[1,2,128,128],f32>, %arg1: !torch.vtensor<[16,2,3,3],f32>, %arg2: !torch.vtensor<[16],f32>) -> !torch.vtensor<[1,16,64,64],f32> {
+  func.func @forward(%arg0: !torch.vtensor<[1,2,128,128],f32>, %arg1: !torch.vtensor<[16,2,3,3],f32>, %arg2: !torch.vtensor<[16],f32>) -> !torch.vtensor<[1,16,64,64],f32> {
     %int2 = torch.constant.int 2
     %int1 = torch.constant.int 1
     %2 = torch.prim.ListConstruct %int2, %int2 : (!torch.int, !torch.int) -> !torch.list<int>

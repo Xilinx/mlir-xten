@@ -7,7 +7,7 @@
 
 
 add_mlir_dialect(XTenOps xten)
-add_mlir_doc(XTenOps XTenDialect ./ -gen-dialect-doc)
+add_mlir_doc(XTenOps XTenDialect ./ -gen-dialect-doc -dialect xten)
 
 set(LLVM_TARGET_DEFINITIONS XTenOps.td)
 mlir_tablegen(XTenEnums.h.inc -gen-enum-decls)

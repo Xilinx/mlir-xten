@@ -17,7 +17,7 @@
 //   CHECK-NEXT:    "writes": 6
 
 module attributes {torch.debug_module_name = "relu"} {
-  func @forward(%arg0: !torch.vtensor<[1,2,3],f32>) -> !torch.vtensor<[1,2,3],f32> {
+  func.func @forward(%arg0: !torch.vtensor<[1,2,3],f32>) -> !torch.vtensor<[1,2,3],f32> {
     %0 = torch.aten.relu %arg0 : !torch.vtensor<[1,2,3],f32> -> !torch.vtensor<[1,2,3],f32>
     return %0 : !torch.vtensor<[1,2,3],f32>
   }

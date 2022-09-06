@@ -12,7 +12,7 @@
 // CHECK: %[[OUT:.*]] = linalg.fill
 // CHECK: linalg.matmul ins(%{{.*}}, %{{.*}} : tensor<1x32xf32>, tensor<32x64xf32>) outs(%[[OUT]] : tensor<1x64xf32>)
 module  {
-  func @myFunc(%arg0: !torch.vtensor<[1,32],f32>, %arg1: !torch.vtensor<[32,64],f32>) -> !torch.vtensor<[1,64],f32> {
+  func.func @myFunc(%arg0: !torch.vtensor<[1,32],f32>, %arg1: !torch.vtensor<[32,64],f32>) -> !torch.vtensor<[1,64],f32> {
     %0 = "xten.mm"(%arg0, %arg1) : (!torch.vtensor<[1,32],f32>, !torch.vtensor<[32,64],f32>) -> !torch.vtensor<[1,64],f32>
     return %0 : !torch.vtensor<[1,64],f32>
   }

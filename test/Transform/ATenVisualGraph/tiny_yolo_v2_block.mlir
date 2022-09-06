@@ -29,7 +29,7 @@
 // CHECK-LABEL:     "design_name": "design 1",
 
 module attributes {torch.debug_module_name = "TinyYoloV2"}  {
-  func @forward(%arg0: !torch.vtensor<[1,3,416,416],f32>) -> !torch.vtensor<[?,?,?,?],f32> {
+  func.func @forward(%arg0: !torch.vtensor<[1,3,416,416],f32>) -> !torch.vtensor<[?,?,?,?],f32> {
     %int1 = torch.constant.int 1
     %int0 = torch.constant.int 0
     %int2 = torch.constant.int 2

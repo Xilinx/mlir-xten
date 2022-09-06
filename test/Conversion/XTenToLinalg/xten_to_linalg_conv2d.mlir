@@ -9,9 +9,9 @@
 //===----------------------------------------------------------------------===//
 
 // RUN: aten-opt %s -xten-to-linalg | FileCheck %s
-// CHECK:linalg.conv_2d_nchw_fchw {dilations = dense<[2, 1]> : tensor<2xi64>, layer_name = "conv2d", strides = dense<1> : tensor<2xi64>} ins({{.*}}, {{.*}} : tensor<1x27x49x42xf32>, tensor<28x27x3x3xf32>) outs({{.*}} : tensor<1x28x45x40xf32>)
+// CHECK: linalg.conv_2d_nchw_fchw {dilations = dense<[2, 1]> : tensor<2xi64>, layer_name = "conv2d", strides = dense<1> : tensor<2xi64>} ins({{.*}}, {{.*}} : tensor<1x27x49x42xf32>, tensor<28x27x3x3xf32>) outs({{.*}} : tensor<1x28x45x40xf32>)
 module attributes {torch.debug_module_name = "model"}  {
-  func @forward(%arg0: !torch.vtensor<[1,27,49,42],f32>, %arg1: !torch.vtensor<[28,27,3,3],f32>, %arg2: !torch.vtensor<[28],f32>) -> !torch.vtensor<[1,28,45,40],f32> {
+  func.func @forward(%arg0: !torch.vtensor<[1,27,49,42],f32>, %arg1: !torch.vtensor<[28,27,3,3],f32>, %arg2: !torch.vtensor<[28],f32>) -> !torch.vtensor<[1,28,45,40],f32> {
     %int2 = torch.constant.int 2 
     %int1 = torch.constant.int 1 
     %int0 = torch.constant.int 0 
