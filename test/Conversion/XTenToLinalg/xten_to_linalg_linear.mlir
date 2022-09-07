@@ -13,7 +13,7 @@
 func.func @test_convert_linear(%arg0: !torch.vtensor<[1,2048],f32>, %arg1: !torch.vtensor<[1000,2048],f32>, %arg2: !torch.vtensor<[1000],f32>) -> !torch.vtensor<[1,1000],f32> {
     %0 = "xten.linear"(%arg0, %arg1, %arg2) : (!torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.vtensor<[1000],f32>) -> !torch.vtensor<[1,1000],f32>
     return %0 : !torch.vtensor<[1,1000],f32>
-// CHECK: linalg.linear ins({{.+}} : tensor<1x2048xf32>, {{.+}} : tensor<1000x2048xf32>, {{.+}} : tensor<1000xf32>) -> tensor<1x1000xf32>
+// CHECK: linalg.linear ins({{.+}} : tensor<1x2048xf32>, tensor<1000x2048xf32>, tensor<1000xf32>) outs({{.+}} : tensor<1x1000xf32>) -> tensor<1x1000xf32>
 }
 
 func.func @test_convert_linear_bias_optional(%arg0: !torch.vtensor<[1,2048],f32>, %arg1: !torch.vtensor<[1000,2048],f32>) -> !torch.vtensor<[1,1000],f32> {
@@ -24,7 +24,7 @@ func.func @test_convert_linear_bias_optional(%arg0: !torch.vtensor<[1,2048],f32>
 // CHECK: %[[EMPTY:.+]] = linalg.init_tensor [1000] : tensor<1000xf32>
 // CHECK-NEXT: %[[CONSTANT:.+]] = arith.constant 0.000000e+00 : f32
 // CHECK-NEXT: %[[ZEROED:.+]] = linalg.fill ins(%[[CONSTANT]] : f32) outs(%[[EMPTY]] : tensor<1000xf32>) -> tensor<1000xf32>
-// CHECK: linalg.linear ins({{.+}} : tensor<1x2048xf32>, {{.+}} : tensor<1000x2048xf32>, %[[ZEROED]] : tensor<1000xf32>) -> tensor<1x1000xf32>
+// CHECK: linalg.linear ins({{.+}}, {{.+}}, %[[ZEROED]] : tensor<1x2048xf32>, tensor<1000x2048xf32>, tensor<1000xf32>) outs({{.+}} : tensor<1x1000xf32>) -> tensor<1x1000xf32>
 }
 
 func.func @test_convert_linear_bias_none(%arg0: !torch.vtensor<[1,2048],f32>, %arg1: !torch.vtensor<[1000,2048],f32>) -> !torch.vtensor<[1,1000],f32> {
@@ -34,5 +34,5 @@ func.func @test_convert_linear_bias_none(%arg0: !torch.vtensor<[1,2048],f32>, %a
 // CHECK: %[[EMPTY:.+]] = linalg.init_tensor [1000] : tensor<1000xf32>
 // CHECK-NEXT: %[[CONSTANT:.+]] = arith.constant 0.000000e+00 : f32
 // CHECK-NEXT: %[[ZEROED:.+]] = linalg.fill ins(%[[CONSTANT]] : f32) outs(%[[EMPTY]] : tensor<1000xf32>) -> tensor<1000xf32>
-// CHECK-NEXT: linalg.linear ins({{.+}} : tensor<1x2048xf32>, {{.+}} : tensor<1000x2048xf32>, %[[ZEROED]] : tensor<1000xf32>) -> tensor<1x1000xf32>
+// CHECK: linalg.linear ins({{.+}}, {{.+}}, %[[ZEROED]] : tensor<1x2048xf32>, tensor<1000x2048xf32>, tensor<1000xf32>) outs({{.+}} : tensor<1x1000xf32>) -> tensor<1x1000xf32>
 }
