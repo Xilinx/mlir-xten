@@ -82,7 +82,7 @@ def XTen_SoftmaxOp: XTen_Op<"softmax", []>,
   let arguments = (
     ins AnyTorchTensorType:$input,
         Torch_IntType:$dim,
-        AnyTorchOptionalIntType:$dtype
+        Torch_BoolType:$half_to_float
   );
 
   let summary = "Softmax operator";
