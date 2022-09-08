@@ -12,9 +12,9 @@
 module attributes {torch.debug_module_name = "Model"} {
   func.func @forward(%arg0: !torch.vtensor<[1,3,128,128],f32>) -> !torch.vtensor<[1,3,128,128],f32> {
     %int-1 = torch.constant.int -1
-    %none = torch.constant.none
+    %false = torch.constant.bool false
     // CHECK: linalg.softmax {dim = -1 : i64} ins({{.*}} : tensor<1x3x128x128xf32>) -> tensor<1x3x128x128xf32>
-    %0 = "xten.softmax"(%arg0, %int-1, %none) : (!torch.vtensor<[1,3,128,128],f32>, !torch.int, !torch.none) -> !torch.vtensor<[1,3,128,128],f32>
+    %0 = "xten.softmax"(%arg0, %int-1, %false) : (!torch.vtensor<[1,3,128,128],f32>, !torch.int, !torch.bool) -> !torch.vtensor<[1,3,128,128],f32>
     return %0 : !torch.vtensor<[1,3,128,128],f32>
   }
 }
