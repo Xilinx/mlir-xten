@@ -19,6 +19,7 @@ module attributes {torch.debug_module_name = "model"}  {
   func.func @forward(%arg0: !torch.vtensor<[1,2,8,8],f32>) -> !torch.vtensor<[1,2,8,8],f32> {
     %int1 = torch.constant.int 1
     %none = torch.constant.none
+    %false = torch.constant.bool false
     %0 = torch.vtensor.literal(dense<"0xDEADBEEF"> : tensor<2x2x3x3xf32>) : !torch.vtensor<[2,2,3,3],f32>
     %list1 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<int>
 
