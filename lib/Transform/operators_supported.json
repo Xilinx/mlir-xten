@@ -1,7 +1,7 @@
 {
     "ops" : [
 	{
-	    "name" : "torch.aten.conv2d", 
+	    "name" : "torch.aten.convolution",
 	    "properties" : [		
 		["Attributes.Weights.Tensor", "Dimensions of weights" , "string"],
 	        ["Attributes.Weights.type", "Numerical type of each Weights number" , "string"],
@@ -313,7 +313,7 @@
 	},
 	{ 
 	    "name" : "xten.conv2d_bn_relu",
-	    "fused" : ["aten.conv2d", "aten.batch_norm", "aten.relu"],
+	    "fused" : ["aten.convolution", "aten.batch_norm", "aten.relu"],
 	    "properties" : [
 		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
 		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
@@ -335,7 +335,7 @@
 	}, 
 	{
 	    "name" : "xten.conv2d_relu",
-	    "fused" : ["aten.conv2d", "aten.relu"],	    	    
+	    "fused" : ["aten.convolution", "aten.relu"],
 	    "properties" : [
 		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
 		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
@@ -354,7 +354,7 @@
 	},
 	{
 	    "name" : "xten.conv2d_lrelu",
-	    "fused" : ["aten.conv2d"],
+	    "fused" : ["aten.convolution"],
 	    "properties" : [
 		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
 		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
@@ -373,7 +373,7 @@
 	},
 	{
 	    "name" : "xten.conv2d_tensoradd_relu",
-	    "fused" : ["aten.conv2d", "torch.aten.add.Tensor", "aten.relu"],
+	    "fused" : ["aten.convolution", "torch.aten.add.Tensor", "aten.relu"],
 	    "properties" : [
 		["Attributes.Other.Tensor", "Dimensions of second tensor", "string"],
 		["Attributes.Other.type", "Numerical type of each Tensor element", "string"],
@@ -395,7 +395,7 @@
 	},
 	{
 	    "name" : "xten.conv2d_lrelu_maxpool",
-	    "fused" : ["aten.conv2d", "aten.max_pool2d"],
+	    "fused" : ["aten.convolution", "aten.max_pool2d"],
 	    "properties" : [
 		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
 		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
@@ -418,7 +418,7 @@
 	},
 	{
 	    "name" : "xten.conv2d_relu_maxpool",
-	    "fused" : ["aten.conv2d", "aten.max_pool2d"],
+	    "fused" : ["aten.convolution", "aten.max_pool2d"],
 	    "properties" : [
 		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
 		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
@@ -437,7 +437,7 @@
 	},
 	{
 	    "name" : "xten.conv2d_lrelu_pad",
-	    "fused" : ["aten.conv2d", "torch.aten.constant_pad_nd"],
+	    "fused" : ["aten.convolution", "torch.aten.constant_pad_nd"],
 	    "properties" : [
 		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
 		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
@@ -460,7 +460,7 @@
 	},
 	{
 	    "name" : "xten.conv2d_lrelu_pad_maxpool",
-	    "fused" : ["aten.conv2d", "torch.aten.constant_pad_nd", "aten.max_pool2d"],
+	    "fused" : ["aten.convolution", "torch.aten.constant_pad_nd", "aten.max_pool2d"],
 	    "properties" : [
 		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
 		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],
@@ -483,7 +483,7 @@
 	},
 	{
 	    "name" : "xten.conv2d_relu_pad_maxpool",
-	    "fused" : ["aten.conv2d", "torch.aten.constant_pad_nd", "aten.max_pool2d"],
+	    "fused" : ["aten.convolution", "torch.aten.constant_pad_nd", "aten.max_pool2d"],
 	    "properties" : [
 		["Attributes.Weights.Tensor", "Dimensions of weights", "string"],
 		["Attributes.Weights.type", "Numerical type of each Weights number", "string"],

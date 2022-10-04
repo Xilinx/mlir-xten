@@ -22,14 +22,16 @@ module attributes {torch.debug_module_name = "model"}  {
     %alpha = torch.constant.float 0.4
     %0 = torch.vtensor.literal(dense<"0xDEADBEEF"> : tensor<2x2x3x3xf32>) : !torch.vtensor<[2,2,3,3],f32>
     %none = torch.constant.none
+    %false = torch.constant.bool false
     %int1List = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<int>
     %stride2 = torch.prim.ListConstruct %int2, %int2 : (!torch.int, !torch.int) -> !torch.list<int>
+    %empty_list = torch.prim.ListConstruct : () -> !torch.list<int>
 
     %largeTensor = torch.vtensor.literal(dense<"0xDEADBEEF"> : tensor<1x2x256x256xf32>) : !torch.vtensor<[1,2,256,256],f32>
     // this one gets fused
-    %c2d1 = torch.aten.conv2d %arg0, %0, %none, %int1List, %int1List, %int1List, %int1 : !torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[2,2,3,3],f32>, !torch.none, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int -> !torch.vtensor<[1,2,128,128],f32>
+    %c2d1 = torch.aten.convolution %arg0, %0, %none, %int1List, %int1List, %int1List, %false, %empty_list, %int1 : !torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[2,2,3,3],f32>, !torch.none, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool, !torch.list<int>, !torch.int -> !torch.vtensor<[1,2,128,128],f32>
     // not this one
-    %c2d2 = torch.aten.conv2d %largeTensor, %0, %none, %stride2, %int1List, %int1List, %int1 : !torch.vtensor<[1,2,256,256],f32>, !torch.vtensor<[2,2,3,3],f32>, !torch.none, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int -> !torch.vtensor<[1,2,128,128],f32>
+    %c2d2 = torch.aten.convolution %largeTensor, %0, %none, %stride2, %int1List, %int1List, %false, %empty_list, %int1 : !torch.vtensor<[1,2,256,256],f32>, !torch.vtensor<[2,2,3,3],f32>, !torch.none, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool, !torch.list<int>, !torch.int -> !torch.vtensor<[1,2,128,128],f32>
     // the operands are reversed here
     %7 = torch.aten.add.Tensor %c2d1, %c2d2, %int1 : !torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[1,2,128,128],f32>, !torch.int ->  !torch.vtensor<[1,2,128,128],f32>
     %8 = torch.aten.leaky_relu %7, %alpha : !torch.vtensor<[1,2,128,128],f32>, !torch.float -> !torch.vtensor<[1,2,128,128],f32>

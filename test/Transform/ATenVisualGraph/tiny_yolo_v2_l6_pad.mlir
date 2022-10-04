@@ -54,7 +54,8 @@ module attributes {torch.debug_module_name = "TinyYoloV2"} {
     %2 = torch.prim.ListConstruct %int2, %int2 : (!torch.int, !torch.int) -> !torch.list<int>
     %3 = torch.vtensor.literal(dense<0.000000e+00> : tensor<512x256x3x3xf32>) : !torch.vtensor<[512,256,3,3],f32>
     %4 = torch.vtensor.literal(dense<0.000000e+00> : tensor<512xf32>) : !torch.vtensor<[512],f32>
-    %5 = torch.aten.conv2d %arg0, %3, %4, %1, %1, %1, %int1 {layer_name = "conv2d5"} : !torch.vtensor<[1,256,13,13],f32>, !torch.vtensor<[512,256,3,3],f32>, !torch.vtensor<[512],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int -> !torch.vtensor<[1,512,13,13],f32>
+    %empty_list = torch.prim.ListConstruct : () -> !torch.list<int>
+    %5 = torch.aten.convolution %arg0, %3, %4, %1, %1, %1, %false, %empty_list, %int1 {layer_name = "conv2d5"} : !torch.vtensor<[1,256,13,13],f32>, !torch.vtensor<[512,256,3,3],f32>, !torch.vtensor<[512],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool, !torch.list<int>, !torch.int -> !torch.vtensor<[1,512,13,13],f32>
     %6 = torch.aten.leaky_relu %5, %float1.000000e-01 {layer_name = "leaky_relu5"} : !torch.vtensor<[1,512,13,13],f32>, !torch.float -> !torch.vtensor<[1,512,13,13],f32>
     %float-Inf = torch.constant.float 0xFFF0000000000000
     %7 = torch.prim.ListConstruct %int0, %int1, %int0, %int1 : (!torch.int, !torch.int, !torch.int, !torch.int) -> !torch.list<int>

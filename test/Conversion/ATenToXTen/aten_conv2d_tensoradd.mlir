@@ -23,10 +23,12 @@ func.func @forward_conv2d_tensoradd_lrelu(%arg0: !torch.vtensor<[1,2,128,128],f3
   %int1 = torch.constant.int 1
   %alpha = torch.constant.float 0.4
   %none = torch.constant.none
+  %false = torch.constant.bool false
   %0 = torch.vtensor.literal(dense<"0xDEADBEEF"> : tensor<2x2x1x1xf32>) : !torch.vtensor<[2,2,1,1],f32>
   %list1 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<int>
+  %empty_list = torch.prim.ListConstruct : () -> !torch.list<int>
 
-  %c2d = torch.aten.conv2d %arg0, %0, %none, %list1, %list0, %list1, %int1 : !torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[2,2,1,1],f32>, !torch.none, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int -> !torch.vtensor<[1,2,128,128],f32>
+  %c2d = torch.aten.convolution %arg0, %0, %none, %list1, %list0, %list1, %false, %empty_list, %int1 : !torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[2,2,1,1],f32>, !torch.none, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool, !torch.list<int>, !torch.int -> !torch.vtensor<[1,2,128,128],f32>
   %add = torch.aten.add.Tensor %c2d, %arg0, %int1 : !torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[1,2,128,128],f32>, !torch.int ->  !torch.vtensor<[1,2,128,128],f32>
   %lrelu = torch.aten.leaky_relu %add, %alpha : !torch.vtensor<[1,2,128,128],f32>, !torch.float -> !torch.vtensor<[1,2,128,128],f32>
   return %lrelu : !torch.vtensor<[1,2,128,128],f32>
@@ -45,9 +47,11 @@ func.func @forward_conv2d_tensoradd_relu(%arg0: !torch.vtensor<[1,2,128,128],f32
   %list0 = torch.prim.ListConstruct %int0, %int0 : (!torch.int, !torch.int) -> !torch.list<int>
   %int1 = torch.constant.int 1
   %none = torch.constant.none
+  %false = torch.constant.bool false
   %0 = torch.vtensor.literal(dense<"0xDEADBEEF"> : tensor<2x2x1x1xf32>) : !torch.vtensor<[2,2,1,1],f32>
   %list1 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<int>
-  %c2d = torch.aten.conv2d %arg0, %0, %none, %list1, %list0, %list1, %int1 : !torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[2,2,1,1],f32>, !torch.none, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int -> !torch.vtensor<[1,2,128,128],f32>
+  %empty_list = torch.prim.ListConstruct : () -> !torch.list<int>
+  %c2d = torch.aten.convolution %arg0, %0, %none, %list1, %list0, %list1, %false, %empty_list, %int1 : !torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[2,2,1,1],f32>, !torch.none, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool, !torch.list<int>, !torch.int -> !torch.vtensor<[1,2,128,128],f32>
   %add = torch.aten.add.Tensor %c2d, %arg0, %int1 : !torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[1,2,128,128],f32>, !torch.int ->  !torch.vtensor<[1,2,128,128],f32>
   %relu = torch.aten.relu %add : !torch.vtensor<[1,2,128,128],f32> -> !torch.vtensor<[1,2,128,128],f32>
   return %relu : !torch.vtensor<[1,2,128,128],f32>
@@ -66,9 +70,11 @@ func.func @forward_conv2d_tensoradd(%arg0: !torch.vtensor<[1,2,128,128],f32>) ->
   %list0 = torch.prim.ListConstruct %int0, %int0 : (!torch.int, !torch.int) -> !torch.list<int>
   %int1 = torch.constant.int 1
   %none = torch.constant.none
+  %false = torch.constant.bool false
   %0 = torch.vtensor.literal(dense<"0xDEADBEEF"> : tensor<2x2x1x1xf32>) : !torch.vtensor<[2,2,1,1],f32>
   %list1 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<int>
-  %c2d = torch.aten.conv2d %arg0, %0, %none, %list1, %list0, %list1, %int1 : !torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[2,2,1,1],f32>, !torch.none, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int -> !torch.vtensor<[1,2,128,128],f32>
+  %empty_list = torch.prim.ListConstruct : () -> !torch.list<int>
+  %c2d = torch.aten.convolution %arg0, %0, %none, %list1, %list0, %list1, %false, %empty_list, %int1 : !torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[2,2,1,1],f32>, !torch.none, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool, !torch.list<int>, !torch.int -> !torch.vtensor<[1,2,128,128],f32>
   %add = torch.aten.add.Tensor %c2d, %arg0, %int1 : !torch.vtensor<[1,2,128,128],f32>, !torch.vtensor<[1,2,128,128],f32>, !torch.int ->  !torch.vtensor<[1,2,128,128],f32>
   return %add : !torch.vtensor<[1,2,128,128],f32>
 }
