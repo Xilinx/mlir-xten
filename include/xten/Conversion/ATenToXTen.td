@@ -33,9 +33,6 @@ def CheckEmptyList : Constraint<
 
 // Conversions
 
-// def : Pat<(Torch_AtenConv2dOp $a,$b,$c,$d,$e,$f,$g),
-//           (XTen_Conv2dOp  $a,$b,$c,$d,$e,$f,$g)>;
-
 def : Pat<(Torch_AtenConvolutionOp $input,$weight,$bias,$stride,$padding,$dilation,$transposed,$output_padding,$groups),
           (XTen_Conv2dOp  $input,$weight,$bias,$stride,$padding,$dilation,$groups),
           [(CheckFalse $transposed), (CheckEmptyList $output_padding)]>;
