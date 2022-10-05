@@ -27,13 +27,18 @@ def CheckFalse : Constraint<
     CPred<"!llvm::dyn_cast<Torch::ConstantBoolOp>($0.getDefiningOp()).value()">,
     "check to see if it is torch.constant.bool false">;
 
+def CheckEmptyList : Constraint<
+    CPred<"$0.getDefiningOp<Torch::PrimListConstructOp>().getNumOperands() == 0">,
+    "check to see if it is torch.list is empty">;
+
 // Conversions
 
 // def : Pat<(Torch_AtenConv2dOp $a,$b,$c,$d,$e,$f,$g),
 //           (XTen_Conv2dOp  $a,$b,$c,$d,$e,$f,$g)>;
 
 def : Pat<(Torch_AtenConvolutionOp $input,$weight,$bias,$stride,$padding,$dilation,$transposed,$output_padding,$groups),
-          (XTen_Conv2dOp  $input,$weight,$bias,$stride,$padding,$dilation,$groups)>;
+          (XTen_Conv2dOp  $input,$weight,$bias,$stride,$padding,$dilation,$groups),
+          [(CheckFalse $transposed), (CheckEmptyList $output_padding)]>;
 
 def : Pat<(Torch_AtenReluOp (XTen_Conv2dOp $a,$b,$c,$d,$e,$f,$g)),
           (XTen_Conv2dReLUOp $a,$b,$c,$d,$e,$f,$g)>;
