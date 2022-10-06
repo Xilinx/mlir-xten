@@ -20,10 +20,12 @@ func.func @conv2d_tensoradd_multi_branch(%arg0: !torch.vtensor<[1,256,64,64],f32
     %1 = torch.vtensor.literal(dense<1.000000e+00> : tensor<256x256x1x1xf32>) : !torch.vtensor<[256,256,1,1],f32>
     %int1 = torch.constant.int 1
     %int0 = torch.constant.int 0
+    %false = torch.constant.bool false
     %2 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<int>
     %3 = torch.prim.ListConstruct %int0, %int0 : (!torch.int, !torch.int) -> !torch.list<int>
-    %4 = torch.aten.conv2d %arg0, %1, %0, %2, %3, %2, %int1 : !torch.vtensor<[1,256,64,64],f32>, !torch.vtensor<[256,256,1,1],f32>, !torch.vtensor<[256],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int -> !torch.vtensor<[1,256,64,64],f32>
-    %5 = torch.aten.conv2d %4, %1, %0, %2, %3, %2, %int1 : !torch.vtensor<[1,256,64,64],f32>, !torch.vtensor<[256,256,1,1],f32>, !torch.vtensor<[256],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int -> !torch.vtensor<[1,256,64,64],f32>
+    %empty_list = torch.prim.ListConstruct : () -> !torch.list<int>
+    %4 = torch.aten.convolution %arg0, %1, %0, %2, %3, %2, %false, %empty_list, %int1 : !torch.vtensor<[1,256,64,64],f32>, !torch.vtensor<[256,256,1,1],f32>, !torch.vtensor<[256],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool, !torch.list<int>, !torch.int -> !torch.vtensor<[1,256,64,64],f32>
+    %5 = torch.aten.convolution %4, %1, %0, %2, %3, %2, %false, %empty_list, %int1 : !torch.vtensor<[1,256,64,64],f32>, !torch.vtensor<[256,256,1,1],f32>, !torch.vtensor<[256],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool, !torch.list<int>, !torch.int -> !torch.vtensor<[1,256,64,64],f32>
     %6 = torch.aten.add.Tensor %arg0, %4, %int1 : !torch.vtensor<[1,256,64,64],f32>, !torch.vtensor<[1,256,64,64],f32>, !torch.int -> !torch.vtensor<[1,256,64,64],f32>
     %7 = torch.aten.add.Tensor %6, %5, %int1 : !torch.vtensor<[1,256,64,64],f32>, !torch.vtensor<[1,256,64,64],f32>, !torch.int -> !torch.vtensor<[1,256,64,64],f32>
     %8 = torch.aten.relu %7 : !torch.vtensor<[1,256,64,64],f32> -> !torch.vtensor<[1,256,64,64],f32>

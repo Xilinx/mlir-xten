@@ -21,11 +21,11 @@ include "xten/Dialect/XTen/XTenOps.td"
 // matches a catch-all pattern. For instance, if the two following patterns
 //  (XTen_AddOp (XTen_Conv2dOp) $other)
 //  (XTen_AddOp (XTen_Conv2dOp) (XTen_Conv2dOp))
-// were applied in the ATenToXTen pass directly, `$other` could match an `aten.conv2d`
+// were applied in the ATenToXTen pass directly, `$other` could match an `aten.convolution`
 // which has not been legalized to an `XTen_Conv2dOp` yet. If it had been legalized then
 // the second pattern would match, not the first. The driver does this because it considers
 // large matches before small ones, so the first pattern above is preferred to just
-// `aten.conv2d -> xten.conv2d` which touches only one op.
+// `aten.convolution -> xten.conv2d` which touches only one op.
 // This problem is avoided by applying all simple conversions first, then doing more fusions
 // on pure XTen here.
 

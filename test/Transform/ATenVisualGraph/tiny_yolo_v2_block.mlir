@@ -43,7 +43,8 @@ module attributes {torch.debug_module_name = "TinyYoloV2"}  {
     %4 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<int>
     %5 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<int>
     %6 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<int>
-    %7 = torch.aten.conv2d %arg0, %0, %1, %4, %5, %6, %int1 {layer_name = "conv2d0"} : !torch.vtensor<[1,3,416,416],f32>, !torch.vtensor<[16,3,3,3],f32>, !torch.vtensor<[16],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int -> !torch.vtensor<[?,?,?,?],f32>
+    %empty_list = torch.prim.ListConstruct : () -> !torch.list<int>
+    %7 = torch.aten.convolution %arg0, %0, %1, %4, %5, %6, %false, %empty_list, %int1 {layer_name = "conv2d0"} : !torch.vtensor<[1,3,416,416],f32>, !torch.vtensor<[16,3,3,3],f32>, !torch.vtensor<[16],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool, !torch.list<int>, !torch.int -> !torch.vtensor<[?,?,?,?],f32>
     %8 = torch.aten.leaky_relu %7, %float1.000000e-01 {layer_name = "leaky_relu0"} : !torch.vtensor<[?,?,?,?],f32>, !torch.float -> !torch.vtensor
     %9 = torch.prim.ListConstruct %int2, %int2 : (!torch.int, !torch.int) -> !torch.list<int>
     %10 = torch.prim.ListConstruct %int2, %int2 : (!torch.int, !torch.int) -> !torch.list<int>
@@ -53,7 +54,7 @@ module attributes {torch.debug_module_name = "TinyYoloV2"}  {
     %14 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<int>
     %15 = torch.prim.ListConstruct %int0, %int0 : (!torch.int, !torch.int) -> !torch.list<int>
     %16 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<int>
-    %17 = torch.aten.conv2d %13, %2, %3, %14, %15, %16, %int1 {layer_name = "conv2d1"} : !torch.vtensor<[?,?,?,?],unk>, !torch.vtensor<[75,1024,1,1],f32>, !torch.vtensor<[75],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int -> !torch.vtensor<[?,?,?,?],f32>
+    %17 = torch.aten.convolution %13, %2, %3, %14, %15, %16, %false, %empty_list, %int1 {layer_name = "conv2d1"} : !torch.vtensor<[?,?,?,?],unk>, !torch.vtensor<[75,1024,1,1],f32>, !torch.vtensor<[75],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool, !torch.list<int>, !torch.int -> !torch.vtensor<[?,?,?,?],f32>
     return %17 : !torch.vtensor<[?,?,?,?],f32>
   }
 }

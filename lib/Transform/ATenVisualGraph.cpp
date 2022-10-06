@@ -596,7 +596,7 @@ private:
                         JsonPropertiesBuilder &&props) {
     uint64_t storage = 0;
     storage += fillPropertiesConvOp<xten::Conv2dBatchNormReLUOp>(
-        op, props.nextFusedOp("aten.conv2d"));
+        op, props.nextFusedOp("aten.convolution"));
     storage += fillPropertiesBatchNormOp<xten::Conv2dBatchNormReLUOp>(
         op, props.nextFusedOp("torch.aten.batch_norm"));
 
@@ -608,7 +608,7 @@ private:
   void fillPropertiesOpC2dActMaxpool(Op &op, const char *actTypeStr,
                                      JsonPropertiesBuilder &&props) {
     uint64_t storage = 0;
-    storage += fillPropertiesConvOp(op, props.nextFusedOp("aten.conv2d"));
+    storage += fillPropertiesConvOp(op, props.nextFusedOp("aten.convolution"));
     storage += fillPropertiesReLUOp(op, props.nextFusedOp(actTypeStr));
     storage +=
         fillPropertiesMaxPool2dOp(op, props.nextFusedOp("aten.max_pool2d"));
@@ -620,7 +620,7 @@ private:
   void fillPropertiesOpC2dAct(Op &op, const char *actTypeStr,
                               JsonPropertiesBuilder &&props) {
     uint64_t storage = 0;
-    storage += fillPropertiesConvOp(op, props.nextFusedOp("aten.conv2d"));
+    storage += fillPropertiesConvOp(op, props.nextFusedOp("aten.convolution"));
     storage += fillPropertiesReLUOp(op, props.nextFusedOp(actTypeStr));
     props.appendStorageAttr(op, storage);
   }
@@ -693,8 +693,8 @@ private:
   llvm::json::Array fillProperties(Operation *op) {
     llvm::json::Array propertiesArray;
     auto props = JsonPropertiesBuilder(propertiesArray);
-    if (auto op2 = dyn_cast<Torch::AtenConv2dOp>(op)) {
-      fillPropertiesConvOp<Torch::AtenConv2dOp>(op2, std::move(props));
+    if (auto op2 = dyn_cast<Torch::AtenConvolutionOp>(op)) {
+      fillPropertiesConvOp<Torch::AtenConvolutionOp>(op2, std::move(props));
     } else if (auto op2 = dyn_cast<Torch::AtenMaxPool2dOp>(op)) {
       fillPropertiesMaxPool2dOp<Torch::AtenMaxPool2dOp>(op2, std::move(props));
     } else if (auto op2 = dyn_cast<Torch::AtenReluOp>(op)) {
@@ -785,7 +785,7 @@ private:
   Value getInputFromErasedPtr(Operation *op) {
     Value opInput;
 
-    if (auto op2 = dyn_cast<Torch::AtenConv2dOp>(op)) {
+    if (auto op2 = dyn_cast<Torch::AtenConvolutionOp>(op)) {
       opInput = getInput(op2);
     } else if (auto op2 = dyn_cast<Torch::AtenMaxPool2dOp>(op)) {
       opInput = getInput(op2);
