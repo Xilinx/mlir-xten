@@ -35,7 +35,7 @@ namespace xilinx {
         }
 
         Value Conv2dOpWrapper::getWeights() {
-            return this->conv.weight();
+            return this->conv.getWeight();
         }
 
         ArrayRef<Value> Conv2dOpWrapper::getBN() {
@@ -43,11 +43,11 @@ namespace xilinx {
         }
 
         Optional<Value> Conv2dOpWrapper::getBiases() {
-            return this->conv.bias();
+            return this->conv.getBias();
         }
 
         Value Conv2dOpWrapper::getInput() {
-            return this->conv.input();
+            return this->conv.getInput();
         }
 
         Value Conv2dOpWrapper::getPartialInput() {
@@ -55,15 +55,15 @@ namespace xilinx {
         }
 
         unsigned int Conv2dOpWrapper::getF0() {
-            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
+            return this->conv.getWeight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
         }
 
         unsigned int Conv2dOpWrapper::getF1() {
-            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
+            return this->conv.getWeight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
         }
 
         unsigned int Conv2dOpWrapper::getStride() {
-            Value s = this->conv.stride();
+            Value s = this->conv.getStride();
             SmallVector<int64_t, 2> stride;
             matchPattern(s, Torch::m_TorchConstantIntList(stride));
 
@@ -84,12 +84,12 @@ namespace xilinx {
         }
 
         bool Conv2dOpWrapper::isDepthWise() {
-            //unsigned int groups = this->conv.groups().getDefiningOp<mlir::torch::Torch::IntType>().get();//.value();
-          llvm::APInt intT = this->conv.groups().getDefiningOp<mlir::torch::Torch::ConstantIntOp>().value();
+            //unsigned int groups = this->conv.getGroups().getDefiningOp<mlir::torch::Torch::IntType>().get();//.value();
+          llvm::APInt intT = this->conv.getGroups().getDefiningOp<mlir::torch::Torch::ConstantIntOp>().value();
             //MLIRContext *context = intT.getContext();
           uint64_t groups = intT.getSExtValue();
 
-            mlir::torch::Torch::BaseTensorType aShape = this->conv.input().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+            mlir::torch::Torch::BaseTensorType aShape = this->conv.getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
             ArrayRef<int64_t> aShapeAR = aShape.getSizes();
 
             uint64_t C = aShapeAR[C_LOC];
@@ -114,7 +114,7 @@ namespace xilinx {
                 assert(bias.has_value());
             }
 
-            Value biasVal = bias.has_value() ? bias.value() : this->conv.bias();
+            Value biasVal = bias.has_value() ? bias.value() : this->conv.getBias();
 
             Operation* op = this->getUnderlyingOperation();
             if(firstInPartialChain || partialIn.has_value()) {
@@ -125,10 +125,10 @@ namespace xilinx {
                                                                   chainIn,
                                                                   weight.value(),
                                                                   biasVal,
-                                                                  this->conv.stride(),
-                                                                  this->conv.padding(),
-                                                                  this->conv.dilation(),
-                                                                  this->conv.groups());
+                                                                  this->conv.getStride(),
+                                                                  this->conv.getPadding(),
+                                                                  this->conv.getDilation(),
+                                                                  this->conv.getGroups());
 
                 nOp->setAttrs(op->getAttrs());
 
@@ -139,10 +139,10 @@ namespace xilinx {
                                                           input,
                                                           weight.value(),
                                                           biasVal,
-                                                          this->conv.stride(),
-                                                          this->conv.padding(),
-                                                          this->conv.dilation(),
-                                                          this->conv.groups());
+                                                          this->conv.getStride(),
+                                                          this->conv.getPadding(),
+                                                          this->conv.getDilation(),
+                                                          this->conv.getGroups());
 
                 nOp->setAttrs(op->getAttrs());
 
@@ -160,10 +160,10 @@ namespace xilinx {
                                                       nullptr,
                                                       this->getWeights(),
                                                       this->getBiases().value_or(nullptr),
-                                                      this->conv.stride(),
-                                                      this->conv.padding(),
-                                                      this->conv.dilation(),
-                                                      this->conv.groups());
+                                                      this->conv.getStride(),
+                                                      this->conv.getPadding(),
+                                                      this->conv.getDilation(),
+                                                      this->conv.getGroups());
 
             } else {
                 op = builder.create<Conv2dOp>(builder.getUnknownLoc(),
@@ -171,10 +171,10 @@ namespace xilinx {
                                               this->getInput(),
                                               this->getWeights(),
                                               this->getBiases().value_or(nullptr),
-                                              this->conv.stride(),
-                                              this->conv.padding(),
-                                              this->conv.dilation(),
-                                              this->conv.groups());
+                                              this->conv.getStride(),
+                                              this->conv.getPadding(),
+                                              this->conv.getDilation(),
+                                              this->conv.getGroups());
             }
 
             op->setAttrs(this->getUnderlyingOperation()->getAttrs());
@@ -197,7 +197,7 @@ namespace xilinx {
         }
 
         Value PartialConv2dOpWrapper::getWeights() {
-            return this->conv.weight();
+            return this->conv.getWeight();
         }
 
         ArrayRef<Value> PartialConv2dOpWrapper::getBN() {
@@ -205,27 +205,27 @@ namespace xilinx {
         }
 
         Optional<Value> PartialConv2dOpWrapper::getBiases() {
-            return this->conv.bias();
+            return this->conv.getBias();
         }
 
         Value PartialConv2dOpWrapper::getInput() {
-            return this->conv.input();
+            return this->conv.getInput();
         }
 
         Value PartialConv2dOpWrapper::getPartialInput() {
-            return this->conv.PartialIn();
+            return this->conv.getPartialIn();
         }
 
         unsigned int PartialConv2dOpWrapper::getF0() {
-            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
+            return this->conv.getWeight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
         }
 
         unsigned int PartialConv2dOpWrapper::getF1() {
-            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
+            return this->conv.getWeight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
         }
 
         unsigned int PartialConv2dOpWrapper::getStride() {
-            Value s = this->conv.stride();
+            Value s = this->conv.getStride();
             SmallVector<int64_t, 2> stride;
             matchPattern(s, Torch::m_TorchConstantIntList(stride));
             return stride[0];
@@ -244,8 +244,8 @@ namespace xilinx {
         }
 
         bool PartialConv2dOpWrapper::isDepthWise() {
-            unsigned int groups = this->conv.groups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
-            mlir::torch::Torch::BaseTensorType aShape = this->conv.input().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+            unsigned int groups = this->conv.getGroups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
+            mlir::torch::Torch::BaseTensorType aShape = this->conv.getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
             ArrayRef<int64_t> aShapeAR = aShape.getSizes();
 
             int64_t C = aShapeAR[C_LOC];
@@ -269,13 +269,13 @@ namespace xilinx {
                 assert(bias.has_value());
             }
 
-            Value biasVal = bias.has_value() ? bias.value() : this->conv.bias();
+            Value biasVal = bias.has_value() ? bias.value() : this->conv.getBias();
 
             Value chainIn;
             if(partialIn.has_value()) {
                 chainIn = partialIn.value();
-            } else if(this->conv.PartialIn()){
-                chainIn = this->conv.PartialIn();
+            } else if(this->conv.getPartialIn()){
+                chainIn = this->conv.getPartialIn();
             } else {
                 chainIn = Value();
             }
@@ -288,10 +288,10 @@ namespace xilinx {
                                                               chainIn,
                                                               weight.value(),
                                                               biasVal,
-                                                              this->conv.stride(),
-                                                              this->conv.padding(),
-                                                              this->conv.dilation(),
-                                                              this->conv.groups());
+                                                              this->conv.getStride(),
+                                                              this->conv.getPadding(),
+                                                              this->conv.getDilation(),
+                                                              this->conv.getGroups());
 
             nOp->setAttrs(op->getAttrs());
             return nOp;
@@ -304,24 +304,24 @@ namespace xilinx {
                 op = builder.create<PartialConv2dOp>(builder.getUnknownLoc(),
                                                      resTypes.value(),
                                                      this->getInput(),
-                                                     this->conv.PartialIn(),
+                                                     this->conv.getPartialIn(),
                                                      this->getWeights(),
                                                      this->getBiases().value_or(nullptr),
-                                                     this->conv.stride(),
-                                                     this->conv.padding(),
-                                                     this->conv.dilation(),
-                                                     this->conv.groups());
+                                                     this->conv.getStride(),
+                                                     this->conv.getPadding(),
+                                                     this->conv.getDilation(),
+                                                     this->conv.getGroups());
             } else {
                 op = builder.create<PartialConv2dOp>(builder.getUnknownLoc(),
                                                      this->getUnderlyingOperation()->getResultTypes(),
                                                      this->getInput(),
-                                                     this->conv.PartialIn(),
+                                                     this->conv.getPartialIn(),
                                                      this->getWeights(),
                                                      this->getBiases().value_or(nullptr),
-                                                     this->conv.stride(),
-                                                     this->conv.padding(),
-                                                     this->conv.dilation(),
-                                                     this->conv.groups());
+                                                     this->conv.getStride(),
+                                                     this->conv.getPadding(),
+                                                     this->conv.getDilation(),
+                                                     this->conv.getGroups());
             }
 
 
@@ -345,7 +345,7 @@ namespace xilinx {
         }
 
         Value Conv2dReLUOpWrapper::getWeights() {
-            return this->conv.weight();
+            return this->conv.getWeight();
         }
 
         ArrayRef<Value> Conv2dReLUOpWrapper::getBN() {
@@ -353,11 +353,11 @@ namespace xilinx {
         }
 
         Optional<Value> Conv2dReLUOpWrapper::getBiases() {
-            return this->conv.bias();
+            return this->conv.getBias();
         }
 
         Value Conv2dReLUOpWrapper::getInput() {
-            return this->conv.input();
+            return this->conv.getInput();
         }
 
         Value Conv2dReLUOpWrapper::getPartialInput() {
@@ -365,15 +365,15 @@ namespace xilinx {
         }
 
         unsigned int Conv2dReLUOpWrapper::getF0() {
-            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
+            return this->conv.getWeight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
         }
 
         unsigned int Conv2dReLUOpWrapper::getF1() {
-            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
+            return this->conv.getWeight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
         }
 
         unsigned int Conv2dReLUOpWrapper::getStride() {
-            Value s = this->conv.stride();
+            Value s = this->conv.getStride();
             SmallVector<int64_t,2> stride;
             matchPattern(s, Torch::m_TorchConstantIntList(stride));
 
@@ -393,8 +393,8 @@ namespace xilinx {
         }
 
         bool Conv2dReLUOpWrapper::isDepthWise() {
-            unsigned int groups = this->conv.groups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
-            mlir::torch::Torch::BaseTensorType aShape = this->conv.input().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+            unsigned int groups = this->conv.getGroups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
+            mlir::torch::Torch::BaseTensorType aShape = this->conv.getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
             ArrayRef<int64_t> aShapeAR = aShape.getSizes();
 
             int64_t C = aShapeAR[C_LOC];
@@ -420,7 +420,7 @@ namespace xilinx {
             }
 
             Operation* op = this->getUnderlyingOperation();
-            Value biasVal = (bias.has_value()) ? bias.value() : this->conv.bias();
+            Value biasVal = (bias.has_value()) ? bias.value() : this->conv.getBias();
 
             if(firstInPartialChain || partialIn.has_value()) {
                 Value chainIn = (partialIn.has_value()) ? partialIn.value() : Value();
@@ -430,10 +430,10 @@ namespace xilinx {
                                                                       chainIn,
                                                                       weight.value(),
                                                                       biasVal,
-                                                                      this->conv.stride(),
-                                                                      this->conv.padding(),
-                                                                      this->conv.dilation(),
-                                                                      this->conv.groups());
+                                                                      this->conv.getStride(),
+                                                                      this->conv.getPadding(),
+                                                                      this->conv.getDilation(),
+                                                                      this->conv.getGroups());
 
                 nOp->setAttrs(op->getAttrs());
                 return nOp;
@@ -443,10 +443,10 @@ namespace xilinx {
                                                               input,
                                                               weight.value(),
                                                               biasVal,
-                                                              this->conv.stride(),
-                                                              this->conv.padding(),
-                                                              this->conv.dilation(),
-                                                              this->conv.groups());
+                                                              this->conv.getStride(),
+                                                              this->conv.getPadding(),
+                                                              this->conv.getDilation(),
+                                                              this->conv.getGroups());
 
                 nOp->setAttrs(op->getAttrs());
                 return nOp;
@@ -463,20 +463,20 @@ namespace xilinx {
                                                           Value(),
                                                           this->getWeights(),
                                                           this->getBiases().value_or(nullptr),
-                                                          this->conv.stride(),
-                                                          this->conv.padding(),
-                                                          this->conv.dilation(),
-                                                          this->conv.groups());
+                                                          this->conv.getStride(),
+                                                          this->conv.getPadding(),
+                                                          this->conv.getDilation(),
+                                                          this->conv.getGroups());
             } else {
                 op = builder.create<Conv2dReLUOp>(builder.getUnknownLoc(),
                                                   this->getUnderlyingOperation()->getResultTypes(),
                                                   this->getInput(),
                                                   this->getWeights(),
                                                   this->getBiases().value_or(nullptr),
-                                                  this->conv.stride(),
-                                                  this->conv.padding(),
-                                                  this->conv.dilation(),
-                                                  this->conv.groups());
+                                                  this->conv.getStride(),
+                                                  this->conv.getPadding(),
+                                                  this->conv.getDilation(),
+                                                  this->conv.getGroups());
             }
 
 
@@ -500,7 +500,7 @@ namespace xilinx {
         }
 
         Value PartialConv2dReLUOpWrapper::getWeights() {
-            return this->conv.weight();
+            return this->conv.getWeight();
         }
 
         ArrayRef<Value> PartialConv2dReLUOpWrapper::getBN() {
@@ -508,27 +508,27 @@ namespace xilinx {
         }
 
         Optional<Value> PartialConv2dReLUOpWrapper::getBiases() {
-            return this->conv.bias();
+            return this->conv.getBias();
         }
 
         Value PartialConv2dReLUOpWrapper::getInput() {
-            return this->conv.input();
+            return this->conv.getInput();
         }
 
         Value PartialConv2dReLUOpWrapper::getPartialInput() {
-            return this->conv.PartialIn();
+            return this->conv.getPartialIn();
         }
 
         unsigned int PartialConv2dReLUOpWrapper::getF0() {
-            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
+            return this->conv.getWeight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
         }
 
         unsigned int PartialConv2dReLUOpWrapper::getF1() {
-            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
+            return this->conv.getWeight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
         }
 
         unsigned int PartialConv2dReLUOpWrapper::getStride() {
-            Value s = this->conv.stride();
+            Value s = this->conv.getStride();
             SmallVector<int64_t,2> stride;
             matchPattern(s, Torch::m_TorchConstantIntList(stride));
 
@@ -548,8 +548,8 @@ namespace xilinx {
         }
 
         bool PartialConv2dReLUOpWrapper::isDepthWise() {
-            unsigned int groups = this->conv.groups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
-            mlir::torch::Torch::BaseTensorType aShape = this->conv.input().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+            unsigned int groups = this->conv.getGroups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
+            mlir::torch::Torch::BaseTensorType aShape = this->conv.getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
             ArrayRef<int64_t> aShapeAR = aShape.getSizes();
 
             int64_t C = aShapeAR[C_LOC];
@@ -578,13 +578,13 @@ namespace xilinx {
             Value chainIn;
             if(partialIn.has_value()) {
                 chainIn = partialIn.value();
-            } else if(this->conv.PartialIn()){
-                chainIn = this->conv.PartialIn();
+            } else if(this->conv.getPartialIn()){
+                chainIn = this->conv.getPartialIn();
             } else {
                 chainIn = Value();
             }
 
-            Value biasVal = bias.has_value() ? bias.value() : this->conv.bias();
+            Value biasVal = bias.has_value() ? bias.value() : this->conv.getBias();
 
             Operation* op = this->getUnderlyingOperation();
             Operation* nOp = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
@@ -593,10 +593,10 @@ namespace xilinx {
                                                                  chainIn,
                                                                  weight.value(),
                                                                  biasVal,
-                                                                 this->conv.stride(),
-                                                                 this->conv.padding(),
-                                                                 this->conv.dilation(),
-                                                                 this->conv.groups());
+                                                                 this->conv.getStride(),
+                                                                 this->conv.getPadding(),
+                                                                 this->conv.getDilation(),
+                                                                 this->conv.getGroups());
             nOp->setAttrs(op->getAttrs());
             return nOp;
         }
@@ -608,24 +608,24 @@ namespace xilinx {
                 op = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
                                                          resTypes.value(),
                                                          this->getInput(),
-                                                         this->conv.PartialIn(),
+                                                         this->conv.getPartialIn(),
                                                          this->getWeights(),
                                                          this->getBiases().value_or(nullptr),
-                                                         this->conv.stride(),
-                                                         this->conv.padding(),
-                                                         this->conv.dilation(),
-                                                         this->conv.groups());
+                                                         this->conv.getStride(),
+                                                         this->conv.getPadding(),
+                                                         this->conv.getDilation(),
+                                                         this->conv.getGroups());
             } else {
                 op = builder.create<PartialConv2dReLUOp>(builder.getUnknownLoc(),
                                                          this->getUnderlyingOperation()->getResultTypes(),
                                                          this->getInput(),
-                                                         this->conv.PartialIn(),
+                                                         this->conv.getPartialIn(),
                                                          this->getWeights(),
                                                          this->getBiases().value_or(nullptr),
-                                                         this->conv.stride(),
-                                                         this->conv.padding(),
-                                                         this->conv.dilation(),
-                                                         this->conv.groups());
+                                                         this->conv.getStride(),
+                                                         this->conv.getPadding(),
+                                                         this->conv.getDilation(),
+                                                         this->conv.getGroups());
             }
 
 
@@ -650,35 +650,35 @@ namespace xilinx {
         }
 
         Value PartialConv2dBatchNormReLUOpWrapper::getWeights() {
-            return this->conv.weight();
+            return this->conv.getWeight();
         }
 
         ArrayRef<Value> PartialConv2dBatchNormReLUOpWrapper::getBN() {
-            return ArrayRef<Value>({this->conv.bn_weight(), this->conv.bn_bias(), this->conv.running_mean(), this->conv.running_var()});
+            return ArrayRef<Value>({this->conv.getBnWeight(), this->conv.getBnBias(), this->conv.getRunningMean(), this->conv.getRunningVar()});
         }
 
         Optional<Value> PartialConv2dBatchNormReLUOpWrapper::getBiases() {
-            return this->conv.bias();
+            return this->conv.getBias();
         }
 
         Value PartialConv2dBatchNormReLUOpWrapper::getInput() {
-            return this->conv.input();
+            return this->conv.getInput();
         }
 
         Value PartialConv2dBatchNormReLUOpWrapper::getPartialInput() {
-            return this->conv.PartialIn();
+            return this->conv.getPartialIn();
         }
 
         unsigned int PartialConv2dBatchNormReLUOpWrapper::getF0() {
-            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
+            return this->conv.getWeight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
         }
 
         unsigned int PartialConv2dBatchNormReLUOpWrapper::getF1() {
-            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
+            return this->conv.getWeight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
         }
 
         unsigned int PartialConv2dBatchNormReLUOpWrapper::getStride() {
-            Value s = this->conv.stride();
+            Value s = this->conv.getStride();
             SmallVector<int64_t,2 > stride;
             matchPattern(s, Torch::m_TorchConstantIntList(stride));
 
@@ -698,8 +698,8 @@ namespace xilinx {
         }
 
         bool PartialConv2dBatchNormReLUOpWrapper::isDepthWise() {
-            unsigned int groups = this->conv.groups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
-            mlir::torch::Torch::BaseTensorType aShape = this->conv.input().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+            unsigned int groups = this->conv.getGroups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
+            mlir::torch::Torch::BaseTensorType aShape = this->conv.getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
             ArrayRef<int64_t> aShapeAR = aShape.getSizes();
 
             int64_t C = aShapeAR[C_LOC];
@@ -729,13 +729,13 @@ namespace xilinx {
             Value chainIn;
             if(partialIn.has_value()) {
                 chainIn = partialIn.value();
-            } else if(this->conv.PartialIn()){
-                chainIn = this->conv.PartialIn();
+            } else if(this->conv.getPartialIn()){
+                chainIn = this->conv.getPartialIn();
             } else {
                 chainIn = Value();
             }
 
-            Value biasVal = bias.has_value() ? bias.value() : this->conv.bias();
+            Value biasVal = bias.has_value() ? bias.value() : this->conv.getBias();
 
             Operation* op = this->getUnderlyingOperation();
             Operation* nOp = builder.create<PartialConv2dBatchNormReLUOp>(builder.getUnknownLoc(),
@@ -744,17 +744,17 @@ namespace xilinx {
                                                                           chainIn,
                                                                           weight.value(),
                                                                           biasVal,
-                                                                          this->conv.stride(),
-                                                                          this->conv.padding(),
-                                                                          this->conv.dilation(),
-                                                                          this->conv.groups(),
+                                                                          this->conv.getStride(),
+                                                                          this->conv.getPadding(),
+                                                                          this->conv.getDilation(),
+                                                                          this->conv.getGroups(),
                                                                           bn.value()[0],
                                                                           bn.value()[1],
                                                                           bn.value()[2],
                                                                           bn.value()[3],
-                                                                          this->conv.training(),
-                                                                          this->conv.momentum(),
-                                                                          this->conv.eps());
+                                                                          this->conv.getTraining(),
+                                                                          this->conv.getMomentum(),
+                                                                          this->conv.getEps());
 
             nOp->setAttrs(op->getAttrs());
             return nOp;
@@ -766,38 +766,38 @@ namespace xilinx {
                 op = builder.create<PartialConv2dBatchNormReLUOp>(builder.getUnknownLoc(),
                                                                   resTypes.value(),
                                                                   this->getInput(),
-                                                                  this->conv.PartialIn(),
+                                                                  this->conv.getPartialIn(),
                                                                   this->getWeights(),
                                                                   this->getBiases().value_or(nullptr),
-                                                                  this->conv.stride(),
-                                                                  this->conv.padding(),
-                                                                  this->conv.dilation(),
-                                                                  this->conv.groups(),
-                                                                  this->conv.bn_weight(),
-                                                                  this->conv.bn_bias(),
-                                                                  this->conv.running_mean(),
-                                                                  this->conv.running_var(),
-                                                                  this->conv.training(),
-                                                                  this->conv.momentum(),
-                                                                  this->conv.eps());
+                                                                  this->conv.getStride(),
+                                                                  this->conv.getPadding(),
+                                                                  this->conv.getDilation(),
+                                                                  this->conv.getGroups(),
+                                                                  this->conv.getBnWeight(),
+                                                                  this->conv.getBnBias(),
+                                                                  this->conv.getRunningMean(),
+                                                                  this->conv.getRunningVar(),
+                                                                  this->conv.getTraining(),
+                                                                  this->conv.getMomentum(),
+                                                                  this->conv.getEps());
             } else {
                 op = builder.create<PartialConv2dBatchNormReLUOp>(builder.getUnknownLoc(),
                                                                   this->getUnderlyingOperation()->getResultTypes(),
                                                                   this->getInput(),
-                                                                  this->conv.PartialIn(),
+                                                                  this->conv.getPartialIn(),
                                                                   this->getWeights(),
                                                                   this->getBiases().value_or(nullptr),
-                                                                  this->conv.stride(),
-                                                                  this->conv.padding(),
-                                                                  this->conv.dilation(),
-                                                                  this->conv.groups(),
-                                                                  this->conv.bn_weight(),
-                                                                  this->conv.bn_bias(),
-                                                                  this->conv.running_mean(),
-                                                                  this->conv.running_var(),
-                                                                  this->conv.training(),
-                                                                  this->conv.momentum(),
-                                                                  this->conv.eps());
+                                                                  this->conv.getStride(),
+                                                                  this->conv.getPadding(),
+                                                                  this->conv.getDilation(),
+                                                                  this->conv.getGroups(),
+                                                                  this->conv.getBnWeight(),
+                                                                  this->conv.getBnBias(),
+                                                                  this->conv.getRunningMean(),
+                                                                  this->conv.getRunningVar(),
+                                                                  this->conv.getTraining(),
+                                                                  this->conv.getMomentum(),
+                                                                  this->conv.getEps());
             }
 
 
@@ -823,19 +823,19 @@ namespace xilinx {
         }
 
         Value Conv2dBatchNormReLUOpWrapper::getWeights() {
-            return this->conv.weight();
+            return this->conv.getWeight();
         }
 
         ArrayRef<Value> Conv2dBatchNormReLUOpWrapper::getBN() {
-            return ArrayRef<Value>({this->conv.bn_weight(), this->conv.bn_bias(), this->conv.running_mean(), this->conv.running_var()});
+            return ArrayRef<Value>({this->conv.getBnWeight(), this->conv.getBnBias(), this->conv.getRunningMean(), this->conv.getRunningVar()});
         }
 
         Optional<Value> Conv2dBatchNormReLUOpWrapper::getBiases() {
-            return this->conv.bias();
+            return this->conv.getBias();
         }
 
         Value Conv2dBatchNormReLUOpWrapper::getInput() {
-            return this->conv.input();
+            return this->conv.getInput();
         }
 
         Value Conv2dBatchNormReLUOpWrapper::getPartialInput() {
@@ -843,15 +843,15 @@ namespace xilinx {
         }
 
         unsigned int Conv2dBatchNormReLUOpWrapper::getF0() {
-            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
+            return this->conv.getWeight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F0_LOC];
         }
 
         unsigned int Conv2dBatchNormReLUOpWrapper::getF1() {
-            return this->conv.weight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
+            return this->conv.getWeight().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>().getSizes()[F1_LOC];
         }
 
         unsigned int Conv2dBatchNormReLUOpWrapper::getStride() {
-            Value s = this->conv.stride();
+            Value s = this->conv.getStride();
             SmallVector<int64_t,2> stride;
             matchPattern(s, Torch::m_TorchConstantIntList(stride));
 
@@ -871,8 +871,8 @@ namespace xilinx {
         }
 
         bool Conv2dBatchNormReLUOpWrapper::isDepthWise() {
-            unsigned int groups = this->conv.groups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
-            mlir::torch::Torch::BaseTensorType aShape = this->conv.input().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
+            unsigned int groups = this->conv.getGroups().getDefiningOp<mlir::arith::ConstantIntOp>().value();
+            mlir::torch::Torch::BaseTensorType aShape = this->conv.getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
             ArrayRef<int64_t> aShapeAR = aShape.getSizes();
 
             int64_t C = aShapeAR[C_LOC];
@@ -899,7 +899,7 @@ namespace xilinx {
                 assert(bias.has_value());
             }
 
-            Value biasVal = bias.has_value() ? bias.value() : this->conv.bias();
+            Value biasVal = bias.has_value() ? bias.value() : this->conv.getBias();
 
             Operation* op = this->getUnderlyingOperation();
             if(firstInPartialChain || partialIn.has_value()) {
@@ -910,17 +910,17 @@ namespace xilinx {
                                                                                chainIn,
                                                                                weight.value(),
                                                                                biasVal,
-                                                                               this->conv.stride(),
-                                                                               this->conv.padding(),
-                                                                               this->conv.dilation(),
-                                                                               this->conv.groups(),
+                                                                               this->conv.getStride(),
+                                                                               this->conv.getPadding(),
+                                                                               this->conv.getDilation(),
+                                                                               this->conv.getGroups(),
                                                                                bn.value()[0],
                                                                                bn.value()[1],
                                                                                bn.value()[2],
                                                                                bn.value()[3],
-                                                                               this->conv.training(),
-                                                                               this->conv.momentum(),
-                                                                               this->conv.eps());
+                                                                               this->conv.getTraining(),
+                                                                               this->conv.getMomentum(),
+                                                                               this->conv.getEps());
                 nOp->setAttrs(op->getAttrs());
 
                 return nOp;
@@ -930,17 +930,17 @@ namespace xilinx {
                                                                        input,
                                                                        weight.value(),
                                                                        biasVal,
-                                                                       this->conv.stride(),
-                                                                       this->conv.padding(),
-                                                                       this->conv.dilation(),
-                                                                       this->conv.groups(),
+                                                                       this->conv.getStride(),
+                                                                       this->conv.getPadding(),
+                                                                       this->conv.getDilation(),
+                                                                       this->conv.getGroups(),
                                                                        bn.value()[0],
                                                                        bn.value()[1],
                                                                        bn.value()[2],
                                                                        bn.value()[3],
-                                                                       this->conv.training(),
-                                                                       this->conv.momentum(),
-                                                                       this->conv.eps());
+                                                                       this->conv.getTraining(),
+                                                                       this->conv.getMomentum(),
+                                                                       this->conv.getEps());
 
                 nOp->setAttrs(op->getAttrs());
 
@@ -958,34 +958,34 @@ namespace xilinx {
                                                                    Value(),
                                                                    this->getWeights(),
                                                                    this->getBiases().value_or(nullptr),
-                                                                   this->conv.stride(),
-                                                                   this->conv.padding(),
-                                                                   this->conv.dilation(),
-                                                                   this->conv.groups(),
-                                                                   this->conv.bn_weight(),
-                                                                   this->conv.bn_bias(),
-                                                                   this->conv.running_mean(),
-                                                                   this->conv.running_var(),
-                                                                   this->conv.training(),
-                                                                   this->conv.momentum(),
-                                                                   this->conv.eps());
+                                                                   this->conv.getStride(),
+                                                                   this->conv.getPadding(),
+                                                                   this->conv.getDilation(),
+                                                                   this->conv.getGroups(),
+                                                                   this->conv.getBnWeight(),
+                                                                   this->conv.getBnBias(),
+                                                                   this->conv.getRunningMean(),
+                                                                   this->conv.getRunningVar(),
+                                                                   this->conv.getTraining(),
+                                                                   this->conv.getMomentum(),
+                                                                   this->conv.getEps());
             } else {
                 op = builder.create<Conv2dBatchNormReLUOp>(builder.getUnknownLoc(),
                                                            this->getUnderlyingOperation()->getResultTypes(),
                                                            this->getInput(),
                                                            this->getWeights(),
                                                            this->getBiases().value_or(nullptr),
-                                                           this->conv.stride(),
-                                                           this->conv.padding(),
-                                                           this->conv.dilation(),
-                                                           this->conv.groups(),
-                                                           this->conv.bn_weight(),
-                                                           this->conv.bn_bias(),
-                                                           this->conv.running_mean(),
-                                                           this->conv.running_var(),
-                                                           this->conv.training(),
-                                                           this->conv.momentum(),
-                                                           this->conv.eps());
+                                                           this->conv.getStride(),
+                                                           this->conv.getPadding(),
+                                                           this->conv.getDilation(),
+                                                           this->conv.getGroups(),
+                                                           this->conv.getBnWeight(),
+                                                           this->conv.getBnBias(),
+                                                           this->conv.getRunningMean(),
+                                                           this->conv.getRunningVar(),
+                                                           this->conv.getTraining(),
+                                                           this->conv.getMomentum(),
+                                                           this->conv.getEps());
             }
 
 
