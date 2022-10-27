@@ -13,7 +13,7 @@
 
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 
-#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 
 // TODO generate this file automatically
 

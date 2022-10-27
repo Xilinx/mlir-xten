@@ -74,7 +74,7 @@ static Value applyPad(Location loc, Value input, ArrayRef<int64_t> pad,
 static Value zeroInit(ArrayRef<int64_t> sizes, mlir::Type elementType,
                       Location loc, ConversionPatternRewriter &rewriter) {
   Value initTensor =
-      rewriter.create<linalg::InitTensorOp>(loc, sizes, elementType);
+      rewriter.create<tensor::EmptyOp>(loc, sizes, elementType);
   Value c0float = rewriter.create<arith::ConstantOp>(
       loc, rewriter.getZeroAttr(elementType));
   return rewriter.create<linalg::FillOp>(loc, c0float, initTensor).getResult(0);
@@ -100,7 +100,7 @@ static Value getBiasedInit(Operation *op, Value atenBias, Location loc,
       op->getResult(0).getType().dyn_cast<torch::Torch::BaseTensorType>();
   assert(outputTy);
   auto elementType = outputTy.getDtype();
-  Value initTensor = rewriter.create<linalg::InitTensorOp>(
+  Value initTensor = rewriter.create<tensor::EmptyOp>(
       loc, outputTy.getSizes(), elementType);
 
   if (atenBias.getType().isa<Torch::NoneType>()) {
@@ -190,7 +190,7 @@ public:
     auto elementTy = tensorTy.getDtype();
     auto sizes = tensorTy.getSizes();
     auto rank = sizes.size();
-    Value C = rewriter.create<linalg::InitTensorOp>(loc, sizes, elementTy);
+    Value C = rewriter.create<tensor::EmptyOp>(loc, sizes, elementTy);
 
     SmallVector<Value, 2> inputTensors{A, B};
     SmallVector<Value, 1> outputTensors{C};
@@ -407,7 +407,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
 
     Value conv2dReluVal =
@@ -479,7 +479,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
 
     Value conv2dLReluVal = rewriter
@@ -542,7 +542,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
 
     // Get add input feature map
@@ -612,7 +612,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
 
     // Get add input feature map
@@ -691,7 +691,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
 
     // Get add input feature map
@@ -764,7 +764,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
 
     // Get add input feature map
@@ -836,7 +836,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
 
     // Get add input feature map
@@ -917,7 +917,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
 
     // Get add input feature map
@@ -1061,7 +1061,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
     auto smallestFPValueAttr = rewriter.getFloatAttr(
         elementType,
@@ -1225,7 +1225,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
     auto smallestFPValueAttr = rewriter.getFloatAttr(
         elementType,
@@ -1367,7 +1367,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
     auto smallestFPValueAttr = rewriter.getFloatAttr(
         elementType,
@@ -1521,7 +1521,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
     auto smallestFPValueAttr = rewriter.getFloatAttr(
         elementType,
@@ -1615,7 +1615,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
 
     Value softmaxVal =
@@ -1652,7 +1652,7 @@ public:
     auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
                                                   torchTensorTy.getDtype());
 
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultTensorType.getShape(), elementType);
 
     Value globalavgVal = rewriter
@@ -1688,7 +1688,7 @@ public:
         op->getResult(0).getType().cast<Torch::BaseTensorType>();
     auto resultType = RankedTensorType::get(torchResultType.getSizes(),
                                             torchResultType.getDtype());
-    Value initTensor = rewriter.create<linalg::InitTensorOp>(
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
         loc, resultType.getShape(), resultType.getElementType());
 
     Value linearVal =
@@ -1743,7 +1743,7 @@ public:
     ConversionTarget target(*context);
 
     target.addIllegalDialect<XTenDialect>();
-    target.addLegalDialect<linalg::LinalgDialect, arith::ArithmeticDialect,
+    target.addLegalDialect<linalg::LinalgDialect, arith::ArithDialect,
                            scf::SCFDialect, tensor::TensorDialect,
                            Torch::TorchDialect,
                            TorchConversion::TorchConversionDialect>();

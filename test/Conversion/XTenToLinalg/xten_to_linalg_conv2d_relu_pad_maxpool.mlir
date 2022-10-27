@@ -9,8 +9,8 @@
 //===----------------------------------------------------------------------===//
 
 // RUN: aten-opt %s -xten-to-linalg | FileCheck %s
-//CHECK:tensor.pad {{.*}} low[0, 0, 1, 1] high[0, 0, 1, 1] 
-//CHECK:linalg.conv_2d_relu_maxpool {dilations = dense<1> : tensor<2xi64>, layer_name = "conv2d_relu_pad_maxpool0", mp_dilations = dense<1> : tensor<2xi64>, mp_kernel_size = dense<2> : tensor<2xi64>, mp_padding = dense<[0, 1, 0, 1]> : tensor<4xi64>, mp_strides = dense<2> : tensor<2xi64>, strides = dense<1> : tensor<2xi64>} ins({{.*}}, {{.*}}, {{.*}}: tensor<1x3x130x130xf32>, tensor<16x3x3x3xf32>, tensor<16xf32>) outs({{.*}} : tensor<1x16x64x64xf32>) -> tensor<1x16x64x64xf32>
+// CHECK: tensor.pad {{.*}} low[0, 0, 1, 1] high[0, 0, 1, 1] 
+// CHECK: linalg.conv_2d_relu_maxpool {dilations = dense<1> : tensor<2xi64>, layer_name = "conv2d_relu_pad_maxpool0", mpDilations = dense<1> : tensor<2xi64>, mpKernelSize = dense<2> : tensor<2xi64>, mpPadding = dense<[0, 1, 0, 1]> : tensor<4xi64>, mpStrides = dense<2> : tensor<2xi64>, strides = dense<1> : tensor<2xi64>} ins({{.*}}, {{.*}}, {{.*}} : tensor<1x3x130x130xf32>, tensor<16x3x3x3xf32>, tensor<16xf32>) outs({{.*}} : tensor<1x16x64x64xf32>) -> tensor<1x16x64x64xf32>
 module attributes {torch.debug_module_name = "HelloWorld"}  {
   func.func @forward(%arg0: !torch.vtensor<[1,3,128,128],f32>) -> !torch.vtensor<[1,16,64,64],f32> {
     %0 = torch.vtensor.literal(dense<1.000000e+00> : tensor<16xf32>) : !torch.vtensor<[16],f32>
