@@ -20,6 +20,7 @@ set(LIBS
   XTenTransformPasses
   XTenTransforms
   XTenUtil
+  XTenNNDialect
   TorchMLIRInitAll
   TorchMLIRTMTensorPasses
   TorchMLIRTMTensorDialect

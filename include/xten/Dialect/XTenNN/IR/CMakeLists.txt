@@ -3,8 +3,7 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #
-# (c) Copyright 2021 Xilinx Inc.
 # (c) Copyright 2022 Advanced Micro Devices, Inc.
 
-add_subdirectory(XTen)
-add_subdirectory(XTenNN)
+add_mlir_dialect(XTenNNOps xten_nn)
+add_mlir_doc(XTenNNOps XTenNNDialect ./ -gen-dialect-doc)
