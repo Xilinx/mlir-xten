@@ -36,6 +36,7 @@ def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
             // HasOnlyGraphRegion,
             // RegionKindInterface,
             // SingleBlockImplicitTerminator<"OutputOp">,
+            XTenNN_EnclaveOp,
             IsolatedFromAbove,
             OpAsmOpInterface,
             RecursiveSideEffects]> {
