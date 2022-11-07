@@ -8,10 +8,9 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Convenience include for the DLNN dialect.
+// Convenience include for the XTenNN dialect.
 //
 //===----------------------------------------------------------------------===//
-
 
 #pragma once
 

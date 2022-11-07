@@ -8,7 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Implements the DLNN dialect enclave interface.
+// Implements the XTenNN dialect enclave interface.
 //
 //===----------------------------------------------------------------------===//
 

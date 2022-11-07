@@ -1,4 +1,4 @@
-//===- EnclaveInterface.td - DLNN EnclaveOp interface ------*- tablegen -*-===//
+//===- EnclaveInterface.td - XTenNN EnclaveOp interface ----*- tablegen -*-===//
 //
 // This file is licensed under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -8,7 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This is the definitions file for the DLNN EnclaveOp interface.
+// This is the definitions file for the XTenNN EnclaveOp interface.
 //
 //===----------------------------------------------------------------------===//
 

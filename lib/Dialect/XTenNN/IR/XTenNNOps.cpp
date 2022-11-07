@@ -149,7 +149,7 @@ void SubgraphOp::print(OpAsmPrinter &p) {
 }
 
 //===----------------------------------------------------------------------===//
-// DLNNDialect
+// XTenNNDialect
 //===----------------------------------------------------------------------===//
 
 void amd::xten_nn::XTenNNDialect::registerOps() {
