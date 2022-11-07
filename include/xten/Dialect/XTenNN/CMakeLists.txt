@@ -7,8 +7,6 @@
 
 add_custom_target(XTenNNIncGen)
 
-mlir_gen_enums(XTenNN)
-
 add_subdirectory(Interfaces)
 
 add_subdirectory(IR)

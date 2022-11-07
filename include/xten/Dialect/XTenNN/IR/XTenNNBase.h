@@ -20,11 +20,9 @@
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Dialect.h"
-// #include "xten/Dialect/XTenNN/Enums.h"
 #include <cstddef>
 #include <cstdint>
 
-namespace amd::xten_nn {}
 //===- Generated includes -------------------------------------------------===//
 
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h.inc"

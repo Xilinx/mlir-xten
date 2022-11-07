@@ -16,7 +16,6 @@
 
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
-#include "xten/Dialect/XTenNN/Enums.h"
 
 namespace amd::xten_nn {
 

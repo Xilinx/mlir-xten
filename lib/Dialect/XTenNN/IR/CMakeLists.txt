@@ -16,6 +16,5 @@ add_mlir_library(XTenNNIR
   MLIRIR
   MLIRPass
   MLIRTransforms
-  XTenNNEnums
   XTenNNInterfaces
 )
