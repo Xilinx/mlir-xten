@@ -1,12 +1,9 @@
-function(mlir_gen_enums prefix)
-    set(LLVM_TARGET_DEFINITIONS Enums.td)
-
-    mlir_tablegen(Enums.h.inc -gen-enum-decls)
-    mlir_tablegen(Enums.cpp.inc -gen-enum-defs)
-
-    add_public_tablegen_target(${prefix}EnumsIncGen)
-    add_dependencies(${prefix}IncGen ${prefix}EnumsIncGen)
-endfunction()
+#
+# This file is licensed under the Apache License v2.0 with LLVM Exceptions.
+# See https://llvm.org/LICENSE.txt for license information.
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+#
+# (c) Copyright 2022 Advanced Micro Devices, Inc.
 
 function(mlir_gen_iface prefix iface kind)
     set(LLVM_TARGET_DEFINITIONS ${iface}.td)
