@@ -20,7 +20,7 @@
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Dialect.h"
-#include "xten/Dialect/XTenNN/Enums.h"
+// #include "xten/Dialect/XTenNN/Enums.h"
 #include <cstddef>
 #include <cstdint>
 
