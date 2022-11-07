@@ -5,6 +5,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // (c) Copyright 2019 Xilinx Inc.
+// (c) Copyright 2022 Advanced Micro Devices, Inc.
 //
 //===----------------------------------------------------------------------===//
 

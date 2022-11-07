@@ -1,12 +1,20 @@
-/// Implements the DLNN dialect enclave interface.
-///
-/// @file
-/// @author     Karl F. A. Friebel (karl.friebel@amd.com)
+//===- EnclaveOpInterfaces.cpp ---------------------------------*- C++ -*-===//
+//
+// This file is licensed under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// (c) Copyright 2022 Advanced Micro Devices, Inc.
+//
+//===----------------------------------------------------------------------===//
+//
+// Implements the DLNN dialect enclave interface.
+//
+//===----------------------------------------------------------------------===//
 
 #include "mlir/Interfaces/ControlFlowInterfaces.h"
 #include "xten/Dialect/XTenNN/IR/XTenNN.h"
 #include "xten/Dialect/XTenNN/Interfaces/EnclaveOpInterfaces.h"
-// #include "xten/Dialect/XTenNN/Utils/STLExtras.h"
 
 #include <set>
 

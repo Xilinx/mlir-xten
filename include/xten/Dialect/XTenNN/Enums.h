@@ -1,7 +1,16 @@
-/// Declares the DLNN dialect enums.
-///
-/// @file
-/// @author     Karl F. A. Friebel (karl.friebel@amd.com)
+//===- Enums.h ----------------------------------------------*- C++ -*-===//
+//
+// This file is licensed under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+// (c) Copyright 2022 Advanced Micro Devices, Inc.
+//
+//===----------------------------------------------------------------------===//
+//
+// Declares the DLNN dialect enums.
+//
+//===----------------------------------------------------------------------===//
 
 #pragma once
 
@@ -14,7 +23,7 @@ namespace amd::xten_nn {
 /// Enumeration of known scalar operations.
 ///
 /// This is a non-exhaustive list of supported scalar operations that we expect
-/// to appear in DLNN graphs. This enumeration exists primarily to:
+/// to appear in XTenNN graphs. This enumeration exists primarily to:
 ///     (1) Classify operations on scalars in generic operator nodes.
 ///     (2) Define the ScalarInterface, which materializes required ops.
 ///

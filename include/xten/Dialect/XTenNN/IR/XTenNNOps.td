@@ -35,7 +35,7 @@ class XTenNN_Op<string mnemonic, list<Trait> traits = []>
 def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
             // HasOnlyGraphRegion,
             // RegionKindInterface,
-            // SingleBlockImplicitTerminator<"OutputOp">,
+            SingleBlockImplicitTerminator<"OutputOp">,
             XTenNN_EnclaveOp,
             IsolatedFromAbove,
             OpAsmOpInterface,
@@ -76,5 +76,34 @@ def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
     static llvm::StringRef getDefaultDialect() { return "xten_nn"; }
     }];
 }
+
+//===----------------------------------------------------------------------===//
+// OutputOp
+//===----------------------------------------------------------------------===//
+
+def XTenNN_OutputOp : XTenNN_Op<"output", [
+            HasParent<"SubgraphOp">,
+            NoSideEffect,
+            Terminator,
+            ReturnLike]> {
+    let summary = "Defines the output value of a subgraph or node";
+    let description = [{
+        The `dlnn.output` operation serves as the terminator for DLNN operations
+        that declare a region that produces result values.
+
+        Example:
+        ```mlir
+        dlnn.graph @my_graph(%arg0: !fm<3xf16[108,108]>) -> !fm<128xf16> {
+            // Implementation...
+            dlnn.output %result : !fm<128xf16>
+        }
+        ```
+    }];
+
+    let arguments = (ins Variadic<AnyType>:$operands);
+
+    let assemblyFormat = [{ attr-dict ($operands^ `:` type($operands))?}];
+}
+
 
 #endif // XTENNN_OPS
