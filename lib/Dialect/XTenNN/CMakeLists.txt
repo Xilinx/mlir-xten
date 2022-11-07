@@ -6,3 +6,12 @@
 # (c) Copyright 2022 Advanced Micro Devices, Inc.
 
 add_subdirectory(IR)
+add_subdirectory(Interfaces)
+
+add_mlir_dialect_library(XTenNNEnums
+        Enums.cpp
+
+    LINK_LIBS PUBLIC
+        MLIRIR
+        MLIRParser
+)

@@ -4,13 +4,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef DLNN_ENCLAVEOPINTERFACE
-#define DLNN_ENCLAVEOPINTERFACE
+#ifndef XTENNN_ENCLAVEOPINTERFACE
+#define XTENNN_ENCLAVEOPINTERFACE
 
 include "mlir/IR/OpBase.td"
 
-def DLNN_EnclaveOp : OpInterface<"EnclaveOp"> {
-    let cppNamespace = "::amd::xten_nn";
+def XTenNN_EnclaveOp : OpInterface<"EnclaveOp"> {
+    let cppNamespace = "amd::xten_nn";
 
     let description = [{
         Interface for an operation that forms an isolated enclave around some
@@ -78,7 +78,7 @@ def DLNN_EnclaveOp : OpInterface<"EnclaveOp"> {
             /*desc=*/[{Removes an unused SSA value from the captures.}],
             /*retTy=*/"void",
             /*methodName=*/"uncapture",
-            /*args=*/(ins "::llvm::ArrayRef<BlockArgument>":$args),
+            /*args=*/(ins "::llvm::ArrayRef<::mlir::BlockArgument>":$args),
             /*methodBody=*/"",
             /*defaultImplementation=*/[{
                 enclave_interface_defaults::uncapture($_op, args);

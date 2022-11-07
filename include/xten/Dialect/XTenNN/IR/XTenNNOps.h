@@ -18,6 +18,7 @@
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
+#include "xten/Dialect/XTenNN/Interfaces/EnclaveOpInterfaces.h"
 
 #define GET_OP_CLASSES
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h.inc"

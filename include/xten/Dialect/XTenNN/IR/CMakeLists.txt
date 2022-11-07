@@ -5,5 +5,4 @@
 #
 # (c) Copyright 2022 Advanced Micro Devices, Inc.
 
-add_mlir_dialect(XTenNNOps xten_nn)
-add_mlir_doc(XTenNNOps XTenNNDialect ./ -gen-dialect-doc)
+mlir_gen_ir(XTenNN)

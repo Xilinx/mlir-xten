@@ -5,15 +5,17 @@
 #
 # (c) Copyright 2022 Advanced Micro Devices, Inc.
 
-add_mlir_library(XTenNNDialect
-  XTenNNDialect.cpp
+add_mlir_library(XTenNNIR
+  XTenNNBase.cpp
   XTenNNOps.cpp
 
   DEPENDS
-  MLIRXTenNNOpsIncGen
+  XTenNNIncGen
 
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRPass
   MLIRTransforms
+  XTenNNEnums
+  XTenNNInterfaces
 )

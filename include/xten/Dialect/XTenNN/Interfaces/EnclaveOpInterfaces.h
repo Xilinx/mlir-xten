@@ -16,7 +16,8 @@ namespace enclave_interface_defaults {
 /// Populates @p result with mappings from captured values to block arguments.
 ///
 /// @pre        `isa<EnclaveOp>(op)`
-void populateCaptureMap(Operation *op, BlockAndValueMapping &result);
+void populateCaptureMap(mlir::Operation *op,
+                        mlir::BlockAndValueMapping &result);
 
 /// Ensures that @p values are captured by @p op and return their corresponding
 /// block arguments.
@@ -28,7 +29,8 @@ void populateCaptureMap(Operation *op, BlockAndValueMapping &result);
 /// @pre        `isa<EnclaveOp>(op)`
 /// @pre        @p values are defined outside of @p op
 /// @post       `result.contains(value)`
-void capture(Operation *op, ValueRange values, BlockAndValueMapping &result);
+void capture(mlir::Operation *op, mlir::ValueRange values,
+             mlir::BlockAndValueMapping &result);
 
 /// Removes the dead captures corresponding to @p args .
 ///
@@ -39,7 +41,7 @@ void capture(Operation *op, ValueRange values, BlockAndValueMapping &result);
 /// @pre        `isa<EnclaveOp>(op)`
 /// @pre        @p args have no remaining uses
 /// @pre        @p args are defined inside @p op
-void uncapture(Operation *op, ArrayRef<BlockArgument> args);
+void uncapture(mlir::Operation *op, mlir::ArrayRef<mlir::BlockArgument> args);
 
 /// Verifies an EnclaveOp op.
 ///
@@ -47,7 +49,7 @@ void uncapture(Operation *op, ArrayRef<BlockArgument> args);
 /// enclave are defined by the region terminator op.
 ///
 /// @pre        `isa<EnclaveOp>(op)`
-LogicalResult verify(Operation *op);
+mlir::LogicalResult verify(mlir::Operation *op);
 
 } // namespace enclave_interface_defaults
 
@@ -55,6 +57,6 @@ LogicalResult verify(Operation *op);
 
 //===- Generated includes -------------------------------------------------===//
 
-#include "dlnn-mlir/Dialect/DLNN/Interfaces/EnclaveOpInterface.h.inc"
+#include "xten/Dialect/XTenNN/Interfaces/EnclaveOpInterface.h.inc"
 
 //===----------------------------------------------------------------------===//

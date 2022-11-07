@@ -8,11 +8,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef XTENNN
-#define XTENNN
+#ifndef XTENNN_BASE
+#define XTENNN_BASE
 
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/IR/OpBase.td"
+
+include "xten/Dialect/XTenNN/Interfaces/EnclaveOpInterface.td"
 
 def XTenNN_Dialect : Dialect {
   let name = "xten_nn";
@@ -22,7 +24,15 @@ def XTenNN_Dialect : Dialect {
     The `xten_nn` dialect provides ...
   }];
 
+  code extraClassDeclaration = [{
+    private:
+        void registerOps();
+
+    }];
+
+  let useDefaultTypePrinterParser = 0;
+
   let emitAccessorPrefix = kEmitAccessorPrefix_Prefixed;
 }
 
-#endif // XTENNN
+#endif // XTENNN_BASE

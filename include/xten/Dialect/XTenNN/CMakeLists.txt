@@ -5,9 +5,13 @@
 #
 # (c) Copyright 2022 Advanced Micro Devices, Inc.
 
-add_subdirectory(IR)
-
 add_custom_target(XTenNNIncGen)
 
 mlir_gen_enums(XTenNN)
+
+add_subdirectory(Interfaces)
+
+add_subdirectory(IR)
+
+
 

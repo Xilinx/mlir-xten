@@ -4,9 +4,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef DLNN_ENUMS
-#define DLNN_ENUMS
+#ifndef XTENNN_ENUMS
+#define XTENNN_ENUMS
 
 include "mlir/IR/EnumAttr.td"
 
-#endif
+#endif // XTENNN_ENUMS

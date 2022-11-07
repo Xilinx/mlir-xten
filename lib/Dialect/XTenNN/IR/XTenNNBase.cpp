@@ -8,19 +8,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "xten/Dialect/XTenNN/IR/XTenNNDialect.h"
-#include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
+#include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
+#include "xten/Dialect/XTenNN/IR/XTenNN.h"
 
 #include "mlir/IR/DialectImplementation.h"
-
-#include "xten/Dialect/XTenNN/IR/XTenNNOpsDialect.cpp.inc"
 
 using namespace mlir;
 using namespace amd::xten_nn;
 
+#include "xten/Dialect/XTenNN/IR/XTenNNBase.cpp.inc"
+
 void XTenNNDialect::initialize() {
-  addOperations<
-#define GET_OP_LIST
-#include "xten/Dialect/XTenNN/IR/XTenNNOps.cpp.inc"
-      >();
+  // Delegate to the registry methods.
+  registerOps();
 }

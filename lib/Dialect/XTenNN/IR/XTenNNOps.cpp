@@ -10,11 +10,15 @@
 
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/FunctionImplementation.h"
+#include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/TypeUtilities.h"
 
-#include "xten/Dialect/XTenNN/IR/XTenNNDialect.h"
+#include "xten/Dialect/XTenNN/IR/XTenNN.h"
+#include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
+#include "xten/Dialect/XTenNN/Interfaces/EnclaveOpInterfaces.h"
 
 using namespace mlir;
 using namespace amd::xten_nn;
@@ -148,7 +152,7 @@ void SubgraphOp::print(OpAsmPrinter &p) {
 // DLNNDialect
 //===----------------------------------------------------------------------===//
 
-void XTenNNDialect::registerOps() {
+void amd::xten_nn::XTenNNDialect::registerOps() {
   addOperations<
 #define GET_OP_LIST
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.cpp.inc"

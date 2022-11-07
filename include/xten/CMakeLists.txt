@@ -5,6 +5,7 @@
 #
 # (c) Copyright 2021 Xilinx Inc.
 
+include(MLIRUtils)
 add_subdirectory(Dialect)
 add_subdirectory(Conversion)
 add_subdirectory(Transform)
