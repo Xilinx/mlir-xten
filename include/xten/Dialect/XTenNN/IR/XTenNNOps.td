@@ -33,8 +33,6 @@ class XTenNN_Op<string mnemonic, list<Trait> traits = []>
 //===----------------------------------------------------------------------===//
 
 def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
-            // HasOnlyGraphRegion,
-            // RegionKindInterface,
             SingleBlockImplicitTerminator<"OutputOp">,
             XTenNN_EnclaveOp,
             IsolatedFromAbove,
@@ -45,19 +43,17 @@ def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
         The `xten_nn.subgraph` operation declares its body to be an isolated sub-
         graph, separated from the surrounding graph.
 
-        This is equivalent to exporting that subgraph to an outlined
-        `dlnn.graph` and then embedding it using `dlnn.embed`, but happens in-
-        place. However, this allows code motion between the parent and anonymous
+        This allows code motion between the parent and anonymous
         subgraphs.
 
         Example:
         ```mlir
-        dlnn.graph @graph1(%arg0: !fm<3xf16[108,108]>) -> !fm<128xf16> {
-            %result = dlnn.subgraph (%cap0 = %arg0 : !fm<3xf16[108,108]>) {
+        func.func @subgraph(%arg0:  tensor<2xi64>) ->  tensor<2xi64> {
+            %sum = xten_nn.subgraph (%c0 = %arg0 :  tensor<2xi64>) {
                 // Implementation...
-                dlnn.output %rel0 : !fm<128xf16>
-            } -> !fm<128xf16>
-            dlnn.output %result : !fm<128xf16>
+                xten_nn.output %out :  tensor<120xi64>
+            } -> tensor<120xi64>
+        return %sum :  tensor<120xi64>
         }
         ```
     }];
@@ -88,14 +84,14 @@ def XTenNN_OutputOp : XTenNN_Op<"output", [
             ReturnLike]> {
     let summary = "Defines the output value of a subgraph or node";
     let description = [{
-        The `dlnn.output` operation serves as the terminator for DLNN operations
+        The `xten_nn.output` operation serves as the terminator for XTenNN operations
         that declare a region that produces result values.
 
         Example:
         ```mlir
-        dlnn.graph @my_graph(%arg0: !fm<3xf16[108,108]>) -> !fm<128xf16> {
+        %sum = xten_nn.subgraph (%c0 = %arg0 :  tensor<2xi64>) {
             // Implementation...
-            dlnn.output %result : !fm<128xf16>
+            xten_nn.output %result : tensor<120xi64>
         }
         ```
     }];
