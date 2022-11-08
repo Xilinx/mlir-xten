@@ -106,9 +106,6 @@ add_custom_target(check-all)
 add_custom_target(docs ALL)
 add_dependencies(docs mlir-doc)
 
-# Add custom modules to the search path.
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
 add_subdirectory(include)
 add_subdirectory(lib)
 add_subdirectory(tools)

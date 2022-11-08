@@ -5,4 +5,14 @@
 #
 # (c) Copyright 2022 Advanced Micro Devices, Inc.
 
-mlir_gen_ir(XTenNN)
+set(LLVM_TARGET_DEFINITIONS XTenNNOps.td)
+
+mlir_tablegen(XTenNNBase.h.inc -gen-dialect-decls)
+mlir_tablegen(XTenNNBase.cpp.inc -gen-dialect-defs)
+mlir_tablegen(XTenNNOps.h.inc -gen-op-decls)
+mlir_tablegen(XTenNNOps.cpp.inc -gen-op-defs)
+
+add_public_tablegen_target(XTenNNIRIncGen)
+add_dependencies(XTenNNIncGen XTenNNIRIncGen)
+
+add_mlir_doc(XTenNNOps XTenNN Dialects/ -gen-dialect-doc)
