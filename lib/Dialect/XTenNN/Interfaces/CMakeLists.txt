@@ -6,11 +6,11 @@
 # (c) Copyright 2022 Advanced Micro Devices, Inc.
 
 add_mlir_dialect_library(XTenNNInterfaces
-        EnclaveOpInterface.cpp
+  EnclaveOpInterface.cpp
 
-    DEPENDS
-        XTenNNIncGen
+  DEPENDS
+  XTenNNIncGen
 
-    LINK_LIBS PUBLIC
-        MLIRIR
+  LINK_LIBS PUBLIC
+  MLIRIR
 )
