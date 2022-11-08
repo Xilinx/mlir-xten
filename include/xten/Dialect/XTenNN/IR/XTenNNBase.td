@@ -21,7 +21,8 @@ def XTenNN_Dialect : Dialect {
   let cppNamespace = "::amd::xten_nn";
   let summary = "The XTen Neural Network dialect";
   let description = [{
-    The `xten_nn` dialect provides ...
+    The `xten_nn` dialect provides basic graph-like semantics. It implements a subgraph 
+    operation that can wrap operations into regions and interfaces to handle those.
   }];
 
   code extraClassDeclaration = [{
