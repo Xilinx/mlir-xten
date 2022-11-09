@@ -18,7 +18,7 @@
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 
-#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Pass/Pass.h"
@@ -46,7 +46,7 @@ namespace {
 
 template <class Op>
 llvm::Optional<Value> getAlpha(Op &reluOp) {
-  return reluOp.alpha();
+  return reluOp.getAlpha();
 }
 
 template <>
@@ -399,11 +399,11 @@ private:
   }
 
   void fillProperties(xten::MMOp &op, JsonPropertiesBuilder &&props) {
-    fillOther(op, op.y(), props);
+    fillOther(op, op.getY(), props);
   }
 
   void fillProperties(xten::AddOp &op, JsonPropertiesBuilder &&props) {
-    fillOther(op, op.input1(), props);
+    fillOther(op, op.getInput1(), props);
   }
 
   void fillPropertiesCatOp(Torch::AtenCatOp &op,
@@ -414,21 +414,67 @@ private:
     //  fillPropertiesObject({"Storage.Bytes", storage_str}, propertiesArray);
   }
 
+  template <class ConvOp>
+  inline Value getWeight(ConvOp op) {
+    return op.getWeight();
+  }
+
+  template <>
+  inline Value getWeight(Torch::AtenConvolutionOp op) {
+    return op.weight();
+  }
+
+  template <class ConvOp>
+  inline Value getBias(ConvOp op) {
+    return op.getBias();
+  }
+
+  template <>
+  inline Value getBias(Torch::AtenConvolutionOp op) {
+    return op.bias();
+  }
+
+  template <class ConvOp>
+  inline Value getConvPadding(ConvOp op) {
+    return op.getPadding();
+  }
+
+  template <>
+  inline Value getConvPadding(Torch::AtenConvolutionOp op) {
+    return op.padding();
+  }
+
+  template <class ConvOp>
+  inline Value getConvStride(ConvOp op) {
+    return op.getStride();
+  }
+
+  template <>
+  inline Value getConvStride(Torch::AtenConvolutionOp op) {
+    return op.stride();
+  }
+
+  template <class ConvOp>
+  inline Value getDilation(ConvOp op) {
+    return op.getDilation();
+  }
+
+  template <>
+  inline Value getDilation(Torch::AtenConvolutionOp op) {
+    return op.dilation();
+  }
+
   template <class T>
   uint64_t fillPropertiesConvOp(T &op, JsonPropertiesBuilder &&props) {
-
-    Value weight = op.weight();
-    Value bias = op.bias();
-
     // note that the shape originally was written out as ?o?c?h?w,
     // now it's ?x?x?x? like everywhere else.
     auto bytes = 0;
-    bytes += props.appendTypeInfo("Attributes.Weights", weight.getType());
-    bytes += props.appendTypeInfo("Attributes.Bias", bias.getType());
+    bytes += props.appendTypeInfo("Attributes.Weights", getWeight(op).getType());
+    bytes += props.appendTypeInfo("Attributes.Bias", getBias(op).getType());
 
 
     Torch::BaseTensorType weightTy =
-        weight.getType().cast<Torch::BaseTensorType>();
+        getWeight(op).getType().template cast<Torch::BaseTensorType>();
 
     // h,w
     std::string kernel_shape =
@@ -436,9 +482,9 @@ private:
         + "," + std::to_string( weightTy.getSizes()[3]);
 
     props.append("Attributes.kernel shape", kernel_shape);
-    props.appendIntList("Attributes.padding", op.padding());
-    props.appendIntList("Attributes.stride", op.stride());
-    props.appendIntList("Attributes.dilation", op.dilation());
+    props.appendIntList("Attributes.padding", getConvPadding(op));
+    props.appendIntList("Attributes.stride", getConvStride(op));
+    props.appendIntList("Attributes.dilation", getDilation(op));
 
     std::map<std::string, uint64_t> layerStatsMap = getLayerStatsMap(op);
     props.append("Computations.MAC", std::to_string(layerStatsMap["ops:MAC"]));
@@ -449,17 +495,17 @@ private:
 
   template <class MaxpoolOp>
   Value getKernelSize(MaxpoolOp &maxPoolOp) {
-    return maxPoolOp.mp_kernel_size();
+    return maxPoolOp.getMpKernelSize();
   }
 
   template <class MaxpoolOp>
   Value getStride(MaxpoolOp &maxPoolOp) {
-    return maxPoolOp.mp_stride();
+    return maxPoolOp.getMpStride();
   }
 
   template <class MaxpoolOp>
   Value getPadding(MaxpoolOp &maxPoolOp) {
-    return maxPoolOp.mp_padding();
+    return maxPoolOp.getMpPadding();
   }
 
   template <>
@@ -532,11 +578,27 @@ private:
     return bytes;
   }
 
+  inline Value getWeight(Torch::AtenLinearOp linOp) {
+    return linOp.weight();
+  }
+
+  inline Value getWeight(xten::LinearOp xtenLinOp) {
+    return xtenLinOp.getWeight();
+  }
+
+  inline Value getBias(Torch::AtenLinearOp linOp) {
+    return linOp.bias();
+  }
+
+  inline Value getBias(xten::LinearOp xtenLinOp) {
+    return xtenLinOp.getBias();
+  }
+
   template <typename LinearOpType>
   void fillPropertiesLinearOp(LinearOpType &op, JsonPropertiesBuilder &&props) {
     auto bytes = 0;
-    bytes += props.appendTypeInfo("Attributes.Weights", op.weight().getType());
-    bytes += props.appendTypeInfo("Attributes.Bias", op.bias().getType());
+    bytes += props.appendTypeInfo("Attributes.Weights", getWeight(op).getType());
+    bytes += props.appendTypeInfo("Attributes.Bias", getBias(op).getType());
     props.appendStorageAttr(op, bytes);
   }
 
@@ -545,7 +607,7 @@ private:
   }
 
   inline Value getBnWeight(xten::Conv2dBatchNormReLUOp xtenBnOp) {
-    return xtenBnOp.bn_weight();
+    return xtenBnOp.getBnWeight();
   }
 
   inline Value getBnBias(Torch::AtenBatchNormOp bnOp) {
@@ -553,7 +615,39 @@ private:
   }
 
   inline Value getBnBias(xten::Conv2dBatchNormReLUOp xtenBnOp) {
-    return xtenBnOp.bn_bias();
+    return xtenBnOp.getBnBias();
+  }
+
+  inline Value getRunningMean(Torch::AtenBatchNormOp bnOp) {
+    return bnOp.running_mean();
+  }
+
+  inline Value getRunningMean(xten::Conv2dBatchNormReLUOp xtenBnOp) {
+    return xtenBnOp.getRunningMean();
+  }
+
+  inline Value getRunningVar(Torch::AtenBatchNormOp bnOp) {
+    return bnOp.running_var();
+  }
+
+  inline Value getRunningVar(xten::Conv2dBatchNormReLUOp xtenBnOp) {
+    return xtenBnOp.getRunningVar();
+  }
+
+  inline Value getEps(Torch::AtenBatchNormOp bnOp) {
+    return bnOp.eps();
+  }
+
+  inline Value getEps(xten::Conv2dBatchNormReLUOp xtenBnOp) {
+    return xtenBnOp.getEps();
+  }
+
+  inline Value getMomentum(Torch::AtenBatchNormOp bnOp) {
+    return bnOp.momentum();
+  }
+
+  inline Value getMomentum(xten::Conv2dBatchNormReLUOp xtenBnOp) {
+    return xtenBnOp.getMomentum();
   }
 
   template <class T>
@@ -563,13 +657,13 @@ private:
         props.appendTypeInfo("Attributes.Weights", getBnWeight(op).getType());
     bytes += props.appendTypeInfo("Attributes.Bias", getBnBias(op).getType());
     bytes +=
-        props.appendTypeInfo("Attributes.Weights", op.running_mean().getType());
+        props.appendTypeInfo("Attributes.Weights", getRunningMean(op).getType());
     bytes +=
-        props.appendTypeInfo("Attributes.Variance", op.running_var().getType());
+        props.appendTypeInfo("Attributes.Variance", getRunningVar(op).getType());
     props.appendStorageAttr(op, bytes);
 
-    props.appendFloatValue("Attributes.eps", op.eps());
-    props.appendFloatValue("Attributes.momentum", op.momentum());
+    props.appendFloatValue("Attributes.eps", getEps(op));
+    props.appendFloatValue("Attributes.momentum", getMomentum(op));
     return bytes;
   }
 

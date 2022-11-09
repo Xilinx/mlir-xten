@@ -156,7 +156,7 @@ long getSize(TensorType &t) {
 
 // Returns the IFM size of the conv2d.
 long getInputSize(xten::Conv2dOp &c2d) {
-  TensorType inputType = c2d.input()
+  TensorType inputType = c2d.getInput()
                              .getType()
                              .dyn_cast<Torch::ValueTensorType>()
                              .toBuiltinTensor();

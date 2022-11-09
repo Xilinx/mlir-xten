@@ -50,7 +50,7 @@ def XTen_AddOp: XTen_Op<"add", []>,
   }];
 }
 
-def XTen_MMOp: XTen_Op<"mm", [NoSideEffect]>,
+def XTen_MMOp: XTen_Op<"mm", [Pure]>,
               Results<(outs AnyTorchTensorType)> {
   let arguments = (
     ins AnyTorchTensorType:$x,
@@ -91,7 +91,7 @@ def XTen_SoftmaxOp: XTen_Op<"softmax", []>,
   }];
 }
 
-def XTen_GlobalAveragePool2D: XTen_Op<"globalaveragepool2d", [NoSideEffect]>,
+def XTen_GlobalAveragePool2D: XTen_Op<"globalaveragepool2d", [Pure]>,
                Results<(outs AnyTorchTensorType:$output)> {
   let arguments = (
     ins AnyTorchTensorType:$input
@@ -116,7 +116,7 @@ def XTen_NoOp: XTen_Op<"noop", []>,
   }];
 }
 
-def XTen_Conv2dOp: XTen_Op<"conv2d", [NoSideEffect]>,
+def XTen_Conv2dOp: XTen_Op<"conv2d", [Pure]>,
                                 Results<(outs AnyTorchTensorType:$result)> {
   let arguments = (
     ins AnyTorchTensorType:$input,
@@ -140,7 +140,7 @@ def XTen_Conv2dOp: XTen_Op<"conv2d", [NoSideEffect]>,
 }
 
 // TODO what happens when we have both?
-def XTen_PartialConv2dOp: XTen_Op<"partialconv2d", [NoSideEffect]>{
+def XTen_PartialConv2dOp: XTen_Op<"partialconv2d", [Pure]>{
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchOptionalTensorType:$PartialIn,
@@ -169,7 +169,7 @@ def XTen_PartialConv2dOp: XTen_Op<"partialconv2d", [NoSideEffect]>{
 }
 
 
-def XTen_Conv2dReLUOp: XTen_Op<"conv2d_relu", [NoSideEffect]>,
+def XTen_Conv2dReLUOp: XTen_Op<"conv2d_relu", [Pure]>,
                                    Results<(outs AnyTorchTensorType)> {
   let arguments = (
     ins AnyTorchTensorType:$input,
@@ -193,7 +193,7 @@ def XTen_Conv2dReLUOp: XTen_Op<"conv2d_relu", [NoSideEffect]>,
 }
 
 def XTen_PartialConv2dReLUOp: XTen_Op<"partialconv2d_relu",
-                                [NoSideEffect]> {
+                                [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchOptionalTensorType:$PartialIn,
@@ -221,7 +221,7 @@ def XTen_PartialConv2dReLUOp: XTen_Op<"partialconv2d_relu",
 	}];
 }
 
-def XTen_Conv2dBatchNormReLUOp: XTen_Op<"conv2d_bn_relu", [NoSideEffect]>,
+def XTen_Conv2dBatchNormReLUOp: XTen_Op<"conv2d_bn_relu", [Pure]>,
                                             Results<(outs AnyTorchTensorType)> {
   let arguments = (
     ins AnyTorchTensorType:$input,
@@ -253,7 +253,7 @@ def XTen_Conv2dBatchNormReLUOp: XTen_Op<"conv2d_bn_relu", [NoSideEffect]>,
 }
 
 def XTen_PartialConv2dBatchNormReLUOp: XTen_Op<"partialconv2d_bn_relu",
-                                        [NoSideEffect]> {
+                                        [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchOptionalTensorType:$PartialIn,
@@ -288,7 +288,7 @@ def XTen_PartialConv2dBatchNormReLUOp: XTen_Op<"partialconv2d_bn_relu",
 	}];
 }
 
-def XTen_ConcatOp: XTen_Op<"concat", [NoSideEffect]>,
+def XTen_ConcatOp: XTen_Op<"concat", [Pure]>,
                                 Results<(outs AnyTorchTensorType)> {
   let arguments = (
     ins Variadic<AnyTorchTensorType>:$inputs,
@@ -307,7 +307,7 @@ def XTen_ConcatOp: XTen_Op<"concat", [NoSideEffect]>,
 }
 
 // TODO Proper verifier for this operation?
-def XTen_SplitOp: XTen_Op<"split", [NoSideEffect]> {
+def XTen_SplitOp: XTen_Op<"split", [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         XTen_AnyScalar:$dim
@@ -328,7 +328,7 @@ def XTen_SplitOp: XTen_Op<"split", [NoSideEffect]> {
 	}];
 }
 
-def XTen_Conv2dLReLUOp: XTen_Op<"conv2d_lrelu", [NoSideEffect]>,
+def XTen_Conv2dLReLUOp: XTen_Op<"conv2d_lrelu", [Pure]>,
                                    Results<(outs AnyTorchTensorType)> {
   let arguments = (
     ins AnyTorchTensorType:$input,
@@ -352,7 +352,7 @@ def XTen_Conv2dLReLUOp: XTen_Op<"conv2d_lrelu", [NoSideEffect]>,
 	}];
 }
 
-def XTen_Conv2dLReLUPadOp: XTen_Op<"conv2d_lrelu_pad", [NoSideEffect]>,
+def XTen_Conv2dLReLUPadOp: XTen_Op<"conv2d_lrelu_pad", [Pure]>,
                                    Results<(outs AnyTorchTensorType)> {
   let arguments = (
     ins AnyTorchTensorType:$input,
@@ -379,7 +379,7 @@ def XTen_Conv2dLReLUPadOp: XTen_Op<"conv2d_lrelu_pad", [NoSideEffect]>,
 }
 
 
-def XTen_Conv2dReLUPadOp: XTen_Op<"conv2d_relu_pad", [NoSideEffect]>,
+def XTen_Conv2dReLUPadOp: XTen_Op<"conv2d_relu_pad", [Pure]>,
                                    Results<(outs AnyTorchTensorType)> {
   let arguments = (
     ins AnyTorchTensorType:$input,
@@ -405,7 +405,7 @@ def XTen_Conv2dReLUPadOp: XTen_Op<"conv2d_relu_pad", [NoSideEffect]>,
 }
 
 
-def XTen_Conv2dReLUMaxPoolOp: XTen_Op<"conv2d_relu_maxpool", [NoSideEffect]> {
+def XTen_Conv2dReLUMaxPoolOp: XTen_Op<"conv2d_relu_maxpool", [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -436,7 +436,7 @@ def XTen_Conv2dReLUMaxPoolOp: XTen_Op<"conv2d_relu_maxpool", [NoSideEffect]> {
 	}];
 }
 
-def XTen_Conv2dReLUPadMaxPoolOp: XTen_Op<"conv2d_relu_pad_maxpool", [NoSideEffect]> {
+def XTen_Conv2dReLUPadMaxPoolOp: XTen_Op<"conv2d_relu_pad_maxpool", [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -470,7 +470,7 @@ def XTen_Conv2dReLUPadMaxPoolOp: XTen_Op<"conv2d_relu_pad_maxpool", [NoSideEffec
 }
 
 
-def XTen_Conv2dLReLUMaxPoolOp: XTen_Op<"conv2d_lrelu_maxpool", [NoSideEffect]> {
+def XTen_Conv2dLReLUMaxPoolOp: XTen_Op<"conv2d_lrelu_maxpool", [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -502,7 +502,7 @@ def XTen_Conv2dLReLUMaxPoolOp: XTen_Op<"conv2d_lrelu_maxpool", [NoSideEffect]> {
 	}];
 }
 
-def XTen_Conv2dLReLUPadMaxPoolOp: XTen_Op<"conv2d_lrelu_pad_maxpool", [NoSideEffect]> {
+def XTen_Conv2dLReLUPadMaxPoolOp: XTen_Op<"conv2d_lrelu_pad_maxpool", [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -536,7 +536,7 @@ def XTen_Conv2dLReLUPadMaxPoolOp: XTen_Op<"conv2d_lrelu_pad_maxpool", [NoSideEff
 	}];
 }
 
-def XTen_Conv2dTensorAddOp: XTen_Op<"conv2d_tensoradd", [NoSideEffect]> {
+def XTen_Conv2dTensorAddOp: XTen_Op<"conv2d_tensoradd", [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -559,7 +559,7 @@ def XTen_Conv2dTensorAddOp: XTen_Op<"conv2d_tensoradd", [NoSideEffect]> {
   }];
 }
 
-def XTen_Conv2dTensorAddReLUOp: XTen_Op<"conv2d_tensoradd_relu", [NoSideEffect]> {
+def XTen_Conv2dTensorAddReLUOp: XTen_Op<"conv2d_tensoradd_relu", [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -582,7 +582,7 @@ def XTen_Conv2dTensorAddReLUOp: XTen_Op<"conv2d_tensoradd_relu", [NoSideEffect]>
   }];
 }
 
-def XTen_Conv2dTensorAddLReLUOp: XTen_Op<"conv2d_tensoradd_lrelu", [NoSideEffect]> {
+def XTen_Conv2dTensorAddLReLUOp: XTen_Op<"conv2d_tensoradd_lrelu", [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -607,7 +607,7 @@ def XTen_Conv2dTensorAddLReLUOp: XTen_Op<"conv2d_tensoradd_lrelu", [NoSideEffect
   }];
 }
 
-def XTen_Conv2dTensorAddGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_globalaveragepool", [NoSideEffect]> {
+def XTen_Conv2dTensorAddGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_globalaveragepool", [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -631,7 +631,7 @@ def XTen_Conv2dTensorAddGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_globalave
   }];
 }
 
-def XTen_Conv2dTensorAddReLUGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_relu_globalaveragepool", [NoSideEffect]> {
+def XTen_Conv2dTensorAddReLUGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_relu_globalaveragepool", [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -655,7 +655,7 @@ def XTen_Conv2dTensorAddReLUGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_relu_
   }];
 }
 
-def XTen_Conv2dTensorAddLReLUGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_lrelu_globalaveragepool", [NoSideEffect]> {
+def XTen_Conv2dTensorAddLReLUGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_lrelu_globalaveragepool", [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,
@@ -681,7 +681,7 @@ def XTen_Conv2dTensorAddLReLUGlobalAveragePoolOp: XTen_Op<"conv2d_tensoradd_lrel
   }];
 }
 
-def XTen_LinearOp: XTen_Op<"linear", [NoSideEffect]> {
+def XTen_LinearOp: XTen_Op<"linear", [Pure]> {
   let arguments = (
     ins AnyTorchTensorType:$input,
         AnyTorchTensorType:$weight,

@@ -15,7 +15,7 @@
 
 #include "xten/Util/Util.h"
 
-#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
 
@@ -38,11 +38,11 @@ template<class T>
 std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, TensorType resultTy) {
     std::map<std::string, uint64_t> toReturn;
 
-    TensorType inputTy = o.input().getType().template cast<TensorType>();
-    TensorType weightTy = o.weight().getType().template cast<TensorType>();
+    TensorType inputTy = o.getInput().getType().template cast<TensorType>();
+    TensorType weightTy = o.getWeight().getType().template cast<TensorType>();
     TensorType biasTy;
-    if(o.bias()) {
-        biasTy = o.bias().getType().template cast<TensorType>();
+    if(o.getBias()) {
+        biasTy = o.getBias().getType().template cast<TensorType>();
     }
 
 
@@ -53,7 +53,7 @@ std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, TensorType resu
     uint64_t kernel_height = weightTy.getShape()[2];
     uint64_t kernel_width = weightTy.getShape()[3];
 
-    auto co = cast<arith::ConstantOp>(o.groups().getDefiningOp());
+    auto co = cast<arith::ConstantOp>(o.getGroups().getDefiningOp());
     auto ia = co->template getAttrOfType<IntegerAttr>("value");
     uint64_t groups = ia.getValue().getZExtValue();
     // Number of forward MACs per pixel =
@@ -64,7 +64,7 @@ std::map<std::string, uint64_t> getConv2dStatisticsWithType(T o, TensorType resu
     uint64_t ifm_volume = xilinx::xten::getTensorVolume(inputTy);
     uint64_t weight_volume = xilinx::xten::getTensorVolume(weightTy);
     uint64_t bias_volume;
-    if(o.bias()) {
+    if(o.getBias()) {
         bias_volume = xilinx::xten::getTensorVolume(biasTy);
     } else {
         bias_volume = 0;
@@ -96,8 +96,8 @@ uint64_t getConv2dOperandTransferVolumeWithType(T o, unsigned int idx, bool read
   if (simple_conv2d_model)
     return vol;
 
-  TensorType inputTy = o.input().getType().template cast<TensorType>();
-  TensorType weightTy = o.weight().getType().template cast<TensorType>();
+  TensorType inputTy = o.getInput().getType().template cast<TensorType>();
+  TensorType weightTy = o.getWeight().getType().template cast<TensorType>();
 
   float filter_width = weightTy.getShape()[2];
   float filter_height = weightTy.getShape()[3];
@@ -149,7 +149,7 @@ uint64_t getConv2dOperandTransferVolumeWithType(T o, unsigned int idx, bool read
 template<class T>
 uint64_t getConv2dResultTransferVolumeWithType(T o, unsigned int idx, bool write, TensorType resultTy) {
 
-  TensorType inputTy = o.input().getType().template cast<TensorType>();
+  TensorType inputTy = o.getInput().getType().template cast<TensorType>();
 
   if (simple_conv2d_model) {
     if (write)
@@ -158,7 +158,7 @@ uint64_t getConv2dResultTransferVolumeWithType(T o, unsigned int idx, bool write
       return 0;
   }
 
-  TensorType weightTy = o.weight().getType().template cast<TensorType>();
+  TensorType weightTy = o.getWeight().getType().template cast<TensorType>();
   float filter_width = weightTy.getShape()[2];
   //float filter_height = weightTy.getShape()[3];
 
