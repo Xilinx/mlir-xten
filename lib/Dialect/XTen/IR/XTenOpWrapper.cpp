@@ -84,9 +84,7 @@ namespace xilinx {
         }
 
         bool Conv2dOpWrapper::isDepthWise() {
-            //unsigned int groups = this->conv.getGroups().getDefiningOp<mlir::torch::Torch::IntType>().get();//.value();
           llvm::APInt intT = this->conv.getGroups().getDefiningOp<mlir::torch::Torch::ConstantIntOp>().value();
-            //MLIRContext *context = intT.getContext();
           uint64_t groups = intT.getSExtValue();
 
             mlir::torch::Torch::BaseTensorType aShape = this->conv.getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
