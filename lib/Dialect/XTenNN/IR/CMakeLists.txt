@@ -5,7 +5,7 @@
 #
 # (c) Copyright 2022 Advanced Micro Devices, Inc.
 
-add_mlir_library(XTenNNIR
+add_mlir_library(XTenNNDialect
   XTenNNBase.cpp
   XTenNNOps.cpp
 
