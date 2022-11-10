@@ -37,7 +37,8 @@ def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
             XTenNN_EnclaveOp,
             IsolatedFromAbove,
             OpAsmOpInterface,
-            RecursiveSideEffects]> {
+            RecursivelySpeculatable,
+            RecursiveMemoryEffects]> {
     let summary = "Separates a subgraph inside a graph";
     let description = [{
         The `xten_nn.subgraph` operation declares its body to be an isolated sub-
@@ -79,7 +80,7 @@ def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
 
 def XTenNN_OutputOp : XTenNN_Op<"output", [
             HasParent<"SubgraphOp">,
-            NoSideEffect,
+            Pure,
             Terminator,
             ReturnLike]> {
     let summary = "Defines the output value of a subgraph or node";
