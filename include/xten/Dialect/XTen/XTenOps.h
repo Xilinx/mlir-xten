@@ -20,6 +20,7 @@
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
 #include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchTypes.h"
 
 #define GET_OP_CLASSES
 #include "xten/Dialect/XTen/XTenOps.h.inc"
