@@ -154,7 +154,7 @@ LogicalResult SubgraphOp::verify() {
   if (this->getCaptures().size() != this->getEnclaveBody().getNumArguments()) {
     return this->emitOpError()
            << "number of operands (" << this->getCaptures().size()
-           << ") does not match number of block arguments ("
+           << ") does not match number of arguments ("
            << this->getEnclaveBody().getNumArguments() << ")";
   }
 
@@ -165,10 +165,10 @@ LogicalResult SubgraphOp::verify() {
       return this->emitOpError()
              << "type of operand #" << idx << " ("
              << this->getCapture(idx).getType()
-             << ") does not match enclave argument type (" << argType << ")";
+             << ") does not match argument type (" << argType << ")";
     }
   }
-  return enclave_interface_defaults::verify(*this);
+  return success();
 }
 
 //===----------------------------------------------------------------------===//

@@ -90,15 +90,15 @@ LogicalResult amd::xten_nn::enclave_interface_defaults::verify(Operation *op) {
 
   if (self.getEnclaveBody().empty() ||
       !isRegionReturnLike(&self.getEnclaveBody().back()))
-    return op->emitOpError() << "enclave is missing terminator";
+    return op->emitOpError() << "missing terminator";
   auto terminator = self.getTerminator();
 
   // The number of results must be equal to the enclave.
   if (terminator->getNumOperands() != op->getNumResults())
     return terminator->emitOpError()
            << "number of operands (" << terminator->getNumResults()
-           << ") does not match number of enclave results ("
-           << op->getNumResults() << ")";
+           << ") does not match number of results (" << op->getNumResults()
+           << ")";
 
   // The types of the results must match.
   for (auto [idx, resTy] : enumerate(op->getResultTypes()))
@@ -106,7 +106,7 @@ LogicalResult amd::xten_nn::enclave_interface_defaults::verify(Operation *op) {
       return terminator->emitOpError()
              << "type of operand #" << idx << " ("
              << terminator->getOperandTypes()[idx]
-             << ") does not match enclave result type (" << resTy << ")";
+             << ") does not match result type (" << resTy << ")";
 
   return success();
 }
