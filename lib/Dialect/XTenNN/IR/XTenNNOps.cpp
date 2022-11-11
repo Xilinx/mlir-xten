@@ -165,7 +165,7 @@ LogicalResult SubgraphOp::verify() {
       return this->emitOpError()
              << "type of operand #" << idx << " ("
              << this->getCapture(idx).getType()
-             << ") does not match enclave result type (" << argType << ")";
+             << ") does not match enclave argument type (" << argType << ")";
     }
   }
   return enclave_interface_defaults::verify(*this);
