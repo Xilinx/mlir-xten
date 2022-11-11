@@ -15,6 +15,7 @@
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/TypeUtilities.h"
 
+#include "mlir/Support/LogicalResult.h"
 #include "xten/Dialect/XTenNN/IR/XTenNN.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
@@ -146,6 +147,28 @@ ParseResult SubgraphOp::parse(OpAsmParser &p, OperationState &result) {
 
 void SubgraphOp::print(OpAsmPrinter &p) {
   printEnclaveOp(p, *this);
+}
+
+LogicalResult SubgraphOp::verify() {
+  // The number of captures must match the number of block arguments
+  if (this->getCaptures().size() != this->getEnclaveBody().getNumArguments()) {
+    return this->emitOpError()
+           << "number of operands (" << this->getCaptures().size()
+           << ") does not match number of block arguments ("
+           << this->getEnclaveBody().getNumArguments() << ")";
+  }
+
+  // The type of the arguments must match the types of the block arguments
+  for (auto [idx, argType] :
+       enumerate(this->getEnclaveBody().getArgumentTypes())) {
+    if (this->getCapture(idx).getType() != argType) {
+      return this->emitOpError()
+             << "type of operand #" << idx << " ("
+             << this->getCapture(idx).getType()
+             << ") does not match enclave result type (" << argType << ")";
+    }
+  }
+  return enclave_interface_defaults::verify(*this);
 }
 
 //===----------------------------------------------------------------------===//

@@ -64,6 +64,8 @@ def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
     let regions = (region SizedRegion<1>:$content);
 
     let hasCustomAssemblyFormat = 1;
+    let hasVerifier = 1;
+
 
     code extraClassDeclaration = [{
     //===------------------------------------------------------------------===//
