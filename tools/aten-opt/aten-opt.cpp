@@ -33,6 +33,7 @@
 #include "xten/Dialect/XTen/XTenPasses.h"
 #include "xten/Dialect/XTenNN/IR/XTenNN.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
+#include "xten/Dialect/XTenNN/Transforms/XTenNNPasses.h"
 #include "xten/Transform/Passes.h"
 
 using namespace llvm;
@@ -43,6 +44,7 @@ int main(int argc, char **argv) {
   xilinx::xten::registerTransformPasses();
   xilinx::xten::registerConversionPasses();
   xilinx::xten::registerXTenPasses();
+  amd::xten_nn::registerXTenNNPasses();
 
   DialectRegistry registry;
   registerAllDialects(registry);

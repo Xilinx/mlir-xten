@@ -5,13 +5,16 @@
 #
 # (c) Copyright 2022 Advanced Micro Devices, Inc.
 
-add_custom_target(XTenNNIncGen)
+add_mlir_dialect_library(XTenNNTransforms
+  Simplify.cpp
 
-add_subdirectory(Interfaces)
+  DEPENDS
+  XTenNNIncGen
 
-add_subdirectory(IR)
-
-add_subdirectory(Transforms)
-
-
-
+  LINK_LIBS PUBLIC
+  MLIRIR
+  MLIRPass
+  MLIRTransforms
+  MLIRFuncDialect
+  XTenNNDialect
+)
