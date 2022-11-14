@@ -3,8 +3,8 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #
-# (c) Copyright 2021 Xilinx Inc.
+# (c) Copyright 2022 Advanced Micro Devices, Inc.
 
-add_subdirectory(Dialect)
-add_subdirectory(Conversion)
-add_subdirectory(Transform)
+add_subdirectory(IR)
+add_subdirectory(Interfaces)
+add_subdirectory(Transforms)
