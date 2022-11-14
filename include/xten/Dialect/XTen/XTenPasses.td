@@ -16,6 +16,10 @@ include "mlir/Pass/PassBase.td"
 def XTenName : Pass<"xten-name-layers", "ModuleOp"> {
   let summary = "Give unique name attributes to xten operations";
   let constructor = "xilinx::xten::createXTenNamePass()";
+  let options = [
+    Option<"generateLayerNameAttr", "generate-layer-name-attr", "bool", "true",
+           "Generate layer_name attribute for all xten ops only if this attribute is not available">,
+  ];
 }
 
 def XTenDataflow : Pass<"xten-expand-graph", "ModuleOp"> {

@@ -19,8 +19,8 @@ module attributes {torch.debug_module_name = "Model"} {
     %int-1 = torch.constant.int -1
     // CHECK: %[[HALF_TO_FLOAT:.*]] = torch.constant.bool
     %false = torch.constant.bool false
-    // CHECK: %[[SOFTMAX:.*]] = "xten.softmax"(%[[INPUT]], %[[DIM]], %[[HALF_TO_FLOAT]]) : (!torch.vtensor<[1,3,128,128],f32>, !torch.int, !torch.bool) -> !torch.vtensor<[1,3,128,128],f32>
-    %0 = torch.aten._softmax %arg0, %int-1, %false : !torch.vtensor<[1,3,128,128],f32>, !torch.int, !torch.bool -> !torch.vtensor<[1,3,128,128],f32>
+    // CHECK: %[[SOFTMAX:.*]] = "xten.softmax"(%[[INPUT]], %[[DIM]], %[[HALF_TO_FLOAT]]) {layer_name = "Softmax_0"} : (!torch.vtensor<[1,3,128,128],f32>, !torch.int, !torch.bool) -> !torch.vtensor<[1,3,128,128],f32>
+    %0 = torch.aten._softmax %arg0, %int-1, %false {layer_name = "Softmax_0"} : !torch.vtensor<[1,3,128,128],f32>, !torch.int, !torch.bool -> !torch.vtensor<[1,3,128,128],f32>
     return %0 : !torch.vtensor<[1,3,128,128],f32>
   }
 }

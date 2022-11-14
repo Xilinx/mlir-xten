@@ -26,7 +26,7 @@ func.func @test_averagepool_2d_7x7(%arg0: !torch.vtensor<[1,512,7,7],f32>) -> !t
     return %3 : !torch.vtensor<[1,512,1,1],f32>
 
 // CHECK-LABEL: func.func @test_averagepool_2d_7x7
-// CHECK:         %[[RES:.*]] = "xten.globalaveragepool2d"(%arg0) : (!torch.vtensor<[1,512,7,7],f32>) -> !torch.vtensor<[1,512,1,1],f32>
+// CHECK:         %[[RES:.*]] = "xten.globalaveragepool2d"(%arg0) {layer_name = "avg_pool2d0"} : (!torch.vtensor<[1,512,7,7],f32>) -> !torch.vtensor<[1,512,1,1],f32>
 // CHECK-NEXT:    return %[[RES]] : !torch.vtensor<[1,512,1,1],f32>
 // CHECK-NEXT:  }
 }
@@ -45,7 +45,7 @@ func.func @test_averagepool_2d_3x3(%arg0: !torch.vtensor<[1,512,3,3],f32>) -> !t
     return %3 : !torch.vtensor<[1,512,1,1],f32>
 
 // CHECK-LABEL: func.func @test_averagepool_2d_3x3
-// CHECK:         %[[RES:.*]] = "xten.globalaveragepool2d"(%arg0) : (!torch.vtensor<[1,512,3,3],f32>) -> !torch.vtensor<[1,512,1,1],f32>
+// CHECK:         %[[RES:.*]] = "xten.globalaveragepool2d"(%arg0) {layer_name = "avg_pool2d0"} : (!torch.vtensor<[1,512,3,3],f32>) -> !torch.vtensor<[1,512,1,1],f32>
 // CHECK-NEXT:    return %[[RES]] : !torch.vtensor<[1,512,1,1],f32>
 // CHECK-NEXT:  }
 }
@@ -65,7 +65,7 @@ func.func @test_averagepool_2d_incorrect_arguments(%arg0: !torch.vtensor<[1,512,
     return %3 : !torch.vtensor<[1,512,4,4],f32>
 
 // CHECK-LABEL: func.func @test_averagepool_2d_incorrect_arguments
-// CHECK:         %[[RES:.*]] = torch.aten.avg_pool2d %arg0, %2, %0, %1, %false, %true, %none
+// CHECK:         %[[RES:.*]] = torch.aten.avg_pool2d %arg0, %2, %0, %1, %false, %true, %none {layer_name = "avg_pool2d0"} 
 }
 
 // We only convert if the stride is [1,1] here it is [2,2]
@@ -83,7 +83,7 @@ func.func @test_averagepool_2d_larger_stride(%arg0: !torch.vtensor<[1,512,3,3],f
     return %3 : !torch.vtensor<[1,512,1,1],f32>
 
 // CHECK-LABEL: func.func @test_averagepool_2d_larger_stride
-// CHECK:         %[[RES:.*]] = torch.aten.avg_pool2d %arg0, %2, %0, %1, %false, %true, %none 
+// CHECK:         %[[RES:.*]] = torch.aten.avg_pool2d %arg0, %2, %0, %1, %false, %true, %none {layer_name = "avg_pool2d0"} 
 }
 
 // We only convert if ceil_mode is false
@@ -100,7 +100,7 @@ func.func @test_averagepool_2d_ceil_mode_true(%arg0: !torch.vtensor<[1,512,3,3],
     return %3 : !torch.vtensor<[1,512,1,1],f32>
 
 // CHECK-LABEL: func.func @test_averagepool_2d_ceil_mode_true
-// CHECK:         %[[RES:.*]] = torch.aten.avg_pool2d %arg0, %2, %0, %1, %true, %true, %none
+// CHECK:         %[[RES:.*]] = torch.aten.avg_pool2d %arg0, %2, %0, %1, %true, %true, %none {layer_name = "avg_pool2d0"}
 }
 
 // We only convert if the divisor override is none, here it is set to 1
@@ -117,5 +117,5 @@ func.func @test_averagepool_2d_divisor_one(%arg0: !torch.vtensor<[1,512,3,3],f32
     return %3 : !torch.vtensor<[1,512,1,1],f32>
 
 // CHECK-LABEL: func.func @test_averagepool_2d_divisor_one
-// CHECK:         %[[RES:.*]] = torch.aten.avg_pool2d %arg0, %2, %0, %1, %false, %true, %int1
+// CHECK:         %[[RES:.*]] = torch.aten.avg_pool2d %arg0, %2, %0, %1, %false, %true, %int1 {layer_name = "avg_pool2d0"}
 }

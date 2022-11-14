@@ -21,7 +21,7 @@ func.func @test_reduce_mean(%arg0: !torch.vtensor<[1,2048,7,7],f32>) -> !torch.v
 
 // CHECK-LABEL: func.func @test_reduce_mean
 // CHECK-SAME:  ([[PARAM_0_:%.+]]: !torch.vtensor<[1,2048,7,7],f32>) -> !torch.vtensor<[1,2048,1,1],f32> {
-// CHECK-NEXT:     [[VAR_0_:%.+]] = "xten.globalaveragepool2d"([[PARAM_0_]]) : (!torch.vtensor<[1,2048,7,7],f32>) -> !torch.vtensor<[1,2048,1,1],f32>
+// CHECK-NEXT:     [[VAR_0_:%.+]] = "xten.globalaveragepool2d"([[PARAM_0_]]) {layer_name = "mean.dim0"} : (!torch.vtensor<[1,2048,7,7],f32>) -> !torch.vtensor<[1,2048,1,1],f32>
 // CHECK-NEXT:     return [[VAR_0_]] : !torch.vtensor<[1,2048,1,1],f32>
 // CHECK-NEXT:  }
 }

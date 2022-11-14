@@ -21,7 +21,7 @@ func.func @test_adaptive_averagepool(%arg0: !torch.vtensor<[1,2048,7,7],f32>) ->
 
 // CHECK-LABEL: func.func @test_adaptive_averagepool
 // CHECK-SAME:  ([[PARAM_0_:%.+]]: !torch.vtensor<[1,2048,7,7],f32>) -> !torch.vtensor<[1,2048,1,1],f32> {
-// CHECK-NEXT:     [[VAR_0_:%.+]] = "xten.globalaveragepool2d"([[PARAM_0_]]) : (!torch.vtensor<[1,2048,7,7],f32>) -> !torch.vtensor<[1,2048,1,1],f32>
+// CHECK-NEXT:     [[VAR_0_:%.+]] = "xten.globalaveragepool2d"([[PARAM_0_]]) {layer_name = "adaptive_avg_pool2d0"} : (!torch.vtensor<[1,2048,7,7],f32>) -> !torch.vtensor<[1,2048,1,1],f32>
 // CHECK-NEXT:     return [[VAR_0_]] : !torch.vtensor<[1,2048,1,1],f32>
 // CHECK-NEXT:  }
 }
