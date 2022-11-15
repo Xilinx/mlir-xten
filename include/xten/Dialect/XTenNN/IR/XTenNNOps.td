@@ -36,7 +36,6 @@ def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
             SingleBlockImplicitTerminator<"OutputOp">,
             XTenNN_EnclaveOp,
             IsolatedFromAbove,
-            OpAsmOpInterface,
             RecursivelySpeculatable,
             RecursiveMemoryEffects]> {
     let summary = "Separates a subgraph inside a graph";
@@ -66,14 +65,6 @@ def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
     let hasCustomAssemblyFormat = 1;
     let hasVerifier = 1;
 
-
-    code extraClassDeclaration = [{
-    //===------------------------------------------------------------------===//
-    // OpAsmOpInterface
-    //===------------------------------------------------------------------===//
-
-    static llvm::StringRef getDefaultDialect() { return "xten_nn"; }
-    }];
 }
 
 //===----------------------------------------------------------------------===//
