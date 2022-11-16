@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #
 # (c) Copyright 2021 Xilinx Inc.
+# (c) Copyright 2022 Advanced Micro Devices, Inc.
 
 llvm_map_components_to_libnames(llvm_libs support core irreader)
 
@@ -20,6 +21,7 @@ set(LIBS
   XTenTransformPasses
   XTenTransforms
   XTenUtil
+  XTenNNDialect
   TorchMLIRInitAll
   TorchMLIRTMTensorPasses
   TorchMLIRTMTensorDialect
