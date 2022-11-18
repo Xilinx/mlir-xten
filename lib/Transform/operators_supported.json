@@ -6,32 +6,38 @@
 				[
 					"Attributes.Weights.Tensor",
 					"Dimensions of weights",
-					"string"
+					"string",
+					"operand(1)"
 				],
 				[
 					"Attributes.Weights.type",
 					"Numerical type of each Weights number",
-					"string"
+					"string",
+					"operand(1)"
 				],
 				[
 					"Attributes.Weights.Bytes",
 					"Size of weights in bytes",
-					"long"
+					"long",
+					"operand(1)"
 				],
 				[
 					"Attributes.Bias.Tensor",
 					"Dimensions of bias",
-					"string"
+					"string",
+					"operand(2)"
 				],
 				[
 					"Attributes.Bias.type",
 					"Numerical type of each Bias number",
-					"string"
+					"string",
+					"operand(2)"
 				],
 				[
 					"Attributes.Bias.Bytes",
 					"Size of bias in bytes",
-					"long"
+					"long",
+					"operand(2)"
 				],
 				[
 					"Attributes.kernel shape",
@@ -191,62 +197,74 @@
 				[
 					"Attributes.Weights.Tensor",
 					"Dimensions of weights",
-					"string"
+					"string",
+					"operand(1)"
 				],
 				[
 					"Attributes.Weights.type",
 					"Numerical type of each Weights number",
-					"string"
+					"string",
+					"operand(1)"
 				],
 				[
 					"Attributes.Weights.Bytes",
 					"Size of weights in bytes",
-					"long"
+					"long",
+					"operand(1)"
 				],
 				[
 					"Attributes.Bias.Tensor",
 					"Dimensions of bias",
-					"string"
+					"string",
+					"operand(2)"
 				],
 				[
 					"Attributes.Bias.type",
 					"Numerical type of each Bias number",
-					"string"
+					"string",
+					"operand(2)"
 				],
 				[
 					"Attributes.Bias.Bytes",
 					"Size of bias in bytes",
-					"long"
+					"long",
+					"operand(2)"
 				],
 				[
 					"Attributes.Mean.Tensor",
 					"Dimensions of mean",
-					"string"
+					"string",
+					"operand(3)"
 				],
 				[
 					"Attributes.Mean.type",
 					"Numerical type of each Means number",
-					"string"
+					"string",
+					"operand(3)"
 				],
 				[
-					"Attributes.Mean.Byes",
+					"Attributes.Mean.Bytes",
 					"Size of mean in bytes",
-					"string"
+					"string",
+					"operand(3)"
 				],
 				[
 					"Attributes.Variance.Tensor",
 					"Dimensions of variance",
-					"string"
+					"string",
+					"operand(4)"
 				],
 				[
 					"Attributes.Variance.type",
 					"Numerical type of each Variances number",
-					"string"
+					"string",
+					"operand(4)"
 				],
 				[
-					"Attributes.Variance.Byes",
+					"Attributes.Variance.Bytes",
 					"Size of variance in bytes",
-					"string"
+					"string",
+					"operand(4)"
 				],
 				[
 					"Attributes.momentum",
@@ -421,32 +439,38 @@
 				[
 					"Attributes.Weights.Tensor",
 					"Dimensions of weights",
-					"string"
+					"string",
+					"operand(1)"
 				],
 				[
 					"Attributes.Weights.type",
 					"Numerical type of each Weights number",
-					"string"
+					"string",
+					"operand(1)"
 				],
 				[
 					"Attributes.Weights.Bytes",
 					"Size of weights in bytes",
-					"long"
+					"long",
+					"operand(1)"
 				],
 				[
 					"Attributes.Bias.Tensor",
 					"Dimensions of bias",
-					"string"
+					"string",
+					"operand(2)"
 				],
 				[
 					"Attributes.Bias.type",
 					"Numerical type of each Bias number",
-					"string"
+					"string",
+					"operand(2)"
 				],
 				[
 					"Attributes.Bias.Bytes",
 					"Size of bias in bytes",
-					"long"
+					"long",
+					"operand(2)"
 				],
 				[
 					"Computation.MACs",
@@ -551,17 +575,20 @@
 				[
 					"Attributes.Other.Tensor",
 					"Dimensions of second tensor",
-					"string"
+					"string",
+					"operand(1)"
 				],
 				[
 					"Attributes.Other.type",
 					"Numerical type of each Tensor element",
-					"string"
+					"string",
+					"operand(1)"
 				],
 				[
 					"Attributes.Other.Bytes",
 					"Size of second tensor in bytes",
-					"long"
+					"long",
+					"operand(1)"
 				],
 				[
 					"Computation.+",
@@ -716,17 +743,20 @@
 				[
 					"Attributes.Index.Tensor",
 					"Dimensions of index",
-					"string"
+					"string",
+					"operand(1)"
 				],
 				[
 					"Attributes.Index.type",
 					"Numerical type of each Index number",
-					"string"
+					"string",
+					"operand(1)"
 				],
 				[
 					"Attributes.Index.Bytes",
 					"Size of index in bytes",
-					"long"
+					"long",
+					"operand(1)"
 				],
 				[
 					"Attributes.dim",
