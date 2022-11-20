@@ -83,8 +83,11 @@ public:
 
       layerName = getLayerName(type.str(), layerToName[type.str()]);
       auto attr = StringAttr::get(module.getContext(), layerName);
-      if(generateLayerNameAttr && !op->hasAttr("layer_name"))
-        op->setAttr(llvm::StringRef("layer_name"), attr);
+      if (op->hasAttr("layer_name") && !overwriteExisting) {
+        return;
+      }
+
+      op->setAttr(llvm::StringRef("layer_name"), attr);
     });
   }
 };
