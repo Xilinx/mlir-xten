@@ -1,10 +1,10 @@
-/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
-|*                                                                            *|
-|* Rewriters                                                                  *|
-|*                                                                            *|
-|* Automatically generated file, do not edit!                                 *|
-|*                                                                            *|
-\*===----------------------------------------------------------------------===*/
+// This file is the copy of the generated XtenFusions.cpp.inc (generated from
+// XtenFusions.td by tablegen) with an extra setLayerNameAttr function for
+// setting layer_name attribute for all Xten operations after the fusion. It
+// was not possible to do this using table-driven rewrite rules because
+// layer_name attribute has not defined in any of the definition of the Xten
+// operations. Therefore, it was not possible to capture this attribute in the
+// table gen file.
 
 void setLayerNameAttr(Operation *source, Operation *target) {
   const std::string attrName = "layer_name";

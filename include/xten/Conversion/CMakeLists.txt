@@ -9,12 +9,12 @@ set(LLVM_TARGET_DEFINITIONS Passes.td)
 mlir_tablegen(Passes.h.inc -gen-pass-decls -name XTenConversion)
 add_public_tablegen_target(XTenConversionIncGen)
 
-set(LLVM_TARGET_DEFINITIONS ATenToXTen.td)
-mlir_tablegen(ATenToXTen.cpp.inc -gen-rewriters)
-add_public_tablegen_target(ATenToXTenIncGen)
+# set(LLVM_TARGET_DEFINITIONS ATenToXTen.td)
+# mlir_tablegen(ATenToXTen.cpp.inc -gen-rewriters)
+# add_public_tablegen_target(ATenToXTenIncGen)
 
-set(LLVM_TARGET_DEFINITIONS XTenFusions.td)
-mlir_tablegen(XTenFusions.cpp.inc -gen-rewriters)
-add_public_tablegen_target(ATenToXTenIncGen2)
+# set(LLVM_TARGET_DEFINITIONS XTenFusions.td)
+# mlir_tablegen(XTenFusions.cpp.inc -gen-rewriters)
+# add_public_tablegen_target(ATenToXTenIncGen2)
 
 add_mlir_doc(Passes XTenConversionPasses ./ -gen-pass-doc)

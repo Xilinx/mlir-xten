@@ -14,8 +14,8 @@ XTenToLinalg.cpp
 DEPENDS
 XTenConversionIncGen
 XTenDialect
-ATenToXTenIncGen
-ATenToXTenIncGen2
+# ATenToXTenIncGen
+# ATenToXTenIncGen2
 
 LINK_COMPONENTS
 Core
