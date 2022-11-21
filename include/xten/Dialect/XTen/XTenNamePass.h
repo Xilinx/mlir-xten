@@ -17,7 +17,11 @@
 namespace xilinx {
 namespace xten {
 
-std::unique_ptr<mlir::OperationPass<mlir::ModuleOp>> createXTenNamePass();
+#define GEN_PASS_DECL_XTENNAME
+#include "xten/Dialect/XTen/XTenPasses.h.inc"
+
+std::unique_ptr<mlir::Pass> createXTenName();
+std::unique_ptr<mlir::Pass> createXTenName(const XTenNameOptions &option);
 
 } // namespace xten
 } // namespace xilinx
