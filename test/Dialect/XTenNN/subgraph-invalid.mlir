@@ -14,7 +14,7 @@ func.func @enclave_result_number_missmatch() -> f64 {
         %1 = arith.constant 1.0 : f64
         %2 = arith.constant 1.0 : f64
     // expected-error@+1 {{does not match number of results}}
-    output %1 : f64
+    xten_nn.output %1 : f64
     } -> f64, f64
     return %result1 : f64
 }
@@ -24,7 +24,7 @@ func.func @enclave_result_type_missmatch() -> f32 {
     %result1 = xten_nn.subgraph () {
         %1 = arith.constant 1.0 : f64
     // expected-error@+1 {{does not match result type}}
-    output %1 : f64
+    xten_nn.output %1 : f64
     } -> f32
     return %result1 : f32
 }
