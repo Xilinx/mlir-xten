@@ -12,6 +12,8 @@ void setLayerNameAttr(Operation *source, Operation *target) {
     return;
   if (source->hasAttr(attrName))
     target->setAttr(attrName, source->getAttr(attrName));
+  else
+    source->emitError("The operation is expected to have layer_name attribute");
 }
 
 static ::mlir::LogicalResult static_dag_matcher_0(
