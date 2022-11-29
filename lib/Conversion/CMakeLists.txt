@@ -16,8 +16,8 @@ XTenConversionIncGen
 XTenDialect
 
 # For more information on why these two libraries are commented out refer to:
-# include/xten/Conversion/ATenToXTen.td
-# include/xten/Conversion/XTenFusions.td
+# - include/xten/Conversion/ATenToXTen.td
+# - include/xten/Conversion/XTenFusions.td
 
 # ATenToXTenIncGen 
 # ATenToXTenIncGen2
