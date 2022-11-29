@@ -6,7 +6,7 @@ using table-driven rewrite rules because the layer_name attribute has not been
 defined for any Aten operations.
 
 Note: If you'd like to add a new pattern in this file, you have to un-comment
-the this file and the CMakeLists.txt, copy the generated cpp file again into the
+this file and the CMakeLists.txt, copy the generated cpp file again into the
 lib/conversion folder, and set layer_name attribute using setLayerNameAttr
 function (defined in the cloned lib/conversion/AtenToXten.cpp.inc) accordingly.
 
