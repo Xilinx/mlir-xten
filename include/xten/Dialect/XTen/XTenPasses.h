@@ -19,6 +19,9 @@
 namespace xilinx {
 namespace xten {
 
+#define GEN_PASS_REGISTRATION
+#include "xten/Dialect/XTen/XTenPasses.h.inc"
+
 void registerXTenPasses();
 
 }

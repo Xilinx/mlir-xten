@@ -272,11 +272,11 @@ bool checkLinearForXten(Value input, Value weights, Value bias) {
 }
 
 namespace atenToXten {
-#include "xten/Conversion/ATenToXTen.cpp.inc"
+#include "ATenToXTen.cpp.inc"
 }
 
 namespace xtenToXtenCleanup {
-#include "xten/Conversion/XTenFusions.cpp.inc"
+#include "XTenFusions.cpp.inc"
 }
 
 struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {

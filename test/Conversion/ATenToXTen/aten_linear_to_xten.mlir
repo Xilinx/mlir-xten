@@ -11,11 +11,11 @@
 // RUN: aten-opt %s -aten-to-xten | FileCheck %s
 
 func.func @valid_lowering(%arg0: !torch.vtensor<[1,2048],f32>, %arg1: !torch.vtensor<[1000,2048],f32>, %arg2: !torch.vtensor<[1000],f32>) -> !torch.vtensor<[1,1000],f32> attributes {input_names = ["x", "fc.weight", "fc.bias"], output_names = ["y"]} {
-    %0 = torch.aten.linear %arg0, %arg1, %arg2 : !torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.vtensor<[1000],f32> -> !torch.vtensor<[1,1000],f32>
+    %0 = torch.aten.linear %arg0, %arg1, %arg2 {layer_name = "Linear_0"} : !torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.vtensor<[1000],f32> -> !torch.vtensor<[1,1000],f32>
     return %0 : !torch.vtensor<[1,1000],f32>
     
 // CHECK-LABEL: func.func @valid_lowering
-// CHECK-NEXT:     [[R0:%.+]] = "xten.linear"(%arg0, %arg1, %arg2) : (!torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.vtensor<[1000],f32>) -> !torch.vtensor<[1,1000],f32>
+// CHECK-NEXT:     [[R0:%.+]] = "xten.linear"(%arg0, %arg1, %arg2) {layer_name = "Linear_0"} : (!torch.vtensor<[1,2048],f32>, !torch.vtensor<[1000,2048],f32>, !torch.vtensor<[1000],f32>) -> !torch.vtensor<[1,1000],f32>
 // CHECK-NEXT:     return [[R0]] : !torch.vtensor<[1,1000],f32>
 // CHECK-NEXT:  }
 }

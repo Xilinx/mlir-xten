@@ -9,7 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 // RUN: aten-opt %s --aten-to-xten | FileCheck %s
-// CHECK: %4 = "xten.conv2d"(%arg0, %1, %0, %2, %3, %2, %int1) : (!torch.vtensor<[1,1,128,128],f32>, !torch.vtensor<[8,1,3,3],f32>, !torch.vtensor<[8],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int) -> !torch.vtensor<[1,8,126,126],f32>
+// CHECK: %4 = "xten.conv2d"(%arg0, %1, %0, %2, %3, %2, %int1) {layer_name = "Conv_0"} : (!torch.vtensor<[1,1,128,128],f32>, !torch.vtensor<[8,1,3,3],f32>, !torch.vtensor<[8],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.int) -> !torch.vtensor<[1,8,126,126],f32>
 
 module attributes {torch.debug_module_name = "conv2d"} {
   func.func @forward(%arg0: !torch.vtensor<[1,1,128,128],f32>) -> !torch.vtensor<[1,8,126,126],f32> {
@@ -21,7 +21,7 @@ module attributes {torch.debug_module_name = "conv2d"} {
     %2 = torch.prim.ListConstruct %int1, %int1 : (!torch.int, !torch.int) -> !torch.list<int>
     %3 = torch.prim.ListConstruct %int0, %int0 : (!torch.int, !torch.int) -> !torch.list<int>
     %empty_list = torch.prim.ListConstruct : () -> !torch.list<int>
-    %4 = torch.aten.convolution %arg0, %1, %0, %2, %3, %2, %false, %empty_list, %int1 : !torch.vtensor<[1,1,128,128],f32>, !torch.vtensor<[8,1,3,3],f32>, !torch.vtensor<[8],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool, !torch.list<int>, !torch.int -> !torch.vtensor<[1,8,126,126],f32>
+    %4 = torch.aten.convolution %arg0, %1, %0, %2, %3, %2, %false, %empty_list, %int1 {layer_name = "Conv_0"} : !torch.vtensor<[1,1,128,128],f32>, !torch.vtensor<[8,1,3,3],f32>, !torch.vtensor<[8],f32>, !torch.list<int>, !torch.list<int>, !torch.list<int>, !torch.bool, !torch.list<int>, !torch.int -> !torch.vtensor<[1,8,126,126],f32>
     return %4 : !torch.vtensor<[1,8,126,126],f32>
   }
 }

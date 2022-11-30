@@ -32,6 +32,11 @@ namespace xten {
 
 struct XTenNamePass : public XTenNameBase<XTenNamePass> {
 public:
+  XTenNamePass() = default;
+
+  explicit XTenNamePass(const XTenNameOptions &options) {
+    overwriteExisting = options.overwriteExisting;
+  }
 
   std::string getLayerName(std::string layerPrefix, uint64_t id) {
     return layerPrefix + std::to_string(id);
@@ -83,6 +88,9 @@ public:
 
       layerName = getLayerName(type.str(), layerToName[type.str()]);
       auto attr = StringAttr::get(module.getContext(), layerName);
+      if (op->hasAttr("layer_name") && !overwriteExisting) {
+        return;
+      }
 
       op->setAttr(llvm::StringRef("layer_name"), attr);
     });
@@ -95,8 +103,12 @@ public:
 namespace xilinx {
 namespace xten {
 
-std::unique_ptr<OperationPass<ModuleOp>> createXTenNamePass() {
+std::unique_ptr<mlir::Pass> createXTenName() {
   return std::make_unique<XTenNamePass>();
+}
+
+std::unique_ptr<mlir::Pass> createXTenName(const XTenNameOptions &option) {
+  return std::make_unique<XTenNamePass>(option);
 }
 
 } // namespace xten

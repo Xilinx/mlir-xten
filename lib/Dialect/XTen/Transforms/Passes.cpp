@@ -10,16 +10,11 @@
 
 #include "xten/Dialect/XTen/XTenPasses.h"
 
-namespace {
-#define GEN_PASS_REGISTRATION
-#include "xten/Dialect/XTen/XTenPasses.h.inc"
-}
-
 namespace xilinx {
 namespace xten {
 
 void registerXTenPasses() {
-  ::registerXTenDialectPasses();
+  registerXTenDialectPasses();
 }
 
 }

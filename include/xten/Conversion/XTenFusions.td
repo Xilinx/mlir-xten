@@ -1,3 +1,17 @@
+/*
+Note: The generated cpp file (XtenFusions.cpp.inc) from this table-gen file has
+been copied over into lib/Conversion folder in order to be able to set the
+layer_name attribute on all Xten operations. It is not possible to do this here
+using table-driven rewrite rules because the layer_name attribute has not been
+defined for any Xten operations.
+
+Note: If you'd like to add a new pattern in this file, you have to un-comment
+this file and the CMakeLists.txt, copy the generated cpp file again into the
+lib/conversion folder, and set layer_name attribute using setLayerNameAttr
+function (defined in the cloned lib/conversion/AtenToXten.cpp.inc) accordingly.
+
+
+
 //===- XTenFusions.td --------------------------------------*- tablegen -*-===//
 //
 // This file is licensed under the Apache License v2.0 with LLVM Exceptions.
@@ -71,3 +85,5 @@ def : Pat<(XTen_GlobalAveragePool2D (XTen_Conv2dTensorAddReLUOp $a,$b,$c,$d,$e,$
 
 def : Pat<(XTen_GlobalAveragePool2D (XTen_Conv2dTensorAddLReLUOp $a,$b,$c,$d,$e,$f,$g,$alpha,$h)),
           (XTen_Conv2dTensorAddLReLUGlobalAveragePoolOp $a,$b,$c,$d,$e,$f,$g,$alpha,$h)>;
+
+*/

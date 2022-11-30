@@ -14,8 +14,13 @@ XTenToLinalg.cpp
 DEPENDS
 XTenConversionIncGen
 XTenDialect
-ATenToXTenIncGen
-ATenToXTenIncGen2
+
+# For more information on why these two libraries are commented out refer to:
+# - include/xten/Conversion/ATenToXTen.td
+# - include/xten/Conversion/XTenFusions.td
+
+# ATenToXTenIncGen 
+# ATenToXTenIncGen2
 
 LINK_COMPONENTS
 Core
