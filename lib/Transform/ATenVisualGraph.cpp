@@ -93,7 +93,7 @@ inline std::string vector_to_str(std::vector<int64_t> vec_input,
 
 void unpack_int_list(const Value &op, std::vector<int64_t> &v) {
   SmallVector<int64_t, 2> sv;
-  if (matchPattern(op, Torch::m_TorchConstantIntList(sv))) {
+  if (matchPattern(op, Torch::m_TorchListOfConstantInts(sv))) {
     for (size_t i = 0; i < sv.size(); i++)
       v.push_back(sv[i]);
   } else if (auto co = op.getDefiningOp<arith::ConstantIntOp>()) {
@@ -276,7 +276,6 @@ private:
 
   std::unordered_map<Operation *, Value> inputOpToIFMValue;
 
-
   unsigned currentDesign = 1;
 
   void initProperties() {
@@ -338,7 +337,6 @@ private:
     connsOutToInMap.clear();
     fusedToUnfuseOutputMap.clear();
     inputOpToIFMValue.clear();
-
   }
 
   std::map<std::string, uint64_t> getLayerStatsMap(Operation *op) {
@@ -384,8 +382,7 @@ private:
 
   template <class T>
   void fillOther(T &op, Value v, JsonPropertiesBuilder &props) {
-    auto volume_bytes =
-        props.appendTypeInfo("Attributes.Other", v.getType());
+    auto volume_bytes = props.appendTypeInfo("Attributes.Other", v.getType());
     props.appendStorageAttr(op, volume_bytes);
   }
 
@@ -469,17 +466,16 @@ private:
     // note that the shape originally was written out as ?o?c?h?w,
     // now it's ?x?x?x? like everywhere else.
     auto bytes = 0;
-    bytes += props.appendTypeInfo("Attributes.Weights", getWeight(op).getType());
+    bytes +=
+        props.appendTypeInfo("Attributes.Weights", getWeight(op).getType());
     bytes += props.appendTypeInfo("Attributes.Bias", getBias(op).getType());
-
 
     Torch::BaseTensorType weightTy =
         getWeight(op).getType().template cast<Torch::BaseTensorType>();
 
     // h,w
-    std::string kernel_shape =
-        std::to_string( weightTy.getSizes()[2]) 
-        + "," + std::to_string( weightTy.getSizes()[3]);
+    std::string kernel_shape = std::to_string(weightTy.getSizes()[2]) + "," +
+                               std::to_string(weightTy.getSizes()[3]);
 
     props.append("Attributes.kernel shape", kernel_shape);
     props.appendIntList("Attributes.padding", getConvPadding(op));
@@ -597,7 +593,8 @@ private:
   template <typename LinearOpType>
   void fillPropertiesLinearOp(LinearOpType &op, JsonPropertiesBuilder &&props) {
     auto bytes = 0;
-    bytes += props.appendTypeInfo("Attributes.Weights", getWeight(op).getType());
+    bytes +=
+        props.appendTypeInfo("Attributes.Weights", getWeight(op).getType());
     bytes += props.appendTypeInfo("Attributes.Bias", getBias(op).getType());
     props.appendStorageAttr(op, bytes);
   }
@@ -656,10 +653,10 @@ private:
     bytes +=
         props.appendTypeInfo("Attributes.Weights", getBnWeight(op).getType());
     bytes += props.appendTypeInfo("Attributes.Bias", getBnBias(op).getType());
-    bytes +=
-        props.appendTypeInfo("Attributes.Weights", getRunningMean(op).getType());
-    bytes +=
-        props.appendTypeInfo("Attributes.Variance", getRunningVar(op).getType());
+    bytes += props.appendTypeInfo("Attributes.Weights",
+                                  getRunningMean(op).getType());
+    bytes += props.appendTypeInfo("Attributes.Variance",
+                                  getRunningVar(op).getType());
     props.appendStorageAttr(op, bytes);
 
     props.appendFloatValue("Attributes.eps", getEps(op));
@@ -693,7 +690,6 @@ private:
         op, props.nextFusedOp("aten.convolution"));
     storage += fillPropertiesBatchNormOp<xten::Conv2dBatchNormReLUOp>(
         op, props.nextFusedOp("torch.aten.batch_norm"));
-
 
     props.appendStorageAttr(op, storage);
   }
@@ -965,7 +961,6 @@ private:
         type_str = typeStr(sizeResultTy);
         bytes_str = std::to_string(total_bytes(sizeResultTy, total_inputs));
       }
-
 
       portPropsObject["name"] = port_name_prefix + ".Tensor";
       portPropsObject["tooltip"] = "Dimensions of " + port_type_str;
