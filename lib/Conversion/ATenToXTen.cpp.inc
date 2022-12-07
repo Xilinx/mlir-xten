@@ -91,6 +91,20 @@ static ::mlir::LogicalResult static_dag_matcher_2(
   return ::mlir::success();
 }
 
+static ::mlir::LogicalResult static_dag_matcher_3(::mlir::PatternRewriter &rewriter, ::mlir::Operation *op0, ::llvm::SmallVector<::mlir::Operation *, 4> &tblgen_ops, ::mlir::Operation::operand_range &bias, ::mlir::Operation::operand_range &weights, ::mlir::Operation::operand_range &input) { 
+  (void)tblgen_ops;                                                                 
+  auto castedOp1 = ::llvm::dyn_cast<::mlir::torch::Torch::AtenLinearOp>(op0); (void)castedOp1;
+  if (!(castedOp1)){                                                                
+    return rewriter.notifyMatchFailure(op0, [&](::mlir::Diagnostic &diag) {         
+      diag << "castedOp1 is not ::mlir::torch::Torch::AtenLinearOp type";           
+    });                                                                             
+  }                                                                                 
+  input = castedOp1.getODSOperands(0);                                              
+  weights = castedOp1.getODSOperands(1);                                            
+  bias = castedOp1.getODSOperands(2);                                               
+  return ::mlir::success();                                                         
+}
+
 /* Generated from:
     /scratch/projects/vitis_flexml/third-party/mlir-xten/include/xten/Conversion/ATenToXTen.td:36
 */
@@ -1782,6 +1796,63 @@ struct GeneratedConvert18 : public ::mlir::RewritePattern {
     return ::mlir::success();
   };
 };
+/* Generated from:                                                              
+    /scratch/vitis_flexml/third-party/mlir-xten/include/xten/Conversion/ATenToXTen.td:151
+*/   
+struct GeneratedConvert19 : public ::mlir::RewritePattern {                         
+  GeneratedConvert19(::mlir::MLIRContext *context)                                  
+      : ::mlir::RewritePattern("torch.aten.relu", 2, context, {"xten.linear_relu"}) {}
+  ::mlir::LogicalResult matchAndRewrite(::mlir::Operation *op0,                     
+      ::mlir::PatternRewriter &rewriter) const override {                           
+    // Variables for capturing values and attributes used while creating ops    
+    ::mlir::Operation::operand_range bias(op0->getOperands());                      
+    ::mlir::Operation::operand_range weights(op0->getOperands());                   
+    ::mlir::Operation::operand_range input(op0->getOperands());                     
+    ::llvm::SmallVector<::mlir::Operation *, 4> tblgen_ops;                         
+                                                                                    
+    // Match                                                                        
+    tblgen_ops.push_back(op0);                                                      
+    auto castedOp0 = ::llvm::dyn_cast<::mlir::torch::Torch::AtenReluOp>(op0); (void)castedOp0;
+    {                                                                               
+      auto *op1 = (*castedOp0.getODSOperands(0).begin()).getDefiningOp();           
+      if (!(op1)){                                                                  
+        return rewriter.notifyMatchFailure(castedOp0, [&](::mlir::Diagnostic &diag) {
+          diag << "There's no operation that defines operand 0 of castedOp0";   
+        });                                                                         
+      }                                                                             
+      if(::mlir::failed(static_dag_matcher_3(rewriter, op1, tblgen_ops, bias, weights, input))) {
+        return ::mlir::failure();                                                   
+      }                                                                             
+      tblgen_ops.push_back(op1);                                                    
+    }                                                                               
+                                                                                    
+    // Rewrite                                                                      
+    auto odsLoc = rewriter.getFusedLoc({tblgen_ops[0]->getLoc(), tblgen_ops[1]->getLoc()}); (void)odsLoc;
+    ::llvm::SmallVector<::mlir::Value, 4> tblgen_repl_values;                       
+    xilinx::xten::LinearReluOp tblgen_LinearReluOp_0;                               
+    {                                                                               
+      ::llvm::SmallVector<::mlir::Value, 4> tblgen_values; (void)tblgen_values; 
+      ::llvm::SmallVector<::mlir::NamedAttribute, 4> tblgen_attrs; (void)tblgen_attrs;
+      tblgen_values.push_back((*input.begin()));                                    
+      tblgen_values.push_back((*weights.begin()));                                  
+      tblgen_values.push_back((*bias.begin()));                                     
+      ::llvm::SmallVector<::mlir::Type, 4> tblgen_types; (void)tblgen_types;    
+      for (auto v: castedOp0.getODSResults(0)) {                                    
+        tblgen_types.push_back(v.getType());                                        
+      }                                                                             
+      tblgen_LinearReluOp_0 = rewriter.create<xilinx::xten::LinearReluOp>(odsLoc, tblgen_types, tblgen_values, tblgen_attrs);
+    }                                                                               
+                                                                                    
+    for (auto v: ::llvm::SmallVector<::mlir::Value, 4>{ tblgen_LinearReluOp_0.getODSResults(0) }) { 
+      tblgen_repl_values.push_back(v);                                              
+    }                                                                               
+                                                                                    
+    setLayerNameAttr(tblgen_ops.back(), tblgen_LinearReluOp_0);
+
+    rewriter.replaceOp(op0, tblgen_repl_values);                                    
+    return ::mlir::success();                                                       
+  };                                                                                
+}; 
 
 void LLVM_ATTRIBUTE_UNUSED
 populateWithGenerated(::mlir::RewritePatternSet &patterns) {
@@ -1804,4 +1875,5 @@ populateWithGenerated(::mlir::RewritePatternSet &patterns) {
   patterns.add<GeneratedConvert16>(patterns.getContext());
   patterns.add<GeneratedConvert17>(patterns.getContext());
   patterns.add<GeneratedConvert18>(patterns.getContext());
+  patterns.add<GeneratedConvert19>(patterns.getContext());
 }

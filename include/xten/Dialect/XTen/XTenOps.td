@@ -698,5 +698,22 @@ def XTen_LinearOp: XTen_Op<"linear", [Pure]> {
   }];
 }
 
+def XTen_LinearReluOp : XTen_Op<"linear_relu", [Pure]> {
+  let arguments = (
+    ins AnyTorchTensorType:$input,
+        AnyTorchTensorType:$weight,
+        AnyTorchOptionalTensorType:$bias
+  );
+  
+  let results = (
+    outs AnyTorchTensorType:$output
+  );
+
+  let summary = "Linear function followed by a relu";
+  let description = [{
+    Applies a linear function followed by a relu.
+  }];
+}
+
 
 #endif // #ifndef XTEN_OPS
