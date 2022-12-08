@@ -74,6 +74,11 @@ llvm::Optional<Value> getAlpha(xten::Conv2dTensorAddReLUOp &reluOp) {
   return {};
 }
 
+template <>
+llvm::Optional<Value> getAlpha(xten::LinearReluOp &reluOp) {
+  return {};
+}
+
 // fetch input. Specialize if the method is named differently.
 template <class Op>
 Value getInput(Op op) {
@@ -591,11 +596,21 @@ private:
   }
 
   template <typename LinearOpType>
-  void fillPropertiesLinearOp(LinearOpType &op, JsonPropertiesBuilder &&props) {
+  uint64_t fillPropertiesLinearOp(LinearOpType &op, JsonPropertiesBuilder &&props) {
     auto bytes = 0;
     bytes +=
         props.appendTypeInfo("Attributes.Weights", getWeight(op).getType());
     bytes += props.appendTypeInfo("Attributes.Bias", getBias(op).getType());
+    props.appendStorageAttr(op, bytes);
+    return bytes;
+  }
+
+  template <class Op>
+  void fillPropertiesLinearActOp(Op &op, const char *actTypeStr,
+                              JsonPropertiesBuilder &&props) {
+    uint64_t bytes = 0;
+    bytes += fillPropertiesLinearOp(op, props.nextFusedOp("aten.linear"));
+    bytes += fillPropertiesReLUOp(op, props.nextFusedOp(actTypeStr));
     props.appendStorageAttr(op, bytes);
   }
 
@@ -847,6 +862,8 @@ private:
       fillPropertiesOpC2dActMaxpool(op2, "aten.relu", std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::Conv2dTensorAddReLUOp>(op)) {
       fillPropertiesOpC2dAct(op2, "aten.relu", std::move(props));
+    } else if (auto op2 = mlir::dyn_cast<xten::LinearReluOp>(op)) {
+      fillPropertiesLinearActOp(op2, "aten.relu", std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::AddOp>(op)) {
       fillProperties(op2, std::move(props));
     } else if (auto op2 = mlir::dyn_cast<xten::MMOp>(op)) {
