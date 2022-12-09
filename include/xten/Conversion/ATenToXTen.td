@@ -1,4 +1,5 @@
-/*Note: The generated cpp file (AtenToXten.cpp.inc) from this table-gen file has
+/*
+Note: The generated cpp file (AtenToXten.cpp.inc) from this table-gen file has
 been copied over into lib/Conversion folder in order to be able to set the
 layer_name attribute on all Xten operations. It is not possible to do this here
 using table-driven rewrite rules because the layer_name attribute has not been
