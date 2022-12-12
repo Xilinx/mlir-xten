@@ -6,9 +6,10 @@ using table-driven rewrite rules because the layer_name attribute has not been
 defined for any Aten operations.
 
 Note: If you'd like to add a new pattern in this file, you have to un-comment
-this file and the CMakeLists.txt, copy the generated cpp file again into the
-lib/conversion folder, and set layer_name attribute using setLayerNameAttr
-function (defined in the cloned lib/conversion/AtenToXten.cpp.inc) accordingly.
+this file and the CMakeLists.txt and the CMakeLists.txt from lib/Conversion/,
+copy the generated cpp file again into the lib/conversion folder, and set
+layer_name attribute using setLayerNameAttr function (defined in the cloned
+lib/conversion/AtenToXten.cpp.inc) accordingly.
 
 
 //===- ATenToXTen.td ---------------------------------------*- tablegen -*-===//
@@ -148,5 +149,8 @@ def CheckLinearForXten : Constraint<
 def : Pat<(Torch_AtenLinearOp $input, $weights, $bias),
           (XTen_LinearOp  $input, $weights, $bias),
           [(CheckLinearForXten $input, $weights, $bias)]>;
+
+def : Pat<(Torch_AtenReluOp (Torch_AtenLinearOp $input, $weights, $bias)),
+          (XTen_LinearReluOp $input, $weights, $bias)>;
 
 */

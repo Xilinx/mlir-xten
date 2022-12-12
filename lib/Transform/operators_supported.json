@@ -1704,6 +1704,10 @@
 		{
 			"name": "xten.conv2d_tensoradd_lrelu_globalaveragepool",
 			"properties": []
+		},
+		{
+			"name": "xten.linear_relu",
+			"properties": []
 		}
 	]
 }

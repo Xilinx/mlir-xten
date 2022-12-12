@@ -1709,6 +1709,47 @@ public:
   }
 };
 
+class XTenLinearReluOpConversion : public OpConversionPattern<LinearReluOp> {
+public:
+  using OpConversionPattern::OpConversionPattern;
+
+  LogicalResult
+  matchAndRewrite(LinearReluOp op, OpAdaptor /*adaptor*/,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto loc = op.getLoc();
+
+    // Cast the input arguments to default tensor type and convert bias
+    // to an empty tensor if not given.
+    Value input = ToBuiltinTensorTypeCast(rewriter, op.getInput());
+    Value weights = ToBuiltinTensorTypeCast(rewriter, op.getWeight());
+    Value bias = convertBias(op, op.getBias(), loc, rewriter);
+
+    // Create the linalg version of linear
+    auto torchResultType =
+        op->getResult(0).getType().cast<Torch::BaseTensorType>();
+    auto resultType = RankedTensorType::get(torchResultType.getSizes(),
+                                            torchResultType.getDtype());
+    Value initTensor = rewriter.create<tensor::EmptyOp>(
+        loc, resultType.getShape(), resultType.getElementType());
+
+    Value linearVal =
+        rewriter
+            .create<linalg::LinearReluOp>(
+                loc, resultType, ValueRange{input, weights, bias}, initTensor)
+            .getResult(0);
+    propagateLayerName(op, linearVal.getDefiningOp());
+
+    // We need to convert from the default tensor type to torch tensor before
+    // replacing
+    auto resultTorchTensorCast =
+        ToTorchTensorTypeCast(rewriter, linearVal, op->getResult(0).getType());
+
+    rewriter.replaceOp(op, resultTorchTensorCast);
+
+    return success();
+  }
+};
+
 class XTenToLinalgPass : public XTenToLinalgBase<XTenToLinalgPass> {
 
 public:
@@ -1738,7 +1779,7 @@ public:
         XTenConv2dTensorAddGlobalAveragePoolOpConversion,
         XTenConv2dTensorAddReLUGlobalAveragePoolOpConversion,
         XTenConv2dTensorAddLReLUGlobalAveragePoolOpConversion,
-        XTenLinearOpConversion>(context);
+        XTenLinearOpConversion, XTenLinearReluOpConversion>(context);
 
     ConversionTarget target(*context);
 
