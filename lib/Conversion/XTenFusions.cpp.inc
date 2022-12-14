@@ -6,16 +6,6 @@
 // operations. Therefore, it was not possible to capture this attribute in the
 // table gen file.
 
-void setLayerNameAttr(Operation *source, Operation *target) {
-  const std::string attrName = "layer_name";
-  if (source == nullptr || target == nullptr)
-    return;
-  if (source->hasAttr(attrName))
-    target->setAttr(attrName, source->getAttr(attrName));
-  else
-    source->emitError("The operation is expected to have layer_name attribute");
-}
-
 static ::mlir::LogicalResult static_dag_matcher_0(
     ::mlir::PatternRewriter &rewriter, ::mlir::Operation *op0,
     ::llvm::SmallVector<::mlir::Operation *, 4> &tblgen_ops,
@@ -181,7 +171,8 @@ struct GeneratedConvert0 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops[1], tblgen_Conv2dTensorAddOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops[1], tblgen_Conv2dTensorAddOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -283,7 +274,8 @@ struct GeneratedConvert1 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops[2], tblgen_Conv2dTensorAddOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops[2], tblgen_Conv2dTensorAddOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -366,7 +358,8 @@ struct GeneratedConvert2 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(), tblgen_Conv2dTensorAddOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dTensorAddOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -449,7 +442,8 @@ struct GeneratedConvert3 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(), tblgen_Conv2dTensorAddOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dTensorAddOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -531,7 +525,8 @@ struct GeneratedConvert4 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(), tblgen_Conv2dTensorAddReLUOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dTensorAddReLUOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -617,7 +612,8 @@ struct GeneratedConvert5 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(), tblgen_Conv2dTensorAddLReLUOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dTensorAddLReLUOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -700,8 +696,8 @@ struct GeneratedConvert6 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(),
-                     tblgen_Conv2dTensorAddGlobalAveragePoolOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dTensorAddGlobalAveragePoolOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -798,8 +794,8 @@ struct GeneratedConvert7 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(),
-                     tblgen_Conv2dTensorAddReLUGlobalAveragePoolOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dTensorAddReLUGlobalAveragePoolOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -900,8 +896,8 @@ struct GeneratedConvert8 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(),
-                     tblgen_Conv2dTensorAddLReLUGlobalAveragePoolOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dTensorAddLReLUGlobalAveragePoolOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();

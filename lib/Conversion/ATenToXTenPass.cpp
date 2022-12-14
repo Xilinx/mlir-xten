@@ -271,6 +271,17 @@ bool checkLinearForXten(Value input, Value weights, Value bias) {
   return Torch::getTensorRank(input) == 2 && Torch::getTensorRank(weights) == 2;
 }
 
+// Used by "ATenToXTen.cpp.inc" and "XTenFusions.cpp.inc"
+mlir::LogicalResult setLayerNameAttr(::mlir::PatternRewriter &rewriter, Operation *source, Operation *target) {
+  const std::string attrName = "layer_name";
+  if (! source->hasAttr(attrName))
+    return rewriter.notifyMatchFailure(source, [&](::mlir::Diagnostic &diag) {
+      diag << "The operation is expected to have " << attrName << " attribute";
+    });
+  target->setAttr(attrName, source->getAttr(attrName));
+  return success();
+}
+
 namespace atenToXten {
 #include "ATenToXTen.cpp.inc"
 }
@@ -318,7 +329,7 @@ struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
       emitError(UnknownLoc::get(context),
                 "error translating or fusing ATen to XTen\n");
       signalPassFailure();
-      assert(0);
+      return;
     }
 
     RewritePatternSet cleanupPatterns(&getContext());
@@ -329,7 +340,6 @@ struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
       emitError(UnknownLoc::get(context),
                 "error translating or fusing ATen to XTen\n");
       signalPassFailure();
-      assert(0);
     }
   }
 };
