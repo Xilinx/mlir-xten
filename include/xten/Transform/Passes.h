@@ -15,13 +15,10 @@
 #include "xten/Transform/ATenLoweringPass.h"
 #include "xten/Transform/ATenVisualGraph.h"
 #include "xten/Transform/LowerToLibATenPass.h"
+#include "xten/Transform/XTenMinimizeLiveTensors.h"
 
-namespace xilinx {
-namespace xten {
-
+namespace xilinx::xten {
 void registerTransformPasses();
-
-} // namespace xten
-} // namespace xilinx
+} // namespace xilinx::xten
 
 #endif // XTEN_TRANSFORM_PASSES_H
