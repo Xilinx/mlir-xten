@@ -271,6 +271,25 @@ bool checkLinearForXten(Value input, Value weights, Value bias) {
   return Torch::getTensorRank(input) == 2 && Torch::getTensorRank(weights) == 2;
 }
 
+// Used by "ATenToXTen.cpp.inc" and "XTenFusions.cpp.inc"
+mlir::LogicalResult setLayerNameAttr(::mlir::PatternRewriter &rewriter, Operation *source, Operation *target) {
+  const std::string attrName = "layer_name";
+  if (! source->hasAttr(attrName)) {
+    // Ideally we would return something like:
+    //   rewriter.notifyMatchFailure(source, [&](::mlir::Diagnostic &diag) {
+    //     diag << "The operation is expected to have " << attrName << " attribute";});
+    // but we have problems with onnx-mlir decomposition losing name attributes
+    // and have no fix for that yet.
+    // For now we set it to an invalid name. In all current end-to-end examples we do
+    // not end up with ths as a the name of the final operation as the ReduceMean op gets
+    // fused with an operation with a valid name.
+    target->setAttr(attrName, rewriter.getStringAttr("<invalid>"));
+    return success();
+  }
+  target->setAttr(attrName, source->getAttr(attrName));
+  return success();
+}
+
 namespace atenToXten {
 #include "ATenToXTen.cpp.inc"
 }
@@ -318,7 +337,7 @@ struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
       emitError(UnknownLoc::get(context),
                 "error translating or fusing ATen to XTen\n");
       signalPassFailure();
-      assert(0);
+      return;
     }
 
     RewritePatternSet cleanupPatterns(&getContext());
@@ -329,7 +348,6 @@ struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
       emitError(UnknownLoc::get(context),
                 "error translating or fusing ATen to XTen\n");
       signalPassFailure();
-      assert(0);
     }
   }
 };

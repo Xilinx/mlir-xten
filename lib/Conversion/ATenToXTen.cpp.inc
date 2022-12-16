@@ -6,15 +6,6 @@
 // operations. Therefore, it was not possible to capture this attribute in the
 // table gen file.
 
-void setLayerNameAttr(Operation *source, Operation *target) {
-  if (source == nullptr || target == nullptr)
-    return;
-  if (source->hasAttr("layer_name"))
-    target->setAttr("layer_name", source->getAttr("layer_name"));
-  else
-    source->emitError("The operation is expected to have layer_name attribute");
-}
-
 static ::mlir::LogicalResult static_dag_matcher_0(
     ::mlir::PatternRewriter &rewriter, ::mlir::Operation *op0,
     ::llvm::SmallVector<::mlir::Operation *, 4> &tblgen_ops,
@@ -189,7 +180,8 @@ struct GeneratedConvert0 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(op0, tblgen_Conv2dOp_0);
+    if (setLayerNameAttr(rewriter, op0, tblgen_Conv2dOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -268,7 +260,8 @@ struct GeneratedConvert1 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(), tblgen_Conv2dReLUOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dReLUOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -351,7 +344,8 @@ struct GeneratedConvert2 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(), tblgen_Conv2dLReLUOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dLReLUOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -440,7 +434,8 @@ struct GeneratedConvert3 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(), tblgen_Conv2dLReLUPadOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dLReLUPadOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -526,7 +521,8 @@ struct GeneratedConvert4 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(), tblgen_Conv2dReLUPadOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dReLUPadOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -624,7 +620,8 @@ struct GeneratedConvert5 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(), tblgen_Conv2dLReLUMaxPoolOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dLReLUMaxPoolOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -739,7 +736,8 @@ struct GeneratedConvert6 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(), tblgen_Conv2dLReLUPadMaxPoolOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dLReLUPadMaxPoolOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -835,7 +833,8 @@ struct GeneratedConvert7 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(), tblgen_Conv2dReLUMaxPoolOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dReLUMaxPoolOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -947,7 +946,8 @@ struct GeneratedConvert8 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(), tblgen_Conv2dReLUPadMaxPoolOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dReLUPadMaxPoolOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -1069,7 +1069,8 @@ struct GeneratedConvert9 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(tblgen_ops.back(), tblgen_Conv2dBatchNormReLUOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_Conv2dBatchNormReLUOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -1193,7 +1194,8 @@ struct GeneratedConvert10 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(op0, tblgen_AddConstantOp_0);
+    if (setLayerNameAttr(rewriter, op0, tblgen_AddConstantOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -1247,7 +1249,8 @@ struct GeneratedConvert11 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(op0, tblgen_MMOp_0);
+    if (setLayerNameAttr(rewriter, op0, tblgen_MMOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -1303,7 +1306,8 @@ struct GeneratedConvert12 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(op0, tblgen_MulOp_0);
+    if (setLayerNameAttr(rewriter, op0, tblgen_MulOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -1361,7 +1365,8 @@ struct GeneratedConvert13 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(op0, tblgen_AddOp_0);
+    if (setLayerNameAttr(rewriter, op0, tblgen_AddOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -1420,7 +1425,8 @@ struct GeneratedConvert14 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(op0, tblgen_SoftmaxOp_0);
+    if (setLayerNameAttr(rewriter, op0, tblgen_SoftmaxOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -1486,7 +1492,8 @@ struct GeneratedConvert15 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(op0, tblgen_GlobalAveragePool2D_0);
+    if (setLayerNameAttr(rewriter, op0, tblgen_GlobalAveragePool2D_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -1660,7 +1667,8 @@ struct GeneratedConvert16 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(op0, tblgen_GlobalAveragePool2D_0);
+    if (setLayerNameAttr(rewriter, op0, tblgen_GlobalAveragePool2D_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -1722,7 +1730,8 @@ struct GeneratedConvert17 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(op0, tblgen_GlobalAveragePool2D_0);
+    if (setLayerNameAttr(rewriter, op0, tblgen_GlobalAveragePool2D_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -1790,7 +1799,8 @@ struct GeneratedConvert18 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);
     }
 
-    setLayerNameAttr(op0, tblgen_LinearOp_0);
+    if (setLayerNameAttr(rewriter, op0, tblgen_LinearOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);
     return ::mlir::success();
@@ -1847,7 +1857,8 @@ struct GeneratedConvert19 : public ::mlir::RewritePattern {
       tblgen_repl_values.push_back(v);                                              
     }                                                                               
                                                                                     
-    setLayerNameAttr(tblgen_ops.back(), tblgen_LinearReluOp_0);
+    if (setLayerNameAttr(rewriter, tblgen_ops.back(), tblgen_LinearReluOp_0).failed())
+      return failure();
 
     rewriter.replaceOp(op0, tblgen_repl_values);                                    
     return ::mlir::success();                                                       
