@@ -5,11 +5,12 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // (c) Copyright 2021 Xilinx Inc.
+// (c) Copyright 2022 Advanced Micro Devices, Inc.
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef ATEN_CONVERSION_PASSES
-#define ATEN_CONVERSION_PASSES
+#ifndef ATEN_TRANSFORM_PASSES
+#define ATEN_TRANSFORM_PASSES
 
 include "mlir/Pass/PassBase.td"
 
@@ -33,5 +34,9 @@ def LowerToLibATen : Pass<"lower-to-libaten", "ModuleOp"> {
   let constructor = "xilinx::xten::createLowerToLibATenPass()";
 }
 
+def XTenMinimizeLiveTensors : Pass<"xten-minimize-live", "func::FuncOp"> {
+  let summary = "reorder xten operations to minimize the total size of the live tensors";
+  let constructor = "xilinx::xten::createXTenMinimizeLiveTensorsPass()";
+}
 
-#endif // ATEN_CONVERSION_PASSES
+#endif // ATEN_TRANSFORM_PASSES

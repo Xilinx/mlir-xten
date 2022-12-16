@@ -12,6 +12,7 @@ add_mlir_library(XTenTransformPasses
   ATenVisualGraph.cpp
   LowerToLibATenPass.cpp
   Passes.cpp
+  XTenMinimizeLiveTensors.cpp
 
   DEPENDS
   MLIRXTenOpsIncGen
