@@ -198,6 +198,24 @@ public:
     }
   }
 
+  /// Checks for illegal dead code by traversing operations and
+  /// verifying if they are dead and any of their operands match any OpInfo.
+  /// Dead code can be legal if it is not connected to operation collection
+  /// through 'OpInfo' data structure.
+  bool hasIllegalDeadCode() {
+    return llvm::any_of(currFn.getBody().getOps(), [&](Operation &op) {
+      auto hasUses = !op.use_empty();
+      auto hasNoOperands = op.getNumOperands() == 0;
+      if (hasUses || hasNoOperands || isa<func::ReturnOp>(op))
+        return false;
+
+      return llvm::any_of(op.getOperands(), [&](Value value) {
+        auto *defOp = value.getDefiningOp();
+        return defOp != nullptr && opToInfo.find(defOp) != opToInfo.end();
+      });
+    });
+  }
+
   /// Recursively determine branch running sizes.
   ///
   /// \p opInfo points to the info for the op being analyzed.
@@ -309,6 +327,15 @@ public:
       return;
     }
     OpInfo &fnFwd = prevFwdIt->second;
+
+    // Checks for any illegal dead code in currFn
+    if (hasIllegalDeadCode()) {
+      fwdFn->emitError("function cannot be rescheduled due to illegal dead "
+                       "code, aborting.\n");
+      signalPassFailure();
+      return;
+    }
+
     BranchRunning nextRunning{.maxRunning = fnFwd.sizes.running,
                               .lastResults = fnFwd.sizes.results,
                               .lastOp = fnFwd.op};
