@@ -204,9 +204,7 @@ public:
   /// through 'OpInfo' data structure.
   bool hasIllegalDeadCode() {
     return llvm::any_of(currFn.getBody().getOps(), [&](Operation &op) {
-      auto hasUses = !op.use_empty();
-      auto hasNoOperands = op.getNumOperands() == 0;
-      if (hasUses || hasNoOperands || isa<func::ReturnOp>(op))
+      if (opToInfo.find(&op) != opToInfo.end())
         return false;
 
       return llvm::any_of(op.getOperands(), [&](Value value) {
