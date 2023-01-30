@@ -208,6 +208,7 @@ public:
         return false;  // okay as we schedule this op
 
       return llvm::any_of(op.getOperands(), [&](Value value) {
+        // okay so long as it doesn't use the output of a scheduled op
         auto *defOp = value.getDefiningOp();
         return defOp != nullptr && opToInfo.find(defOp) != opToInfo.end();
       });
