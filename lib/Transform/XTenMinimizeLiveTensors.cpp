@@ -205,7 +205,7 @@ public:
   bool hasIllegalDeadCode() {
     return llvm::any_of(currFn.getBody().getOps(), [&](Operation &op) {
       if (opToInfo.find(&op) != opToInfo.end())
-        return false;
+        return false;  // okay as we schedule this op
 
       return llvm::any_of(op.getOperands(), [&](Value value) {
         auto *defOp = value.getDefiningOp();
