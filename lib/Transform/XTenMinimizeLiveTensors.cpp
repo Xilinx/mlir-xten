@@ -19,6 +19,7 @@
 #include "xten/Dialect/XTen/XTenDialect.h"
 #include "xten/Dialect/XTen/XTenOps.h"
 #include "xten/Util/Util.h"
+#include "llvm/Support/Debug.h"
 #include <memory>
 #include <set>
 
@@ -41,7 +42,7 @@ struct OpSizes {
 
 /// Information about memory requirements if the ops on a dependence
 /// branch are executed.
-/// Note that ops with with multiple predecessors decide the order
+/// Note that ops with multiple predecessors decide the order
 /// of predecessor execution before they are added to the running
 /// information, so once available it should be correct.
 struct BranchRunning {
@@ -77,20 +78,12 @@ struct OpInfo {
 
 /// HARDCODED returns the operand that will share memory with the result.
 bool isConvAddChained(Operation *op) {
-  if (isa<xilinx::xten::Conv2dTensorAddOp>(op))
-    return true;
-  if (isa<xilinx::xten::Conv2dTensorAddReLUOp>(op))
-    return true;
-  if (isa<xilinx::xten::Conv2dTensorAddLReLUOp>(op))
-    return true;
-  if (isa<xilinx::xten::Conv2dTensorAddGlobalAveragePoolOp>(op))
-    return true;
-  if (isa<xilinx::xten::Conv2dTensorAddReLUGlobalAveragePoolOp>(op))
-    return true;
-  if (isa<xilinx::xten::Conv2dTensorAddLReLUGlobalAveragePoolOp>(op))
-    return true;
-
-  return false;
+  return isa<xilinx::xten::Conv2dTensorAddOp,
+             xilinx::xten::Conv2dTensorAddReLUOp,
+             xilinx::xten::Conv2dTensorAddLReLUOp,
+             xilinx::xten::Conv2dTensorAddGlobalAveragePoolOp,
+             xilinx::xten::Conv2dTensorAddReLUGlobalAveragePoolOp,
+             xilinx::xten::Conv2dTensorAddLReLUGlobalAveragePoolOp>(op);
 }
 
 /// HARDCODED returns the operand that will share memory with the result.
@@ -111,11 +104,7 @@ SmallVector<Value> getFmOperands(Operation *op) {
   assert(!isa<xilinx::xten::ConcatOp>(op));
 
   // Per operand defined IFMs.
-  if (isa<xilinx::xten::AddOp>(op))
-    return op->getOperands();
-  if (isa<xilinx::xten::MulOp>(op))
-    return op->getOperands();
-  if (isa<xilinx::xten::MMOp>(op))
+  if (isa<xilinx::xten::AddOp, xilinx::xten::MulOp, xilinx::xten::MMOp>(op))
     return op->getOperands();
   if (isConvAddChained(op))
     return {op->getOperands().front(), op->getOperands().back()};
@@ -152,11 +141,11 @@ std::string toStr(SmallVector<Operation *> const &vec) {
 void setOpSizes(OpInfo &opInfo) {
   size_t outgoing = 0;
   for_each(opInfo.results,
-            [&outgoing](Value val) { outgoing += getSize(val); });
+           [&outgoing](Value val) { outgoing += getSize(val); });
   opInfo.sizes.results = outgoing;
   size_t incoming = 0;
   for_each(opInfo.operands,
-            [&incoming](Value val) { incoming += getSize(val); });
+           [&incoming](Value val) { incoming += getSize(val); });
   opInfo.sizes.operands = incoming;
   opInfo.sizes.running = incoming;
   if (!opInfo.sharesResultMemory)
@@ -209,6 +198,23 @@ public:
     }
   }
 
+  /// Checks for illegal dead code by traversing operations and
+  /// verifying if they are dead and any of their operands match any OpInfo.
+  /// Dead code can be legal if it is not connected to operation collection
+  /// through 'OpInfo' data structure.
+  bool hasIllegalDeadCode() {
+    return llvm::any_of(currFn.getBody().getOps(), [&](Operation &op) {
+      if (opToInfo.find(&op) != opToInfo.end())
+        return false;  // okay as we schedule this op
+
+      return llvm::any_of(op.getOperands(), [&](Value value) {
+        // okay so long as it doesn't use the output of a scheduled op
+        auto *defOp = value.getDefiningOp();
+        return defOp != nullptr && opToInfo.find(defOp) != opToInfo.end();
+      });
+    });
+  }
+
   /// Recursively determine branch running sizes.
   ///
   /// \p opInfo points to the info for the op being analyzed.
@@ -231,28 +237,28 @@ public:
       opInfo = &opToInfo.at(opInfo->consumers.front());
     }
 
-      // At a joining point - collect this branch and proceed iff all incoming
-      // branches have been collected.
+    // At a joining point - collect this branch and proceed iff all incoming
+    // branches have been collected.
     SmallVector<BranchRunning> branches;
-      for (Value val : opInfo->operands) {
-        Operation *op = val.getDefiningOp();
-        if (op == nullptr)
-          op = currFn; // BlockArgument stand-in.
+    for (Value val : opInfo->operands) {
+      Operation *op = val.getDefiningOp();
+      if (op == nullptr)
+        op = currFn; // BlockArgument stand-in.
 
-        auto opIt = completed.find(op);
-        if (opIt == completed.end())
-          return; // Another producer needs to complete first.
+      auto opIt = completed.find(op);
+      if (opIt == completed.end())
+        return; // Another producer needs to complete first.
       branches.push_back(opIt->second);
-      }
+    }
 
     std::sort(branches.begin(), branches.end(),
               [](BranchRunning &aBranch, BranchRunning &bBranch) -> bool {
                 return (aBranch.maxRunning - aBranch.lastResults) >
                        (bBranch.maxRunning - bBranch.lastResults);
-                });
-      opInfo->orderedProducers.clear();
+              });
+    opInfo->orderedProducers.clear();
     for (BranchRunning const &branch : branches)
-        opInfo->orderedProducers.push_back(branch.lastOp);
+      opInfo->orderedProducers.push_back(branch.lastOp);
 
     // Complete the brInfo for this operation.
     size_t maxRunning = opInfo->sizes.running;
@@ -320,13 +326,22 @@ public:
       return;
     }
     OpInfo &fnFwd = prevFwdIt->second;
+
+    // Checks for any illegal dead code in currFn
+    if (hasIllegalDeadCode()) {
+      fwdFn->emitError("function cannot be rescheduled due to illegal dead "
+                       "code, aborting.\n");
+      signalPassFailure();
+      return;
+    }
+
     BranchRunning nextRunning{.maxRunning = fnFwd.sizes.running,
                               .lastResults = fnFwd.sizes.results,
                               .lastOp = fnFwd.op};
     std::map<Operation *, BranchRunning> completed;
     determineBranchRunning(&fnFwd, nextRunning, completed);
 
-    // print();
+    LLVM_DEBUG(print());
 
     moveToOrder(retFwd);
   }
