@@ -22,6 +22,7 @@
 #include "llvm/Support/Debug.h"
 #include <memory>
 #include <set>
+#include <xten/Dialect/XTenNN/IR/XTenNNOps.h>
 
 #define DEBUG_TYPE "xten-minimize-live"
 
@@ -77,7 +78,8 @@ struct OpInfo {
 };
 
 /// HARDCODED returns the operand that will share memory with the result.
-bool isConvAddChained(Operation *op) {
+
+bool isXtenConvAddChained(Operation *op) {
   return isa<xilinx::xten::Conv2dTensorAddOp,
              xilinx::xten::Conv2dTensorAddReLUOp,
              xilinx::xten::Conv2dTensorAddLReLUOp,
@@ -86,11 +88,44 @@ bool isConvAddChained(Operation *op) {
              xilinx::xten::Conv2dTensorAddLReLUGlobalAveragePoolOp>(op);
 }
 
+bool isInCoreChainSubgraph(Operation *op) {
+  return op->hasAttr("Reason") &&
+         op->getAttrOfType<StringAttr>("Reason") == "InCoreChain";
+}
+
+SmallVector<Value> getSubgraphIFMs(Operation *op) {
+
+  // Handle IfmOperands attribute
+  if (auto ifmIndices = op->getAttrOfType<ArrayAttr>("IfmOperands")) {
+
+    // Get the operands from the values stored in IfmOperands Attr
+    SmallVector<Value> ifmOperands;
+    llvm::transform(ifmIndices.getAsValueRange<mlir::IntegerAttr>(),
+                    std::back_inserter(ifmOperands), [&op](const APInt &idx) {
+                      return op->getOperand(idx.getSExtValue());
+                    });
+    return ifmOperands;
+  }
+  return {};
+}
+
+Optional<Value> getSubgraphOFM(Operation *op) {
+
+  // Handle OfmShare attribute
+  if (auto ofmShare = op->getAttrOfType<mlir::IntegerAttr>("OfmShare")) {
+    return {op->getOperand(ofmShare.getInt())};
+  }
+  return {};
+}
+
 /// HARDCODED returns the operand that will share memory with the result.
 Optional<Value> sharesMemoryWithResult(Operation *op) {
-  if (isConvAddChained(op))
-    return {op->getOperands().back()};
 
+  if (isInCoreChainSubgraph(op))
+    return getSubgraphOFM(op);
+
+  if (isXtenConvAddChained(op))
+    return {op->getOperands().back()};
   return {};
 }
 
@@ -106,8 +141,12 @@ SmallVector<Value> getFmOperands(Operation *op) {
   // Per operand defined IFMs.
   if (isa<xilinx::xten::AddOp, xilinx::xten::MulOp, xilinx::xten::MMOp>(op))
     return op->getOperands();
-  if (isConvAddChained(op))
+
+  if (isXtenConvAddChained(op))
     return {op->getOperands().front(), op->getOperands().back()};
+
+  if (isInCoreChainSubgraph(op))
+    return getSubgraphIFMs(op);
 
   // TODO: there is no guarantee that FM is only the 1st operand. It
   // would be better to check all ops, preferably via an interface.
@@ -118,8 +157,12 @@ SmallVector<Value> getFmOperands(Operation *op) {
 /// Return the size of the tensor type of \p val.
 /// It is an error to call this with a non-tensor typed value.
 size_t getSize(Value val) {
-  assert(val.getType().isa<torch::Torch::BaseTensorType>());
-  return xilinx::xten::getTensorVolume(val.getType());
+  auto type = val.getType();
+  if (isa<torch::Torch::BaseTensorType>(type)) {
+    return xilinx::xten::getTensorVolume(val.getType());
+  }
+  assert(isa<ShapedType>(type));
+  return cast<ShapedType>(type).getSizeInBits();
 }
 
 /// Debugging support - returns a simple name for an op.
@@ -205,7 +248,7 @@ public:
   bool hasIllegalDeadCode() {
     return llvm::any_of(currFn.getBody().getOps(), [&](Operation &op) {
       if (opToInfo.find(&op) != opToInfo.end())
-        return false;  // okay as we schedule this op
+        return false; // okay as we schedule this op
 
       return llvm::any_of(op.getOperands(), [&](Value value) {
         // okay so long as it doesn't use the output of a scheduled op
