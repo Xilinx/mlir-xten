@@ -89,32 +89,33 @@ bool isXtenConvAddChained(Operation *op) {
 }
 
 bool isInCoreChainSubgraph(Operation *op) {
-  return (op != nullptr) && op->hasAttr("Reason") &&
-         op->getAttr("Reason").cast<StringAttr>() == "InCoreChain";
+  return op->hasAttr("Reason") &&
+         op->getAttrOfType<StringAttr>("Reason") == "InCoreChain";
 }
 
 SmallVector<Value> getSubgraphIFMs(Operation *op) {
 
-  if (!op->hasAttr("IfmOperands"))
-    return {};
+  // Handle IfmOperands attribute
+  if (auto ifmIndices = op->getAttrOfType<ArrayAttr>("IfmOperands")) {
 
-  // Get the operands from the values stored in IfmOperands Attr
-  SmallVector<Value> ifmOperands;
-  auto ifmIndices = op->getAttr("IfmOperands").cast<ArrayAttr>();
-  llvm::transform(ifmIndices.getAsValueRange<mlir::IntegerAttr>(),
-                  std::back_inserter(ifmOperands), [&op](const APInt &idx) {
-                    return op->getOperand(idx.getSExtValue());
-                  });
-  return ifmOperands;
+    // Get the operands from the values stored in IfmOperands Attr
+    SmallVector<Value> ifmOperands;
+    llvm::transform(ifmIndices.getAsValueRange<mlir::IntegerAttr>(),
+                    std::back_inserter(ifmOperands), [&op](const APInt &idx) {
+                      return op->getOperand(idx.getSExtValue());
+                    });
+    return ifmOperands;
+  }
+  return {};
 }
 
 Optional<Value> getSubgraphOFM(Operation *op) {
 
-  if (!op->hasAttr("OfmShare"))
-    return {};
-
-  auto ofmShare = op->getAttr("OfmShare");
-  return {op->getOperand(ofmShare.cast<mlir::IntegerAttr>().getInt())};
+  // Handle OfmShare attribute
+  if (auto ofmShare = op->getAttrOfType<mlir::IntegerAttr>("OfmShare")) {
+    return {op->getOperand(ofmShare.getInt())};
+  }
+  return {};
 }
 
 /// HARDCODED returns the operand that will share memory with the result.
