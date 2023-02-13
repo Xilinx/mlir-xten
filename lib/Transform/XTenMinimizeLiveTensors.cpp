@@ -93,6 +93,11 @@ bool isInCoreChainSubgraph(Operation *op) {
          op->getAttrOfType<StringAttr>("Reason") == "InCoreChain";
 }
 
+bool isConcatSubgraph(Operation *op) {
+  return op->hasAttr("SourceOp") &&
+         op->getAttrOfType<StringAttr>("SourceOp") == "onnx.Concat";
+}
+
 SmallVector<Value> getSubgraphIFMs(Operation *op) {
 
   // Handle IfmOperands attribute
@@ -147,6 +152,9 @@ SmallVector<Value> getFmOperands(Operation *op) {
 
   if (isInCoreChainSubgraph(op))
     return getSubgraphIFMs(op);
+
+  if (isConcatSubgraph(op))
+    return op->getOperands();
 
   // TODO: there is no guarantee that FM is only the 1st operand. It
   // would be better to check all ops, preferably via an interface.
