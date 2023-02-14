@@ -15,6 +15,7 @@
 #include "PassDetail.h"
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchTypes.h"
 #include "xten/Dialect/XTen/XTenDialect.h"
 #include "xten/Dialect/XTen/XTenOps.h"
@@ -156,6 +157,10 @@ SmallVector<Value> getFmOperands(Operation *op) {
   if (isConcatSubgraph(op))
     return op->getOperands();
 
+  if (isa<torch::Torch::PrimListConstructOp>(op)) {
+    return op->getOperands();
+  }
+
   // TODO: there is no guarantee that FM is only the 1st operand. It
   // would be better to check all ops, preferably via an interface.
   // Okay for prototype, knowing this may backfire in debug effort.
@@ -169,8 +174,14 @@ size_t getSize(Value val) {
   if (isa<torch::Torch::BaseTensorType>(type)) {
     return xilinx::xten::getTensorVolume(val.getType());
   }
-  assert(isa<ShapedType>(type));
-  return cast<ShapedType>(type).getSizeInBits();
+  if (isa<ShapedType>(type)) {
+    return cast<ShapedType>(type).getSizeInBits();
+  }
+  // It is safe to return 0 for !torch.list<vtensor> types in torch.aten.cat
+  // since the size will be attached to the torch.prim.ListConstruct,
+  // used as the only IFM operand for this concat operation
+  assert(isa<torch::Torch::ListType>(type));
+  return 0;
 }
 
 /// Debugging support - returns a simple name for an op.
