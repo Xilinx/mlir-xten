@@ -157,6 +157,12 @@ SmallVector<Value> getFmOperands(Operation *op) {
   if (isConcatSubgraph(op))
     return op->getOperands();
 
+  // torch.aten.cat requires supporting torch.prim.ListConstruct,
+  // which constructs a tensor concatenating all of its operands.
+  // The operation produces a torch.list<vtensor> of tensors and
+  // is used as the only operand of a torch.aten.cat.
+  // torch.aten.cat needs no additional treatment since only
+  // the first operand (the torch.prim.ListConstruct) is used.
   if (isa<torch::Torch::PrimListConstructOp>(op)) {
     return op->getOperands();
   }
@@ -177,9 +183,12 @@ size_t getSize(Value val) {
   if (isa<ShapedType>(type)) {
     return cast<ShapedType>(type).getSizeInBits();
   }
-  // It is safe to return 0 for !torch.list<vtensor> types in torch.aten.cat
-  // since the size will be attached to the torch.prim.ListConstruct,
-  // used as the only IFM operand for this concat operation
+  // Otherwise, this is a torch.list<vtensor> that was used
+  // to construct a list of tensors to be used in a torch.aten.cat
+  // operation.
+  // It is safe to return 0 for it since the size will be attached
+  // to the operands of torch.prim.ListConstruct and to the result
+  // of the torch.aten.cat operation.
   assert(isa<torch::Torch::ListType>(type));
   return 0;
 }
