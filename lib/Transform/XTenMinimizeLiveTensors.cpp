@@ -15,6 +15,7 @@
 #include "PassDetail.h"
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
 #include "torch-mlir/Dialect/Torch/IR/TorchTypes.h"
 #include "xten/Dialect/XTen/XTenDialect.h"
 #include "xten/Dialect/XTen/XTenOps.h"
@@ -93,6 +94,11 @@ bool isInCoreChainSubgraph(Operation *op) {
          op->getAttrOfType<StringAttr>("Reason") == "InCoreChain";
 }
 
+bool isConcatSubgraph(Operation *op) {
+  return op->hasAttr("SourceOp") &&
+         op->getAttrOfType<StringAttr>("SourceOp") == "onnx.Concat";
+}
+
 SmallVector<Value> getSubgraphIFMs(Operation *op) {
 
   // Handle IfmOperands attribute
@@ -148,6 +154,19 @@ SmallVector<Value> getFmOperands(Operation *op) {
   if (isInCoreChainSubgraph(op))
     return getSubgraphIFMs(op);
 
+  if (isConcatSubgraph(op))
+    return op->getOperands();
+
+  // torch.aten.cat requires supporting torch.prim.ListConstruct,
+  // which constructs a tensor concatenating all of its operands.
+  // The operation produces a torch.list<vtensor> of tensors and
+  // is used as the only operand of a torch.aten.cat.
+  // torch.aten.cat needs no additional treatment since only
+  // the first operand (the torch.prim.ListConstruct) is used.
+  if (isa<torch::Torch::PrimListConstructOp>(op)) {
+    return op->getOperands();
+  }
+
   // TODO: there is no guarantee that FM is only the 1st operand. It
   // would be better to check all ops, preferably via an interface.
   // Okay for prototype, knowing this may backfire in debug effort.
@@ -161,8 +180,17 @@ size_t getSize(Value val) {
   if (isa<torch::Torch::BaseTensorType>(type)) {
     return xilinx::xten::getTensorVolume(val.getType());
   }
-  assert(isa<ShapedType>(type));
-  return cast<ShapedType>(type).getSizeInBits();
+  if (isa<ShapedType>(type)) {
+    return cast<ShapedType>(type).getSizeInBits();
+  }
+  // Otherwise, this is a torch.list<vtensor> that was used
+  // to construct a list of tensors to be used in a torch.aten.cat
+  // operation.
+  // It is safe to return 0 for it since the size will be attached
+  // to the operands of torch.prim.ListConstruct and to the result
+  // of the torch.aten.cat operation.
+  assert(isa<torch::Torch::ListType>(type));
+  return 0;
 }
 
 /// Debugging support - returns a simple name for an op.
