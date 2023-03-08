@@ -14,16 +14,20 @@
 
 #include "PassDetail.h"
 
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
-#include "torch-mlir/Dialect/Torch/IR/TorchTypes.h"
 #include "xten/Dialect/XTen/XTenDialect.h"
 #include "xten/Dialect/XTen/XTenOps.h"
+#include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
 #include "xten/Util/Util.h"
-#include "llvm/Support/Debug.h"
+
+#include <llvm/ADT/DenseSet.h>
+#include <llvm/Support/Debug.h>
+#include <mlir/Dialect/Func/IR/FuncOps.h>
+#include <mlir/Support/IndentedOstream.h>
+#include <torch-mlir/Dialect/Torch/IR/TorchOps.h>
+#include <torch-mlir/Dialect/Torch/IR/TorchTypes.h>
+
 #include <memory>
 #include <set>
-#include <xten/Dialect/XTenNN/IR/XTenNNOps.h>
 
 #define DEBUG_TYPE "xten-minimize-live"
 
@@ -53,7 +57,7 @@ struct BranchRunning {
   /// The size of the results of the last op in this branch.
   size_t lastResults = 0;
   /// The last op in this branch.
-  Operation *lastOp;
+  Operation *lastOp{};
 };
 
 /// Various analysis results about an operation.
@@ -181,11 +185,11 @@ size_t getSize(Value val) {
     return xilinx::xten::getTensorVolume(val.getType());
   }
   if (isa<ShapedType>(type)) {
-    return cast<ShapedType>(type).getSizeInBits();
+    // Get size in bytes
+    return cast<ShapedType>(type).getSizeInBits() / 8;
   }
   // Otherwise, this is a torch.list<vtensor> that was used
-  // to construct a list of tensors to be used in a torch.aten.cat
-  // operation.
+  // to construct a list of tensors in a torch.aten.cat operation.
   // It is safe to return 0 for it since the size will be attached
   // to the operands of torch.prim.ListConstruct and to the result
   // of the torch.aten.cat operation.
@@ -197,6 +201,8 @@ size_t getSize(Value val) {
 StringRef getName(Operation *op) {
   if (op->hasAttr("layer_name"))
     return op->getAttrOfType<StringAttr>("layer_name").getValue();
+  if (op->hasAttr("LayerName"))
+    return op->getAttrOfType<StringAttr>("LayerName").getValue();
   return op->getName().getStringRef();
 }
 
@@ -414,7 +420,17 @@ public:
 
     LLVM_DEBUG(print());
 
+    if (this->printBeforeSched)
+      dumpAsDOTInOrder();
+
+    if (this->printSchedCost)
+      dumpAsDOT();
+
+    // Reorder operations
     moveToOrder(retFwd);
+
+    if (this->printAfterSched)
+      dumpAsDOTInOrder();
   }
 
 private:
@@ -432,6 +448,152 @@ private:
                    << " consumers: " << toStr(info.consumers) << "\n";
     }
     llvm::errs() << "----\n";
+  }
+
+  /// Get a list of OpInfo's according to their order in the function
+  std::vector<OpInfo> getInOrderOperationInfo() {
+
+    std::vector<OpInfo> inOrderOpInfo;
+    llvm::for_each(this->currFn.getRegion().getOps(), [&](Operation &op) {
+      auto it = opToInfo.find(&op);
+      if (it != opToInfo.end())
+        inOrderOpInfo.push_back(it->second);
+    });
+
+    // Add function opInfo at last
+    auto it = opToInfo.find(this->currFn);
+    if (it != opToInfo.end())
+      inOrderOpInfo.push_back(it->second);
+    return inOrderOpInfo;
+  }
+
+  void dumpAsDOT() {
+    dumpAsDOT(llvm::errs());
+  }
+
+  void dumpAsDOTInOrder() {
+    dumpAsDOT(llvm::errs(), true);
+  }
+
+  void dumpAsDOT(raw_ostream &stream, bool printOrder = false) {
+
+    mlir::raw_indented_ostream os(stream);
+
+    os << "digraph G {\n";
+    os.indent();
+    os << "rankdir = TB     // top to bottom\n";
+    os << "splines = spline // draw edges and route around nodes\n";
+    os << "nodesep = 0.2    // horizontal compression\n";
+    os << "ranksep = 0.5    // vertical compression\n";
+    os << "node [shape=box] // default node style\n";
+    os << "compound = true  // allow edges between subgraphs\n";
+
+    auto startHTMLLabel = [&os]() {
+      os << "<<table border=\"0\">\n";
+      os.indent();
+    };
+    auto emitTableHeader = [&os](const std::string &str) {
+      os << "<tr><td colspan=\"2\"><b>" << str << "</b></td></tr>\n";
+    };
+    auto emitTableRow = [&os](std::pair<std::string, std::string> &kv) {
+      os << "<tr><td align=\"left\">" << std::get<0>(kv)
+         << ":</td><td align=\"right\">" << std::get<1>(kv) << "</td></tr>\n";
+    };
+    auto endHTMLLabel = [&os]() {
+      os.unindent();
+      os << "</table>>";
+    };
+
+    os << "\n// Operations\n";
+    os << "subgraph cost {\n";
+    os.indent();
+
+    // Get all OpInfo's in the order of which they appear in the function
+    auto inOrderOperationInfos = getInOrderOperationInfo();
+
+    // Record the name of which node for later reference
+    mlir::DenseMap<Operation *, std::string> nodes;
+
+    for (const auto &[idx, info] : llvm::enumerate(inOrderOperationInfos)) {
+      Operation *op = info.op;
+
+      std::string idxStr = std::to_string(idx);
+      auto node = "op" + idxStr;
+      nodes[op] = node;
+
+      os << node << " [label = ";
+      startHTMLLabel();
+      emitTableHeader(("#" + idxStr + " " + ::getName(op)).str());
+      std::pair<std::string, std::string> property(
+          "Running Mem", std::to_string(info.sizes.running));
+      emitTableRow(property);
+      endHTMLLabel();
+      os << "]\n";
+    }
+
+    if (!printOrder) {
+      os << "\n// Dependences\n";
+      // Ignore the last opInfo since it represents
+      //  Arguments of the function
+      for (auto &info :
+           llvm::make_range(inOrderOperationInfos.begin(),
+                            std::prev(inOrderOperationInfos.end()))) {
+        Operation *op = info.op;
+        for (const auto &consumer : info.consumers) {
+          os << nodes[op] << " -> " << nodes[consumer] << " [";
+          os << "label = ";
+          startHTMLLabel();
+          std::pair<std::string, std::string> property(
+              "Mem", std::to_string(info.sizes.results));
+          emitTableRow(property);
+          endHTMLLabel();
+          os << "]\n";
+        }
+      }
+
+      // Draw edges that connect Function Arguments to Nodes
+      auto &funcOpInfo = inOrderOperationInfos.back();
+      llvm::SmallDenseSet<Operation *> visitedConsumers;
+      for (const auto &consumer : funcOpInfo.consumers) {
+
+        // One node can consume more multiple arguments
+        // So only visit consumer once
+        if (visitedConsumers.contains(consumer))
+          continue;
+        visitedConsumers.insert(consumer);
+
+        // Get each argument value that contribute to
+        // the running mem of the consumer
+        llvm::for_each(consumer->getOperands(), [&](const Value &val) {
+          if (val.getDefiningOp() == nullptr) {
+            os << nodes[funcOpInfo.op] << " -> " << nodes[consumer] << " [";
+            os << "label = ";
+            startHTMLLabel();
+            std::pair<std::string, std::string> property(
+                "Mem", std::to_string(getSize(val)));
+            emitTableRow(property);
+            endHTMLLabel();
+            os << "]\n";
+          }
+        });
+      }
+    }
+
+    if (printOrder) {
+      os << "\n// Order\n";
+      for (auto [idx, info] : llvm::enumerate(
+               llvm::make_range(inOrderOperationInfos.begin(),
+                                std::prev(inOrderOperationInfos.end())))) {
+        Operation *op = info.op;
+        Operation *nextOp = inOrderOperationInfos[idx + 1].op;
+        os << nodes[op] << " -> " << nodes[nextOp] << "\n";
+      }
+    }
+    os.unindent();
+    os << "}\n";
+
+    os.unindent();
+    os << "}\n";
   }
 };
 
