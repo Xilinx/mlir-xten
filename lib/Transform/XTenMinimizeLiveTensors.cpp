@@ -14,18 +14,20 @@
 
 #include "PassDetail.h"
 
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Support/IndentedOstream.h"
-#include "torch-mlir/Dialect/Torch/IR/TorchOps.h"
-#include "torch-mlir/Dialect/Torch/IR/TorchTypes.h"
 #include "xten/Dialect/XTen/XTenDialect.h"
 #include "xten/Dialect/XTen/XTenOps.h"
+#include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
 #include "xten/Util/Util.h"
-#include "llvm/ADT/DenseSet.h"
-#include "llvm/Support/Debug.h"
+
+#include <llvm/ADT/DenseSet.h>
+#include <llvm/Support/Debug.h>
+#include <mlir/Dialect/Func/IR/FuncOps.h>
+#include <mlir/Support/IndentedOstream.h>
+#include <torch-mlir/Dialect/Torch/IR/TorchOps.h>
+#include <torch-mlir/Dialect/Torch/IR/TorchTypes.h>
+
 #include <memory>
 #include <set>
-#include <xten/Dialect/XTenNN/IR/XTenNNOps.h>
 
 #define DEBUG_TYPE "xten-minimize-live"
 
@@ -55,7 +57,7 @@ struct BranchRunning {
   /// The size of the results of the last op in this branch.
   size_t lastResults = 0;
   /// The last op in this branch.
-  Operation *lastOp;
+  Operation *lastOp{};
 };
 
 /// Various analysis results about an operation.
@@ -183,11 +185,11 @@ size_t getSize(Value val) {
     return xilinx::xten::getTensorVolume(val.getType());
   }
   if (isa<ShapedType>(type)) {
-    return cast<ShapedType>(type).getSizeInBits();
+    // Get size in bytes
+    return cast<ShapedType>(type).getSizeInBits() / 8;
   }
   // Otherwise, this is a torch.list<vtensor> that was used
-  // to construct a list of tensors to be used in a torch.aten.cat
-  // operation.
+  // to construct a list of tensors in a torch.aten.cat operation.
   // It is safe to return 0 for it since the size will be attached
   // to the operands of torch.prim.ListConstruct and to the result
   // of the torch.aten.cat operation.
@@ -487,23 +489,23 @@ private:
     os << "compound = true  // allow edges between subgraphs\n";
 
     auto startHTMLLabel = [&os]() {
-      os << "<<TABLE BORDER=\"0\">\n";
+      os << "<<table border=\"0\">\n";
       os.indent();
     };
     auto emitTableHeader = [&os](const std::string &str) {
-      os << "<TR><TD COLSPAN=\"2\"><B>" << str << "</B></TD></TR>\n";
+      os << "<tr><td colspan=\"2\"><b>" << str << "</b></td></tr>\n";
     };
     auto emitTableRow = [&os](std::pair<std::string, std::string> &kv) {
-      os << "<TR><TD ALIGN=\"LEFT\">" << std::get<0>(kv)
-         << ":</TD><TD ALIGN=\"RIGHT\">" << std::get<1>(kv) << "</TD></TR>\n";
+      os << "<tr><td align=\"left\">" << std::get<0>(kv)
+         << ":</td><td align=\"right\">" << std::get<1>(kv) << "</td></tr>\n";
     };
     auto endHTMLLabel = [&os]() {
       os.unindent();
-      os << "</TABLE>>";
+      os << "</table>>";
     };
 
     os << "\n// Operations\n";
-    os << "subgraph dependence_graph {\n";
+    os << "subgraph cost {\n";
     os.indent();
 
     // Get all OpInfo's in the order of which they appear in the function
