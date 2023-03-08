@@ -38,13 +38,13 @@ def XTenMinimizeLiveTensors : Pass<"xten-minimize-live", "func::FuncOp"> {
   let summary = "Reorder xten operations to minimize the total size of the live tensors";
   let constructor = "xilinx::xten::createXTenMinimizeLiveTensorsPass()";
   let options = [
-    Option<"printSchedCost", "print-sched-cost", "bool", /*default=*/"false",
+    Option<"printSchedCost", "dot-sched-cost", "bool", /*default=*/"false",
            "Prints a dot representation of the cost associated with operations "
            "of the function in stderr.">,
-    Option<"printBeforeSched", "print-before-sched", "bool", /*default=*/"false",
+    Option<"printBeforeSched", "dot-before-sched", "bool", /*default=*/"false",
            "Prints a dot representation of the sequence of operations in the DAG "
            "in the order they are to be executed before scheduling in stderr.">,
-    Option<"printAfterSched", "print-after-sched", "bool", /*default=*/"false",
+    Option<"printAfterSched", "dot-after-sched", "bool", /*default=*/"false",
            "Prints a dot representation of the sequence of operations in the DAG "
            "in the order they are to be executed after scheduling is done in stderr.">,
   ];
