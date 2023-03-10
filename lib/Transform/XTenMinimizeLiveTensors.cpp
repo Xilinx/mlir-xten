@@ -282,7 +282,7 @@ public:
         // okay so long as it doesn't use the output of a scheduled op
         auto *defOp = value.getDefiningOp();
         if (defOp != nullptr && opToInfo.find(defOp) != opToInfo.end()) {
-          llvm::errs() << "Unknown operation: ";
+          llvm::errs() << "Illegal operation: ";
           defOp->dump();
           return true;
         }
