@@ -99,8 +99,8 @@ bool isInCoreChainSubgraph(Operation *op) {
 }
 
 bool isConcatSubgraph(Operation *op) {
-  return op->hasAttr("SourceOp") &&
-         op->getAttrOfType<StringAttr>("SourceOp") == "onnx.Concat";
+  return op->hasAttr("Op") && 
+         op->getAttrOfType<StringAttr>("Op") == "Concat";
 }
 
 SmallVector<Value> getSubgraphIFMs(Operation *op) {
@@ -287,7 +287,12 @@ public:
       return llvm::any_of(op.getOperands(), [&](Value value) {
         // okay so long as it doesn't use the output of a scheduled op
         auto *defOp = value.getDefiningOp();
-        return defOp != nullptr && opToInfo.find(defOp) != opToInfo.end();
+        if (defOp != nullptr && opToInfo.find(defOp) != opToInfo.end()) {
+          llvm::errs() << "Illegal operation: ";
+          defOp->dump();
+          return true;
+        }
+        return false;
       });
     });
   }
