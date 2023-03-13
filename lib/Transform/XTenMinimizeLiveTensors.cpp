@@ -93,14 +93,37 @@ bool isXtenConvAddChained(Operation *op) {
              xilinx::xten::Conv2dTensorAddLReLUGlobalAveragePoolOp>(op);
 }
 
-bool isInCoreChainSubgraph(Operation *op) {
-  return op->hasAttr("Reason") &&
-         op->getAttrOfType<StringAttr>("Reason") == "InCoreChain";
+mlir::LogicalResult verifyStrAttr(mlir::Operation *op, llvm::StringRef attrKey,
+                                  llvm::StringRef attrValue) {
+  if (!op->hasAttr(attrKey) ||
+      !(op->getAttr(attrKey).cast<StringAttr>().str() == attrValue)) {
+    return failure();
+  }
+  return success();
+}
+
+bool isInCoreChain(Operation *op) {
+  return verifyStrAttr(op, "Reason", "InCoreChain").succeeded();
+}
+
+bool isAnySourceOp(mlir::Operation *op) {
+  return verifyStrAttr(op, "Reason", "SourceOp").succeeded();
+}
+
+bool isSourceOp(mlir::Operation *op, StringRef opName) {
+  return isAnySourceOp(op) && verifyStrAttr(op, "SourceOp", opName).succeeded();
+}
+
+bool isAnyPseudoOp(mlir::Operation *op) {
+  return verifyStrAttr(op, "Reason", "PseudoOp").succeeded();
+}
+
+bool isPseudoOp(mlir::Operation *op, StringRef opName) {
+  return isAnyPseudoOp(op) && verifyStrAttr(op, "Op", opName).succeeded();
 }
 
 bool isConcatSubgraph(Operation *op) {
-  return op->hasAttr("Op") && 
-         op->getAttrOfType<StringAttr>("Op") == "Concat";
+  return isSourceOp(op, "onnx.Concat") || isPseudoOp(op, "Concat");
 }
 
 SmallVector<Value> getSubgraphIFMs(Operation *op) {
@@ -131,7 +154,7 @@ Optional<Value> getSubgraphOFM(Operation *op) {
 /// HARDCODED returns the operand that will share memory with the result.
 Optional<Value> sharesMemoryWithResult(Operation *op) {
 
-  if (isInCoreChainSubgraph(op))
+  if (isInCoreChain(op))
     return getSubgraphOFM(op);
 
   if (isXtenConvAddChained(op))
@@ -155,7 +178,7 @@ SmallVector<Value> getFmOperands(Operation *op) {
   if (isXtenConvAddChained(op))
     return {op->getOperands().front(), op->getOperands().back()};
 
-  if (isInCoreChainSubgraph(op))
+  if (isInCoreChain(op))
     return getSubgraphIFMs(op);
 
   if (isConcatSubgraph(op))
