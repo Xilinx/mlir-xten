@@ -356,11 +356,16 @@ public:
       branches.push_back(opIt->second);
     }
 
-    std::sort(branches.begin(), branches.end(),
-              [](BranchRunning &aBranch, BranchRunning &bBranch) -> bool {
-                return (aBranch.maxRunning - aBranch.lastResults) >
-                       (bBranch.maxRunning - bBranch.lastResults);
-              });
+    // Concat producers should be ordered according to their operands
+    // (op0 before op1 before op2, etc.), so no need to sort them out.
+    if (!isConcatSubgraph(opInfo->op)) {
+      std::sort(branches.begin(), branches.end(),
+                [](BranchRunning &aBranch, BranchRunning &bBranch) -> bool {
+                  return (aBranch.maxRunning - aBranch.lastResults) >
+                         (bBranch.maxRunning - bBranch.lastResults);
+                });
+    }
+
     opInfo->orderedProducers.clear();
     for (BranchRunning const &branch : branches)
       opInfo->orderedProducers.push_back(branch.lastOp);
