@@ -324,14 +324,14 @@ public:
           Value add = nullptr;
           if (isFloatOp) {
             auto c = cast<Torch::ConstantFloatOp>(operands[1].getDefiningOp())
-                         .value();
+                         .getValue();
             auto ty = rewriter.getF32Type();
             auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
             add = builder.create<mlir::arith::AddFOp>(loc, load, builder.create<mlir::arith::ConstantOp>(loc, ty, add_const));
           } else {
             Torch::ConstantIntOp op;
             auto c =
-                cast<Torch::ConstantIntOp>(operands[1].getDefiningOp()).value();
+                cast<Torch::ConstantIntOp>(operands[1].getDefiningOp()).getValue();
             auto ty = rewriter.getIntegerType(32);
             auto add_const = rewriter.getI32IntegerAttr(c.getZExtValue());
             add = builder.create<mlir::arith::AddIOp>(loc, load, builder.create<mlir::arith::ConstantOp>(loc, ty, add_const));
@@ -497,7 +497,7 @@ public:
     target.addLegalOp<xten::Conv2dOp>();
 
     target.addDynamicallyLegalOp<Torch::AtenConv2dOp>([&](Torch::AtenConv2dOp conv2d) {
-        Value weight = conv2d.weight();
+        Value weight = conv2d.getWeight();
         mlir::torch::Torch::BaseTensorType weightTy = weight.getType().cast<mlir::torch::Torch::BaseTensorType>();
         uint64_t kernel_h = weightTy.getSizes()[2]; //uint64_t kernel_h = weightTy.getDimSize(2);
         uint64_t kernel_w = weightTy.getSizes()[3]; //uint64_t kernel_w = weightTy.getDimSize(3);

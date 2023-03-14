@@ -32,8 +32,6 @@ def XTenNN_Dialect : Dialect {
     }];
 
   let useDefaultTypePrinterParser = 0;
-
-  let emitAccessorPrefix = kEmitAccessorPrefix_Prefixed;
 }
 
 #endif // XTENNN_BASE

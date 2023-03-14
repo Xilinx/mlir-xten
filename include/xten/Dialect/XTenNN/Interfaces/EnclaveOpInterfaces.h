@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "mlir/IR/BlockAndValueMapping.h"
+#include "mlir/IR/IRMapping.h"
 #include "mlir/IR/Builders.h"
 
 namespace amd::xten_nn {
@@ -25,7 +25,7 @@ namespace enclave_interface_defaults {
 ///
 /// @pre        `isa<EnclaveOp>(op)`
 void populateCaptureMap(mlir::Operation *op,
-                        mlir::BlockAndValueMapping &result);
+                        mlir::IRMapping &result);
 
 /// Ensures that @p values are captured by @p op and return their corresponding
 /// block arguments.
@@ -38,7 +38,7 @@ void populateCaptureMap(mlir::Operation *op,
 /// @pre        @p values are defined outside of @p op
 /// @post       `result.contains(value)`
 void capture(mlir::Operation *op, mlir::ValueRange values,
-             mlir::BlockAndValueMapping &result);
+             mlir::IRMapping &result);
 
 /// Removes the dead captures corresponding to @p args .
 ///

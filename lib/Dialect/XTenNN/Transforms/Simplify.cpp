@@ -14,8 +14,8 @@
 
 #include "PassDetail.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "mlir/Transforms/SideEffectUtils.h"
 
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Debug.h"
@@ -67,7 +67,7 @@ public:
     state.addOperands(op->getOperands());
     state.addAttributes(op->getAttrs());
     for (auto &region : op->getRegions()) {
-      BlockAndValueMapping map;
+      IRMapping map;
       region.cloneInto(state.addRegion(), map);
     }
 

@@ -23,7 +23,7 @@ using namespace mlir;
 using namespace amd::xten_nn;
 
 void amd::xten_nn::enclave_interface_defaults::populateCaptureMap(
-    Operation *op, BlockAndValueMapping &result) {
+    Operation *op, IRMapping &result) {
   auto self = cast<EnclaveOp>(op);
   auto captures = self.getCaptures();
   auto operands =
@@ -34,7 +34,7 @@ void amd::xten_nn::enclave_interface_defaults::populateCaptureMap(
 }
 
 void amd::xten_nn::enclave_interface_defaults::capture(
-    Operation *op, ValueRange values, BlockAndValueMapping &result) {
+    Operation *op, ValueRange values, IRMapping &result) {
   auto self = cast<EnclaveOp>(op);
   auto &body = self.getEnclaveBody();
   auto unknownLoc = UnknownLoc::get(op->getContext());

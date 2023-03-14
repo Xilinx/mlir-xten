@@ -134,7 +134,7 @@ struct GeneratedConvert0 : public ::mlir::RewritePattern {
     groups = castedOp0.getODSOperands(8);
     if (!((!llvm::dyn_cast<Torch::ConstantBoolOp>(
                 (*transposed.begin()).getDefiningOp())
-                .value()))) {
+                .getValue()))) {
       return rewriter.notifyMatchFailure(op0, [&](::mlir::Diagnostic &diag) {
         diag << "entities 'transposed' failed to satisfy constraint: 'check to "
                 "see if it is torch.constant.bool false'";
@@ -1624,7 +1624,7 @@ struct GeneratedConvert16 : public ::mlir::RewritePattern {
     }
     if (!((!llvm::dyn_cast<Torch::ConstantBoolOp>(
                 (*ceil_mode.getODSResults(0).begin()).getDefiningOp())
-                .value()))) {
+                .getValue()))) {
       return rewriter.notifyMatchFailure(op0, [&](::mlir::Diagnostic &diag) {
         diag << "entities 'ceil_mode' failed to satisfy constraint: 'check to "
                 "see if it is torch.constant.bool false'";
@@ -1632,7 +1632,7 @@ struct GeneratedConvert16 : public ::mlir::RewritePattern {
     }
     if (!((llvm::dyn_cast<Torch::ConstantBoolOp>(
                (*count_padding.getODSResults(0).begin()).getDefiningOp())
-               .value()))) {
+               .getValue()))) {
       return rewriter.notifyMatchFailure(op0, [&](::mlir::Diagnostic &diag) {
         diag << "entities 'count_padding' failed to satisfy constraint: 'check "
                 "to see if it is torch.constant.bool true'";

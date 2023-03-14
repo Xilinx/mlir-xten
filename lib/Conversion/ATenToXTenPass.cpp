@@ -201,11 +201,11 @@ bool isReduceMeanGlobalAveragePool2D(Value dims, Value keepdims) {
   for (Value operand : dimsOp.getOperands()) {
     if (auto axesValue =
             llvm::dyn_cast<Torch::ConstantIntOp>(operand.getDefiningOp()))
-      axes.push_back(axesValue.value());
+      axes.push_back(axesValue.getValue());
   }
 
   // Check that arguments match expectations for global average pool
-  if (keepdimsOp.value() == 1 && axes.size() == 2 && axes[0] == 2 &&
+  if (keepdimsOp.getValue() == 1 && axes.size() == 2 && axes[0] == 2 &&
       axes[1] == 3)
     return true;
 
@@ -222,7 +222,7 @@ bool isAdaptiveAvgPoolGlobalAveragePool2D(Value outsizes) {
   for (Value operand : outsizesOp.getOperands()) {
     if (auto axesValue =
             llvm::dyn_cast<Torch::ConstantIntOp>(operand.getDefiningOp()))
-      dims.push_back(axesValue.value());
+      dims.push_back(axesValue.getValue());
   }
 
   // Check that arguments match expectations for global average pool
