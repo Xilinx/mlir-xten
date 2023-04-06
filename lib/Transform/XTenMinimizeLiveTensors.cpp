@@ -311,8 +311,7 @@ public:
         // okay so long as it doesn't use the output of a scheduled op
         auto *defOp = value.getDefiningOp();
         if (defOp != nullptr && opToInfo.find(defOp) != opToInfo.end()) {
-          llvm::errs() << "Illegal operation: ";
-          defOp->dump();
+          op.emitError("Illegal operation");
           return true;
         }
         return false;
@@ -331,6 +330,11 @@ public:
                               std::map<Operation *, BranchRunning> &completed) {
     // Analyze simple fallthrough operations.
     while (opInfo->operands.size() < 2 && opInfo->consumers.size() < 2) {
+      // Avoid recomputing BranchRunning for operations we already visited.
+      auto opIt = completed.find(opInfo->op);
+      if (opIt != completed.end())
+        return;
+
       brInfo.maxRunning = std::max(brInfo.maxRunning, opInfo->sizes.results);
       brInfo.lastResults = opInfo->sizes.results;
       opInfo->orderedProducers = {brInfo.lastOp};
