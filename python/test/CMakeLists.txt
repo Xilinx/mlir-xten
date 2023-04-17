@@ -24,4 +24,4 @@ add_lit_testsuite(check-xten-python "Running the xten-python regression tests"
 set_target_properties(check-xten-python PROPERTIES FOLDER "Tests")
 
 add_lit_testsuites(TORCH_MLIR_PYTHON ${CMAKE_CURRENT_SOURCE_DIR} DEPENDS ${TEST_DEPENDS})
-add_dependencies(check-all check-xten-python)
+add_dependencies(check-xten-all check-xten-python)
