@@ -29,8 +29,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-message(STATUS "mlir-xten CMAKELISTS")
-
 function(TORCH_MLIR_detect_pybind11_install)
   if(pybind11_DIR)
     message(STATUS "Using explicit pybind11 cmake directory: ${pybind11_DIR} (-Dpybind11_DIR to change)")
