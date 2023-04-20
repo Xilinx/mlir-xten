@@ -118,9 +118,9 @@ add_definitions(${LLVM_DEFINITIONS})
 add_custom_target(check-xten-all)
 
 # Make sure we build the docs
-if(${LLVM_BUILD_DOCS})
-  add_custom_target(docs ALL)
-  add_dependencies(docs mlir-doc)
+if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+add_custom_target(docs ALL)
+add_dependencies(docs mlir-doc)
 endif()
 
 add_subdirectory(include)
