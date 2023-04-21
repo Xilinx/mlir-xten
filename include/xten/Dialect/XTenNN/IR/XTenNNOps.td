@@ -12,6 +12,7 @@
 #define XTENNN_OPS
 
 include "xten/Dialect/XTenNN/IR/XTenNNBase.td"
+include "xten/Dialect/XTenNN/IR/XTenNNTypes.td"
 
 include "mlir/IR/FunctionInterfaces.td"
 include "mlir/IR/OpAsmInterface.td"
@@ -95,5 +96,57 @@ def XTenNN_OutputOp : XTenNN_Op<"output", [
     let assemblyFormat = [{ attr-dict ($operands^ `:` type($operands))?}];
 }
 
+
+def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
+    SameOperandsAndResultShape]> {
+  
+
+  let summary = "quantizes a float32 tensor to a signed or unsigned integer tensor of given width.";
+
+  let description = [{
+    Quantizes a given float32 tensor into a signed or unsigned integer tensor of given width.
+
+    Applies the following to linear quantization the input tensor x:
+      y = round( x * scale ) + zero_point
+
+      Where scale is an attribute of the operation in f32 and is a power-of-two value.
+      While the zero_point is always assumed to be zero.
+  }];
+
+  let arguments = (ins 
+    F32Tensor:$input,
+    XTeNN_F32AttrPowerOfTwo:$scale
+  );
+
+  let results = (outs XTenNN_AnyTensorSignedOrUnsignedInteger:$output);
+
+  let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
+}
+
+def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
+    SameOperandsAndResultShape]> {
+  
+
+  let summary = "Dequantizes a signed/unsigned integer tensor of given bitwidth to a float32 tensor.";
+
+  let description = [{
+    Dequantizes a signed/unsigned integer tensor of given bitwidth to a float32 tensor.
+
+    Applies the following to linear dequantization the input tensor x:
+      y = ( x - zero_point ) / scale
+
+      Where scale is an attribute of the operation in f32 and is a power-of-two value.
+      While the zero_point is always assumed to be zero.
+  }];
+
+  let arguments = (ins 
+    XTenNN_AnyTensorSignedOrUnsignedInteger:$input,
+    XTeNN_F32AttrPowerOfTwo:$scale
+  );
+
+  let results = (outs F32Tensor:$output);
+
+  let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
+}
 
 #endif // XTENNN_OPS
