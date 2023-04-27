@@ -51,3 +51,16 @@ func.func @invalid_input_type(%arg0: tensor<1x2xi32>) -> tensor<1x2xsi8> {
     %result = xten_nn.quantize (%arg0: tensor<1x2xi32>) {scale = 0.5: f32} -> tensor<1x2xsi8>
     return %result : tensor<1x2xsi8>
 }
+// -----
+
+func.func @different_bitwidth(%arg0: tensor<1x2xf32>) -> tensor<1x2xsi3> {
+    %result = xten_nn.quantize (%arg0: tensor<1x2xf32>) {scale = 0.5: f32} -> tensor<1x2xsi3>
+    return %result : tensor<1x2xsi3>
+}
+
+// -----
+
+func.func @sixteen_bitwidth(%arg0: tensor<1x2xf32>) -> tensor<1x2xsi16> {
+    %result = xten_nn.quantize (%arg0: tensor<1x2xf32>) {scale = 0.5: f32} -> tensor<1x2xsi16>
+    return %result : tensor<1x2xsi16>
+}
