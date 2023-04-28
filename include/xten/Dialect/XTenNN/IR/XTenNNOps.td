@@ -107,15 +107,15 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
     Quantizes a given float32 tensor into a signed or unsigned integer tensor of given width.
 
     Applies the following to linear quantization the input tensor x:
-      y = round( x * scale ) + zero_point
+      y = round( x * 2^shift)
 
-      Where scale is an attribute of the operation in f32 and is a power-of-two value.
-      While the zero_point is always assumed to be zero.
+      Where shift is an attribute of the operation in i32. Quantization is only allowed using
+      power-of-two values.
   }];
 
   let arguments = (ins 
     F32Tensor:$input,
-    XTeNN_F32AttrPowerOfTwo:$scale
+    SI32Attr:$shift
   );
 
   let results = (outs XTenNN_AnyTensorSignedOrUnsignedInteger:$output);
@@ -133,15 +133,15 @@ def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
     Dequantizes a signed/unsigned integer tensor of given bitwidth to a float32 tensor.
 
     Applies the following to linear dequantization the input tensor x:
-      y = ( x - zero_point ) / scale
+      y = x  / (2^shift)
 
-      Where scale is an attribute of the operation in f32 and is a power-of-two value.
-      While the zero_point is always assumed to be zero.
+      Where shift is an attribute of the operation in i32. Dequantization is only allowed using
+      power-of-two values.
   }];
 
   let arguments = (ins 
     XTenNN_AnyTensorSignedOrUnsignedInteger:$input,
-    XTeNN_F32AttrPowerOfTwo:$scale
+    SI32Attr:$shift
   );
 
   let results = (outs F32Tensor:$output);

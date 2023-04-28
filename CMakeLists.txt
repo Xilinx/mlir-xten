@@ -111,6 +111,5 @@ add_subdirectory(lib)
 add_subdirectory(tools)
 add_subdirectory(python)
 add_subdirectory(test)
-add_subdirectory(unittests)
 
 umbrella_lit_testsuite_end(check-all)

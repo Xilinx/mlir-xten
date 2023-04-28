@@ -18,12 +18,4 @@ def XTenNN_AnyTensorSignedOrUnsignedInteger : TensorOf<
     [], 
     "signed-or-unsigned-tensor">;
 
-def XTeNN_F32AttrPowerOfTwo : TypedAttrBase<F32, "FloatAttr",
-              And<[CPred<"$_self.isa<::mlir::FloatAttr>()">,
-                   CPred<"$_self.cast<::mlir::FloatAttr>().getType().isF32()">, 
-                   CPred<"amd::xten_nn::isPowerOfTwoFloat($_self)">]>,
-              "float32 is a Power-Of-Two value"> {
-  let returnType = [{ ::llvm::APFloat }];
-}
-
 #endif // XTENNN_TYPES

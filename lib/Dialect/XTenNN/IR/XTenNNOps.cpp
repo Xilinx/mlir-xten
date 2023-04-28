@@ -19,7 +19,6 @@
 #include "xten/Dialect/XTenNN/IR/XTenNN.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
-#include "xten/Dialect/XTenNN/IR/XTenNNTypes.h"
 #include "xten/Dialect/XTenNN/Interfaces/EnclaveOpInterfaces.h"
 
 using namespace mlir;
