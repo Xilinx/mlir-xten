@@ -26,13 +26,3 @@ set_target_properties(check-aten PROPERTIES FOLDER "Tests")
 
 add_lit_testsuites(ATEN ${CMAKE_CURRENT_SOURCE_DIR} DEPENDS ${TEST_DEPENDS})
 
-# Add a target to run the unittests for XTen
-add_custom_target(XTenUnitTests)
-set_target_properties(XTenUnitTests PROPERTIES FOLDER "XTen Unittests")
-function(add_xten_unittest test_dirname)
-  add_unittest(XTenUnitTests ${test_dirname} ${ARGN})
-endfunction()
-
-add_subdirectory(lib)
-
-add_dependencies(check-all check-aten check-unit)
