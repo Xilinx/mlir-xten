@@ -23,8 +23,7 @@
 #include <llvm/Support/Debug.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/Support/IndentedOstream.h>
-#include <torch-mlir/Dialect/Torch/IR/TorchOps.h>
-#include <torch-mlir/Dialect/Torch/IR/TorchTypes.h>
+#include <mlir/Support/LogicalResult.h>
 
 #include <memory>
 #include <set>
@@ -81,17 +80,6 @@ struct OpInfo {
   /// True when the operation has been moved in the IR.
   bool ordered = false;
 };
-
-/// HARDCODED returns the operand that will share memory with the result.
-
-bool isXtenConvAddChained(Operation *op) {
-  return isa<xilinx::xten::Conv2dTensorAddOp,
-             xilinx::xten::Conv2dTensorAddReLUOp,
-             xilinx::xten::Conv2dTensorAddLReLUOp,
-             xilinx::xten::Conv2dTensorAddGlobalAveragePoolOp,
-             xilinx::xten::Conv2dTensorAddReLUGlobalAveragePoolOp,
-             xilinx::xten::Conv2dTensorAddLReLUGlobalAveragePoolOp>(op);
-}
 
 mlir::LogicalResult verifyStrAttr(mlir::Operation *op, llvm::StringRef attrKey,
                                   llvm::StringRef attrValue) {
@@ -151,73 +139,42 @@ Optional<Value> getSubgraphOFM(Operation *op) {
   return {};
 }
 
-/// HARDCODED returns the operand that will share memory with the result.
+/// Returns the operand that will share memory with the result.
 Optional<Value> sharesMemoryWithResult(Operation *op) {
 
   if (isInCoreChain(op))
     return getSubgraphOFM(op);
-
-  if (isXtenConvAddChained(op))
-    return {op->getOperands().back()};
   return {};
 }
 
-/// HARDCODED returns all FM operands.
-SmallVector<Value> getFmOperands(Operation *op) {
+/// Returns all FM operands or fails if no IFM is known for the operation.
+FailureOr<SmallVector<Value>> getFmOperands(Operation *op) {
   // No input to the function.
   if (isa<func::FuncOp>(op))
-    return {};
-
-  // not sure of the syntax to unpack operand 0 - skip for now.
-  assert(!isa<xilinx::xten::ConcatOp>(op));
-
-  // Per operand defined IFMs.
-  if (isa<xilinx::xten::AddOp, xilinx::xten::MulOp, xilinx::xten::MMOp>(op))
-    return op->getOperands();
-
-  if (isXtenConvAddChained(op))
-    return {op->getOperands().front(), op->getOperands().back()};
+    return {{}};
 
   if (isInCoreChain(op))
-    return getSubgraphIFMs(op);
+    return {getSubgraphIFMs(op)};
 
   if (isConcatSubgraph(op))
-    return op->getOperands();
+    return {op->getOperands()};
 
-  // torch.aten.cat requires supporting torch.prim.ListConstruct,
-  // which constructs a tensor concatenating all of its operands.
-  // The operation produces a torch.list<vtensor> of tensors and
-  // is used as the only operand of a torch.aten.cat.
-  // torch.aten.cat needs no additional treatment since only
-  // the first operand (the torch.prim.ListConstruct) is used.
-  if (isa<torch::Torch::PrimListConstructOp>(op)) {
-    return op->getOperands();
+  // Otherwise, this is a PseudoOp and IFM is the first operand.
+  if (!isAnyPseudoOp(op)) {
+    op->emitError("Unknown operation");
+    return failure();
   }
-
-  // TODO: there is no guarantee that FM is only the 1st operand. It
-  // would be better to check all ops, preferably via an interface.
-  // Okay for prototype, knowing this may backfire in debug effort.
-  return {op->getOperand(0)};
+  return {{op->getOperand(0)}};
 }
 
 /// Return the size of the tensor type of \p val.
 /// It is an error to call this with a non-tensor typed value.
 size_t getSize(Value val) {
   auto type = val.getType();
-  if (isa<torch::Torch::BaseTensorType>(type)) {
-    return xilinx::xten::getTensorVolume(val.getType());
-  }
-  if (isa<ShapedType>(type)) {
-    // Get size in bytes
-    return cast<ShapedType>(type).getSizeInBits() / 8;
-  }
-  // Otherwise, this is a torch.list<vtensor> that was used
-  // to construct a list of tensors in a torch.aten.cat operation.
-  // It is safe to return 0 for it since the size will be attached
-  // to the operands of torch.prim.ListConstruct and to the result
-  // of the torch.aten.cat operation.
-  assert(isa<torch::Torch::ListType>(type));
-  return 0;
+  assert(isa<ShapedType>(type));
+
+  // Get size in bytes
+  return cast<ShapedType>(type).getSizeInBits() / 8;
 }
 
 /// Debugging support - returns a simple name for an op.
@@ -260,7 +217,8 @@ public:
       default;
 
   // Recursively collect the OpInfo of all FM producers.
-  void collectOperandInfo(OpInfo const &opInfo) { // NOLINT(misc-no-recursion)
+  [[nodiscard]] LogicalResult
+  collectOperandInfo(OpInfo const &opInfo) { // NOLINT(misc-no-recursion)
     // Visit all FM operands to collect their OpInfo.
     for (auto operand : opInfo.operands) {
       Operation *defOp = operand.getDefiningOp();
@@ -278,7 +236,10 @@ public:
       }
 
       // Create the new OpInfo for the operand.
-      SmallVector<Value> const fmOperands = getFmOperands(defOp);
+      FailureOr<SmallVector<Value>> const fmOperands = getFmOperands(defOp);
+      if (failed(fmOperands)) {
+        return LogicalResult::failure();
+      }
       SmallVector<Value> fmResults;
       if (defOp != currFn) {
         fmResults = defOp->getResults();
@@ -287,15 +248,19 @@ public:
       }
       Optional<Value> const sharesResultMemory = sharesMemoryWithResult(defOp);
       OpInfo info = {.op = defOp,
-                     .operands = fmOperands,
+                     .operands = *fmOperands,
                      .results = fmResults,
                      .sharesResultMemory = sharesResultMemory,
                      .consumers = {opInfo.op}};
       auto [opFwdIt, succeeded] = opToInfo.emplace(defOp, std::move(info));
       setOpSizes(opFwdIt->second);
+
       // Recursively collect details of the operands of this operand.
-      collectOperandInfo(opFwdIt->second);
+      LogicalResult result = collectOperandInfo(opFwdIt->second);
+      if (result.failed())
+        signalPassFailure();
     }
+    return LogicalResult::success();
   }
 
   /// Checks for illegal dead code by traversing operations and
@@ -430,7 +395,9 @@ public:
         opToInfo.emplace(returnStmt, std::move(fwdInfo));
     OpInfo const &retFwd = opFwdIt->second;
 
-    collectOperandInfo(retFwd);
+    if (collectOperandInfo(retFwd).failed()) {
+      signalPassFailure();
+    }
 
     auto prevFwdIt = opToInfo.find(currFn);
     if (prevFwdIt == opToInfo.end()) {
