@@ -42,7 +42,7 @@ func.func @unknown_operation(%arg0: tensor<1x256x56x56xf32>) -> tensor<1x256x56x
     xten_nn.output %8 : tensor<1x64x56x56xf32>
   } -> tensor<1x64x56x56xf32>
   // expected-error@+1 {{Unknown operation}}
-  %4 = xten_nn.subgraph (%arg3 = %3: tensor<1x64x56x56xf32>, %arg4 = %0: tensor<64x4x7x7xf32>, %arg5 = %1: tensor<64xf32>)  attributes {IfmOperands = [0 : index], LayerName = "ConvRelu_1", Reason = "Kernel"} {
+  %4 = xten_nn.subgraph (%arg3 = %3: tensor<1x64x56x56xf32>, %arg4 = %0: tensor<64x4x7x7xf32>, %arg5 = %1: tensor<64xf32>)  attributes {IfmOperands = [0 : index], LayerName = "ConvRelu_1", Reason = "SomeReason"} {
     %8 = tensor.empty() : tensor<1x64x56x56xf32>
     xten_nn.output %8 : tensor<1x64x56x56xf32>
   } -> tensor<1x64x56x56xf32>
