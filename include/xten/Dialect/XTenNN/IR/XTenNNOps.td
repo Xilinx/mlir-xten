@@ -98,19 +98,20 @@ def XTenNN_OutputOp : XTenNN_Op<"output", [
 
 
 def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
-    SameOperandsAndResultShape]> {
-  
-
-  let summary = "quantizes a float32 tensor to a signed or unsigned integer tensor of given width.";
-
+            Elementwise,
+            Pure,
+            SameOperandsAndResultShape]> {
+  let summary = "Quantizes a float32 tensor to a signed or unsigned integer tensor of given width.";
   let description = [{
     Quantizes a given float32 tensor into a signed or unsigned integer tensor of given width.
 
     Applies the following to linear quantization the input tensor x:
-      y = round( x * 2^shift)
+      y = round( x * 2^shift )
 
-      Where shift is an attribute of the operation in i32. Quantization is only allowed using
-      power-of-two values.
+    Where shift is an attribute of the operation in si32.
+
+    Round will saturate to the range of the output type and the rounding mode is set to half 
+    to nearest even.
   }];
 
   let arguments = (ins 
@@ -124,19 +125,17 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
 }
 
 def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
-    SameOperandsAndResultShape]> {
-  
-
+            Elementwise,
+            Pure,
+            SameOperandsAndResultShape]> {
   let summary = "Dequantizes a signed/unsigned integer tensor of given bitwidth to a float32 tensor.";
-
   let description = [{
     Dequantizes a signed/unsigned integer tensor of given bitwidth to a float32 tensor.
 
     Applies the following to linear dequantization the input tensor x:
-      y = x  / (2^shift)
+      y = x  / ( 2^shift )
 
-      Where shift is an attribute of the operation in i32. Dequantization is only allowed using
-      power-of-two values.
+    Where shift is an attribute of the operation in si32.
   }];
 
   let arguments = (ins 

@@ -39,7 +39,7 @@ func.func @invalid_tensor_signless(%arg0: tensor<1x2xi8>) -> tensor<1x2xf32> {
 // -----
 
 func.func @invalid_io_shapes(%arg0: tensor<1x3xsi8>) -> tensor<1x2xf32> {
-    // expected-error@+1 {{op requires the same shape for all operands and results}}
+    // expected-error@+1 {{op all non-scalar operands/results must have the same shape and base type}}
     %result = xten_nn.dequantize (%arg0: tensor<1x3xsi8>) {shift = -1: si32} -> tensor<1x2xf32>
     return %result : tensor<1x2xf32>
 }
