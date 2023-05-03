@@ -105,7 +105,7 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
   let description = [{
     Quantizes a given float32 tensor into a signed or unsigned integer tensor of given width.
 
-    Applies the following to linear quantization the input tensor x:
+    Applies the following linear quantization to the input tensor x:
       y = round( x * 2^shift )
 
     Where shift is an attribute of the operation in si32.
