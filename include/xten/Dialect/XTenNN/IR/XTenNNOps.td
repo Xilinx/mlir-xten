@@ -132,7 +132,7 @@ def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
   let description = [{
     Dequantizes a signed/unsigned integer tensor of given bitwidth to a float32 tensor.
 
-    Applies the following to linear dequantization the input tensor x:
+    Applies the following linear dequantization to the input tensor x:
       y = x  / ( 2^shift )
 
     Where shift is an attribute of the operation in si32.
