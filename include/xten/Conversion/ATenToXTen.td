@@ -34,11 +34,11 @@ include "xten/Dialect/XTen/XTenOps.td"
 
 // Helper Check Functions
 def CheckTrue : Constraint<
-    CPred<"llvm::dyn_cast<Torch::ConstantBoolOp>($0.getDefiningOp()).value()">,
+    CPred<"llvm::dyn_cast<Torch::ConstantBoolOp>($0.getDefiningOp()).getValue()">,
     "check to see if it is torch.constant.bool true">;
 
 def CheckFalse : Constraint<
-    CPred<"!llvm::dyn_cast<Torch::ConstantBoolOp>($0.getDefiningOp()).value()">,
+    CPred<"!llvm::dyn_cast<Torch::ConstantBoolOp>($0.getDefiningOp()).getValue()">,
     "check to see if it is torch.constant.bool false">;
 
 def CheckEmptyList : Constraint<
