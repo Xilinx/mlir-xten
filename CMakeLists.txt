@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #
 # (c) Copyright 2021 Xilinx Inc.
+# (c) Copyright 2023 Advanced Micro Devices, Inc.
 
 cmake_minimum_required(VERSION 3.10)
 
@@ -98,7 +99,9 @@ link_directories(${PROJECT_BINARY_DIR}/../aie/lib/)
 
 add_definitions(${LLVM_DEFINITIONS})
 
-add_custom_target(check-all)
+# Create a general check-all command to run both lit and unittests
+# Collects all lit tests between the begin and end function
+umbrella_lit_testsuite_begin(check-all)
 
 # Make sure we build the docs
 add_custom_target(docs ALL)
@@ -109,3 +112,5 @@ add_subdirectory(lib)
 add_subdirectory(tools)
 add_subdirectory(python)
 add_subdirectory(test)
+
+umbrella_lit_testsuite_end(check-all)
