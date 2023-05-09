@@ -141,7 +141,7 @@ bool isGlobalAvgPool(Operation *op) {
     return false;
 
   auto kernelName = cast<StringAttr>(op->getAttr(attr));
-  return kernelName.strref().equals("GlobalAvgPool2d");
+  return kernelName.strref().equals("GlobalAvgPool2D");
 }
 
 bool hasAllGAPInputs(Operation *op) {
