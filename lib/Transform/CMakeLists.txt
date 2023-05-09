@@ -12,6 +12,8 @@ add_mlir_library(XTenTransformPasses
   ATenVisualGraph.cpp
   LowerToLibATenPass.cpp
   Passes.cpp
+  XTenCanonicalizePass.cpp
+  XTenFoldConcat.cpp
   XTenMinimizeLiveTensors.cpp
 
   DEPENDS
