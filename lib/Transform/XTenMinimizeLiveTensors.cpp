@@ -106,6 +106,15 @@ bool isInCoreChain(Operation *op) {
   return verifyStrAttr(op, "Reason", "InCoreChain").succeeded();
 }
 
+Operation *getInCoreChainOutputOp(Operation *op) {
+  assert(isInCoreChain(op) && "Unexpected op");
+  auto subgraphOp = cast<amd::xten_nn::SubgraphOp>(op);
+  amd::xten_nn::OutputOp outputOp =
+      *subgraphOp.getOps<amd::xten_nn::OutputOp>().begin();
+  Value outputOperand = outputOp->getOperand(0);
+  return outputOperand.getDefiningOp();
+}
+
 bool isAnySourceOp(mlir::Operation *op) {
   return verifyStrAttr(op, "Reason", "SourceOp").succeeded();
 }
@@ -124,6 +133,29 @@ bool isPseudoOp(mlir::Operation *op, StringRef opName) {
 
 bool isConcatSubgraph(Operation *op) {
   return isSourceOp(op, "onnx.Concat") || isPseudoOp(op, "Concat");
+}
+
+bool isGlobalAvgPool(Operation *op) {
+  constexpr StringRef attr = "mllib_ops";
+  if (!op->hasAttr(attr))
+    return false;
+
+  auto kernelName = cast<StringAttr>(op->getAttr(attr));
+  return kernelName.strref().equals("GlobalAvgPool2d");
+}
+
+bool hasAllGAPInputs(Operation *op) {
+  return llvm::all_of(op->getOperands(), [](Value operand) {
+    Operation *producer = operand.getDefiningOp();
+    if (producer == nullptr)
+      return false;
+
+    if (isInCoreChain(producer)) {
+      producer = getInCoreChainOutputOp(producer);
+    }
+
+    return producer != nullptr && isGlobalAvgPool(producer);
+  });
 }
 
 SmallVector<Value> getSubgraphIFMs(Operation *op) {
@@ -368,6 +400,9 @@ public:
                   return (aBranch.maxRunning - aBranch.lastResults) >
                          (bBranch.maxRunning - bBranch.lastResults);
                 });
+    } else if (hasAllGAPInputs(opInfo->op)) {
+      // For GAP concats we want right-to-left ordering of the inputs
+      std::reverse(branches.begin(), branches.end());
     }
 
     opInfo->orderedProducers.clear();
