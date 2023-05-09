@@ -192,14 +192,14 @@ func.func @incorechain_ops_with_concat2(%arg0: tensor<1x4x224x224xf32>, %arg1: t
 
 func.func @gap_concat(%arg0 : tensor<1x2x255x255xf32>, %arg1 : tensor<1x2x255x255xf32>) -> tensor<1x4x1x1xf32> {
   %0 = xten_nn.subgraph (%arg0 = %arg0 : tensor<1x2x255x255xf32>) attributes { IfmOperands = [0: index], LayerName = "GAP0", OutputName = "GAP0", Reason = "InCoreChain" } {
-    %0 = xten_nn.subgraph () attributes { LayerName = "GAP0", OutputName = "GAP0", Reason = "MllibKernel", mllib_ops = "GlobalAvgPool2d" } {
+    %0 = xten_nn.subgraph () attributes { LayerName = "GAP0", OutputName = "GAP0", Reason = "MllibKernel", mllib_ops = "GlobalAvgPool2D" } {
       %0 = tensor.empty() : tensor<1x2x1x1xf32>
       xten_nn.output %0 : tensor<1x2x1x1xf32>
     } -> tensor<1x2x1x1xf32>
     xten_nn.output %0 : tensor<1x2x1x1xf32>
   } -> tensor<1x2x1x1xf32>
   %1 = xten_nn.subgraph (%arg0 = %arg1 : tensor<1x2x255x255xf32>) attributes { IfmOperands = [0: index], LayerName = "GAP1", OutputName = "GAP1", Reason = "InCoreChain" } {
-    %0 = xten_nn.subgraph () attributes { LayerName = "GAP1", OutputName = "GAP1", Reason = "MllibKernel", mllib_ops = "GlobalAvgPool2d" } {
+    %0 = xten_nn.subgraph () attributes { LayerName = "GAP1", OutputName = "GAP1", Reason = "MllibKernel", mllib_ops = "GlobalAvgPool2D" } {
       %0 = tensor.empty() : tensor<1x2x1x1xf32>
       xten_nn.output %0 : tensor<1x2x1x1xf32>
     } -> tensor<1x2x1x1xf32>
@@ -221,14 +221,14 @@ func.func @gap_concat(%arg0 : tensor<1x2x255x255xf32>, %arg1 : tensor<1x2x255x25
 
 func.func @gap_concat_reversed(%arg0 : tensor<1x2x255x255xf32>, %arg1 : tensor<1x2x255x255xf32>) -> tensor<1x4x1x1xf32> {
   %0 = xten_nn.subgraph (%arg0 = %arg0 : tensor<1x2x255x255xf32>) attributes { IfmOperands = [0: index], LayerName = "GAP0", OutputName = "GAP0", Reason = "InCoreChain" } {
-    %0 = xten_nn.subgraph () attributes { LayerName = "GAP0", OutputName = "GAP0", Reason = "MllibKernel", mllib_ops = "GlobalAvgPool2d" } {
+    %0 = xten_nn.subgraph () attributes { LayerName = "GAP0", OutputName = "GAP0", Reason = "MllibKernel", mllib_ops = "GlobalAvgPool2D" } {
       %0 = tensor.empty() : tensor<1x2x1x1xf32>
       xten_nn.output %0 : tensor<1x2x1x1xf32>
     } -> tensor<1x2x1x1xf32>
     xten_nn.output %0 : tensor<1x2x1x1xf32>
   } -> tensor<1x2x1x1xf32>
   %1 = xten_nn.subgraph (%arg0 = %arg1 : tensor<1x2x255x255xf32>) attributes { IfmOperands = [0: index], LayerName = "GAP1", OutputName = "GAP1", Reason = "InCoreChain" } {
-    %0 = xten_nn.subgraph () attributes { LayerName = "GAP1", OutputName = "GAP1", Reason = "MllibKernel", mllib_ops = "GlobalAvgPool2d" } {
+    %0 = xten_nn.subgraph () attributes { LayerName = "GAP1", OutputName = "GAP1", Reason = "MllibKernel", mllib_ops = "GlobalAvgPool2D" } {
       %0 = tensor.empty() : tensor<1x2x1x1xf32>
       xten_nn.output %0 : tensor<1x2x1x1xf32>
     } -> tensor<1x2x1x1xf32>
