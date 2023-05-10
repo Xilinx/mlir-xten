@@ -20,6 +20,12 @@ using namespace mlir;
 
 namespace {
 
+/// Checks to see if the \p castOp is a dequantize operation.
+///
+///\param castOp check that the operation casts from i8, assuming it is signed
+/// to f32.
+/// \return true represents a dequantize cast
+/// \return false does not represent a dequantize cast
 bool isI8ToF32Cast(tosa::CastOp castOp) {
   TensorType inputTensorType =
       cast<TensorType>(castOp->getOperand(0).getType());
@@ -30,6 +36,12 @@ bool isI8ToF32Cast(tosa::CastOp castOp) {
          inputTensorType.getElementType().isSignlessInteger();
 }
 
+/// Checks to see if the \p castOp is a quantize operation.
+///
+///\param castOp check that the operation casts from f32
+/// to i8, assuming it is signed.
+///\return true represents a quantize cast
+///\return false does not represent a quantize cast
 bool isF32ToI8Cast(tosa::CastOp castOp) {
   TensorType inputTensorType =
       cast<TensorType>(castOp->getOperand(0).getType());
@@ -40,6 +52,12 @@ bool isF32ToI8Cast(tosa::CastOp castOp) {
          outputTensorType.getElementType().isSignlessInteger();
 }
 
+/// Get the Log2 \p value of the float. If the \p value is not an exact
+/// power-of-two return none.
+///
+///\param value floating point value we are checking
+///\return std::optional<int32_t> none if \p value is not a power of two and an
+/// integer if it is.
 std::optional<int32_t> getLog2Value(float value) {
   float log2Value = std::log2(value);
   float integerPart = 0.0;
@@ -50,6 +68,8 @@ std::optional<int32_t> getLog2Value(float value) {
   return (int32_t)integerPart;
 }
 
+/// Checks to see that the two consecutive casts can be represented by quantize
+/// and dequantize operations.
 class CastsToQDQOps : public OpRewritePattern<tosa::CastOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
@@ -95,6 +115,10 @@ public:
   }
 };
 
+/// Folds multiplications surrounding a QDQ pair into the operations if the
+/// constants on the multiplications are power-of-two values and are equal.
+/// We assume the first multiplication represents the quantize meaning 1/scale
+/// and the second multiplication the dequantize or simply scale.
 class FoldMulsToQDQOps : public OpRewritePattern<tosa::MulOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
@@ -173,8 +197,10 @@ public:
     MLIRContext *context = module.getContext();
     RewritePatternSet patterns(context);
 
-    patterns.insert<CastsToQDQOps, FoldMulsToQDQOps>(context);
+    // Ensures constants on the add, mul, sub are on the RHS
     populateCommutativityUtilsPatterns(patterns);
+    // Patterns for finding the QDQ and folding MULs.
+    patterns.insert<CastsToQDQOps, FoldMulsToQDQOps>(context);
 
     FrozenRewritePatternSet frozenSetOfPatterns(std::move(patterns));
     if (failed(applyPatternsAndFoldGreedily(module, frozenSetOfPatterns))) {
