@@ -129,27 +129,38 @@ class FoldMulsToQDQOps : public OpRewritePattern<tosa::MulOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tosa::MulOp mulOp,
+  LogicalResult matchAndRewrite(tosa::MulOp dequantizeMulOp,
                                 PatternRewriter &rewriter) const override {
 
     // The multiplication should have only a single constant value
     APFloat dequantizeScaleFactor(0.0);
     if (!m_ConstantFloat(&dequantizeScaleFactor)
-             .match(mulOp.getOperand(1).getDefiningOp())) {
-      return rewriter.notifyMatchFailure(mulOp.getOperand(1).getLoc(),
+             .match(dequantizeMulOp.getOperand(1).getDefiningOp())) {
+      return rewriter.notifyMatchFailure(dequantizeMulOp.getOperand(1).getLoc(),
                                          "expected to be a constant.");
     }
 
     // We want to make sure we have QDQ operations surrounded by MULs.
-    auto dequantizeOp =
-        mulOp->getOperand(0).getDefiningOp<amd::xten_nn::DequantizeOp>();
+    auto dequantizeOp = dequantizeMulOp->getOperand(0)
+                            .getDefiningOp<amd::xten_nn::DequantizeOp>();
     APFloat quantizeScaleFactor(0.0);
     auto isQDQPattern = m_Op<amd::xten_nn::DequantizeOp>(
         m_Op<amd::xten_nn::QuantizeOp>(m_Op<tosa::MulOp>(
             matchers::m_Any(), m_ConstantFloat(&quantizeScaleFactor))));
     if (!dequantizeOp || !isQDQPattern.match(dequantizeOp)) {
-      return rewriter.notifyMatchFailure(mulOp->getLoc(),
+      return rewriter.notifyMatchFailure(dequantizeMulOp->getLoc(),
                                          "expected mul->q->dq->mul pattern.");
+    }
+    auto quantizeOp = cast<amd::xten_nn::QuantizeOp>(
+        dequantizeOp->getOperand(0).getDefiningOp());
+
+    // Make sure these multiplications really only belong to the QDQ operations
+    // and used by no one else
+    auto *quantizeMulOp = quantizeOp->getOperand(0).getDefiningOp();
+    if (!quantizeMulOp->hasOneUse() || !dequantizeMulOp->hasOneUse()) {
+      return rewriter.notifyMatchFailure(
+          dequantizeMulOp->getLoc(),
+          "multiplications around the QDQ operations must have single uses.");
     }
 
     // Attempt to convert the scale factors to a log2 base. And ensure that both
@@ -164,12 +175,10 @@ public:
         (quantizeLog2ScaleFactor.value() + dequantizeLog2ScaleFactor.value() !=
          0)) {
       return rewriter.notifyMatchFailure(
-          mulOp.getLoc(), "expected constants of both multiplications to be "
-                          "equal and power-of-two values.");
+          dequantizeMulOp.getLoc(),
+          "expected constants of both multiplications to be "
+          "equal and power-of-two values.");
     }
-
-    auto quantizeOp = cast<amd::xten_nn::QuantizeOp>(
-        dequantizeOp->getOperand(0).getDefiningOp());
 
     // Sum the shifts of the quantize, dequantize and update the operations
     llvm::APInt shiftSum(32, dequantizeOp.getShift(), true);
@@ -178,16 +187,21 @@ public:
     shiftSum = shiftSum.sadd_ov(scaleFactorInt, overflow);
     if (overflow) {
       return rewriter.notifyMatchFailure(
-          mulOp.getLoc(), "Adding the shifts of the mul and QDQ overflowed.");
+          dequantizeMulOp.getLoc(),
+          "adding the shifts of the mul and QDQ overflowed.");
     }
-    quantizeOp.setShift((int32_t)shiftSum.getSExtValue());
-    dequantizeOp.setShift((int32_t)shiftSum.getSExtValue());
 
-    // Remove the multiplications around the QDQ
-    auto *quantizeMulOp = quantizeOp->getOperand(0).getDefiningOp();
-    quantizeOp->setOperand(0, quantizeMulOp->getOperand(0));
-    rewriter.replaceOp(mulOp, dequantizeOp->getResults());
-    rewriter.eraseOp(quantizeMulOp);
+    // Create new QDQ nodes with the updated shifts.
+    auto newQOp = rewriter.create<amd::xten_nn::QuantizeOp>(
+        quantizeOp->getLoc(), quantizeOp->getResult(0).getType(),
+        quantizeMulOp->getOperand(0),
+        /*shift*/ (int32_t)shiftSum.getSExtValue());
+    auto newDQ = rewriter.create<amd::xten_nn::DequantizeOp>(
+        dequantizeOp->getLoc(), dequantizeOp->getResult(0).getType(),
+        newQOp->getResult(0), /*shift*/ (int32_t)shiftSum.getSExtValue());
+
+    // Remove the multiplication around the quantize
+    rewriter.replaceOp(dequantizeMulOp, newDQ->getResults());
 
     return success();
   }
