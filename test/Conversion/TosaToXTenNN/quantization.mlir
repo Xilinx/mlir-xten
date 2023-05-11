@@ -330,3 +330,25 @@ module attributes {} {
     return %5 : tensor<4x3xf32>
   }
 }
+
+// --
+
+module attributes {} {
+// CHECK-LABEL:     func.func @sort_mul_operands(
+// CHECK-SAME:                                   %[[VAL_0:.*]]: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> {
+// CHECK:             %[[VAL_1:.*]] = xten_nn.quantize(%[[VAL_0]] : tensor<1x3x4x4xf32>) {shift = -5 : si32} -> tensor<1x3x4x4xsi8>
+// CHECK:             %[[VAL_2:.*]] = xten_nn.dequantize(%[[VAL_1]] : tensor<1x3x4x4xsi8>) {shift = -5 : si32} -> tensor<1x3x4x4xf32>
+// CHECK:             return %[[VAL_2]] : tensor<1x3x4x4xf32>
+// CHECK:           }
+  func.func @sort_mul_operands(%arg0: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> {
+    %0 = "tosa.const"() {value = dense<3.200000e+01> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
+    %1 = "tosa.const"() {value = dense<3.125000e-02> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
+    // The MULs have the constants on operand(0) the SortCommutativeOperands pass should move them to
+    // operand(1) and the MUL folding should occur.
+    %2 = "tosa.mul"(%0, %arg0) {shift = 0 : i32} : (tensor<1x1x1x1xf32>, tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32>
+    %3 = xten_nn.quantize(%2 : tensor<1x3x4x4xf32>) {shift = 0 : si32}  -> tensor<1x3x4x4xsi8>
+    %4 = xten_nn.dequantize(%3 : tensor<1x3x4x4xsi8>) {shift = 0 : si32}  -> tensor<1x3x4x4xf32>
+    %5 = "tosa.mul"(%1, %4) {shift = 0 : i32} : (tensor<1x1x1x1xf32>, tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32>
+    return %5 : tensor<1x3x4x4xf32>
+  }
+}
