@@ -252,3 +252,31 @@ module attributes {} {
     return %5 : tensor<1x3x4x4xf32>
   }
 }
+
+// --
+
+module attributes {} {
+// CHECK-LABEL:     func.func @multiple_q_uses(
+// CHECK-SAME:                                 %[[VAL_0:.*]]: tensor<1x3x4x4xf32>,
+// CHECK-SAME:                                 %[[VAL_1:.*]]: tensor<1x3x4x4xi8>) -> (tensor<1x3x4x4xf32>, tensor<1x3x4x4xi8>) {
+// CHECK:             %[[VAL_2:.*]] = "tosa.const"() {value = dense<3.200000e+01> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
+// CHECK:             %[[VAL_3:.*]] = "tosa.const"() {value = dense<3.125000e-02> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
+// CHECK:             %[[VAL_4:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_2]]) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_5:.*]] = "tosa.cast"(%[[VAL_4]]) : (tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xi8>
+// CHECK:             %[[VAL_6:.*]] = "tosa.cast"(%[[VAL_5]]) : (tensor<1x3x4x4xi8>) -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_7:.*]] = "tosa.mul"(%[[VAL_6]], %[[VAL_3]]) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_8:.*]] = "tosa.add"(%[[VAL_1]], %[[VAL_5]]) : (tensor<1x3x4x4xi8>, tensor<1x3x4x4xi8>) -> tensor<1x3x4x4xi8>
+// CHECK:             return %[[VAL_7]], %[[VAL_8]] : tensor<1x3x4x4xf32>, tensor<1x3x4x4xi8>
+// CHECK:           }
+  func.func @multiple_q_uses(%arg0: tensor<1x3x4x4xf32>, %arg1: tensor<1x3x4x4xi8>) -> (tensor<1x3x4x4xf32>, tensor<1x3x4x4xi8>) {
+    %0 = "tosa.const"() {value = dense<3.200000e+01> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
+    %1 = "tosa.const"() {value = dense<3.125000e-02> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
+    %2 = "tosa.mul"(%arg0, %0) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+    %3 = "tosa.cast"(%2) : (tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xi8>
+    %4 = "tosa.cast"(%3) : (tensor<1x3x4x4xi8>) -> tensor<1x3x4x4xf32>
+    %5 = "tosa.mul"(%4, %1) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+    // quantized output is used twice, so we cannot replace the casts here we want strictly Q->DQ
+    %6 = "tosa.add"(%arg1, %3) : (tensor<1x3x4x4xi8>, tensor<1x3x4x4xi8>) -> tensor<1x3x4x4xi8>
+    return %5,  %6: tensor<1x3x4x4xf32>, tensor<1x3x4x4xi8>
+  }
+}

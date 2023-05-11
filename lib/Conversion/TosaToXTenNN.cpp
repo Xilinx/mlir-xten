@@ -83,6 +83,12 @@ public:
                                          "expected cast -> cast pattern.");
     }
 
+    if (!quantizeOp->hasOneUse()) {
+      return rewriter.notifyMatchFailure(
+          quantizeOp.getLoc(),
+          "expected the quantize operation to have a single use.");
+    }
+
     // Dequantize is from i8 -> f32 here we need to check for that
     if (!isI8ToF32Cast(castOp)) {
       return rewriter.notifyMatchFailure(
