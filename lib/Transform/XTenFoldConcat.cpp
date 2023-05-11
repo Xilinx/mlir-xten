@@ -68,7 +68,7 @@ struct XTenFoldConcat : public OpRewritePattern<ConcatOp> {
 };
 } // namespace
 
-void xilinx::xten::populateXTenFoldConcatPatterns(MLIRContext *ctx,
-                                                  RewritePatternSet &patterns) {
-  patterns.add<XTenFoldConcat>(ctx);
+void xilinx::xten::populateXTenFoldConcatPatterns(RewritePatternSet &patterns,
+                                                  PatternBenefit benefit) {
+  patterns.add<XTenFoldConcat>(patterns.getContext(), benefit);
 }

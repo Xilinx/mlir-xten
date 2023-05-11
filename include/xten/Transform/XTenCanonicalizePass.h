@@ -11,13 +11,11 @@ namespace xilinx::xten {
 #include "xten/Transform/Passes.h.inc"
 
 /// Populate \p patterns with XTen concat folding patterns.
-void populateXTenFoldConcatPatterns(mlir::MLIRContext *ctx,
-                                    mlir::RewritePatternSet &patterns);
+void populateXTenFoldConcatPatterns(mlir::RewritePatternSet &patterns, mlir::PatternBenefit benefit = 1);
 
 /// Populate \p patterns with all common XTen canonicalization patterns.
 /// These include all stand-alone patterns.
-void populateXTenCanonicalizePatterns(mlir::MLIRContext *ctx,
-                                      mlir::RewritePatternSet &patterns);
+void populateXTenCanonicalizePatterns(mlir::RewritePatternSet &patterns);
 
 std::unique_ptr<mlir::Pass> createXTenCanonicalizePass();
 } // namespace xilinx::xten

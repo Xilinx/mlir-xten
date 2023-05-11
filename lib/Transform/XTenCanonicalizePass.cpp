@@ -23,7 +23,7 @@ struct XTenCanonicalizePass
     MLIRContext *ctx = &getContext();
     RewritePatternSet patterns(ctx);
 
-    populateXTenCanonicalizePatterns(ctx, patterns);
+    populateXTenCanonicalizePatterns(patterns);
 
     if (applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))
             .failed())
@@ -33,8 +33,8 @@ struct XTenCanonicalizePass
 } // namespace
 
 void xilinx::xten::populateXTenCanonicalizePatterns(
-    MLIRContext *ctx, RewritePatternSet &patterns) {
-  populateXTenFoldConcatPatterns(ctx, patterns);
+    RewritePatternSet &patterns) {
+  populateXTenFoldConcatPatterns(patterns);
 }
 
 std::unique_ptr<Pass> xilinx::xten::createXTenCanonicalizePass() {
