@@ -10,6 +10,7 @@ ATenToXTenPass.cpp
 Passes.cpp
 XTenToAffine.cpp
 XTenToLinalg.cpp
+XTenNNToTosa.cpp
 
 DEPENDS
 XTenConversionIncGen

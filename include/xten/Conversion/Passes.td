@@ -36,4 +36,14 @@ def XTenToLinalg : Pass<"xten-to-linalg", "ModuleOp"> {
   ];
 }
 
+
+def XTenNNToTosa : Pass<"xten-nn-to-tosa", "ModuleOp"> {
+  let summary = "Convert XTenNN quantization operations to TOSA.";
+  let constructor = "amd::xten_nn::createXTenNNToTOSAPass()";
+  let dependentDialects = [
+    "mlir::tosa::TosaDialect",
+    "amd::xten_nn::XTenNNDialect"
+  ];
+}
+
 #endif
