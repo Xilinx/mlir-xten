@@ -68,6 +68,21 @@ std::optional<int32_t> getLog2Value(float value) {
   return (int32_t)integerPart;
 }
 
+/// Checks that operand(0) and the result(0) have the same type.
+///
+/// Used to check that broadcasting did not occur, for example, on
+/// multiplication operations.
+///
+///\param operation we are inspecting. Assumes operand(0) and result(0) exists.
+///\return true shape does not change from input to output
+///\return false shape does change from input to output
+bool sameInputAndOutputShape(mlir::Operation *operation) {
+  assert(operation->getNumOperands() == 2 && operation->getNumResults() == 1 &&
+         "expected operation with 2 inputs and one output.");
+  return operation->getOperand(0).getType() ==
+         operation->getResult(0).getType();
+}
+
 /// Checks to see that the two consecutive casts can be represented by quantize
 /// and dequantize operations.
 class CastsToQDQOps : public OpRewritePattern<tosa::CastOp> {
@@ -161,6 +176,13 @@ public:
       return rewriter.notifyMatchFailure(
           dequantizeMulOp->getLoc(),
           "multiplications around the QDQ operations must have single uses.");
+    }
+
+    if (!sameInputAndOutputShape(quantizeMulOp) ||
+        !sameInputAndOutputShape(dequantizeMulOp)) {
+      return rewriter.notifyMatchFailure(
+          dequantizeMulOp.getLoc(),
+          "i/o shape cannot change when multiplying due to broadcasting.");
     }
 
     // Attempt to convert the scale factors to a log2 base. And ensure that both
