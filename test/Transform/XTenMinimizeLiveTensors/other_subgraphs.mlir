@@ -273,3 +273,46 @@ func.func @gap_concat_reversed(%arg0 : tensor<1x2x255x255xf32>, %arg1 : tensor<1
   } -> tensor<1x4x1x1xf32>
   return %2 : tensor<1x4x1x1xf32>
 }
+
+
+// -----
+
+// The order is already as expected.
+
+// CHECK-LABEL: func.func @support_for_inteface_op
+// CHECK: LayerName = "InCoreChain_0"{{.*}} Reason = "InCoreChain"
+// CHECK: LayerName = "Interface_0"{{.*}} Reason = "Interface"
+// CHECK: LayerName = "Interface_1"{{.*}} Reason = "Interface"
+// CHECK: LayerName = "InCoreChain_1"{{.*}} Reason = "InCoreChain"
+func.func @support_for_inteface_op(%arg0: tensor<1x3x224x224xf32>) -> tensor<1x64x56x56xf32> attributes {input_names = ["global_input_0"], output_names = ["global_outout_0"]} {
+  %0 = "tosa.const"() {value = dense<2.000000e-02> : tensor<64x3x7x7xf32>} : () -> tensor<64x3x7x7xf32>
+  %1 = xten_nn.subgraph (%arg1 = %arg0: tensor<1x3x224x224xf32>)  attributes {IfmOperands = [0 : index], LayerName = "InCoreChain_0", OutputName = "MaxPool_147", Reason = "InCoreChain"} {
+    %6 = "tosa.const"() {value = dense<[[0, 0], [0, 1], [0, 0], [0, 0]]> : tensor<4x2xi64>} : () -> tensor<4x2xi64>
+    %7 = "tosa.const"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<f32>
+    %8 = "tosa.pad"(%arg1, %6, %7) : (tensor<1x3x224x224xf32>, tensor<4x2xi64>, tensor<f32>) -> tensor<1x4x224x224xf32>
+    xten_nn.output %8 : tensor<1x4x224x224xf32>
+  } -> tensor<1x4x224x224xf32>
+  %2 = xten_nn.subgraph (%arg1 = %1: tensor<1x4x224x224xf32>)  attributes {IfmOperands = [0 : index], Reason = "Interface", LayerName = "Interface_0"} {
+    %6 = "tosa.const"() {value = dense<[[0, 0], [0, 1], [0, 0], [0, 0]]> : tensor<4x2xi64>} : () -> tensor<4x2xi64>
+    %7 = "tosa.const"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<f32>
+    %8 = "tosa.pad"(%arg1, %6, %7) : (tensor<1x4x224x224xf32>, tensor<4x2xi64>, tensor<f32>) -> tensor<1x5x224x224xf32>
+    xten_nn.output %8 : tensor<1x5x224x224xf32>
+  } -> tensor<1x5x224x224xf32>
+  %3 = xten_nn.subgraph (%arg1 = %arg0: tensor<1x3x224x224xf32>)  attributes {IfmOperands = [0 : index], Reason = "Interface", LayerName = "Interface_1"} {
+    %6 = "tosa.const"() {value = dense<[[0, 0], [0, 1], [0, 0], [0, 0]]> : tensor<4x2xi64>} : () -> tensor<4x2xi64>
+    %7 = "tosa.const"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<f32>
+    %8 = "tosa.pad"(%arg1, %6, %7) : (tensor<1x3x224x224xf32>, tensor<4x2xi64>, tensor<f32>) -> tensor<1x4x224x224xf32>
+    xten_nn.output %8 : tensor<1x4x224x224xf32>
+  } -> tensor<1x4x224x224xf32>
+  %4 = xten_nn.subgraph (%arg1 = %0: tensor<64x3x7x7xf32>)  attributes {Reason = "Interface", LayerName = "Interface_2"} {
+    %6 = "tosa.const"() {value = dense<[[0, 0], [0, 1], [0, 0], [0, 0]]> : tensor<4x2xi64>} : () -> tensor<4x2xi64>
+    %7 = "tosa.const"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<f32>
+    %8 = "tosa.pad"(%arg1, %6, %7) : (tensor<64x3x7x7xf32>, tensor<4x2xi64>, tensor<f32>) -> tensor<64x4x7x7xf32>
+    xten_nn.output %8 : tensor<64x4x7x7xf32>
+  } -> tensor<64x4x7x7xf32>
+  %5 = xten_nn.subgraph (%arg1 = %2: tensor<1x5x224x224xf32>, %arg2 = %4: tensor<64x4x7x7xf32>, %arg3 = %3: tensor<1x4x224x224xf32>)  attributes {IfmOperands = [0 : index, 2 : index], LayerName = "InCoreChain_1", OutputName = "MaxPool_147", Reason = "InCoreChain"} {
+    %6 = tensor.empty() : tensor<1x64x56x56xf32>
+    xten_nn.output %6 : tensor<1x64x56x56xf32>
+  } -> tensor<1x64x56x56xf32>
+  return %5 : tensor<1x64x56x56xf32>
+}

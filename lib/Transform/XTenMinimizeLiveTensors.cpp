@@ -119,6 +119,10 @@ bool isPseudoOp(mlir::Operation *op, StringRef opName) {
   return isAnyPseudoOp(op) && verifyStrAttr(op, "Op", opName).succeeded();
 }
 
+bool isInterfaceOp(mlir::Operation *op) {
+  return verifyStrAttr(op, "Reason", "Interface").succeeded();
+}
+
 bool isConcatSubgraph(Operation *op) {
   return isSourceOp(op, "onnx.Concat") || isPseudoOp(op, "Concat");
 }
@@ -192,7 +196,7 @@ FailureOr<SmallVector<Value>> getFmOperands(Operation *op) {
     return {op->getOperands()};
 
   // Otherwise, this is a PseudoOp and IFM is the first operand.
-  if (!isAnyPseudoOp(op)) {
+  if (!(isAnyPseudoOp(op) || isInterfaceOp(op))) {
     op->emitError("Unknown operation");
     return failure();
   }
