@@ -141,33 +141,31 @@ public:
     }
 
     // We want to make sure we have QDQ operations surrounded by MULs.
-    Operation *mulOperandOp = mulOp->getOperand(0).getDefiningOp();
+    auto dequantizeOp =
+        mulOp->getOperand(0).getDefiningOp<amd::xten_nn::DequantizeOp>();
     APFloat quantizeScaleFactor(0.0);
     auto isQDQPattern = m_Op<amd::xten_nn::DequantizeOp>(
         m_Op<amd::xten_nn::QuantizeOp>(m_Op<tosa::MulOp>(
             matchers::m_Any(), m_ConstantFloat(&quantizeScaleFactor))));
-    if (mulOperandOp == nullptr || !isQDQPattern.match(mulOperandOp)) {
+    if (!dequantizeOp || !isQDQPattern.match(dequantizeOp)) {
       return rewriter.notifyMatchFailure(mulOp->getLoc(),
                                          "expected mul->q->dq->mul pattern.");
     }
-    auto dequantizeOp = cast<amd::xten_nn::DequantizeOp>(mulOperandOp);
 
-    // The quantize operation will have it's reciprocal value constant folded.
-    // So we need to calculate one over to get the scale factor back.
-    APFloat recipValue((float)1.0);
-    recipValue.divide(quantizeScaleFactor, APFloat::rmNearestTiesToEven);
-    if (recipValue != dequantizeScaleFactor) {
-      return rewriter.notifyMatchFailure(
-          mulOp.getLoc(), "expected constants of both multiplications around "
-                          "the QDQ to be equal.");
-    }
-
-    // Only power of two values are supported by the QDQ operations
-    std::optional<int32_t> scaleFactor =
+    // Attempt to convert the scale factors to a log2 base. And ensure that both
+    // are equal. The quantization factor being the negation of the
+    // dequantization factor
+    std::optional<int32_t> quantizeLog2ScaleFactor =
+        getLog2Value(quantizeScaleFactor.convertToFloat());
+    std::optional<int32_t> dequantizeLog2ScaleFactor =
         getLog2Value(dequantizeScaleFactor.convertToFloat());
-    if (!scaleFactor.has_value()) {
+    if (!quantizeLog2ScaleFactor.has_value() ||
+        !dequantizeLog2ScaleFactor.has_value() ||
+        (quantizeLog2ScaleFactor.value() + dequantizeLog2ScaleFactor.value() !=
+         0)) {
       return rewriter.notifyMatchFailure(
-          mulOp.getLoc(), "constant is not a integer log2 value.");
+          mulOp.getLoc(), "expected constants of both multiplications to be "
+                          "equal and power-of-two values.");
     }
 
     auto quantizeOp = cast<amd::xten_nn::QuantizeOp>(
@@ -176,7 +174,7 @@ public:
     // Sum the shifts of the quantize, dequantize and update the operations
     llvm::APInt shiftSum(32, dequantizeOp.getShift(), true);
     bool overflow = false;
-    llvm::APInt scaleFactorInt(32, scaleFactor.value(), true);
+    llvm::APInt scaleFactorInt(32, dequantizeLog2ScaleFactor.value(), true);
     shiftSum = shiftSum.sadd_ov(scaleFactorInt, overflow);
     if (overflow) {
       return rewriter.notifyMatchFailure(
