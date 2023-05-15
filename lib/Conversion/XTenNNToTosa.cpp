@@ -13,8 +13,6 @@
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
 
 #include "mlir/Dialect/Tosa/IR/TosaOps.h"
-#include "mlir/IR/Matchers.h"
-#include "mlir/Transforms/CommutativityUtils.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 using namespace mlir;
@@ -201,6 +199,10 @@ public:
     RewritePatternSet patterns(context);
 
     patterns.insert<QuantizeOp, DequantizeOp>(context);
+    // We insert a clamp to enforce non-standard TOSA dataypes. E.g. i6 signed
+    // integer range described with an i8 value. However, in the case we use i8
+    // and clamp to values of i8 (i.e. si8) then the clamp can be optimized away
+    // and the following canonicalization will check/do that.
     tosa::ClampOp::getCanonicalizationPatterns(patterns, context);
 
     FrozenRewritePatternSet frozenSetOfPatterns(std::move(patterns));
