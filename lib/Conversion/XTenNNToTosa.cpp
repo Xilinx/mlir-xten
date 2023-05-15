@@ -122,7 +122,7 @@ public:
 
     // Clamp the integer to the min and max we calculated for this custom
     // bit width
-    auto clampOp = rewriter.create<tosa::ClampOp>(
+    auto clampOp = rewriter.createOrFold<tosa::ClampOp>(
         quantizeOp->getLoc(), newIntegerStorageType, castOp->getResult(0),
         rewriter.getI64IntegerAttr(intLimits.min),
         rewriter.getI64IntegerAttr(intLimits.max),
@@ -133,8 +133,7 @@ public:
     // We convert I back to SI because TOSA does not support the SI type
     // explicitly.
     auto unrealizedCast = rewriter.create<UnrealizedConversionCastOp>(
-        quantizeOp->getLoc(), quantizeOp->getResult(0).getType(),
-        clampOp->getResult(0));
+        quantizeOp->getLoc(), quantizeOp->getResult(0).getType(), clampOp);
 
     // Replace the original op with the new decomposition
     rewriter.replaceOp(quantizeOp, {unrealizedCast.getResult(0)});
