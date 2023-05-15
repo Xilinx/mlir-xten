@@ -1,4 +1,4 @@
-//===- XTenNNToTosaPass.h ---------------------------------------*- C++ -*-===//
+//===- XTenNNToTosa.h -------------------------------------------*- C++ -*-===//
 //
 // This file is licensed under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -8,7 +8,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#pragma once
+#ifndef XTEN_NN_TO_TOSA_H
+#define XTEN_NN_TO_TOSA_H
 
 #include "mlir/Pass/Pass.h"
 
@@ -19,3 +20,5 @@ std::unique_ptr<mlir::Pass> createXTenNNToTOSAPass();
 
 } // namespace xten_nn
 } // namespace amd
+
+#endif
