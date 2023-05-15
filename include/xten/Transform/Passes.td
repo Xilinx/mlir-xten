@@ -58,6 +58,12 @@ def XTenCanonicalizePass : Pass<"xten-canonicalize"> {
   }];
 
   let constructor = "xilinx::xten::createXTenCanonicalizePass()";
+
+  let options = [
+    Option<"allowDestructivePatterns", "allow-destructive", "bool", /*default=*/"false",
+           "Whether or not destructive, i.e. non-semantic preserving, patterns "
+           "should be included.">,
+  ];
 }
 
 #endif // ATEN_TRANSFORM_PASSES
