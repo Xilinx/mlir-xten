@@ -39,7 +39,7 @@ def XTenToLinalg : Pass<"xten-to-linalg", "ModuleOp"> {
 
 def TOSAToXTenNN : Pass<"tosa-to-xten-nn", "ModuleOp"> {
   let summary = "Partial Conversion of TOSA to XTenNN.";
-  let description = [{Converts all TOSA operators that match to the quanization
+  let description = [{Converts all TOSA operators that match to the quantization
   operators in XTenNN.
   }];
   let constructor = "amd::xten_nn::createTOSAToXTenNNPass()";
