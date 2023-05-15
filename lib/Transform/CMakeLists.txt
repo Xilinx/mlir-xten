@@ -13,7 +13,7 @@ add_mlir_library(XTenTransformPasses
   LowerToLibATenPass.cpp
   Passes.cpp
   XTenCanonicalizePass.cpp
-  XTenFoldConcat.cpp
+  XTenQDQConcat.cpp
   XTenMinimizeLiveTensors.cpp
 
   DEPENDS

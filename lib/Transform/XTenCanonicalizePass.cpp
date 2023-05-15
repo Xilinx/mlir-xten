@@ -34,7 +34,7 @@ struct XTenCanonicalizePass
 
 void xilinx::xten::populateXTenCanonicalizePatterns(
     RewritePatternSet &patterns) {
-  populateXTenFoldConcatPatterns(patterns);
+  populateXTenQDQConcatPatterns(patterns);
 }
 
 std::unique_ptr<Pass> xilinx::xten::createXTenCanonicalizePass() {
