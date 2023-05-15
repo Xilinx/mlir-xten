@@ -39,6 +39,20 @@ def XTenToLinalg : Pass<"xten-to-linalg", "ModuleOp"> {
 
 def XTenNNToTosa : Pass<"xten-nn-to-tosa", "ModuleOp"> {
   let summary = "Convert XTenNN quantization operations to TOSA.";
+  let description = [{
+  Partial conversion of XTenNN operations to TOSA.
+
+  This pass only converts XTenNN quantize and dequantize operations 
+  who operate on signed integer tensors to TOSA.
+
+  Currently, unsigned integer tensor support in TOSA does not allow
+  lowerings of operations like:
+  ```
+  xten_nn.quantize(%arg0 : tensor<1x2xf32>){shift = -3 : si32} -> tensor<1x2xui8>
+  ```
+  to TOSA. This pass will ignore any quantize or dequantize operations
+  working on unsigned tensors for the moment.
+  }];
   let constructor = "amd::xten_nn::createXTenNNToTOSAPass()";
   let dependentDialects = [
     "mlir::tosa::TosaDialect",
