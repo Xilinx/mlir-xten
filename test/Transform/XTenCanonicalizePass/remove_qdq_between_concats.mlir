@@ -184,3 +184,31 @@ func.func @partially_foldable_user_concats(%arg0: tensor<1x1x7x7xf32>) -> (tenso
 // SANE:           %[[VAL_5:.*]] = "tosa.concat"(%[[VAL_3]], %[[VAL_3]]) {axis = 0 : i64} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<2x2x7x7xf32>
 // SANE:           return %[[VAL_4]], %[[VAL_5]] : tensor<1x4x7x7xf32>, tensor<2x2x7x7xf32>
 // SANE:         }
+
+// -----
+
+func.func @qdq_different_shift(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32> {
+  %0 = "tosa.concat"(%arg0, %arg0) {axis = 1} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
+  %1 = "xten_nn.quantize"(%0) {shift = -5 : si32} : (tensor<1x2x7x7xf32>) -> tensor<1x2x7x7xsi8>
+  %2 = "xten_nn.dequantize"(%1) {shift = -3 : si32} : (tensor<1x2x7x7xsi8>) -> tensor<1x2x7x7xf32>
+  %3 = "tosa.concat"(%2, %2) {axis = 1} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
+  return %3 : tensor<1x4x7x7xf32>
+}
+
+// CHECK-LABEL:   func.func @qdq_different_shift(
+// CHECK-SAME:                                   %[[VAL_0:.*]]: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32> {
+// CHECK:           %[[VAL_1:.*]] = "tosa.concat"(%[[VAL_0]], %[[VAL_0]]) {axis = 1 : i64} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
+// CHECK:           %[[VAL_2:.*]] = xten_nn.quantize(%[[VAL_1]] : tensor<1x2x7x7xf32>) {shift = -5 : si32} -> tensor<1x2x7x7xsi8>
+// CHECK:           %[[VAL_3:.*]] = xten_nn.dequantize(%[[VAL_2]] : tensor<1x2x7x7xsi8>) {shift = -3 : si32} -> tensor<1x2x7x7xf32>
+// CHECK:           %[[VAL_4:.*]] = "tosa.concat"(%[[VAL_3]], %[[VAL_3]]) {axis = 1 : i64} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
+// CHECK:           return %[[VAL_4]] : tensor<1x4x7x7xf32>
+// CHECK:         }
+
+// SANE-LABEL:   func.func @qdq_different_shift(
+// SANE-SAME:                                   %[[VAL_0:.*]]: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32> {
+// SANE:           %[[VAL_1:.*]] = "tosa.concat"(%[[VAL_0]], %[[VAL_0]]) {axis = 1 : i64} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
+// SANE:           %[[VAL_2:.*]] = xten_nn.quantize(%[[VAL_1]] : tensor<1x2x7x7xf32>) {shift = -5 : si32} -> tensor<1x2x7x7xsi8>
+// SANE:           %[[VAL_3:.*]] = xten_nn.dequantize(%[[VAL_2]] : tensor<1x2x7x7xsi8>) {shift = -3 : si32} -> tensor<1x2x7x7xf32>
+// SANE:           %[[VAL_4:.*]] = "tosa.concat"(%[[VAL_3]], %[[VAL_3]]) {axis = 1 : i64} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
+// SANE:           return %[[VAL_4]] : tensor<1x4x7x7xf32>
+// SANE:         }

@@ -19,14 +19,23 @@ struct XTenQDQConcat : public OpRewritePattern<DequantizeOp> {
   LogicalResult matchAndRewrite(DequantizeOp op,
                                 PatternRewriter &rewriter) const override {
     // Match concat->QDQ->concat and remove QDQ, if concats would be foldable.
-    // Try to match an incoming concat
-    Value val;
-    if (!matchPattern(op.getInput(), m_Op<QuantizeOp>(matchers::m_Any(&val)))) {
+    // Removing a QDQ is already destructive. Try to be a little-less
+    // destructive by checking that the QDQ nodes have the same shift.
+    auto quantize =
+        llvm::dyn_cast_or_null<QuantizeOp>(op.getInput().getDefiningOp());
+    if (!quantize) {
       return rewriter.notifyMatchFailure(
-          op, "Dequantize input not produced by Quantize.");
+          op, "DequantizeOp input not produced by QuantizeOp.");
     }
 
-    auto producer = dyn_cast_or_null<ConcatOp>(val.getDefiningOp());
+    if (quantize.getShift() != op.getShift()) {
+      return rewriter.notifyMatchFailure(
+          op, "DequantizeOp and QuantizeOp do not share the same shift value.");
+    }
+
+    // Try to match an incoming concat
+    auto producer =
+        dyn_cast_or_null<ConcatOp>(quantize.getInput().getDefiningOp());
     if (producer == nullptr) {
       return rewriter.notifyMatchFailure(
           op, "QDQ input not produced by TOSA concat.");
