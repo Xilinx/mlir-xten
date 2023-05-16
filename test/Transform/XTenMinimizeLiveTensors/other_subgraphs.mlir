@@ -139,6 +139,39 @@ func.func @incorechain_ops_with_concat(%arg0: tensor<1x4x224x224xf32>, %arg1: te
 
 // -----
 
+// Legal dead code where (dead) operation Conv_0 is not attached to any operation that influence output.
+// The order is expected to change.
+
+// CHECK-LABEL:     legal_dead_code
+// CHECK:     "Conv_2"
+// CHECK:     "Conv_1"
+// CHECK:     "Conv_0"
+// CHECK:     "Add_0"
+
+func.func @legal_dead_code(%arg0: tensor<1x256x56x56xf32>) -> tensor<1x256x56x56xf32> {
+  %0 = "tosa.const"() {value = dense<2.000000e-02> : tensor<64x4x7x7xf32>} : () -> tensor<64x4x7x7xf32>
+  %1 = "tosa.const"() {value = dense<2.000000e-02> : tensor<64xf32>} : () -> tensor<64xf32>
+  %2 = xten_nn.subgraph (%arg3 = %arg0: tensor<1x256x56x56xf32>, %arg4 = %0: tensor<64x4x7x7xf32>, %arg5 = %1: tensor<64xf32>)  attributes {IfmOperands = [0 : index], LayerName = "Conv_0", Reason = "InCoreChain"} {
+    %8 = tensor.empty() : tensor<1x256x56x56xf32>
+    xten_nn.output %8 : tensor<1x256x56x56xf32>
+  } -> tensor<1x256x56x56xf32>
+  %3 = xten_nn.subgraph (%arg3 = %arg0: tensor<1x256x56x56xf32>, %arg4 = %0: tensor<64x4x7x7xf32>, %arg5 = %1: tensor<64xf32>)  attributes {IfmOperands = [0 : index], LayerName = "Conv_1", Reason = "InCoreChain"} {
+    %8 = tensor.empty() : tensor<1x64x56x56xf32>
+    xten_nn.output %8 : tensor<1x64x56x56xf32>
+  } -> tensor<1x64x56x56xf32>
+  %4 = xten_nn.subgraph (%arg3 = %arg0: tensor<1x256x56x56xf32>, %arg4 = %0: tensor<64x4x7x7xf32>, %arg5 = %1: tensor<64xf32>)  attributes {IfmOperands = [0 : index], LayerName = "Conv_2", Reason = "InCoreChain"} {
+    %8 = tensor.empty() : tensor<1x64x56x56xf32>
+    xten_nn.output %8 : tensor<1x64x56x56xf32>
+  } -> tensor<1x64x56x56xf32>
+  %5 = xten_nn.subgraph (%arg3 = %3: tensor<1x64x56x56xf32>, %arg4 = %0: tensor<64x4x7x7xf32>, %arg5 = %1: tensor<64xf32>, %arg6 = %2 : tensor<1x256x56x56xf32>)  attributes {IfmOperands = [0 : index, 3 : index], LayerName = "Add_0", OfmShare = 3 : index, Reason = "InCoreChain"} {
+    %8 = tensor.empty() : tensor<1x256x56x56xf32>
+    xten_nn.output %8 : tensor<1x256x56x56xf32>
+  } -> tensor<1x256x56x56xf32>
+  return %5 : tensor<1x256x56x56xf32>
+}
+
+// -----
+
 // CHECK-LABEL: func.func @incorechain_ops_with_concat2
 // CHECK:     "InCoreChain_0"
 // CHECK:     "InCoreChain_1"
@@ -239,4 +272,39 @@ func.func @gap_concat_reversed(%arg0 : tensor<1x2x255x255xf32>, %arg1 : tensor<1
       xten_nn.output %0 : tensor<1x4x1x1xf32>
   } -> tensor<1x4x1x1xf32>
   return %2 : tensor<1x4x1x1xf32>
+}
+
+
+// -----
+
+// The order is already as expected.
+
+// CHECK-LABEL: func.func @support_for_inteface_op
+// CHECK: LayerName = "InCoreChain_0"{{.*}} Reason = "InCoreChain"
+// CHECK: LayerName = "Interface_0"{{.*}} Reason = "Interface"
+// CHECK: LayerName = "Interface_1"{{.*}} Reason = "Interface"
+// CHECK: LayerName = "InCoreChain_1"{{.*}} Reason = "InCoreChain"
+func.func @support_for_inteface_op(%arg0: tensor<1x3x224x224xf32>) -> tensor<1x64x56x56xf32> {
+  %0 = "tosa.const"() {value = dense<2.000000e-02> : tensor<64x3x7x7xf32>} : () -> tensor<64x3x7x7xf32>
+  %1 = xten_nn.subgraph (%arg1 = %arg0: tensor<1x3x224x224xf32>)  attributes {IfmOperands = [0 : index], LayerName = "InCoreChain_0", OutputName = "MaxPool_147", Reason = "InCoreChain"} {
+    %0 = tensor.empty() : tensor<1x4x224x224xf32>
+    xten_nn.output %0 : tensor<1x4x224x224xf32>
+  } -> tensor<1x4x224x224xf32>
+  %2 = xten_nn.subgraph (%arg1 = %1: tensor<1x4x224x224xf32>)  attributes {IfmOperands = [0 : index], Reason = "Interface", LayerName = "Interface_0"} {
+    %0 = tensor.empty() : tensor<1x5x224x224xf32>
+    xten_nn.output %0 : tensor<1x5x224x224xf32>
+  } -> tensor<1x5x224x224xf32>
+  %3 = xten_nn.subgraph (%arg1 = %arg0: tensor<1x3x224x224xf32>)  attributes {IfmOperands = [0 : index], Reason = "Interface", LayerName = "Interface_1"} {
+    %0 = tensor.empty() : tensor<1x4x224x224xf32>
+    xten_nn.output %0 : tensor<1x4x224x224xf32>
+  } -> tensor<1x4x224x224xf32>
+  %4 = xten_nn.subgraph (%arg1 = %0: tensor<64x3x7x7xf32>)  attributes {Reason = "Interface", LayerName = "Interface_2"} {
+    %0 = tensor.empty() : tensor<64x4x7x7xf32>
+    xten_nn.output %0 : tensor<64x4x7x7xf32>
+  } -> tensor<64x4x7x7xf32>
+  %5 = xten_nn.subgraph (%arg1 = %2: tensor<1x5x224x224xf32>, %arg2 = %4: tensor<64x4x7x7xf32>, %arg3 = %3: tensor<1x4x224x224xf32>)  attributes {IfmOperands = [0 : index, 2 : index], LayerName = "InCoreChain_1", Reason = "InCoreChain"} {
+    %6 = tensor.empty() : tensor<1x64x56x56xf32>
+    xten_nn.output %6 : tensor<1x64x56x56xf32>
+  } -> tensor<1x64x56x56xf32>
+  return %5 : tensor<1x64x56x56xf32>
 }

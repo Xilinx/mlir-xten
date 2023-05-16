@@ -12,6 +12,7 @@ Passes.cpp
 TosaToXTenNN.cpp
 XTenToAffine.cpp
 XTenToLinalg.cpp
+XTenNNToTosa.cpp
 
 DEPENDS
 XTenConversionIncGen
