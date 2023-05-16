@@ -12,6 +12,7 @@
 #define XTEN_CONVERSION_PASSES_H
 
 #include "xten/Conversion/ATenToXTenPass.h"
+#include "xten/Conversion/XTenNNToTosa.h"
 #include "xten/Conversion/XTenToAffinePass.h"
 #include "xten/Conversion/XTenToLinalgPass.h"
 
