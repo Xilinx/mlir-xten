@@ -22,7 +22,7 @@ namespace {
 /// Convert the quantized integer type from signed to a signless version that
 /// matches TOSA.
 ///
-/// TOSA currently supports i8, i16, i32 tensors types here we convert the
+/// TOSA currently supports i8, i16, i32 tensors types. Here we convert the
 /// arbitrary signed type from the XTenNN QDQ operators to one that can be
 /// represented in TOSA.
 /// @TODO: once TOSA moves from signless to signed integers with arbitrary
@@ -34,16 +34,15 @@ TensorType getNewStorageType(TensorType tensorType) {
   assert(tensorType.getElementType().isSignedInteger() &&
          "quantization should only work with integers");
   unsigned int integerBitwidth = tensorType.getElementTypeBitWidth();
+  unsigned int storageBitWidth = 32;
   if (integerBitwidth <= 8) {
-    return tensorType.cloneWith({},
-                                IntegerType::get(tensorType.getContext(), 8));
+    storageBitWidth = 8;
   }
   if (integerBitwidth <= 16) {
-    return tensorType.cloneWith({},
-                                IntegerType::get(tensorType.getContext(), 16));
+    storageBitWidth = 16;
   }
-  return tensorType.cloneWith({},
-                              IntegerType::get(tensorType.getContext(), 32));
+  return tensorType.cloneWith(
+      {}, IntegerType::get(tensorType.getContext(), storageBitWidth));
 }
 
 RankedTensorType createSplatType(int64_t rank, Type elementType) {
@@ -84,7 +83,7 @@ public:
   LogicalResult matchAndRewrite(amd::xten_nn::QuantizeOp quantizeOp,
                                 PatternRewriter &rewriter) const override {
     // The QDQ operations only work on tensors, if they are not, then the
-    // verifiers should find the error. At the moment, only the signed tensors
+    // verifiers should find the error. At the moment, only signed tensors
     // are supported.
     auto outputType = cast<TensorType>(quantizeOp->getResult(0).getType());
     if (!outputType.getElementType().isSignedInteger()) {
@@ -92,26 +91,26 @@ public:
           quantizeOp.getLoc(), "only signed tensor types are supported.");
     }
     auto inputType = dyn_cast<TensorType>(quantizeOp->getOperand(0).getType());
-    // TOSA only supports signed integers of i8, i16 or i32 here we convert our
-    // si<?> to this types and add a clamp to mimic arbitrary bit width.
-    TensorType newIntegerStorageType = getNewStorageType(outputType);
 
-    // Calculate (1 / 2 ^ shift )
+    // Calculate (1 / 2 ^ shift)
     llvm::APFloat scale(std::pow(static_cast<float>(2.0),
                                  static_cast<float>(-quantizeOp.getShift())));
 
-    // Create a constant that represents the (1 / 2 ^ shift )
+    // Create a constant that represents the (1 / 2 ^ shift)
     RankedTensorType constType =
         createSplatType(inputType.getRank(), rewriter.getF32Type());
     auto constOp = rewriter.create<tosa::ConstOp>(
         quantizeOp->getLoc(), constType,
         DenseFPElementsAttr::get(constType, {scale}));
 
-    // Calculate ( x / 2 ^ shift)
+    // Calculate (x / 2 ^ shift)
     auto mulOp = rewriter.create<tosa::MulOp>(
         quantizeOp.getLoc(), inputType, quantizeOp->getOperand(0),
         constOp->getResult(0), rewriter.getI32IntegerAttr(0));
 
+    // TOSA only supports signed integers of i8, i16 or i32 here we convert our
+    // si<?> to this types and add a clamp to mimic arbitrary bit width.
+    TensorType newIntegerStorageType = getNewStorageType(outputType);
     // Cast from fp32 -> i<Bitwidth> where bit width is the supported storage
     // bit width. Either i8, i16 or i32
     auto castOp = rewriter.create<tosa::CastOp>(
@@ -149,7 +148,7 @@ public:
   LogicalResult matchAndRewrite(amd::xten_nn::DequantizeOp dequantizeOp,
                                 PatternRewriter &rewriter) const override {
     // The QDQ operations only work on tensors, if they are not, then the
-    // verifiers should find the error. At the moment, only the signed tensors
+    // verifiers should find the error. At the moment, only signed tensors
     // are supported.
     auto inputType = cast<TensorType>(dequantizeOp->getOperand(0).getType());
     if (!inputType.getElementType().isSignedInteger()) {
@@ -169,7 +168,7 @@ public:
         dequantizeOp->getLoc(), dequantizeOp->getResult(0).getType(),
         unrealizedCast.getResult(0));
 
-    // Calculate the ( x * 2 ^ shift) for the dequantize part
+    // Calculate the (x * 2 ^ shift) for the dequantize part
     llvm::APFloat scale(std::pow(static_cast<float>(2.0),
                                  static_cast<float>(dequantizeOp.getShift())));
 
