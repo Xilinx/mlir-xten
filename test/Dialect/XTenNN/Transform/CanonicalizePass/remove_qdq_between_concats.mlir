@@ -1,5 +1,5 @@
-// RUN: aten-opt %s -xten-canonicalize="allow-destructive" -split-input-file | FileCheck %s
-// RUN: aten-opt %s -xten-canonicalize -split-input-file | FileCheck %s --check-prefix=SANE
+// RUN: aten-opt %s -xtennn-canonicalize="allow-destructive" -split-input-file | FileCheck %s
+// RUN: aten-opt %s -xtennn-canonicalize -split-input-file | FileCheck %s --check-prefix=SANE
 
 func.func @single_qdq(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x1x7x7xf32> {
   %0 = "xten_nn.quantize"(%arg0) {shift = -3 : si32} : (tensor<1x1x7x7xf32>) -> tensor<1x1x7x7xsi8>

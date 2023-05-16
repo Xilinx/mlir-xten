@@ -1,19 +1,19 @@
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
-#include "xten/Transform/Passes.h"
+#include "xten/Dialect/XTenNN/Transforms/CanonicalizePass.h"
 
-#include <mlir/Dialect/Tosa/IR/TosaOps.h>
-#include <mlir/IR/Matchers.h>
-#include <mlir/IR/PatternMatch.h>
-#include <mlir/Support/LogicalResult.h>
+#include "mlir/Dialect/Tosa/IR/TosaOps.h"
+#include "mlir/IR/Matchers.h"
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/Support/LogicalResult.h"
 
-#include <llvm/ADT/SmallVector.h>
+#include "llvm/ADT/SmallVector.h"
 
 using namespace mlir;
 using namespace mlir::tosa;
 using namespace amd::xten_nn;
 
 namespace {
-struct XTenQDQConcat : public OpRewritePattern<DequantizeOp> {
+struct RemoveQDQBetweenConcat : public OpRewritePattern<DequantizeOp> {
   using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(DequantizeOp op,
@@ -71,6 +71,6 @@ struct XTenQDQConcat : public OpRewritePattern<DequantizeOp> {
 };
 } // namespace
 
-void xilinx::xten::populateXTenQDQConcatPatterns(RewritePatternSet &patterns) {
-  patterns.add<XTenQDQConcat>(patterns.getContext());
+void amd::xten_nn::populateQDQConcatPatterns(RewritePatternSet &patterns) {
+  patterns.add<RemoveQDQBetweenConcat>(patterns.getContext());
 }

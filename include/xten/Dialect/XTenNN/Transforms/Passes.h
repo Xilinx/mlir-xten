@@ -15,6 +15,7 @@
 #pragma once
 
 #include "xten/Dialect/XTenNN/Transforms/Simplify.h"
+#include "xten/Dialect/XTenNN/Transforms/CanonicalizePass.h"
 
 namespace amd::xten_nn {
 #define GEN_PASS_REGISTRATION

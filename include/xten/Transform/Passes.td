@@ -50,20 +50,4 @@ def XTenMinimizeLiveTensors : Pass<"xten-minimize-live", "func::FuncOp"> {
   ];
 }
 
-def XTenCanonicalizePass : Pass<"xten-canonicalize"> {
-  let summary = "Perform XTen specific canonicalizations on the IR";
-  let description = [{
-    Pass that performs XTen specific foldings & canonicalizations to bring the
-    IR into a common state.
-  }];
-
-  let constructor = "xilinx::xten::createXTenCanonicalizePass()";
-
-  let options = [
-    Option<"allowDestructivePatterns", "allow-destructive", "bool", /*default=*/"false",
-           "Whether or not destructive, i.e. non-semantic preserving, patterns "
-           "should be included.">,
-  ];
-}
-
 #endif // ATEN_TRANSFORM_PASSES

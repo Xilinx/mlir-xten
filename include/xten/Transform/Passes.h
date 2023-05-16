@@ -15,7 +15,6 @@
 #include "xten/Transform/ATenOpReport.h"
 #include "xten/Transform/ATenVisualGraph.h"
 #include "xten/Transform/LowerToLibATenPass.h"
-#include "xten/Transform/XTenCanonicalizePass.h"
 #include "xten/Transform/XTenMinimizeLiveTensors.h"
 
 namespace xilinx::xten {
