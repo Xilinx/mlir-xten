@@ -37,8 +37,7 @@ TensorType getNewStorageType(TensorType tensorType) {
   unsigned int storageBitWidth = 32;
   if (integerBitwidth <= 8) {
     storageBitWidth = 8;
-  }
-  if (integerBitwidth <= 16) {
+  } else if (integerBitwidth <= 16) {
     storageBitWidth = 16;
   }
   return tensorType.cloneWith(
@@ -47,6 +46,10 @@ TensorType getNewStorageType(TensorType tensorType) {
 
 RankedTensorType createSplatType(int64_t rank, Type elementType) {
   llvm::SmallVector<int64_t, 4> tmpShape;
+  // On average the tensor rank will be four, if it is greater, use the
+  // reserve function to ensure we do not reallocate upon each insertion if the
+  // rank is greater.
+  tmpShape.reserve(rank);
   for (uint32_t i = 0; i < rank; ++i) {
     tmpShape.emplace_back(1);
   }
