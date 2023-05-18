@@ -20,36 +20,17 @@ using namespace mlir;
 
 namespace {
 
-/// Checks to see if the \p castOp is a dequantize operation.
+/// Checks if the first tensor is a F32Tensor and the second i8Tensor
 ///
-///\param castOp check that the operation casts from i8, assuming it is signed
-/// to f32.
-/// \return true represents a dequantize cast
-/// \return false does not represent a dequantize cast
-bool isI8ToF32Cast(tosa::CastOp castOp) {
-  TensorType inputTensorType =
-      cast<TensorType>(castOp->getOperand(0).getType());
-  TensorType outputTensorType =
-      cast<TensorType>(castOp->getResult(0).getType());
-  return outputTensorType.getElementType().isF32() &&
-         inputTensorType.getElementType().isInteger(8) &&
-         inputTensorType.getElementType().isSignlessInteger();
-}
-
-/// Checks to see if the \p castOp is a quantize operation.
+///\param f32Tensor expected to be a F32Tensor
+///\param i8Tensor expected to be a i8Tensor
+///\return true if both arguments match their expected types.
+///\return false otherwise
 ///
-///\param castOp check that the operation casts from f32
-/// to i8, assuming it is signed.
-///\return true represents a quantize cast
-///\return false does not represent a quantize cast
-bool isF32ToI8Cast(tosa::CastOp castOp) {
-  TensorType inputTensorType =
-      cast<TensorType>(castOp->getOperand(0).getType());
-  TensorType outputTensorType =
-      cast<TensorType>(castOp->getResult(0).getType());
-  return inputTensorType.getElementType().isF32() &&
-         outputTensorType.getElementType().isInteger(8) &&
-         outputTensorType.getElementType().isSignlessInteger();
+bool checkInputOutputType(TensorType f32Tensor, TensorType i8Tensor) {
+  return f32Tensor.getElementType().isF32() &&
+         i8Tensor.getElementType().isInteger(8) &&
+         i8Tensor.getElementType().isSignlessInteger();
 }
 
 /// Get the Log2 \p value of the float. If the \p value is not an exact
@@ -73,7 +54,7 @@ std::optional<int32_t> getLog2Value(float value) {
 /// Used to check that broadcasting did not occur, for example, on
 /// multiplication operations.
 ///
-///\param operation we are inspecting. Assumes operand(0) and result(0) exists.
+///\param operation we are inspecting. Assumes operand(0) and result(0) exist.
 ///\return true shape does not change from input to output
 ///\return false shape does change from input to output
 bool sameInputAndOutputShape(mlir::Operation *operation) {
@@ -104,22 +85,25 @@ public:
           "expected the quantize operation to have a single use.");
     }
 
+    TensorType inputTensorType = castOp.getInput().getType();
+    TensorType outputTensorType = castOp.getOutput().getType();
+
     // Dequantize is from i8 -> f32 here we need to check for that
-    if (!isI8ToF32Cast(castOp)) {
+    if (!checkInputOutputType(/*f32*/ outputTensorType,
+                              /*i8*/ inputTensorType)) {
       return rewriter.notifyMatchFailure(
           castOp->getLoc(), "dequantize operation input and output are not i8 "
                             "and f32 respectively.");
     }
 
     // Quantize is from f32 -> i8 here we need to check for that
-    if (!isF32ToI8Cast(quantizeOp)) {
+    if (!checkInputOutputType(/*f32*/ quantizeOp.getInput().getType(),
+                              /*i8*/ quantizeOp.getOutput().getType())) {
       return rewriter.notifyMatchFailure(castOp->getLoc(),
                                          "quantize operation input and output "
                                          "are not f32 and i8 respectively.");
     }
 
-    auto outputTensorType =
-        cast<TensorType>(quantizeOp->getOperand(0).getType());
     Type newOutputType = outputTensorType.cloneWith(
         {}, IntegerType::get(rewriter.getContext(), 8,
                              IntegerType::SignednessSemantics::Signed));
