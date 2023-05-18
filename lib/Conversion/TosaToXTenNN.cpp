@@ -114,7 +114,6 @@ public:
     rewriter.replaceOpWithNewOp<amd::xten_nn::DequantizeOp>(
         castOp, outputTensorType, newQuantizeOp->getResult(0),
         /*shift*/ (int32_t)0);
-    rewriter.eraseOp(quantizeOp);
 
     return success();
   }
@@ -150,16 +149,25 @@ public:
       return rewriter.notifyMatchFailure(dequantizeMulOp->getLoc(),
                                          "expected mul->q->dq->mul pattern.");
     }
+
+    // The multiplication should have only a single constant value
+    APFloat dequantizeScaleFactor(0.0);
+    if (!m_ConstantFloat(&dequantizeScaleFactor)
+             .match(dequantizeMulOp.getOperand(1).getDefiningOp())) {
+      return rewriter.notifyMatchFailure(dequantizeMulOp.getOperand(1).getLoc(),
+                                         "expected to be a constant.");
+    }
+
     auto quantizeOp = cast<amd::xten_nn::QuantizeOp>(
         dequantizeOp->getOperand(0).getDefiningOp());
 
     // Make sure these multiplications really only belong to the QDQ operations
-    // and used by no one else
+    // and are used by no one else
     auto *quantizeMulOp = quantizeOp->getOperand(0).getDefiningOp();
     if (!quantizeMulOp->hasOneUse() || !dequantizeMulOp->hasOneUse()) {
       return rewriter.notifyMatchFailure(
           dequantizeMulOp->getLoc(),
-          "multiplications around the QDQ operations must have single uses.");
+          "multiplications around the QDQ operations must have single user.");
     }
 
     if (!sameInputAndOutputShape(quantizeMulOp) ||
