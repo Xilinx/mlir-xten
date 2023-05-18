@@ -130,14 +130,6 @@ public:
   LogicalResult matchAndRewrite(tosa::MulOp dequantizeMulOp,
                                 PatternRewriter &rewriter) const override {
 
-    // The multiplication should have only a single constant value
-    APFloat dequantizeScaleFactor(0.0);
-    if (!m_ConstantFloat(&dequantizeScaleFactor)
-             .match(dequantizeMulOp.getOperand(1).getDefiningOp())) {
-      return rewriter.notifyMatchFailure(dequantizeMulOp.getOperand(1).getLoc(),
-                                         "expected to be a constant.");
-    }
-
     // We want to make sure we have QDQ operations surrounded by MULs.
     auto dequantizeOp = dequantizeMulOp->getOperand(0)
                             .getDefiningOp<amd::xten_nn::DequantizeOp>();
