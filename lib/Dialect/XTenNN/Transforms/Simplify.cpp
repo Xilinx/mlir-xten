@@ -12,7 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "PassDetail.h"
+#include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
+#include "xten/Dialect/XTenNN/Transforms/Passes.h"
+
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/Transforms/SideEffectUtils.h"
@@ -21,6 +23,12 @@
 #include "llvm/Support/Debug.h"
 
 #define DEBUG_TYPE "xtennn-simplify"
+
+namespace amd::xten_nn {
+using namespace mlir;
+#define GEN_PASS_DEF_XTENNNSIMPLIFY
+#include "xten/Dialect/XTenNN/Transforms/XTenNNPasses.h.inc"
+} // namespace amd::xten_nn
 
 using namespace llvm;
 using namespace mlir;
@@ -33,8 +41,8 @@ class RemoveUnusedCaptures : public OpInterfaceRewritePattern<EnclaveOp> {
 public:
   using OpInterfaceRewritePattern::OpInterfaceRewritePattern;
 
-  virtual LogicalResult
-  matchAndRewrite(EnclaveOp op, PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewrite(EnclaveOp op,
+                                PatternRewriter &rewriter) const override {
     // Collect all unused block arguments.
     auto unused = to_vector(
         make_filter_range(op.getEnclaveBody().getArguments(),
@@ -54,8 +62,8 @@ class RemoveUnusedReturns : public OpInterfaceRewritePattern<EnclaveOp> {
 public:
   using OpInterfaceRewritePattern::OpInterfaceRewritePattern;
 
-  virtual LogicalResult
-  matchAndRewrite(EnclaveOp op, PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewrite(EnclaveOp op,
+                                PatternRewriter &rewriter) const override {
     // There must be results we can remove.
     if (!any_of(op->getResults(),
                 [](OpResult result) { return result.use_empty(); }))
@@ -110,11 +118,12 @@ void amd::xten_nn::populateSimplifyPatterns(RewritePatternSet &patterns) {
 namespace {
 
 /// Simplifies DLNN networks.
-class SimplifyPass : public XTenNNSimplifyBase<SimplifyPass> {
+class SimplifyPass
+    : public amd::xten_nn::impl::XTenNNSimplifyBase<SimplifyPass> {
 public:
   using XTenNNSimplifyBase::XTenNNSimplifyBase;
 
-  virtual void runOnOperation() override {
+  void runOnOperation() override {
     RewritePatternSet patterns(&getContext());
 
     populateSimplifyPatterns(patterns);

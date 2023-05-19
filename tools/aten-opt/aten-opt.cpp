@@ -33,7 +33,7 @@
 #include "xten/Dialect/XTen/XTenPasses.h"
 #include "xten/Dialect/XTenNN/IR/XTenNN.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
-#include "xten/Dialect/XTenNN/Transforms/XTenNNPasses.h"
+#include "xten/Dialect/XTenNN/Transforms/Passes.h"
 #include "xten/Transform/Passes.h"
 
 using namespace llvm;
