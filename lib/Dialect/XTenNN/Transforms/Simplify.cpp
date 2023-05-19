@@ -27,7 +27,7 @@
 namespace amd::xten_nn {
 using namespace mlir;
 #define GEN_PASS_DEF_XTENNNSIMPLIFY
-#include "xten/Dialect/XTenNN/Transforms/XTenNNPasses.h.inc"
+#include "xten/Dialect/XTenNN/Transforms/Passes.h.inc"
 } // namespace amd::xten_nn
 
 using namespace llvm;
