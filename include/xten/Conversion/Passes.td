@@ -5,6 +5,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // (c) Copyright 2021 Xilinx Inc.
+// (c) Copyright 2023 Advanced Micro Devices, Inc.
 //
 //===----------------------------------------------------------------------===//
 
@@ -36,6 +37,17 @@ def XTenToLinalg : Pass<"xten-to-linalg", "ModuleOp"> {
   ];
 }
 
+def TOSAToXTenNN : Pass<"tosa-to-xten-nn", "ModuleOp"> {
+  let summary = "Partial Conversion of TOSA to XTenNN.";
+  let description = [{Converts all TOSA operators that match to the quantization
+  operators in XTenNN.
+  }];
+  let constructor = "amd::xten_nn::createTOSAToXTenNNPass()";  
+  let dependentDialects = [
+    "mlir::tosa::TosaDialect",
+    "amd::xten_nn::XTenNNDialect"
+  ];
+}
 
 def XTenNNToTosa : Pass<"xten-nn-to-tosa", "ModuleOp"> {
   let summary = "Convert XTenNN quantization operations to TOSA.";

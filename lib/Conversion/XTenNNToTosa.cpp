@@ -8,8 +8,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "xten/Conversion/XTenNNToTosa.h"
 #include "PassDetail.h"
+#include "xten/Conversion/XTenNNToTosaPass.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
 
 #include "mlir/Dialect/Tosa/IR/TosaOps.h"
