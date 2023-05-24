@@ -334,3 +334,57 @@ module attributes {} {
     return %5 : tensor<1x3x4x4xf32>
   }
 }
+
+// --
+
+module attributes {} {
+// CHECK-LABEL:     func.func @sort_mul_operands_on_constants() -> tensor<1x3x4x4xf32> {
+// CHECK:             %[[VAL_0:.*]] = "tosa.const"() {value = dense<1.280000e+02> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
+// CHECK:             %[[VAL_1:.*]] = "tosa.const"() {value = dense<2.000000e-02> : tensor<1x3x4x4xf32>} : () -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_2:.*]] = "tosa.mul"(%[[VAL_1]], %[[VAL_0]]) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             return %[[VAL_2]] : tensor<1x3x4x4xf32>
+// CHECK:           }
+ func.func @sort_mul_operands_on_constants() -> tensor<1x3x4x4xf32> {
+    %0 = "tosa.const"() {value = dense<1.280000e+02> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
+    %1 = "tosa.const"() {value = dense<2.000000e-02> : tensor<1x3x4x4xf32>} : () -> tensor<1x3x4x4xf32> 
+    %2 = "tosa.mul"(%0, %1) {shift = 0 : i32} : (tensor<1x1x1x1xf32>, tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32>
+    return %2 : tensor<1x3x4x4xf32>
+  }
+}
+
+// --
+
+module attributes {} {
+// CHECK-LABEL:     func.func @sort_mul_operands_on_scalar_constants() -> tensor<3xf32> {
+// CHECK:             %[[VAL_0:.*]] = "tosa.const"() {value = dense<1.280000e+02> : tensor<1xf32>} : () -> tensor<1xf32>
+// CHECK:             %[[VAL_1:.*]] = "tosa.const"() {value = dense<2.000000e-02> : tensor<3xf32>} : () -> tensor<3xf32>
+// CHECK:             %[[VAL_2:.*]] = "tosa.mul"(%[[VAL_1]], %[[VAL_0]]) {shift = 0 : i32} : (tensor<3xf32>, tensor<1xf32>) -> tensor<3xf32>
+// CHECK:             return %[[VAL_2]] : tensor<3xf32>
+// CHECK:           }
+ func.func @sort_mul_operands_on_scalar_constants() -> tensor<3xf32> {
+    %0 = "tosa.const"() {value = dense<1.280000e+02> : tensor<1xf32>} : () -> tensor<1xf32>
+    %1 = "tosa.const"() {value = dense<2.000000e-02> : tensor<3xf32>} : () -> tensor<3xf32> 
+    %2 = "tosa.mul"(%0, %1) {shift = 0 : i32} : (tensor<1xf32>, tensor<3xf32>) -> tensor<3xf32>
+    return %2 : tensor<3xf32>
+  }
+}
+
+// --
+
+module attributes {} {
+// CHECK-LABEL:     func.func @sort_mul_operands_both_log2() -> tensor<3xf32> {
+// CHECK:             %[[VAL_0:.*]] = "tosa.const"() {value = dense<1.280000e+02> : tensor<1xf32>} : () -> tensor<1xf32>
+// CHECK:             %[[VAL_1:.*]] = "tosa.const"() {value = dense<6.400000e+01> : tensor<3xf32>} : () -> tensor<3xf32>
+// CHECK:             %[[VAL_2:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) {shift = 0 : i32} : (tensor<1xf32>, tensor<3xf32>) -> tensor<3xf32>
+// CHECK:             return %[[VAL_2]] : tensor<3xf32>
+// CHECK:           }
+ func.func @sort_mul_operands_both_log2() -> tensor<3xf32> {
+    // Both floating point constants are power-of-two values when log2 is
+    // applied they both are converted to whole integers. Therefore, the
+    // sorting pattern should do nothing.
+    %0 = "tosa.const"() {value = dense<1.280000e+02> : tensor<1xf32>} : () -> tensor<1xf32>
+    %1 = "tosa.const"() {value = dense<6.400000e+01> : tensor<3xf32>} : () -> tensor<3xf32> 
+    %2 = "tosa.mul"(%0, %1) {shift = 0 : i32} : (tensor<1xf32>, tensor<3xf32>) -> tensor<3xf32>
+    return %2 : tensor<3xf32>
+  }
+}
