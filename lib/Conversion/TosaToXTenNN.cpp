@@ -52,11 +52,18 @@ std::optional<int32_t> getLog2Value(float value) {
 /// Matcher pattern that matches only if the constant float is a power-of-two
 /// value. Meaning, when log2(value) is applied we get a whole integer.
 struct ConstantFloatLog2Binder {
+  /// Contains the log2() of the float value if matched
   IntegerAttr::ValueType *bindValue;
 
   /// Creates a matcher instance that binds the value to bv if match succeeds.
   ConstantFloatLog2Binder(IntegerAttr::ValueType *bv) : bindValue(bv) {}
 
+  /// Match that an operation is a constant op with a floating point value
+  /// that is a power-of-two value, i.e. log2(float_value) is a whole integer.
+  ///
+  ///\param op we are matching
+  ///\return true if constant op with log2(float_value) as a whole integer
+  ///\return false otherwise
   bool match(Operation *op) {
     FloatAttr::ValueType value((float)0.0);
     if (!detail::constant_float_op_binder(&value).match(op))
@@ -161,18 +168,18 @@ public:
     // We want to make sure we have QDQ operations surrounded by MULs.
     auto dequantizeOp = dequantizeMulOp->getOperand(0)
                             .getDefiningOp<amd::xten_nn::DequantizeOp>();
-    APFloat quantizeScaleFactor(0.0);
+    APInt quantizeShift(32, 0, true);
     auto isQDQPattern = m_Op<amd::xten_nn::DequantizeOp>(
         m_Op<amd::xten_nn::QuantizeOp>(m_Op<tosa::MulOp>(
-            matchers::m_Any(), m_ConstantFloat(&quantizeScaleFactor))));
+            matchers::m_Any(), mConstantFloatLog2(&quantizeShift))));
     if (!dequantizeOp || !isQDQPattern.match(dequantizeOp)) {
       return rewriter.notifyMatchFailure(dequantizeMulOp->getLoc(),
                                          "expected mul->q->dq->mul pattern.");
     }
 
     // The multiplication should have only a single constant value
-    APFloat dequantizeScaleFactor(0.0);
-    if (!m_ConstantFloat(&dequantizeScaleFactor)
+    APInt dequantizeShift(32, 0, true);
+    if (!mConstantFloatLog2(&dequantizeShift)
              .match(dequantizeMulOp.getOperand(1).getDefiningOp())) {
       return rewriter.notifyMatchFailure(dequantizeMulOp.getOperand(1).getLoc(),
                                          "expected to be a constant.");
@@ -197,28 +204,10 @@ public:
           "i/o shape cannot change when multiplying due to broadcasting.");
     }
 
-    // Attempt to convert the scale factors to a log2 base. And ensure that both
-    // are equal. The quantization factor being the negation of the
-    // dequantization factor
-    std::optional<int32_t> quantizeLog2ScaleFactor =
-        getLog2Value(quantizeScaleFactor.convertToFloat());
-    std::optional<int32_t> dequantizeLog2ScaleFactor =
-        getLog2Value(dequantizeScaleFactor.convertToFloat());
-    if (!quantizeLog2ScaleFactor.has_value() ||
-        !dequantizeLog2ScaleFactor.has_value() ||
-        (quantizeLog2ScaleFactor.value() + dequantizeLog2ScaleFactor.value() !=
-         0)) {
-      return rewriter.notifyMatchFailure(
-          dequantizeMulOp.getLoc(),
-          "expected constants of both multiplications to be "
-          "equal and power-of-two values.");
-    }
-
     // Sum the shifts of the quantize, dequantize and update the operations
     llvm::APInt shiftSum(32, dequantizeOp.getShift(), true);
     bool overflow = false;
-    llvm::APInt scaleFactorInt(32, dequantizeLog2ScaleFactor.value(), true);
-    shiftSum = shiftSum.sadd_ov(scaleFactorInt, overflow);
+    shiftSum = shiftSum.sadd_ov(dequantizeShift, overflow);
     if (overflow) {
       return rewriter.notifyMatchFailure(
           dequantizeMulOp.getLoc(),
