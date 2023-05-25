@@ -9,11 +9,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
-#include "mlir/IR/Matchers.h"
-#include "mlir/Transforms/CommutativityUtils.h"
 #include "xten/Conversion/TosaToXTenNNPass.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
 
+#include "mlir/IR/Matchers.h"
+#include "mlir/Transforms/CommutativityUtils.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 using namespace mlir;
