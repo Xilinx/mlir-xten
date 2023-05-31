@@ -50,7 +50,7 @@ std::optional<int32_t> getLog2Value(float value) {
 }
 
 /// Matcher pattern that matches only if the constant float is a power-of-two
-/// value. Meaning, when log2(value) is applied we get a whole integer.
+/// value. Meaning, when log2(value) is applied, we get a whole integer.
 struct ConstantFloatLog2Binder {
   /// Contains the log2() of the float value if matched
   IntegerAttr::ValueType *bindValue;
@@ -202,6 +202,16 @@ public:
       return rewriter.notifyMatchFailure(
           dequantizeMulOp.getLoc(),
           "i/o shape cannot change when multiplying due to broadcasting.");
+    }
+
+    // Attempt to convert the scale factors to a log2 base. And ensure that both
+    // are equal. The quantization factor being the negation of the
+    // dequantization factor
+    if (quantizeShift.getSExtValue() + dequantizeShift.getSExtValue() != 0) {
+      return rewriter.notifyMatchFailure(
+          dequantizeMulOp.getLoc(),
+          "expected constants of both multiplications to be "
+          "equal and power-of-two values.");
     }
 
     // Sum the shifts of the quantize, dequantize and update the operations
