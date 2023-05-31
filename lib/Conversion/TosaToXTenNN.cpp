@@ -9,11 +9,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
-#include "mlir/IR/Matchers.h"
-#include "mlir/Transforms/CommutativityUtils.h"
 #include "xten/Conversion/TosaToXTenNNPass.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
 
+#include "mlir/IR/Matchers.h"
+#include "mlir/Transforms/CommutativityUtils.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 using namespace mlir;
@@ -47,6 +47,42 @@ std::optional<int32_t> getLog2Value(float value) {
     return std::nullopt;
   }
   return (int32_t)integerPart;
+}
+
+/// Matcher pattern that matches only if the constant float is a power-of-two
+/// value. Meaning, when log2(value) is applied, we get a whole integer.
+struct ConstantFloatLog2Binder {
+  /// Contains the log2() of the float value if matched
+  IntegerAttr::ValueType *bindValue;
+
+  /// Creates a matcher instance that binds the value to bv if match succeeds.
+  ConstantFloatLog2Binder(IntegerAttr::ValueType *bv) : bindValue(bv) {}
+
+  /// Match that an operation is a constant op with a floating point value
+  /// that is a power-of-two value, i.e. log2(float_value) is a whole integer.
+  ///
+  ///\param op we are matching
+  ///\return true if constant op with log2(float_value) as a whole integer
+  ///\return false otherwise
+  bool match(Operation *op) {
+    FloatAttr::ValueType value((float)0.0);
+    if (!detail::constant_float_op_binder(&value).match(op))
+      return false;
+    std::optional<int32_t> log2value = getLog2Value(value.convertToFloat());
+    if (log2value.has_value()) {
+      *bindValue = IntegerAttr::ValueType(32, log2value.value(), true);
+      return true;
+    }
+    return false;
+  }
+};
+
+/// Helper function to construct the matcher similar to the other m_* matcher
+/// functions. Use the m_* naming style to match the orignal style. Currently,
+/// mlir-xten does not have a clang-tidy configuration.
+inline ConstantFloatLog2Binder
+m_ConstantFloatLog2(IntegerAttr::ValueType *bindValue) { // NOLINT
+  return {bindValue};
 }
 
 /// Checks that operand(0) and the result(0) have the same type.
@@ -133,18 +169,18 @@ public:
     // We want to make sure we have QDQ operations surrounded by MULs.
     auto dequantizeOp = dequantizeMulOp->getOperand(0)
                             .getDefiningOp<amd::xten_nn::DequantizeOp>();
-    APFloat quantizeScaleFactor(0.0);
+    APInt quantizeShift(32, 0, true);
     auto isQDQPattern = m_Op<amd::xten_nn::DequantizeOp>(
         m_Op<amd::xten_nn::QuantizeOp>(m_Op<tosa::MulOp>(
-            matchers::m_Any(), m_ConstantFloat(&quantizeScaleFactor))));
+            matchers::m_Any(), m_ConstantFloatLog2(&quantizeShift))));
     if (!dequantizeOp || !isQDQPattern.match(dequantizeOp)) {
       return rewriter.notifyMatchFailure(dequantizeMulOp->getLoc(),
                                          "expected mul->q->dq->mul pattern.");
     }
 
     // The multiplication should have only a single constant value
-    APFloat dequantizeScaleFactor(0.0);
-    if (!m_ConstantFloat(&dequantizeScaleFactor)
+    APInt dequantizeShift(32, 0, true);
+    if (!m_ConstantFloatLog2(&dequantizeShift)
              .match(dequantizeMulOp.getOperand(1).getDefiningOp())) {
       return rewriter.notifyMatchFailure(dequantizeMulOp.getOperand(1).getLoc(),
                                          "expected to be a constant.");
@@ -172,14 +208,7 @@ public:
     // Attempt to convert the scale factors to a log2 base. And ensure that both
     // are equal. The quantization factor being the negation of the
     // dequantization factor
-    std::optional<int32_t> quantizeLog2ScaleFactor =
-        getLog2Value(quantizeScaleFactor.convertToFloat());
-    std::optional<int32_t> dequantizeLog2ScaleFactor =
-        getLog2Value(dequantizeScaleFactor.convertToFloat());
-    if (!quantizeLog2ScaleFactor.has_value() ||
-        !dequantizeLog2ScaleFactor.has_value() ||
-        (quantizeLog2ScaleFactor.value() + dequantizeLog2ScaleFactor.value() !=
-         0)) {
+    if (quantizeShift.getSExtValue() + dequantizeShift.getSExtValue() != 0) {
       return rewriter.notifyMatchFailure(
           dequantizeMulOp.getLoc(),
           "expected constants of both multiplications to be "
@@ -189,8 +218,7 @@ public:
     // Sum the shifts of the quantize, dequantize and update the operations
     llvm::APInt shiftSum(32, dequantizeOp.getShift(), true);
     bool overflow = false;
-    llvm::APInt scaleFactorInt(32, dequantizeLog2ScaleFactor.value(), true);
-    shiftSum = shiftSum.sadd_ov(scaleFactorInt, overflow);
+    shiftSum = shiftSum.sadd_ov(dequantizeShift, overflow);
     if (overflow) {
       return rewriter.notifyMatchFailure(
           dequantizeMulOp.getLoc(),
@@ -213,6 +241,46 @@ public:
   }
 };
 
+/// Moves the scale factor to the RHS for a MulOp. We assume the scale factor is
+/// a single value which is a power-of-two integer.
+class MoveScalarTensorToRHSOfMul : public OpRewritePattern<tosa::MulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tosa::MulOp mulOp,
+                                PatternRewriter &rewriter) const override {
+    if (!m_Op<tosa::MulOp>(m_Constant(), m_Constant()).match(mulOp)) {
+      return rewriter.notifyMatchFailure(
+          mulOp.getLoc(),
+          "only reorganize operands on muls with two constants");
+    }
+
+    IntegerAttr::ValueType lhsValue;
+    if (!m_ConstantFloatLog2(&lhsValue).match(
+            mulOp->getOperand(0).getDefiningOp())) {
+      return rewriter.notifyMatchFailure(
+          mulOp.getLoc(), "left-hand operand must be a splat tensor "
+                          "with log2 base value.");
+    }
+
+    IntegerAttr::ValueType rhsValue;
+    if (m_ConstantFloatLog2(&rhsValue).match(
+            mulOp->getOperand(1).getDefiningOp())) {
+      return rewriter.notifyMatchFailure(
+          mulOp.getLoc(), "right-hand side is also a log2 base value.");
+    }
+
+    // Rearrange the operands so the splat tensor is on the RHS. Our QDQ nodes
+    // will also appear on constants and these constants will be multipled by
+    // scalar floats
+    rewriter.replaceOpWithNewOp<tosa::MulOp>(
+        mulOp, mulOp->getResult(0).getType(), mulOp->getOperand(1),
+        mulOp->getOperand(0), mulOp.getShift());
+
+    return success();
+  }
+};
+
 class TosaToXTenNNPass
     : public xilinx::xten::TOSAToXTenNNBase<TosaToXTenNNPass> {
 public:
@@ -224,7 +292,9 @@ public:
     // Ensures constants on the add, mul, sub are on the RHS
     populateCommutativityUtilsPatterns(patterns);
     // Patterns for finding the QDQ and folding MULs.
-    patterns.insert<CastsToQDQOps, FoldMulsToQDQOps>(context);
+    patterns
+        .insert<MoveScalarTensorToRHSOfMul, CastsToQDQOps, FoldMulsToQDQOps>(
+            context);
 
     FrozenRewritePatternSet frozenSetOfPatterns(std::move(patterns));
     if (failed(applyPatternsAndFoldGreedily(module, frozenSetOfPatterns))) {
