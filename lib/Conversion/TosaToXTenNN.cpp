@@ -78,9 +78,10 @@ struct ConstantFloatLog2Binder {
 };
 
 /// Helper function to construct the matcher similar to the other m_* matcher
-/// functions.
+/// functions. Use the m_* naming style to match the orignal style. Currently,
+/// mlir-xten does not have a clang-tidy configuration.
 inline ConstantFloatLog2Binder
-mConstantFloatLog2(IntegerAttr::ValueType *bindValue) {
+m_ConstantFloatLog2(IntegerAttr::ValueType *bindValue) { // NOLINT
   return {bindValue};
 }
 
@@ -171,7 +172,7 @@ public:
     APInt quantizeShift(32, 0, true);
     auto isQDQPattern = m_Op<amd::xten_nn::DequantizeOp>(
         m_Op<amd::xten_nn::QuantizeOp>(m_Op<tosa::MulOp>(
-            matchers::m_Any(), mConstantFloatLog2(&quantizeShift))));
+            matchers::m_Any(), m_ConstantFloatLog2(&quantizeShift))));
     if (!dequantizeOp || !isQDQPattern.match(dequantizeOp)) {
       return rewriter.notifyMatchFailure(dequantizeMulOp->getLoc(),
                                          "expected mul->q->dq->mul pattern.");
@@ -179,7 +180,7 @@ public:
 
     // The multiplication should have only a single constant value
     APInt dequantizeShift(32, 0, true);
-    if (!mConstantFloatLog2(&dequantizeShift)
+    if (!m_ConstantFloatLog2(&dequantizeShift)
              .match(dequantizeMulOp.getOperand(1).getDefiningOp())) {
       return rewriter.notifyMatchFailure(dequantizeMulOp.getOperand(1).getLoc(),
                                          "expected to be a constant.");
@@ -255,7 +256,7 @@ public:
     }
 
     IntegerAttr::ValueType lhsValue;
-    if (!mConstantFloatLog2(&lhsValue).match(
+    if (!m_ConstantFloatLog2(&lhsValue).match(
             mulOp->getOperand(0).getDefiningOp())) {
       return rewriter.notifyMatchFailure(
           mulOp.getLoc(), "left-hand operand must be a splat tensor "
@@ -263,7 +264,7 @@ public:
     }
 
     IntegerAttr::ValueType rhsValue;
-    if (mConstantFloatLog2(&rhsValue).match(
+    if (m_ConstantFloatLog2(&rhsValue).match(
             mulOp->getOperand(1).getDefiningOp())) {
       return rewriter.notifyMatchFailure(
           mulOp.getLoc(), "right-hand side is also a log2 base value.");
