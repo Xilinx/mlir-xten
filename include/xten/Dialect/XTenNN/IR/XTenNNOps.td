@@ -4,7 +4,7 @@
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
-// (c) Copyright 2022 Advanced Micro Devices, Inc.
+// (c) Copyright 2022-2023 Advanced Micro Devices, Inc.
 //
 //===----------------------------------------------------------------------===//
 
@@ -12,6 +12,7 @@
 #define XTENNN_OPS
 
 include "xten/Dialect/XTenNN/IR/XTenNNBase.td"
+include "xten/Dialect/XTenNN/IR/XTenNNTypes.td"
 
 include "mlir/IR/FunctionInterfaces.td"
 include "mlir/IR/OpAsmInterface.td"
@@ -95,5 +96,56 @@ def XTenNN_OutputOp : XTenNN_Op<"output", [
     let assemblyFormat = [{ attr-dict ($operands^ `:` type($operands))?}];
 }
 
+
+def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
+            Elementwise,
+            Pure,
+            SameOperandsAndResultShape]> {
+  let summary = "Quantizes a float32 tensor to a signed or unsigned integer tensor of given width.";
+  let description = [{
+    Quantizes a given float32 tensor into a signed or unsigned integer tensor of given width.
+
+    Applies the following linear quantization to the input tensor x:
+      y = round( x * 2^shift )
+
+    Where shift is an attribute of the operation in si32.
+
+    Round will saturate to the range of the output type and the rounding mode is set to half 
+    to nearest even.
+  }];
+
+  let arguments = (ins 
+    F32Tensor:$input,
+    SI32Attr:$shift
+  );
+
+  let results = (outs XTenNN_AnyTensorSignedOrUnsignedInteger:$output);
+
+  let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
+}
+
+def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
+            Elementwise,
+            Pure,
+            SameOperandsAndResultShape]> {
+  let summary = "Dequantizes a signed/unsigned integer tensor of given bitwidth to a float32 tensor.";
+  let description = [{
+    Dequantizes a signed/unsigned integer tensor of given bitwidth to a float32 tensor.
+
+    Applies the following linear dequantization to the input tensor x:
+      y = x  / ( 2^shift )
+
+    Where shift is an attribute of the operation in si32.
+  }];
+
+  let arguments = (ins 
+    XTenNN_AnyTensorSignedOrUnsignedInteger:$input,
+    SI32Attr:$shift
+  );
+
+  let results = (outs F32Tensor:$output);
+
+  let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
+}
 
 #endif // XTENNN_OPS

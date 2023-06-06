@@ -72,4 +72,20 @@ def XTenNNSimplify : Pass<"xtennn-simplify", "mlir::ModuleOp"> {
     let constructor = "amd::xten_nn::createSimplifyPass()";
 }
 
+def XTenNNCanonicalizePass : Pass<"xtennn-canonicalize"> {
+  let summary = "Perform XTenNN specific canonicalizations on the IR";
+  let description = [{
+    Pass that performs XTenNN specific foldings & canonicalizations to bring the
+    IR into a common state.
+  }];
+
+  let constructor = "amd::xten_nn::createCanonicalizePass()";
+
+  let options = [
+    Option<"allowDestructivePatterns", "allow-destructive", "bool", /*default=*/"false",
+           "Whether or not destructive, i.e. non-semantic preserving, patterns "
+           "should be included.">,
+  ];
+}
+
 #endif // XTENNN_PASSES
