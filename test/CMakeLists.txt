@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #
 # (c) Copyright 2021 Xilinx Inc.
+# (c) Copyright 2023 Advanced Micro Devices, Inc.
 
 configure_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in
@@ -24,4 +25,3 @@ add_lit_testsuite(check-aten "Running the aten regression tests"
 set_target_properties(check-aten PROPERTIES FOLDER "Tests")
 
 add_lit_testsuites(ATEN ${CMAKE_CURRENT_SOURCE_DIR} DEPENDS ${TEST_DEPENDS})
-add_dependencies(check-xten-all check-aten)

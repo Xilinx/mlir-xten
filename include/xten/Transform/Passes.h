@@ -11,8 +11,8 @@
 #ifndef XTEN_TRANSFORM_PASSES_H
 #define XTEN_TRANSFORM_PASSES_H
 
-#include "xten/Transform/ATenOpReport.h"
 #include "xten/Transform/ATenLoweringPass.h"
+#include "xten/Transform/ATenOpReport.h"
 #include "xten/Transform/ATenVisualGraph.h"
 #include "xten/Transform/LowerToLibATenPass.h"
 #include "xten/Transform/XTenMinimizeLiveTensors.h"

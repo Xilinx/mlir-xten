@@ -5,10 +5,10 @@
 #
 # (c) Copyright 2022 Advanced Micro Devices, Inc.
 
-set(LLVM_TARGET_DEFINITIONS XTenNNPasses.td)
+set(LLVM_TARGET_DEFINITIONS Passes.td)
 
-mlir_tablegen(XTenNNPasses.h.inc -gen-pass-decls -name XTenNN)
+mlir_tablegen(Passes.h.inc -gen-pass-decls -name XTenNN)
 add_public_tablegen_target(XTenNNPassesIncGen)
 add_dependencies(XTenNNIncGen XTenNNPassesIncGen)
 
-add_mlir_doc(XTenNNPasses XTenNNPasses ./ -gen-pass-doc)
+add_mlir_doc(Passes XTenNNPasses ./ -gen-pass-doc)

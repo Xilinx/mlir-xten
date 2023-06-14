@@ -4,12 +4,15 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #
 # (c) Copyright 2021 Xilinx Inc.
+# (c) Copyright 2023 Advanced Micro Devices, Inc.
 
 add_mlir_library(XTenConversionPasses
 ATenToXTenPass.cpp
 Passes.cpp
+TosaToXTenNN.cpp
 XTenToAffine.cpp
 XTenToLinalg.cpp
+XTenNNToTosa.cpp
 
 DEPENDS
 XTenConversionIncGen
