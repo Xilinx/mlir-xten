@@ -40,7 +40,7 @@ using namespace xilinx::xten;
 using namespace mlir::torch;
 
 static Value applyPad(Location loc, Value input, ArrayRef<int64_t> pad,
-                      Attribute padAttr, OpBuilder &rewriter) {
+                      TypedAttr padAttr, OpBuilder &rewriter) {
   // Input should be padded if necessary.
   if (llvm::all_of(pad, [](int64_t p) { return p == 0; }))
     return input;
@@ -146,7 +146,7 @@ static LogicalResult processConv2d(T &conv2dOp, Location &loc, Value &input,
   }
 
   /// paddedInput. input shape change based on padding
-  Attribute zeroAttr = rewriter.getZeroAttr(elementType);
+  TypedAttr zeroAttr = rewriter.getZeroAttr(elementType);
   input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
 
   int64_t groups;
@@ -320,7 +320,7 @@ public:
     }
 
     // paddedInput. input shape change based on padding
-    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
+    TypedAttr zeroAttr = rewriter.getZeroAttr(elementType);
     input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
 
     SmallVector<int64_t, 2> strideInts;
@@ -979,7 +979,7 @@ public:
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
 
     // paddedInput. input shape change based on padding
-    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
+    TypedAttr zeroAttr = rewriter.getZeroAttr(elementType);
     input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
 
     SmallVector<int64_t, 2> strideInts;
@@ -1130,7 +1130,7 @@ public:
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
 
     // paddedInput. input shape change based on padding
-    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
+    TypedAttr zeroAttr = rewriter.getZeroAttr(elementType);
     input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
 
     SmallVector<int64_t, 2> strideInts;
@@ -1285,7 +1285,7 @@ public:
     }
 
     // paddedInput. input shape change based on padding
-    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
+    TypedAttr zeroAttr = rewriter.getZeroAttr(elementType);
     input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
 
     SmallVector<int64_t, 2> strideInts;
@@ -1426,7 +1426,7 @@ public:
     }
 
     // paddedInput. input shape change based on padding
-    Attribute zeroAttr = rewriter.getZeroAttr(elementType);
+    TypedAttr zeroAttr = rewriter.getZeroAttr(elementType);
     input = applyPad(loc, input, paddingInts, zeroAttr, rewriter);
 
     SmallVector<int64_t, 2> strideInts;
@@ -1605,7 +1605,7 @@ public:
 
     Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
     auto torchDim = (operands[1].getDefiningOp<Torch::ConstantIntOp>()).getValue();
-    auto dim = rewriter.getI64IntegerAttr(torchDim.getSExtValue());
+    auto dim = rewriter.getI64IntegerAttr(torchDim);
 
     Type elementType =
         input.getType().cast<RankedTensorType>().getElementType();

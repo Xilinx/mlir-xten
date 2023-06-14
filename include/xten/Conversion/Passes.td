@@ -22,7 +22,7 @@ def ATenToXTen : Pass<"aten-to-xten", "ModuleOp"> {
 def XTenToAffine : Pass<"xten-to-affine", "ModuleOp"> {
   let summary = "Convert XTen dialect to Affine dialect";
   let constructor = "xilinx::xten::createXTenToAffinePass()";
-  let dependentDialects = ["mlir::AffineDialect"];
+  let dependentDialects = ["mlir::affine::AffineDialect"];
 }
 
 def XTenToLinalg : Pass<"xten-to-linalg", "ModuleOp"> {

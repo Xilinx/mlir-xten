@@ -89,10 +89,9 @@ bool Conv2dOpWrapper::hasBN() {
 }
 
 bool Conv2dOpWrapper::isDepthWise() {
-  llvm::APInt intT = this->conv.getGroups()
+  uint64_t groups = this->conv.getGroups()
                          .getDefiningOp<mlir::torch::Torch::ConstantIntOp>()
                          .getValue();
-  uint64_t groups = intT.getSExtValue();
 
   mlir::torch::Torch::BaseTensorType aShape =
       this->conv.getInput()

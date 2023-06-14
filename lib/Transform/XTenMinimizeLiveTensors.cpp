@@ -206,11 +206,22 @@ FailureOr<SmallVector<Value>> getFmOperands(Operation *op) {
 /// Return the size of the tensor type of \p val.
 /// It is an error to call this with a non-tensor typed value.
 size_t getSize(Value val) {
-  auto type = val.getType();
-  assert(isa<ShapedType>(type));
+  auto type = dyn_cast<ShapedType>(val.getType());
+  assert(type);
 
   // Get size in bytes
-  return cast<ShapedType>(type).getSizeInBits() / 8;
+  assert(type.hasStaticShape() &&
+         "cannot get the bit size of an aggregate with a dynamic shape");
+
+  auto elementType = type.getElementType();
+  if (elementType.isIntOrFloat())
+    return (elementType.getIntOrFloatBitWidth() * type.getNumElements()) / 8;
+
+  if (auto complexType = elementType.dyn_cast<ComplexType>()) {
+    elementType = complexType.getElementType();
+    return (elementType.getIntOrFloatBitWidth() * type.getNumElements() * 2) / 8;
+  }
+  llvm_unreachable("Does not know how to compute size");
 }
 
 /// Debugging support - returns a simple name for an op.

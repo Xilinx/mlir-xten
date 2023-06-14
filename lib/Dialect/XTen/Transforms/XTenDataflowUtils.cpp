@@ -103,7 +103,10 @@ namespace xilinx {
                 mlir::torch::Torch::BaseTensorType ttype = breakShapeInto(initialShape, loc, into);
 
                 for(uint64_t i = 0; i < into; i++) {
-                    DenseElementsAttr attr = DenseElementsAttr::get(ttype, vects.at(i));
+                    DenseElementsAttr attr = DenseElementsAttr::get(
+                        RankedTensorType::get(ttype.getSizes(),
+                                              ttype.getDtype()),
+                        vects.at(i));
                     Operation* cst = builder.create<mlir::arith::ConstantOp>(builder.getUnknownLoc(), ttype, attr);
                     ops.push_back(cst->getResult(0));
                 }
@@ -167,7 +170,10 @@ namespace xilinx {
                 mlir::torch::Torch::BaseTensorType ttype = breakShapeInto(initialShape, loc, into);
 
                 for(uint64_t i = 0; i < into; i++) {
-                    DenseElementsAttr attr = DenseElementsAttr::get(ttype, vects.at(i));
+                    DenseElementsAttr attr = DenseElementsAttr::get(
+                        RankedTensorType::get(ttype.getSizes(),
+                                              ttype.getDtype()),
+                        vects.at(i));
                     Operation* cst = builder.create<mlir::arith::ConstantOp>(builder.getUnknownLoc(), ttype, attr);
                     ops.push_back(cst->getResult(0));
                 }
@@ -214,7 +220,10 @@ namespace xilinx {
                 }
 
                 for(uint64_t i = 0; i < into; i++) {
-                    DenseElementsAttr attr = DenseElementsAttr::get(ttype, vects.at(i));
+                    DenseElementsAttr attr = DenseElementsAttr::get(
+                        RankedTensorType::get(ttype.getSizes(),
+                                              ttype.getDtype()),
+                        vects.at(i));
                     Operation* cst = builder.create<mlir::arith::ConstantOp>(builder.getUnknownLoc(), ttype, attr);
                     ops.push_back(cst->getResult(0));
                 }

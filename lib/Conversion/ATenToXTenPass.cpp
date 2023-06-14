@@ -197,7 +197,7 @@ bool isReduceMeanGlobalAveragePool2D(Value dims, Value keepdims) {
   if (!dimsOp || !keepdimsOp)
     return false;
 
-  SmallVector<APInt> axes;
+  SmallVector<uint64_t> axes;
   for (Value operand : dimsOp.getOperands()) {
     if (auto axesValue =
             llvm::dyn_cast<Torch::ConstantIntOp>(operand.getDefiningOp()))
@@ -218,7 +218,7 @@ bool isAdaptiveAvgPoolGlobalAveragePool2D(Value outsizes) {
   Torch::PrimListConstructOp outsizesOp =
       llvm::dyn_cast<Torch::PrimListConstructOp>(outsizes.getDefiningOp());
 
-  SmallVector<APInt> dims;
+  SmallVector<uint64_t> dims;
   for (Value operand : outsizesOp.getOperands()) {
     if (auto axesValue =
             llvm::dyn_cast<Torch::ConstantIntOp>(operand.getDefiningOp()))
@@ -317,7 +317,7 @@ struct ATenToXTenPass : public xten::ATenToXTenBase<ATenToXTenPass> {
     // Perform aten specific Fusion.
     ConversionTarget target(*context);
 
-    target.addLegalDialect<AffineDialect, LLVM::LLVMDialect, func::FuncDialect,
+    target.addLegalDialect<affine::AffineDialect, LLVM::LLVMDialect, func::FuncDialect,
                            scf::SCFDialect>();
 
     target.addLegalOp<xilinx::xten::Conv2dBatchNormReLUOp>();
