@@ -452,7 +452,7 @@ public:
       return result;
 
     // Getting alpha value
-    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).value();
+    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
     auto ty = rewriter.getF32Type();
     auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
@@ -664,7 +664,7 @@ public:
       return result;
 
     // Getting alpha value
-    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).value();
+    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
     auto ty = rewriter.getF32Type();
     auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
@@ -890,7 +890,7 @@ public:
       return result;
 
     // Getting alpha value
-    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).value();
+    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
     auto ty = rewriter.getF32Type();
     auto addCst = rewriter.getFloatAttr(ty, c.convertToDouble());
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, addCst);
@@ -973,7 +973,7 @@ public:
     }
 
     // Getting alpha value
-    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).value();
+    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
     auto ty = rewriter.getF32Type();
     auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
@@ -1124,7 +1124,7 @@ public:
     }
 
     // Getting alpha value
-    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).value();
+    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
     auto ty = rewriter.getF32Type();
     auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
@@ -1604,7 +1604,7 @@ public:
     auto loc = softmax.getLoc();
 
     Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
-    auto torchDim = (operands[1].getDefiningOp<Torch::ConstantIntOp>()).value();
+    auto torchDim = (operands[1].getDefiningOp<Torch::ConstantIntOp>()).getValue();
     auto dim = rewriter.getI64IntegerAttr(torchDim.getSExtValue());
 
     Type elementType =

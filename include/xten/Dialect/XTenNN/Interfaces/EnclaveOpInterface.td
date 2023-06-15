@@ -64,7 +64,7 @@ def XTenNN_EnclaveOp : OpInterface<"EnclaveOp"> {
             /*desc=*/[{Populates a map from capture values to block arguments.}],
             /*retTy=*/"void",
             /*methodName=*/"populateCaptureMap",
-            /*args=*/(ins "::mlir::BlockAndValueMapping &":$result),
+            /*args=*/(ins "::mlir::IRMapping &":$result),
             /*methodBody=*/"",
             /*defaultImplementation=*/[{
                 enclave_interface_defaults::populateCaptureMap($_op, result);
@@ -76,7 +76,7 @@ def XTenNN_EnclaveOp : OpInterface<"EnclaveOp"> {
             /*methodName=*/"capture",
             /*args=*/(ins
                 "::mlir::ValueRange":$values,
-                "::mlir::BlockAndValueMapping &":$result),
+                "::mlir::IRMapping &":$result),
             /*methodBody=*/"",
             /*defaultImplementation=*/[{
                 enclave_interface_defaults::capture($_op, values, result);

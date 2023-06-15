@@ -91,7 +91,7 @@ bool Conv2dOpWrapper::hasBN() {
 bool Conv2dOpWrapper::isDepthWise() {
   llvm::APInt intT = this->conv.getGroups()
                          .getDefiningOp<mlir::torch::Torch::ConstantIntOp>()
-                         .value();
+                         .getValue();
   uint64_t groups = intT.getSExtValue();
 
   mlir::torch::Torch::BaseTensorType aShape =
@@ -975,7 +975,7 @@ Optional<Value> MaxPool2dOpWrapper::getBiases() {
 }
 
 unsigned int MaxPool2dOpWrapper::getF0() {
-  Value ks = this->maxpool.kernel_size();
+  Value ks = this->maxpool.getKernelSize();
   SmallVector<int64_t, 2> kernel_size;
   matchPattern(ks, Torch::m_TorchListOfConstantInts(kernel_size));
 
@@ -983,7 +983,7 @@ unsigned int MaxPool2dOpWrapper::getF0() {
 }
 
 unsigned int MaxPool2dOpWrapper::getF1() {
-  Value ks = this->maxpool.kernel_size();
+  Value ks = this->maxpool.getKernelSize();
   SmallVector<int64_t, 2> kernel_size;
   matchPattern(ks, Torch::m_TorchListOfConstantInts(kernel_size));
 
@@ -991,7 +991,7 @@ unsigned int MaxPool2dOpWrapper::getF1() {
 }
 
 unsigned int MaxPool2dOpWrapper::getStride() {
-  Value s = this->maxpool.stride();
+  Value s = this->maxpool.getStride();
   SmallVector<int64_t, 2> stride;
   matchPattern(s, Torch::m_TorchListOfConstantInts(stride));
 
@@ -999,7 +999,7 @@ unsigned int MaxPool2dOpWrapper::getStride() {
 }
 
 Value MaxPool2dOpWrapper::getInput() {
-  return this->maxpool.self();
+  return this->maxpool.getSelf();
 }
 
 Value MaxPool2dOpWrapper::getPartialInput() {
@@ -1044,9 +1044,9 @@ Operation *MaxPool2dOpWrapper::buildOp(OpBuilder &builder, TypeRange returnType,
 
   Operation *op = this->getUnderlyingOperation();
   Operation *nOp = builder.create<Torch::AtenMaxPool2dOp>(
-      builder.getUnknownLoc(), returnType, input, this->maxpool.kernel_size(),
-      this->maxpool.stride(), this->maxpool.padding(), this->maxpool.dilation(),
-      this->maxpool.ceil_mode());
+      builder.getUnknownLoc(), returnType, input, this->maxpool.getKernelSize(),
+      this->maxpool.getStride(), this->maxpool.getPadding(), this->maxpool.getDilation(),
+      this->maxpool.getCeilMode());
 
   nOp->setAttrs(op->getAttrs());
   return nOp;
@@ -1058,9 +1058,9 @@ Operation *MaxPool2dOpWrapper::wCopy(OpBuilder &builder, unsigned int into,
 
   Operation *op = builder.create<Torch::AtenMaxPool2dOp>(
       builder.getUnknownLoc(), this->getUnderlyingOperation()->getResultTypes(),
-      this->getInput(), this->maxpool.kernel_size(), this->maxpool.stride(),
-      this->maxpool.padding(), this->maxpool.dilation(),
-      this->maxpool.ceil_mode());
+      this->getInput(), this->maxpool.getKernelSize(), this->maxpool.getStride(),
+      this->maxpool.getPadding(), this->maxpool.getDilation(),
+      this->maxpool.getCeilMode());
 
   op->setAttrs(this->getUnderlyingOperation()->getAttrs());
 

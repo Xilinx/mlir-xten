@@ -36,12 +36,12 @@ getConv2dStatisticsWithType(T o, Torch::BaseTensorType resultTy) {
   std::map<std::string, uint64_t> toReturn;
 
   Torch::BaseTensorType inputTy =
-      o.input().getType().template cast<Torch::BaseTensorType>();
+      o.getInput().getType().template cast<Torch::BaseTensorType>();
   Torch::BaseTensorType weightTy =
-      o.weight().getType().template cast<Torch::BaseTensorType>();
+      o.getWeight().getType().template cast<Torch::BaseTensorType>();
   Torch::BaseTensorType biasTy;
-  if (o.bias()) {
-    biasTy = o.bias().getType().template cast<Torch::BaseTensorType>();
+  if (o.getBias()) {
+    biasTy = o.getBias().getType().template cast<Torch::BaseTensorType>();
   }
 
   uint64_t ofm_volume = xilinx::xten::getTensorVolume(resultTy);
@@ -49,7 +49,7 @@ getConv2dStatisticsWithType(T o, Torch::BaseTensorType resultTy) {
   uint64_t kernel_height = weightTy.getSizes()[2];
   uint64_t kernel_width = weightTy.getSizes()[3];
 
-  auto co = o.groups().getDefiningOp();
+  auto co = o.getGroups().getDefiningOp();
   auto ia = co->template getAttrOfType<IntegerAttr>("value");
   uint64_t groups = ia.getValue().getZExtValue();
   // Number of forward MACs per pixel =
@@ -60,7 +60,7 @@ getConv2dStatisticsWithType(T o, Torch::BaseTensorType resultTy) {
   uint64_t ifm_volume = xilinx::xten::getTensorVolume(inputTy);
   uint64_t weight_volume = xilinx::xten::getTensorVolume(weightTy);
   uint64_t bias_volume;
-  if (o.bias()) {
+  if (o.getBias()) {
     bias_volume = xilinx::xten::getTensorVolume(biasTy);
   } else {
     bias_volume = 0;
@@ -96,9 +96,9 @@ getConv2dOperandTransferVolumeWithType(T o, unsigned int idx, bool read,
     return vol;
 
   Torch::BaseTensorType inputTy =
-      o.input().getType().template cast<Torch::BaseTensorType>();
+      o.getInput().getType().template cast<Torch::BaseTensorType>();
   Torch::BaseTensorType weightTy =
-      o.weight().getType().template cast<Torch::BaseTensorType>();
+      o.getWeight().getType().template cast<Torch::BaseTensorType>();
 
   float filter_width = weightTy.getSizes()[2];
   float filter_height = weightTy.getSizes()[3];
@@ -153,7 +153,7 @@ uint64_t getConv2dResultTransferVolumeWithType(T o, unsigned int idx,
                                                Torch::BaseTensorType resultTy) {
 
   Torch::BaseTensorType inputTy =
-      o.input().getType().template cast<Torch::BaseTensorType>();
+      o.getInput().getType().template cast<Torch::BaseTensorType>();
 
   if (simple_conv2d_model) {
     if (write)
@@ -163,7 +163,7 @@ uint64_t getConv2dResultTransferVolumeWithType(T o, unsigned int idx,
   }
 
   Torch::BaseTensorType weightTy =
-      o.weight().getType().template cast<Torch::BaseTensorType>();
+      o.getWeight().getType().template cast<Torch::BaseTensorType>();
   float filter_width = weightTy.getSizes()[2];
   // float filter_height = weightTy.getSizes()[3];
 
