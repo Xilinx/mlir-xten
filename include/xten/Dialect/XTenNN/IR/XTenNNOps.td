@@ -148,4 +148,20 @@ def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
   let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
 }
 
+def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
+            Pure]> {
+  let summary = "Loads a constant from an external h5 file to a const operator.";
+  let description = [{
+    Looks into `file` for `key`, retrieves the value and replace this operator by the loaded value.
+  }];
+  let arguments = (ins 
+    StrAttr:$key,
+    StrAttr:$file
+  );
+
+  let results = (outs AnyTensor:$output);
+
+  let assemblyFormat = [{ attr-dict `->` type($output) }];
+}
+
 #endif // XTENNN_OPS
