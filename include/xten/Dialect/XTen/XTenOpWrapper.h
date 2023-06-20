@@ -47,7 +47,7 @@ namespace xilinx {
             virtual Value getWeights() = 0;
             virtual Value getInput() = 0;
             virtual Value getPartialInput() = 0;
-            virtual Optional<Value> getBiases() = 0;
+            virtual std::optional<Value> getBiases() = 0;
             virtual ArrayRef<Value> getBN() = 0;
             virtual unsigned int getF0() = 0;
             virtual unsigned int getF1() = 0;
@@ -60,10 +60,10 @@ namespace xilinx {
             //virtual bool hasFusedBN(); // TODO
             //virtual Value getBNWeights();
             //virtual Value getBNBias();
-            virtual Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                                       llvm::Optional<Value> bias, llvm::Optional<Value> partialIn, bool firstInPartialChain,
-                                       llvm::Optional<ArrayRef<Value>> bn) = 0;
-            virtual Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) = 0;
+            virtual Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, std::optional<Value> weight,
+                                       std::optional<Value> bias, std::optional<Value> partialIn, bool firstInPartialChain,
+                                       std::optional<ArrayRef<Value>> bn) = 0;
+            virtual Operation* wCopy(OpBuilder &builder, unsigned int into, std::optional<TypeRange> resTypes) = 0;
         };
 
         class Conv2dOpWrapper : public AbsOpWrapper {
@@ -76,7 +76,7 @@ namespace xilinx {
             Value getWeights() override;
             Value getInput() override;
             Value getPartialInput() override;
-            Optional<Value> getBiases() override;
+            std::optional<Value> getBiases() override;
             ArrayRef<Value> getBN() override;
             virtual unsigned int getF0() override;
             virtual unsigned int getF1() override;
@@ -86,10 +86,10 @@ namespace xilinx {
             bool hasBN() override;
             bool isDepthWise() override;
             double getKernelEfficiency() override;
-            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
-                               llvm::Optional<ArrayRef<Value>> bn) override;
-            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) override;
+            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, std::optional<Value> weight,
+                               std::optional<Value> bias,std::optional<Value> partialIn, bool firstInPartialChain,
+                               std::optional<ArrayRef<Value>> bn) override;
+            Operation* wCopy(OpBuilder &builder, unsigned int into, std::optional<TypeRange> resTypes) override;
         };
 
         class PartialConv2dOpWrapper : public AbsOpWrapper {
@@ -102,7 +102,7 @@ namespace xilinx {
             Value getWeights() override;
             Value getInput() override;
             Value getPartialInput() override;
-            Optional<Value> getBiases() override;
+            std::optional<Value> getBiases() override;
             ArrayRef<Value> getBN() override;
             virtual unsigned int getF0() override;
             virtual unsigned int getF1() override;
@@ -112,10 +112,10 @@ namespace xilinx {
             bool hasBN() override;
             bool isDepthWise() override;
             double getKernelEfficiency() override;
-            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
-                               llvm::Optional<ArrayRef<Value>> bn) override;
-            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) override;
+            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, std::optional<Value> weight,
+                               std::optional<Value> bias,std::optional<Value> partialIn, bool firstInPartialChain,
+                               std::optional<ArrayRef<Value>> bn) override;
+            Operation* wCopy(OpBuilder &builder, unsigned int into, std::optional<TypeRange> resTypes) override;
         };
 
         class Conv2dReLUOpWrapper : public AbsOpWrapper {
@@ -128,7 +128,7 @@ namespace xilinx {
             Value getWeights() override;
             Value getInput() override;
             Value getPartialInput() override;
-            Optional<Value> getBiases() override;
+            std::optional<Value> getBiases() override;
             ArrayRef<Value> getBN() override;
             virtual unsigned int getF0() override;
             virtual unsigned int getF1() override;
@@ -138,10 +138,10 @@ namespace xilinx {
             bool hasBN() override;
             bool isDepthWise() override;
             double getKernelEfficiency() override;
-            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
-                               llvm::Optional<ArrayRef<Value>> bn) override;
-            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) override;
+            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, std::optional<Value> weight,
+                               std::optional<Value> bias,std::optional<Value> partialIn, bool firstInPartialChain,
+                               std::optional<ArrayRef<Value>> bn) override;
+            Operation* wCopy(OpBuilder &builder, unsigned int into, std::optional<TypeRange> resTypes) override;
         };
 
         class PartialConv2dReLUOpWrapper : public AbsOpWrapper {
@@ -154,7 +154,7 @@ namespace xilinx {
             Value getWeights() override;
             Value getInput() override;
             Value getPartialInput() override;
-            Optional<Value> getBiases() override;
+            std::optional<Value> getBiases() override;
             ArrayRef<Value> getBN() override;
             virtual unsigned int getF0() override;
             virtual unsigned int getF1() override;
@@ -164,10 +164,10 @@ namespace xilinx {
             bool hasBN() override;
             bool isDepthWise() override;
             double getKernelEfficiency() override;
-            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
-                               llvm::Optional<ArrayRef<Value>> bn) override;
-            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) override;
+            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, std::optional<Value> weight,
+                               std::optional<Value> bias,std::optional<Value> partialIn, bool firstInPartialChain,
+                               std::optional<ArrayRef<Value>> bn) override;
+            Operation* wCopy(OpBuilder &builder, unsigned int into, std::optional<TypeRange> resTypes) override;
         };
 
         class Conv2dBatchNormReLUOpWrapper : public AbsOpWrapper {
@@ -180,7 +180,7 @@ namespace xilinx {
             Value getWeights() override;
             Value getInput() override;
             Value getPartialInput() override;
-            Optional<Value> getBiases() override;
+            std::optional<Value> getBiases() override;
             ArrayRef<Value> getBN() override;
             virtual unsigned int getF0() override;
             virtual unsigned int getF1() override;
@@ -190,10 +190,10 @@ namespace xilinx {
             bool hasBN() override;
             bool isDepthWise() override;
             double getKernelEfficiency() override;
-            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
-                               llvm::Optional<ArrayRef<Value>> bn) override;
-            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) override;
+            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, std::optional<Value> weight,
+                               std::optional<Value> bias,std::optional<Value> partialIn, bool firstInPartialChain,
+                               std::optional<ArrayRef<Value>> bn) override;
+            Operation* wCopy(OpBuilder &builder, unsigned int into, std::optional<TypeRange> resTypes) override;
         };
 
         class PartialConv2dBatchNormReLUOpWrapper : public AbsOpWrapper {
@@ -206,7 +206,7 @@ namespace xilinx {
             Value getWeights() override;
             Value getInput() override;
             Value getPartialInput() override;
-            Optional<Value> getBiases() override;
+            std::optional<Value> getBiases() override;
             ArrayRef<Value> getBN() override;
             virtual unsigned int getF0() override;
             virtual unsigned int getF1() override;
@@ -216,10 +216,10 @@ namespace xilinx {
             bool hasBN() override;
             bool isDepthWise() override;
             double getKernelEfficiency() override;
-            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
-                               llvm::Optional<ArrayRef<Value>> bn) override;
-            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) override;
+            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, std::optional<Value> weight,
+                               std::optional<Value> bias,std::optional<Value> partialIn, bool firstInPartialChain,
+                               std::optional<ArrayRef<Value>> bn) override;
+            Operation* wCopy(OpBuilder &builder, unsigned int into, std::optional<TypeRange> resTypes) override;
         };
 
 
@@ -233,7 +233,7 @@ namespace xilinx {
             Value getWeights() override;
             Value getInput() override;
             Value getPartialInput() override;
-            Optional<Value> getBiases() override;
+            std::optional<Value> getBiases() override;
             ArrayRef<Value> getBN() override;
             virtual unsigned int getF0() override;
             virtual unsigned int getF1() override;
@@ -243,10 +243,10 @@ namespace xilinx {
             bool hasBN() override;
             bool isDepthWise() override;
             double getKernelEfficiency() override;
-            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, llvm::Optional<Value> weight,
-                               llvm::Optional<Value> bias,llvm::Optional<Value> partialIn, bool firstInPartialChain,
-                               llvm::Optional<ArrayRef<Value>> bn) override;
-            Operation* wCopy(OpBuilder &builder, unsigned int into, llvm::Optional<TypeRange> resTypes) override;
+            Operation* buildOp(OpBuilder &builder, TypeRange returnType, Value input, std::optional<Value> weight,
+                               std::optional<Value> bias,std::optional<Value> partialIn, bool firstInPartialChain,
+                               std::optional<ArrayRef<Value>> bn) override;
+            Operation* wCopy(OpBuilder &builder, unsigned int into, std::optional<TypeRange> resTypes) override;
         };
     }
 }
