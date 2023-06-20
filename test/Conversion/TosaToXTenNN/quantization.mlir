@@ -9,9 +9,6 @@
 //===----------------------------------------------------------------------===//
 
 // RUN: aten-opt %s --tosa-to-xten-nn --split-input-file | FileCheck %s
-// TODO: Remove the XFAIL when llvm bump is done. Since the llvm bump introduced some new constant folding for Tosa,
-// this test is currently failing.
-// XFAIL: *
 module attributes {} {
 // CHECK-LABEL:     func.func @explicit_case(
 // CHECK-SAME:                               %[[VAL_0:.*]]: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> {
@@ -341,7 +338,7 @@ module attributes {} {
 
 module attributes {} {
 // CHECK-LABEL:     func.func @fold_after_sort_on_mul() -> tensor<1x3x4x4xf32> {
-// CHECK:             %[[VAL_0:.*]] = "tosa.const"() {value = dense<2.000000e-02> : tensor<1x3x4x4xf32>} : () -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_0:.*]] = "tosa.const"() {value = dense_resource<__elided__> : tensor<1x3x4x4xf32>} : () -> tensor<1x3x4x4xf32>
 // CHECK:             %[[VAL_1:.*]] = xten_nn.quantize(%[[VAL_0]] : tensor<1x3x4x4xf32>) {shift = -7 : si32} -> tensor<1x3x4x4xsi8>
 // CHECK:             %[[VAL_2:.*]] = xten_nn.dequantize(%[[VAL_1]] : tensor<1x3x4x4xsi8>) {shift = -7 : si32} -> tensor<1x3x4x4xf32>
 // CHECK:             return %[[VAL_2]] : tensor<1x3x4x4xf32>
@@ -349,7 +346,7 @@ module attributes {} {
  func.func @fold_after_sort_on_mul() -> tensor<1x3x4x4xf32> {
     %0 = "tosa.const"() {value = dense<1.280000e+02> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32> 
     %1 = "tosa.const"() {value = dense<7.812500e-03> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32> 
-    %2 = "tosa.const"() {value = dense<2.000000e-02> : tensor<1x3x4x4xf32>} : () -> tensor<1x3x4x4xf32> 
+    %2 = "tosa.const"() {value = dense_resource<__elided__> : tensor<1x3x4x4xf32>} : () -> tensor<1x3x4x4xf32>
     %3 = "tosa.mul"(%0, %2) {shift = 0 : i32} : (tensor<1x1x1x1xf32>, tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> 
     %4 = xten_nn.quantize(%3 : tensor<1x3x4x4xf32>) {shift = 0 : si32} -> tensor<1x3x4x4xsi8> 
     %5 = xten_nn.dequantize(%4 : tensor<1x3x4x4xsi8>) {shift = 0 : si32} -> tensor<1x3x4x4xf32> 
