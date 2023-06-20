@@ -148,7 +148,7 @@ def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
   let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
 }
 
-def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [ ConstantLike
+def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [ ConstantLike,
             Pure]> {
   let summary = "Loads a constant from an external h5 file to a const operator.";
   let description = [{
