@@ -154,7 +154,7 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
   let description = [{
     Looks into `file` for `key`, retrieves the value and replace this operator by the loaded value.
 
-    Unfortunately, this operation cannot be carry the ConstantLike trait as a Fold operation
+    Unfortunately, this operation cannot carry the ConstantLike trait as a Fold operation
     is required to be implemented for constants. For this particular operation we cannot return
     a sensible value as other dialect constants do since the value is stored within a file.
 
