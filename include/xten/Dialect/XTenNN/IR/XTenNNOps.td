@@ -148,11 +148,18 @@ def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
   let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
 }
 
-def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [ ConstantLike,
+def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
             Pure]> {
   let summary = "Loads a constant from an external h5 file to a const operator.";
   let description = [{
     Looks into `file` for `key`, retrieves the value and replace this operator by the loaded value.
+
+    Unfortunately, this operation cannot carry the ConstantLike trait as a Fold operation
+    is required to be implemented for constants. For this particular operation we cannot return
+    a sensible value as other dialect constants do since the value is stored within a file.
+
+    This implementation follows closely to what `ml_program.global_load_const` implements. As it too
+    does not implement the ConstantLike trait.
   }];
   let arguments = (ins 
     StrAttr:$key,
