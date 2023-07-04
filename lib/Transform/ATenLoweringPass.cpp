@@ -1277,7 +1277,7 @@ struct ATenLoweringPass : public PassWrapper<ATenLoweringPass,
                                              OperationPass<ModuleOp>> {
 
    void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
-     registry.insert<mlir::AffineDialect>();
+     registry.insert<mlir::affine::AffineDialect>();
      registry.insert<mlir::LLVM::LLVMDialect>();
    }
 

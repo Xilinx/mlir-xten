@@ -101,8 +101,8 @@ module attributes {} {
 module attributes {} {
 // CHECK-LABEL:     func.func @missing_dq_cast_mul(
 // CHECK-SAME:                                     %[[VAL_0:.*]]: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xi8> {
-// CHECK:             %[[VAL_1:.*]] = "tosa.const"() {value = dense<3.200000e+01> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
-// CHECK:             %[[VAL_2:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_1:.*]] = "tosa.const"() <{value = dense<3.200000e+01> : tensor<1x1x1x1xf32>}> : () -> tensor<1x1x1x1xf32>
+// CHECK:             %[[VAL_2:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) <{shift = 0 : i32}> : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
 // CHECK:             %[[VAL_3:.*]] = "tosa.cast"(%[[VAL_2]]) : (tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xi8>
 // CHECK:             return %[[VAL_3]] : tensor<1x3x4x4xi8>
 // CHECK:           }
@@ -139,8 +139,8 @@ module attributes {} {
 module attributes {} {
 // CHECK-LABEL:     func.func @mul_missing_dequantize(
 // CHECK-SAME:                                        %[[VAL_0:.*]]: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> {
-// CHECK:             %[[VAL_1:.*]] = "tosa.const"() {value = dense<3.125000e-02> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
-// CHECK:             %[[VAL_2:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_1:.*]] = "tosa.const"() <{value = dense<3.125000e-02> : tensor<1x1x1x1xf32>}> : () -> tensor<1x1x1x1xf32>
+// CHECK:             %[[VAL_2:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) <{shift = 0 : i32}> : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
 // CHECK:             return %[[VAL_2]] : tensor<1x3x4x4xf32>
 // CHECK:           }
   func.func @mul_missing_dequantize(%arg0: tensor<1x3x4x4xf32> ) -> tensor<1x3x4x4xf32> {
@@ -155,9 +155,9 @@ module attributes {} {
 module attributes {} {
 // CHECK-LABEL:     func.func @mul_missing_quantize(
 // CHECK-SAME:                                      %[[VAL_0:.*]]: tensor<1x3x4x4xsi8>) -> tensor<1x3x4x4xf32> {
-// CHECK:             %[[VAL_1:.*]] = "tosa.const"() {value = dense<3.125000e-02> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
+// CHECK:             %[[VAL_1:.*]] = "tosa.const"() <{value = dense<3.125000e-02> : tensor<1x1x1x1xf32>}> : () -> tensor<1x1x1x1xf32>
 // CHECK:             %[[VAL_2:.*]] = xten_nn.dequantize(%[[VAL_0]] : tensor<1x3x4x4xsi8>) {shift = 0 : si32} -> tensor<1x3x4x4xf32>
-// CHECK:             %[[VAL_3:.*]] = "tosa.mul"(%[[VAL_2]], %[[VAL_1]]) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_3:.*]] = "tosa.mul"(%[[VAL_2]], %[[VAL_1]]) <{shift = 0 : i32}> : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
 // CHECK:             return %[[VAL_3]] : tensor<1x3x4x4xf32>
 // CHECK:           }
   func.func @mul_missing_quantize(%arg0: tensor<1x3x4x4xsi8>) -> tensor<1x3x4x4xf32> {
@@ -173,12 +173,12 @@ module attributes {} {
 module attributes {} {
 // CHECK-LABEL:     func.func @unequal_mul_constants(
 // CHECK-SAME:                                       %[[VAL_0:.*]]: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> {
-// CHECK:             %[[VAL_1:.*]] = "tosa.const"() {value = dense<3.200000e+01> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
-// CHECK:             %[[VAL_2:.*]] = "tosa.const"() {value = dense<3.000000e-02> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
-// CHECK:             %[[VAL_3:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_1:.*]] = "tosa.const"() <{value = dense<3.200000e+01> : tensor<1x1x1x1xf32>}> : () -> tensor<1x1x1x1xf32>
+// CHECK:             %[[VAL_2:.*]] = "tosa.const"() <{value = dense<3.000000e-02> : tensor<1x1x1x1xf32>}> : () -> tensor<1x1x1x1xf32>
+// CHECK:             %[[VAL_3:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) <{shift = 0 : i32}> : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
 // CHECK:             %[[VAL_4:.*]] = xten_nn.quantize(%[[VAL_3]] : tensor<1x3x4x4xf32>) {shift = 0 : si32} -> tensor<1x3x4x4xsi8>
 // CHECK:             %[[VAL_5:.*]] = xten_nn.dequantize(%[[VAL_4]] : tensor<1x3x4x4xsi8>) {shift = 0 : si32} -> tensor<1x3x4x4xf32>
-// CHECK:             %[[VAL_6:.*]] = "tosa.mul"(%[[VAL_5]], %[[VAL_2]]) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_6:.*]] = "tosa.mul"(%[[VAL_5]], %[[VAL_2]]) <{shift = 0 : i32}> : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
 // CHECK:             return %[[VAL_6]] : tensor<1x3x4x4xf32>
 // CHECK:           }
   func.func @unequal_mul_constants(%arg0: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> {
@@ -197,11 +197,11 @@ module attributes {} {
 module attributes {} {
 // CHECK-LABEL:     func.func @equal_mul_constants_not_log2(
 // CHECK-SAME:                                              %[[VAL_0:.*]]: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> {
-// CHECK:             %[[VAL_1:.*]] = "tosa.const"() {value = dense<3.000000e-02> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
-// CHECK:             %[[VAL_2:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_1:.*]] = "tosa.const"() <{value = dense<3.000000e-02> : tensor<1x1x1x1xf32>}> : () -> tensor<1x1x1x1xf32>
+// CHECK:             %[[VAL_2:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) <{shift = 0 : i32}> : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
 // CHECK:             %[[VAL_3:.*]] = xten_nn.quantize(%[[VAL_2]] : tensor<1x3x4x4xf32>) {shift = 0 : si32} -> tensor<1x3x4x4xsi8>
 // CHECK:             %[[VAL_4:.*]] = xten_nn.dequantize(%[[VAL_3]] : tensor<1x3x4x4xsi8>) {shift = 0 : si32} -> tensor<1x3x4x4xf32>
-// CHECK:             %[[VAL_5:.*]] = "tosa.mul"(%[[VAL_4]], %[[VAL_1]]) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_5:.*]] = "tosa.mul"(%[[VAL_4]], %[[VAL_1]]) <{shift = 0 : i32}> : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
 // CHECK:             return %[[VAL_5]] : tensor<1x3x4x4xf32>
 // CHECK:           }
   func.func @equal_mul_constants_not_log2(%arg0: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> {
@@ -240,12 +240,12 @@ module attributes {} {
 // CHECK-LABEL:     func.func @multiple_q_uses(
 // CHECK-SAME:                                 %[[VAL_0:.*]]: tensor<1x3x4x4xf32>,
 // CHECK-SAME:                                 %[[VAL_1:.*]]: tensor<1x3x4x4xi8>) -> (tensor<1x3x4x4xf32>, tensor<1x3x4x4xi8>) {
-// CHECK:             %[[VAL_2:.*]] = "tosa.const"() {value = dense<3.200000e+01> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
-// CHECK:             %[[VAL_3:.*]] = "tosa.const"() {value = dense<3.125000e-02> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
-// CHECK:             %[[VAL_4:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_2]]) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_2:.*]] = "tosa.const"() <{value = dense<3.200000e+01> : tensor<1x1x1x1xf32>}> : () -> tensor<1x1x1x1xf32>
+// CHECK:             %[[VAL_3:.*]] = "tosa.const"() <{value = dense<3.125000e-02> : tensor<1x1x1x1xf32>}> : () -> tensor<1x1x1x1xf32>
+// CHECK:             %[[VAL_4:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_2]]) <{shift = 0 : i32}> : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
 // CHECK:             %[[VAL_5:.*]] = "tosa.cast"(%[[VAL_4]]) : (tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xi8>
 // CHECK:             %[[VAL_6:.*]] = "tosa.cast"(%[[VAL_5]]) : (tensor<1x3x4x4xi8>) -> tensor<1x3x4x4xf32>
-// CHECK:             %[[VAL_7:.*]] = "tosa.mul"(%[[VAL_6]], %[[VAL_3]]) {shift = 0 : i32} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_7:.*]] = "tosa.mul"(%[[VAL_6]], %[[VAL_3]]) <{shift = 0 : i32}> : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
 // CHECK:             %[[VAL_8:.*]] = "tosa.add"(%[[VAL_1]], %[[VAL_5]]) : (tensor<1x3x4x4xi8>, tensor<1x3x4x4xi8>) -> tensor<1x3x4x4xi8>
 // CHECK:             return %[[VAL_7]], %[[VAL_8]] : tensor<1x3x4x4xf32>, tensor<1x3x4x4xi8>
 // CHECK:           }
@@ -267,16 +267,16 @@ module attributes {} {
 module attributes {} {
 // CHECK-LABEL:     func.func @broadcast_mul_on_quantize(
 // CHECK-SAME:                               %[[VAL_0:.*]]: tensor<1x3xf32>) -> tensor<4x3xf32> {
-// CHECK:             %[[VAL_1:.*]] = "tosa.const"() {value = dense<3.200000e+01> : tensor<1x1xf32>} : () -> tensor<4x3xf32>
-// CHECK:             %[[VAL_2:.*]] = "tosa.const"() {value = dense<3.125000e-02> : tensor<1x1xf32>} : () -> tensor<1x1xf32>
-// CHECK:             %[[VAL_3:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) {shift = 0 : i32} : (tensor<1x3xf32>, tensor<4x3xf32>) -> tensor<4x3xf32>
+// CHECK:             %[[VAL_1:.*]] = "tosa.const"() <{value = dense<3.200000e+01> : tensor<4x3xf32>}> : () -> tensor<4x3xf32>
+// CHECK:             %[[VAL_2:.*]] = "tosa.const"() <{value = dense<3.125000e-02> : tensor<1x1xf32>}> : () -> tensor<1x1xf32>
+// CHECK:             %[[VAL_3:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) <{shift = 0 : i32}> : (tensor<1x3xf32>, tensor<4x3xf32>) -> tensor<4x3xf32>
 // CHECK:             %[[VAL_4:.*]] = xten_nn.quantize(%[[VAL_3]] : tensor<4x3xf32>) {shift = 0 : si32} -> tensor<4x3xsi8>
 // CHECK:             %[[VAL_5:.*]] = xten_nn.dequantize(%[[VAL_4]] : tensor<4x3xsi8>) {shift = 0 : si32} -> tensor<4x3xf32>
-// CHECK:             %[[VAL_6:.*]] = "tosa.mul"(%[[VAL_5]], %[[VAL_2]]) {shift = 0 : i32} : (tensor<4x3xf32>, tensor<1x1xf32>) -> tensor<4x3xf32>
+// CHECK:             %[[VAL_6:.*]] = "tosa.mul"(%[[VAL_5]], %[[VAL_2]]) <{shift = 0 : i32}> : (tensor<4x3xf32>, tensor<1x1xf32>) -> tensor<4x3xf32>
 // CHECK:             return %[[VAL_6]] : tensor<4x3xf32>
 // CHECK:           }
   func.func @broadcast_mul_on_quantize(%arg0: tensor<1x3xf32>) -> tensor<4x3xf32> {
-    %0 = "tosa.const"() {value = dense<3.200000e+01> : tensor<1x1xf32>} : () -> tensor<4x3xf32>
+    %0 = "tosa.const"() {value = dense<3.200000e+01> : tensor<4x3xf32>} : () -> tensor<4x3xf32>
     %1 = "tosa.const"() {value = dense<3.125000e-02> : tensor<1x1xf32>} : () -> tensor<1x1xf32>
     // Mul cannot be folded because the output shape changes w.r.t input due to broadcasting.
     %2 = "tosa.mul"(%arg0, %0) {shift = 0 : i32} : (tensor<1x3xf32>, tensor<4x3xf32>) -> tensor<4x3xf32>
@@ -292,17 +292,17 @@ module attributes {} {
 module attributes {} {
 // CHECK-LABEL:     func.func @broadcast_mul_on_dequantize(
 // CHECK-SAME:                                             %[[VAL_0:.*]]: tensor<1x3xf32>) -> tensor<4x3xf32> {
-// CHECK:             %[[VAL_1:.*]] = "tosa.const"() {value = dense<3.200000e+01> : tensor<1x1xf32>} : () -> tensor<1x1xf32>
-// CHECK:             %[[VAL_2:.*]] = "tosa.const"() {value = dense<3.125000e-02> : tensor<1x1xf32>} : () -> tensor<4x3xf32>
-// CHECK:             %[[VAL_3:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) {shift = 0 : i32} : (tensor<1x3xf32>, tensor<1x1xf32>) -> tensor<1x3xf32>
+// CHECK:             %[[VAL_1:.*]] = "tosa.const"() <{value = dense<3.200000e+01> : tensor<1x1xf32>}> : () -> tensor<1x1xf32>
+// CHECK:             %[[VAL_2:.*]] = "tosa.const"() <{value = dense<3.125000e-02> : tensor<4x3xf32>}> : () -> tensor<4x3xf32>
+// CHECK:             %[[VAL_3:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) <{shift = 0 : i32}> : (tensor<1x3xf32>, tensor<1x1xf32>) -> tensor<1x3xf32>
 // CHECK:             %[[VAL_4:.*]] = xten_nn.quantize(%[[VAL_3]] : tensor<1x3xf32>) {shift = 0 : si32} -> tensor<1x3xsi8>
 // CHECK:             %[[VAL_5:.*]] = xten_nn.dequantize(%[[VAL_4]] : tensor<1x3xsi8>) {shift = 0 : si32} -> tensor<1x3xf32>
-// CHECK:             %[[VAL_6:.*]] = "tosa.mul"(%[[VAL_5]], %[[VAL_2]]) {shift = 0 : i32} : (tensor<1x3xf32>, tensor<4x3xf32>) -> tensor<4x3xf32>
+// CHECK:             %[[VAL_6:.*]] = "tosa.mul"(%[[VAL_5]], %[[VAL_2]]) <{shift = 0 : i32}> : (tensor<1x3xf32>, tensor<4x3xf32>) -> tensor<4x3xf32>
 // CHECK:             return %[[VAL_6]] : tensor<4x3xf32>
 // CHECK:           }
   func.func @broadcast_mul_on_dequantize(%arg0: tensor<1x3xf32>) -> tensor<4x3xf32> {
     %0 = "tosa.const"() {value = dense<3.200000e+01> : tensor<1x1xf32>} : () -> tensor<1x1xf32>
-    %1 = "tosa.const"() {value = dense<3.125000e-02> : tensor<1x1xf32>} : () -> tensor<4x3xf32>
+    %1 = "tosa.const"() {value = dense<3.125000e-02> : tensor<4x3xf32>} : () -> tensor<4x3xf32>
     %2 = "tosa.mul"(%arg0, %0) {shift = 0 : i32} : (tensor<1x3xf32>, tensor<1x1xf32>) -> tensor<1x3xf32>
     %3 = "tosa.cast"(%2) : (tensor<1x3xf32>) -> tensor<1x3xi8>
     %4 = "tosa.cast"(%3) : (tensor<1x3xi8>) -> tensor<1x3xf32>
@@ -338,7 +338,7 @@ module attributes {} {
 
 module attributes {} {
 // CHECK-LABEL:     func.func @fold_after_sort_on_mul() -> tensor<1x3x4x4xf32> {
-// CHECK:             %[[VAL_0:.*]] = "tosa.const"() {value = dense_resource<__elided__> : tensor<1x3x4x4xf32>} : () -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_0:.*]] = "tosa.const"() <{value = dense_resource<__elided__> : tensor<1x3x4x4xf32>}> : () -> tensor<1x3x4x4xf32>
 // CHECK:             %[[VAL_1:.*]] = xten_nn.quantize(%[[VAL_0]] : tensor<1x3x4x4xf32>) {shift = -7 : si32} -> tensor<1x3x4x4xsi8>
 // CHECK:             %[[VAL_2:.*]] = xten_nn.dequantize(%[[VAL_1]] : tensor<1x3x4x4xsi8>) {shift = -7 : si32} -> tensor<1x3x4x4xf32>
 // CHECK:             return %[[VAL_2]] : tensor<1x3x4x4xf32>

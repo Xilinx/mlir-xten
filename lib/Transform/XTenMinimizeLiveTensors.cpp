@@ -68,7 +68,7 @@ struct OpInfo {
   /// The feature map results this node.
   SmallVector<Value> const results;
   /// The value that will share memory with the result during execution, if any.
-  Optional<Value> const sharesResultMemory = {};
+  std::optional<Value> const sharesResultMemory = {};
   /// The consumers of any results. Note: this is filled progressively while
   /// collecting the operations.
   SmallVector<Operation *> consumers;
@@ -166,7 +166,7 @@ SmallVector<Value> getSubgraphIFMs(Operation *op) {
   return {};
 }
 
-Optional<Value> getSubgraphOFM(Operation *op) {
+std::optional<Value> getSubgraphOFM(Operation *op) {
 
   // Handle OfmShare attribute
   if (auto ofmShare = op->getAttrOfType<mlir::IntegerAttr>("OfmShare")) {
@@ -176,7 +176,7 @@ Optional<Value> getSubgraphOFM(Operation *op) {
 }
 
 /// Returns the operand that will share memory with the result.
-Optional<Value> sharesMemoryWithResult(Operation *op) {
+std::optional<Value> sharesMemoryWithResult(Operation *op) {
 
   if (isInCoreChain(op))
     return getSubgraphOFM(op);
@@ -206,11 +206,22 @@ FailureOr<SmallVector<Value>> getFmOperands(Operation *op) {
 /// Return the size of the tensor type of \p val.
 /// It is an error to call this with a non-tensor typed value.
 size_t getSize(Value val) {
-  auto type = val.getType();
-  assert(isa<ShapedType>(type));
+  auto type = dyn_cast<ShapedType>(val.getType());
+  assert(type);
 
   // Get size in bytes
-  return cast<ShapedType>(type).getSizeInBits() / 8;
+  assert(type.hasStaticShape() &&
+         "cannot get the bit size of an aggregate with a dynamic shape");
+
+  auto elementType = type.getElementType();
+  if (elementType.isIntOrFloat())
+    return (elementType.getIntOrFloatBitWidth() * type.getNumElements()) / 8;
+
+  if (auto complexType = elementType.dyn_cast<ComplexType>()) {
+    elementType = complexType.getElementType();
+    return (elementType.getIntOrFloatBitWidth() * type.getNumElements() * 2) / 8;
+  }
+  llvm_unreachable("Does not know how to compute size");
 }
 
 /// Debugging support - returns a simple name for an op.
@@ -282,7 +293,7 @@ public:
       } else {
         fmResults = SmallVector<Value>(currFn.getBody().front().getArguments());
       }
-      Optional<Value> const sharesResultMemory = sharesMemoryWithResult(defOp);
+      std::optional<Value> const sharesResultMemory = sharesMemoryWithResult(defOp);
       OpInfo info = {.op = defOp,
                      .operands = *fmOperands,
                      .results = fmResults,

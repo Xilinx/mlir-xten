@@ -48,6 +48,7 @@
 using namespace mlir;
 using namespace xilinx;
 using namespace mlir::torch;
+using namespace mlir::affine;
 
 namespace xilinx {
 namespace xten {
@@ -333,7 +334,7 @@ public:
             auto c =
                 cast<Torch::ConstantIntOp>(operands[1].getDefiningOp()).getValue();
             auto ty = rewriter.getIntegerType(32);
-            auto add_const = rewriter.getI32IntegerAttr(c.getZExtValue());
+            auto add_const = rewriter.getI32IntegerAttr(c);
             add = builder.create<mlir::arith::AddIOp>(loc, load, builder.create<mlir::arith::ConstantOp>(loc, ty, add_const));
           }
           builder.create<AffineStoreOp>(loc, add, result, ident, ivs);
@@ -448,7 +449,7 @@ public:
   XTenToAffinePass(const XTenToAffinePass &pass){};
 
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {  
-     registry.insert<AffineDialect>();
+     registry.insert<affine::AffineDialect>();
      registry.insert<memref::MemRefDialect>();
      registry.insert<Torch::TorchDialect,
                      TorchConversion::TorchConversionDialect>();
@@ -486,7 +487,7 @@ public:
 
     ConversionTarget target(*context);
 
-    target.addLegalDialect<AffineDialect, LLVM::LLVMDialect,
+    target.addLegalDialect<affine::AffineDialect, LLVM::LLVMDialect,
                            memref::MemRefDialect,
                            func::FuncDialect, scf::SCFDialect,
                            TorchConversion::TorchConversionDialect>();

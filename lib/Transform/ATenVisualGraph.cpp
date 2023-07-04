@@ -45,37 +45,37 @@ using namespace mlir::torch;
 namespace {
 
 template <class Op>
-llvm::Optional<Value> getAlpha(Op &reluOp) {
+std::optional<Value> getAlpha(Op &reluOp) {
   return reluOp.getAlpha();
 }
 
 template <>
-llvm::Optional<Value> getAlpha(Torch::AtenReluOp &reluOp) {
+std::optional<Value> getAlpha(Torch::AtenReluOp &reluOp) {
   return {};
 }
 
 template <>
-llvm::Optional<Value> getAlpha(xten::Conv2dReLUOp &reluOp) {
+std::optional<Value> getAlpha(xten::Conv2dReLUOp &reluOp) {
   return {};
 }
 
 template <>
-llvm::Optional<Value> getAlpha(xten::Conv2dReLUMaxPoolOp &reluOp) {
+std::optional<Value> getAlpha(xten::Conv2dReLUMaxPoolOp &reluOp) {
   return {};
 }
 
 template <>
-llvm::Optional<Value> getAlpha(xten::Conv2dReLUPadMaxPoolOp &reluOp) {
+std::optional<Value> getAlpha(xten::Conv2dReLUPadMaxPoolOp &reluOp) {
   return {};
 }
 
 template <>
-llvm::Optional<Value> getAlpha(xten::Conv2dTensorAddReLUOp &reluOp) {
+std::optional<Value> getAlpha(xten::Conv2dTensorAddReLUOp &reluOp) {
   return {};
 }
 
 template <>
-llvm::Optional<Value> getAlpha(xten::LinearReluOp &reluOp) {
+std::optional<Value> getAlpha(xten::LinearReluOp &reluOp) {
   return {};
 }
 

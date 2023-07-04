@@ -216,15 +216,15 @@ namespace xilinx {
                             input = genOp->getInput();
                         }
 
-                        auto nW = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(i)) : llvm::Optional<Value>();
-                        auto nB = genOp->hasBias() ? llvm::Optional<Value>(nBiases.at(i)) : llvm::Optional<Value>();
-                        auto nBn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(i)) : llvm::Optional<ArrayRef<Value>>();
+                        auto nW = genOp->hasWeights() ? std::optional<Value>(nConsts.at(i)) : std::optional<Value>();
+                        auto nB = genOp->hasBias() ? std::optional<Value>(nBiases.at(i)) : std::optional<Value>();
+                        auto nBn = genOp->hasBN() ? std::optional<ArrayRef<Value>>(nBN.at(i)) : std::optional<ArrayRef<Value>>();
                         conv = genOp->buildOp(builder,
                                               TypeRange({nReturnType}),
                                               input,
                                               nW,
                                               nB,
-                                              llvm::Optional<Value>(), false, nBn);
+                                              std::optional<Value>(), false, nBn);
 
                         assert(conv != nullptr);
 
@@ -364,10 +364,10 @@ namespace xilinx {
                     }
 
                     // Generate convolutions
-                    auto w = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(0)) : llvm::Optional<Value>();
-                    auto bias = genOp->hasBias() ? llvm::Optional<Value>(nBiases.at(0)) : llvm::Optional<Value>();
-                    auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(0)) : llvm::Optional<ArrayRef<Value>>();
-                    auto chainIn = llvm::Optional<Value>(genOp->getPartialInput());
+                    auto w = genOp->hasWeights() ? std::optional<Value>(nConsts.at(0)) : std::optional<Value>();
+                    auto bias = genOp->hasBias() ? std::optional<Value>(nBiases.at(0)) : std::optional<Value>();
+                    auto bn = genOp->hasBN() ? std::optional<ArrayRef<Value>>(nBN.at(0)) : std::optional<ArrayRef<Value>>();
+                    auto chainIn = std::optional<Value>(genOp->getPartialInput());
                     Operation* conv = genOp->buildOp(builder, TypeRange({op->getResult(0).getType()}),
                                                      nInputs.at(0), w, bias, chainIn, true, bn);
 
@@ -386,11 +386,11 @@ namespace xilinx {
                     nLayerOps.push_back(opToWrapper(conv));
 
                     for(unsigned int i = 1; i < into; i++) {
-                        auto w = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(i)) : llvm::Optional<Value>();
-                        auto bias = genOp->hasBias() ? llvm::Optional<Value>(nBiases.at(i)) : llvm::Optional<Value>();
-                        auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(i)) : llvm::Optional<ArrayRef<Value>>();
+                        auto w = genOp->hasWeights() ? std::optional<Value>(nConsts.at(i)) : std::optional<Value>();
+                        auto bias = genOp->hasBias() ? std::optional<Value>(nBiases.at(i)) : std::optional<Value>();
+                        auto bn = genOp->hasBN() ? std::optional<ArrayRef<Value>>(nBN.at(i)) : std::optional<ArrayRef<Value>>();
                         Operation* nConv = genOp->buildOp(builder, TypeRange({op->getResult(0).getType()}),
-                                                          nInputs.at(i), w, bias, llvm::Optional<Value>(conv->getResult(0)), true, bn);
+                                                          nInputs.at(i), w, bias, std::optional<Value>(conv->getResult(0)), true, bn);
 
                         // set location attribute
                         if(op->getAttr("locCa") != nullptr) {
@@ -514,10 +514,10 @@ namespace xilinx {
                     mlir::torch::Torch::BaseTensorType retTypeForward = genOp->getInput().getType().dyn_cast<mlir::torch::Torch::BaseTensorType>();
 
                     // Generate new convs
-                    auto w = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(0)) : llvm::Optional<Value>();
-                    auto bias = genOp->hasBias() ? llvm::Optional<Value>(nBiases.at(0)) : llvm::Optional<Value>();
-                    auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(0)) : llvm::Optional<ArrayRef<Value>>();
-                    auto chainIn = llvm::Optional<Value>(genOp->getPartialInput());
+                    auto w = genOp->hasWeights() ? std::optional<Value>(nConsts.at(0)) : std::optional<Value>();
+                    auto bias = genOp->hasBias() ? std::optional<Value>(nBiases.at(0)) : std::optional<Value>();
+                    auto bn = genOp->hasBN() ? std::optional<ArrayRef<Value>>(nBN.at(0)) : std::optional<ArrayRef<Value>>();
+                    auto chainIn = std::optional<Value>(genOp->getPartialInput());
                     Operation* nConv = genOp->buildOp(builder, TypeRange({retTypePartial, retTypeForward}),
                                                       genOp->getInput(), w, bias, chainIn, true, bn);
 
@@ -538,13 +538,13 @@ namespace xilinx {
                     nLayerOps.push_back(opToWrapper(nConv));
 
                     for(unsigned int i = 1; i < into; i++) {
-                        auto w = genOp->hasWeights() ? llvm::Optional<Value>(nConsts.at(i)) : llvm::Optional<Value>();
-                        auto bias = genOp->hasBias() ? llvm::Optional<Value>(nBiases.at(i)) : llvm::Optional<Value>();
-                        auto bn = genOp->hasBN() ? llvm::Optional<ArrayRef<Value>>(nBN.at(i)) : llvm::Optional<ArrayRef<Value>>();
+                        auto w = genOp->hasWeights() ? std::optional<Value>(nConsts.at(i)) : std::optional<Value>();
+                        auto bias = genOp->hasBias() ? std::optional<Value>(nBiases.at(i)) : std::optional<Value>();
+                        auto bn = genOp->hasBN() ? std::optional<ArrayRef<Value>>(nBN.at(i)) : std::optional<ArrayRef<Value>>();
                         // Same return type here
                         nConv = genOp->buildOp(builder,
                                                (i == (into-1)) ? TypeRange({retTypePartial}) : TypeRange({retTypePartial, retTypeForward}),
-                                               forward, w, bias, llvm::Optional<Value>(partial), false, bn);
+                                               forward, w, bias, std::optional<Value>(partial), false, bn);
 
                         // set location attribute
                         if(op->getAttr("locL") != nullptr) {
@@ -835,7 +835,7 @@ namespace xilinx {
                             absOp->getUnderlyingOperation()->print(llvm::outs());
                             llvm::outs() << "\n";
 
-                            Operation* nOp = absOp->wCopy(builder, locW, llvm::Optional<TypeRange>(TypeRange{partialRes, forwardRes}));
+                            Operation* nOp = absOp->wCopy(builder, locW, std::optional<TypeRange>(TypeRange{partialRes, forwardRes}));
 
                             absOp->getUnderlyingOperation()->getResult(0).replaceAllUsesWith(nOp->getResult(0));
 
@@ -874,7 +874,7 @@ namespace xilinx {
                             auto attr = IntegerAttr::get(ty, 0);
                             absOp->getUnderlyingOperation()->setAttr(llvm::StringRef("locW"), attr);
                         } else {
-                            Operation* op = absOp->wCopy(builder, i, llvm::Optional<TypeRange>());
+                            Operation* op = absOp->wCopy(builder, i, std::optional<TypeRange>());
 
                             AbsOpWrapper* locAbsOp = opToWrapper(op);
                             layerOps.push_back(locAbsOp);
