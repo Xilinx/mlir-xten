@@ -115,10 +115,10 @@ public:
                                          "expected cast -> cast pattern.");
     }
 
-    if (!quantizeOp->hasOneUse()) {
-      return rewriter.notifyMatchFailure(
-          quantizeOp.getLoc(),
-          "expected the quantize operation to have a single use.");
+    if (!quantizeOp->hasOneUse() || !castOp->hasOneUse()) {
+      return rewriter.notifyMatchFailure(quantizeOp.getLoc(),
+                                         "expected the quantize and dequantize "
+                                         "operation to have a single use.");
     }
 
     TensorType inputTensorType = castOp.getInput().getType();
@@ -189,13 +189,13 @@ public:
     auto quantizeOp = cast<amd::xten_nn::QuantizeOp>(
         dequantizeOp->getOperand(0).getDefiningOp());
 
-    // Make sure these multiplications really only belong to the QDQ operations
-    // and are used by no one else
+    // Make sure the quantize multiplication belongs only to the QDQ operation
+    // and are used by no one else.
     auto *quantizeMulOp = quantizeOp->getOperand(0).getDefiningOp();
-    if (!quantizeMulOp->hasOneUse() || !dequantizeMulOp->hasOneUse()) {
+    if (!quantizeMulOp->hasOneUse()) {
       return rewriter.notifyMatchFailure(
           dequantizeMulOp->getLoc(),
-          "multiplications around the QDQ operations must have single user.");
+          "the quantize multiplication can have only a single user.");
     }
 
     if (!sameInputAndOutputShape(quantizeMulOp) ||
