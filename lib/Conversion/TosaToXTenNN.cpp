@@ -115,9 +115,9 @@ public:
                                          "expected cast -> cast pattern.");
     }
 
-    if (!quantizeOp->hasOneUse() || !castOp->hasOneUse()) {
+    if (!quantizeOp->hasOneUse()) {
       return rewriter.notifyMatchFailure(quantizeOp.getLoc(),
-                                         "expected the quantize and dequantize "
+                                         "expected the quantize "
                                          "operation to have a single use.");
     }
 
@@ -192,7 +192,8 @@ public:
     // Make sure the quantize multiplication belongs only to the QDQ operation
     // and are used by no one else.
     auto *quantizeMulOp = quantizeOp->getOperand(0).getDefiningOp();
-    if (!quantizeMulOp->hasOneUse()) {
+    if (!quantizeMulOp->hasOneUse() || !quantizeOp->hasOneUse() ||
+        !dequantizeOp->hasOneUse()) {
       return rewriter.notifyMatchFailure(
           dequantizeMulOp->getLoc(),
           "the quantize multiplication can have only a single user.");
