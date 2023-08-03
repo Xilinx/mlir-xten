@@ -171,6 +171,27 @@ LogicalResult SubgraphOp::verify() {
   return success();
 }
 
+LogicalResult SubgraphOp::inferReturnTypeComponents(
+    MLIRContext * /*context*/, ::std::optional<Location> /*location*/,
+    ValueShapeRange /*operands*/, DictionaryAttr /*attributes*/,
+    OpaqueProperties /*properties*/, RegionRange regions,
+    SmallVectorImpl<ShapedTypeComponents> &inferredReturnShapes) {
+
+  llvm::SmallVector<ShapedTypeComponents, 2> returnShapes;
+
+  Operation *terminator = regions.front()->front().getTerminator();
+  for (Type type : terminator->getOperandTypes()) {
+    auto shapedType = llvm::dyn_cast<ShapedType>(type);
+
+    if (!shapedType)
+      return failure();
+
+    returnShapes.push_back(shapedType);
+  }
+  inferredReturnShapes.append(returnShapes);
+  return success();
+}
+
 //===----------------------------------------------------------------------===//
 // XTenNNDialect
 //===----------------------------------------------------------------------===//
