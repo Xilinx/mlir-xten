@@ -22,8 +22,8 @@ module attributes{} {
 // CHECK:             return %[[VAL_6]] : tensor<1x3x4x4xf32>
 // CHECK:           }
     func.func @explicit_case(%arg0: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> {
-        %0 = xten_nn.quantize(%arg0 : tensor<1x3x4x4xf32>) {shift = -5 : si32} -> tensor<1x3x4x4xsi8>
-        %1 = xten_nn.dequantize(%0 : tensor<1x3x4x4xsi8>) {shift = -5 : si32} -> tensor<1x3x4x4xf32>
+        %0 = xten_nn.quantize(%arg0 : tensor<1x3x4x4xf32>) {shift = -5 : si32} -> tensor<1x3x4x4xi8>
+        %1 = xten_nn.dequantize(%0 : tensor<1x3x4x4xi8>) {shift = -5 : si32} -> tensor<1x3x4x4xf32>
         return %1 : tensor<1x3x4x4xf32>
     }
 }
@@ -43,8 +43,8 @@ module attributes{} {
 // CHECK:             return %[[VAL_7]] : tensor<2x3xf32>
 // CHECK:           }
     func.func @small_tensors(%arg0: tensor<2x3xf32>) -> tensor<2x3xf32> {
-        %0 = xten_nn.quantize(%arg0 : tensor<2x3xf32>) {shift = 3 : si32} -> tensor<2x3xsi4>
-        %1 = xten_nn.dequantize(%0 : tensor<2x3xsi4>) {shift = 3 : si32} -> tensor<2x3xf32>
+        %0 = xten_nn.quantize(%arg0 : tensor<2x3xf32>) {shift = 3 : si32} -> tensor<2x3xi4>
+        %1 = xten_nn.dequantize(%0 : tensor<2x3xi4>) {shift = 3 : si32} -> tensor<2x3xf32>
         return %1 : tensor<2x3xf32>
     }
 }
@@ -53,16 +53,15 @@ module attributes{} {
 
 module attributes{} {
 // CHECK-LABEL:     func.func @quantize_case(
-// CHECK-SAME:                               %[[VAL_0:.*]]: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xsi8> {
+// CHECK-SAME:                               %[[VAL_0:.*]]: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xi8> {
 // CHECK:             %[[VAL_1:.*]] = "tosa.const"() <{value = dense<3.200000e+01> : tensor<1x1x1x1xf32>}> : () -> tensor<1x1x1x1xf32>
 // CHECK:             %[[VAL_2:.*]] = "tosa.mul"(%[[VAL_0]], %[[VAL_1]]) <{shift = 0 : i32}> : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
 // CHECK:             %[[VAL_3:.*]] = "tosa.cast"(%[[VAL_2]]) : (tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xi8>
-// CHECK:             %[[VAL_4:.*]] = builtin.unrealized_conversion_cast %[[VAL_3]] : tensor<1x3x4x4xi8> to tensor<1x3x4x4xsi8>
-// CHECK:             return %[[VAL_4]] : tensor<1x3x4x4xsi8>
+// CHECK:             return %[[VAL_3]] : tensor<1x3x4x4xi8>
 // CHECK:           }
-    func.func @quantize_case(%arg0: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xsi8> {
-        %0 = xten_nn.quantize(%arg0 : tensor<1x3x4x4xf32>) {shift = -5 : si32} -> tensor<1x3x4x4xsi8>
-        return %0 : tensor<1x3x4x4xsi8>
+    func.func @quantize_case(%arg0: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xi8> {
+        %0 = xten_nn.quantize(%arg0 : tensor<1x3x4x4xf32>) {shift = -5 : si32} -> tensor<1x3x4x4xi8>
+        return %0 : tensor<1x3x4x4xi8>
     }
 }
 
@@ -70,15 +69,14 @@ module attributes{} {
 
 module attributes{} {
 // CHECK-LABEL:     func.func @dequantize_case(
-// CHECK-SAME:                                 %[[VAL_0:.*]]: tensor<1x3x4x4xsi8>) -> tensor<1x3x4x4xf32> {
+// CHECK-SAME:                                 %[[VAL_0:.*]]: tensor<1x3x4x4xi8>) -> tensor<1x3x4x4xf32> {
 // CHECK:             %[[VAL_1:.*]] = "tosa.const"() <{value = dense<3.125000e-02> : tensor<1x1x1x1xf32>}> : () -> tensor<1x1x1x1xf32>
-// CHECK:             %[[VAL_2:.*]] = builtin.unrealized_conversion_cast %[[VAL_0]] : tensor<1x3x4x4xsi8> to tensor<1x3x4x4xi8>
-// CHECK:             %[[VAL_3:.*]] = "tosa.cast"(%[[VAL_2]]) : (tensor<1x3x4x4xi8>) -> tensor<1x3x4x4xf32>
+// CHECK:             %[[VAL_3:.*]] = "tosa.cast"(%[[VAL_0]]) : (tensor<1x3x4x4xi8>) -> tensor<1x3x4x4xf32>
 // CHECK:             %[[VAL_4:.*]] = "tosa.mul"(%[[VAL_3]], %[[VAL_1]]) <{shift = 0 : i32}> : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
 // CHECK:             return %[[VAL_4]] : tensor<1x3x4x4xf32>
 // CHECK:           }
-    func.func @dequantize_case(%arg0: tensor<1x3x4x4xsi8>) -> tensor<1x3x4x4xf32> {
-        %0 = xten_nn.dequantize(%arg0 : tensor<1x3x4x4xsi8>) {shift = -5 : si32} -> tensor<1x3x4x4xf32>
+    func.func @dequantize_case(%arg0: tensor<1x3x4x4xi8>) -> tensor<1x3x4x4xf32> {
+        %0 = xten_nn.dequantize(%arg0 : tensor<1x3x4x4xi8>) {shift = -5 : si32} -> tensor<1x3x4x4xf32>
         return %0 : tensor<1x3x4x4xf32>
     }
 }
@@ -97,8 +95,8 @@ module attributes{} {
 // CHECK:             return %[[VAL_6]] : tensor<1x3x4x4xf32>
 // CHECK:           }
     func.func @i16_case(%arg0: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> {
-        %0 = xten_nn.quantize(%arg0 : tensor<1x3x4x4xf32>) {shift = -5 : si32} -> tensor<1x3x4x4xsi16>
-        %1 = xten_nn.dequantize(%0 : tensor<1x3x4x4xsi16>) {shift = -5 : si32} -> tensor<1x3x4x4xf32>
+        %0 = xten_nn.quantize(%arg0 : tensor<1x3x4x4xf32>) {shift = -5 : si32} -> tensor<1x3x4x4xi16>
+        %1 = xten_nn.dequantize(%0 : tensor<1x3x4x4xi16>) {shift = -5 : si32} -> tensor<1x3x4x4xf32>
         return %1 : tensor<1x3x4x4xf32>
     }
 }
@@ -118,8 +116,8 @@ module attributes{} {
 // CHECK:             return %[[VAL_7]] : tensor<1x3x4x4xf32>
 // CHECK:           }
     func.func @i12_case(%arg0: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> {
-        %0 = xten_nn.quantize(%arg0 : tensor<1x3x4x4xf32>) {shift = -5 : si32} -> tensor<1x3x4x4xsi12>
-        %1 = xten_nn.dequantize(%0 : tensor<1x3x4x4xsi12>) {shift = -5 : si32} -> tensor<1x3x4x4xf32>
+        %0 = xten_nn.quantize(%arg0 : tensor<1x3x4x4xf32>) {shift = -5 : si32} -> tensor<1x3x4x4xi12>
+        %1 = xten_nn.dequantize(%0 : tensor<1x3x4x4xi12>) {shift = -5 : si32} -> tensor<1x3x4x4xf32>
         return %1 : tensor<1x3x4x4xf32>
     }
 }

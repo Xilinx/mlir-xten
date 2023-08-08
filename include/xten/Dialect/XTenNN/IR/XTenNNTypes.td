@@ -13,9 +13,9 @@
 
 include "xten/Dialect/XTenNN/IR/XTenNNBase.td"
 
-def XTenNN_AnyTensorSignedOrUnsignedInteger : TensorOf<
-    [AnySignedInteger, AnyUnsignedInteger], 
+def XTenNN_AnyTensorSignlessOrUnsignedInteger : TensorOf<
+    [AnySignlessInteger, AnyUnsignedInteger], 
     [], 
-    "signed-or-unsigned-tensor">;
+    "signless-or-unsigned-tensor">;
 
 #endif // XTENNN_TYPES
