@@ -86,7 +86,7 @@ public:
   LogicalResult matchAndRewrite(amd::xten_nn::QuantizeOp quantizeOp,
                                 PatternRewriter &rewriter) const override {
     // The QDQ operations only work on tensors, if they are not, then the
-    // verifiers should find the error. At the moment, only signed tensors
+    // verifiers should find the error. At the moment, only signless tensors
     // are supported.
     auto outputType = cast<TensorType>(quantizeOp->getResult(0).getType());
     if (!outputType.getElementType().isSignlessInteger()) {
@@ -152,7 +152,7 @@ public:
   LogicalResult matchAndRewrite(amd::xten_nn::DequantizeOp dequantizeOp,
                                 PatternRewriter &rewriter) const override {
     // The QDQ operations only work on tensors, if they are not, then the
-    // verifiers should find the error. At the moment, only signed tensors
+    // verifiers should find the error. At the moment, only signless tensors
     // are supported.
     auto inputType = cast<TensorType>(dequantizeOp->getOperand(0).getType());
     if (!inputType.getElementType().isSignlessInteger()) {
