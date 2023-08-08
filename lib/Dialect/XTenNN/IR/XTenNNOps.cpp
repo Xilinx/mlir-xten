@@ -171,6 +171,33 @@ LogicalResult SubgraphOp::verify() {
   return success();
 }
 
+LogicalResult SubgraphOp::inferReturnTypeComponents(
+    MLIRContext * /*context*/, ::std::optional<Location> /*location*/,
+    ValueShapeRange /*operands*/, DictionaryAttr /*attributes*/,
+    OpaqueProperties /*properties*/, RegionRange regions,
+    SmallVectorImpl<ShapedTypeComponents> &inferredReturnShapes) {
+
+  llvm::SmallVector<ShapedTypeComponents, 2> returnShapes;
+
+  // TODO: Ideally, we would walk over the operations in the
+  // subgraph region and have their shapes also inferred by
+  // the InferShapedTypeOpInterface. However, this is enough
+  // for our shape inference because our walk is performed by
+  // another pass. We may need to extend this later if it needs
+  // generalization.
+  Operation *terminator = regions.front()->front().getTerminator();
+  for (Type type : terminator->getOperandTypes()) {
+    auto shapedType = llvm::dyn_cast<ShapedType>(type);
+
+    if (!shapedType)
+      return failure();
+
+    returnShapes.push_back(shapedType);
+  }
+  inferredReturnShapes.append(returnShapes);
+  return success();
+}
+
 //===----------------------------------------------------------------------===//
 // XTenNNDialect
 //===----------------------------------------------------------------------===//
