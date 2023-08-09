@@ -31,7 +31,7 @@ namespace {
 ///\param tensorType signed integer tensor type.
 ///\return TensorType new storage type for the \p tensorType.
 TensorType getNewStorageType(TensorType tensorType) {
-  assert(tensorType.getElementType().isSignedInteger() &&
+  assert(tensorType.getElementType().isSignlessInteger() &&
          "quantization should only work with integers");
   unsigned int integerBitwidth = tensorType.getElementTypeBitWidth();
   unsigned int storageBitWidth = 32;
@@ -86,12 +86,13 @@ public:
   LogicalResult matchAndRewrite(amd::xten_nn::QuantizeOp quantizeOp,
                                 PatternRewriter &rewriter) const override {
     // The QDQ operations only work on tensors, if they are not, then the
-    // verifiers should find the error. At the moment, only signed tensors
+    // verifiers should find the error. At the moment, only signless tensors
     // are supported.
     auto outputType = cast<TensorType>(quantizeOp->getResult(0).getType());
-    if (!outputType.getElementType().isSignedInteger()) {
+    if (!outputType.getElementType().isSignlessInteger()) {
       return rewriter.notifyMatchFailure(
-          quantizeOp.getLoc(), "only signed tensor types are supported.");
+          quantizeOp.getLoc(),
+          "only signless integer tensor types are supported.");
     }
     auto inputType = dyn_cast<TensorType>(quantizeOp->getOperand(0).getType());
 
@@ -151,12 +152,13 @@ public:
   LogicalResult matchAndRewrite(amd::xten_nn::DequantizeOp dequantizeOp,
                                 PatternRewriter &rewriter) const override {
     // The QDQ operations only work on tensors, if they are not, then the
-    // verifiers should find the error. At the moment, only signed tensors
+    // verifiers should find the error. At the moment, only signless tensors
     // are supported.
     auto inputType = cast<TensorType>(dequantizeOp->getOperand(0).getType());
-    if (!inputType.getElementType().isSignedInteger()) {
+    if (!inputType.getElementType().isSignlessInteger()) {
       return rewriter.notifyMatchFailure(
-          dequantizeOp.getLoc(), "only signed tensor types are supported.");
+          dequantizeOp.getLoc(),
+          "only signless integer tensor types are supported.");
     }
 
     TensorType newIntegerStorageType = getNewStorageType(inputType);

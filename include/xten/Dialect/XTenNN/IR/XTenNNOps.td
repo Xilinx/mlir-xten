@@ -103,9 +103,11 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
             Elementwise,
             Pure,
             SameOperandsAndResultShape]> {
-  let summary = "Quantizes a float32 tensor to a signed or unsigned integer tensor of given width.";
+  let summary = "Quantizes a float32 tensor to a signless or unsigned integer tensor of given width.";
   let description = [{
-    Quantizes a given float32 tensor into a signed or unsigned integer tensor of given width.
+    Quantizes a given float32 tensor into a signless or unsigned integer tensor of given width.
+    Since tosa is using signless/unsigned types currently, we also consider signless integer types for
+    signed ones when the type is not unsigned until tosa support signed integers.
 
     Applies the following linear quantization to the input tensor x:
       y = round( x * 2^shift )
@@ -121,7 +123,7 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
     SI32Attr:$shift
   );
 
-  let results = (outs XTenNN_AnyTensorSignedOrUnsignedInteger:$output);
+  let results = (outs XTenNN_AnyTensorSignlessOrUnsignedInteger:$output);
 
   let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
 }
@@ -130,9 +132,11 @@ def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
             Elementwise,
             Pure,
             SameOperandsAndResultShape]> {
-  let summary = "Dequantizes a signed/unsigned integer tensor of given bitwidth to a float32 tensor.";
+  let summary = "Dequantizes a signless/unsigned integer tensor of given bitwidth to a float32 tensor.";
   let description = [{
-    Dequantizes a signed/unsigned integer tensor of given bitwidth to a float32 tensor.
+    Dequantizes a signless/unsigned integer tensor of given bitwidth to a float32 tensor.
+    Since tosa is using signless/unsigned types currently, we also consider signless integer types for
+    signed ones when the type is not unsigned until tosa support signed integers.
 
     Applies the following linear dequantization to the input tensor x:
       y = x  / ( 2^shift )
@@ -141,7 +145,7 @@ def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
   }];
 
   let arguments = (ins 
-    XTenNN_AnyTensorSignedOrUnsignedInteger:$input,
+    XTenNN_AnyTensorSignlessOrUnsignedInteger:$input,
     SI32Attr:$shift
   );
 

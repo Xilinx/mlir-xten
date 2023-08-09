@@ -140,9 +140,9 @@ public:
                                          "are not f32 and i8 respectively.");
     }
 
+    // FIXME: unsigned int is unsupported yet.
     Type newOutputType = outputTensorType.cloneWith(
-        {}, IntegerType::get(rewriter.getContext(), 8,
-                             IntegerType::SignednessSemantics::Signed));
+        {}, IntegerType::get(rewriter.getContext(), 8));
 
     auto newQuantizeOp = rewriter.create<amd::xten_nn::QuantizeOp>(
         quantizeOp->getLoc(), newOutputType, quantizeOp->getOperand(0),
