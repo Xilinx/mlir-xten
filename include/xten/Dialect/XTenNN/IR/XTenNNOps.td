@@ -104,6 +104,8 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
   let summary = "Quantizes a float32 tensor to a signless or unsigned integer tensor of given width.";
   let description = [{
     Quantizes a given float32 tensor into a signless or unsigned integer tensor of given width.
+    Since tosa is using signless/unsigned types currently, we also consider signless integer types for
+    signed ones when the type is not unsigned until tosa support signed integers.
 
     Applies the following linear quantization to the input tensor x:
       y = round( x * 2^shift )
@@ -131,6 +133,8 @@ def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
   let summary = "Dequantizes a signless/unsigned integer tensor of given bitwidth to a float32 tensor.";
   let description = [{
     Dequantizes a signless/unsigned integer tensor of given bitwidth to a float32 tensor.
+    Since tosa is using signless/unsigned types currently, we also consider signless integer types for
+    signed ones when the type is not unsigned until tosa support signed integers.
 
     Applies the following linear dequantization to the input tensor x:
       y = x  / ( 2^shift )
