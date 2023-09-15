@@ -110,9 +110,10 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
     signed ones when the type is not unsigned until tosa support signed integers.
 
     Applies the following linear quantization to the input tensor x:
-      y = round( x * 2^shift )
+      y = round( x / 2^shift )
 
-    Where shift is an attribute of the operation in si32.
+    Where 2^shift is equal to the scale of the quantize operation and
+    the shift is an attribute of the operation in si32.
 
     Round will saturate to the range of the output type and the rounding mode is set to half 
     to nearest even.
@@ -139,9 +140,10 @@ def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
     signed ones when the type is not unsigned until tosa support signed integers.
 
     Applies the following linear dequantization to the input tensor x:
-      y = x  / ( 2^shift )
+      y = x  * ( 2^shift )
 
-    Where shift is an attribute of the operation in si32.
+    Where 2^shift is equal to scale of the dequantize operation and
+    the shift is an attribute of the operation in si32.
   }];
 
   let arguments = (ins 
