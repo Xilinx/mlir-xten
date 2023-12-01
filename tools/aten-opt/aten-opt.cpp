@@ -9,7 +9,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-//#include "mlir/Analysis/Passes.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/SourceMgr.h"
@@ -39,8 +38,13 @@
 using namespace llvm;
 using namespace mlir;
 
+namespace mlir::test {
+void registerTestConstantFold();
+}
+
 int main(int argc, char **argv) {
   registerAllPasses();
+  mlir::test::registerTestConstantFold();
   xilinx::xten::registerTransformPasses();
   xilinx::xten::registerConversionPasses();
   xilinx::xten::registerXTenPasses();
