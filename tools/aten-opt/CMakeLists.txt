@@ -39,6 +39,7 @@ set(LIBS
   TorchMLIRRefBackend
   ${dialect_libs}
   ${conversion_libs}
+  MLIRTestTransforms
   MLIROptLib
 )
   

@@ -202,6 +202,25 @@ LogicalResult SubgraphOp::inferReturnTypeComponents(
 // XTenNNDialect
 //===----------------------------------------------------------------------===//
 
+OpFoldResult amd::xten_nn::QuantizeOp::fold(FoldAdaptor adaptor) {
+  // Fold away cases where a xten_nn.quantize is preceeded by xten_nn.dequantize
+  // that uses the same shift factor and has same types.
+
+  auto dequantizeOp =
+      dyn_cast_or_null<amd::xten_nn::DequantizeOp>(getInput().getDefiningOp());
+  if (!dequantizeOp)
+    return {};
+
+  if (dequantizeOp.getShift() != getShift())
+    return {};
+
+  auto dequantizeInput = dequantizeOp.getInput();
+  if (dequantizeInput.getType() != getType())
+    return {};
+
+  return dequantizeInput;
+}
+
 void amd::xten_nn::XTenNNDialect::registerOps() {
   addOperations<
 #define GET_OP_LIST

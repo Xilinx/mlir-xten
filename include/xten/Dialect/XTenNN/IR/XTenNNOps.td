@@ -127,6 +127,8 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
   let results = (outs XTenNN_AnyTensorSignlessOrUnsignedInteger:$output);
 
   let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
+
+  let hasFolder = 1;
 }
 
 def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
