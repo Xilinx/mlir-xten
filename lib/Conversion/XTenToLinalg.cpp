@@ -452,7 +452,8 @@ public:
       return result;
 
     // Getting alpha value
-    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
+    auto c =
+        cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
     auto ty = rewriter.getF32Type();
     auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
@@ -664,7 +665,8 @@ public:
       return result;
 
     // Getting alpha value
-    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
+    auto c =
+        cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
     auto ty = rewriter.getF32Type();
     auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
@@ -890,7 +892,8 @@ public:
       return result;
 
     // Getting alpha value
-    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
+    auto c =
+        cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
     auto ty = rewriter.getF32Type();
     auto addCst = rewriter.getFloatAttr(ty, c.convertToDouble());
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, addCst);
@@ -973,7 +976,8 @@ public:
     }
 
     // Getting alpha value
-    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
+    auto c =
+        cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
     auto ty = rewriter.getF32Type();
     auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
@@ -1124,7 +1128,8 @@ public:
     }
 
     // Getting alpha value
-    auto c = cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
+    auto c =
+        cast<Torch::ConstantFloatOp>(operands[7].getDefiningOp()).getValue();
     auto ty = rewriter.getF32Type();
     auto add_const = rewriter.getFloatAttr(ty, c.convertToDouble());
     Value alpha = rewriter.create<arith::ConstantOp>(loc, ty, add_const);
@@ -1592,45 +1597,6 @@ public:
   }
 };
 
-class XTenSoftmaxOpConversion : public ConversionPattern {
-public:
-  explicit XTenSoftmaxOpConversion(MLIRContext *context)
-      : ConversionPattern(SoftmaxOp::getOperationName(), 1, context) {}
-
-  LogicalResult
-  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
-                  ConversionPatternRewriter &rewriter) const override {
-    auto softmax = cast<SoftmaxOp>(op);
-    auto loc = softmax.getLoc();
-
-    Value input = ToBuiltinTensorTypeCast(rewriter, operands[0]);
-    auto torchDim = (operands[1].getDefiningOp<Torch::ConstantIntOp>()).getValue();
-    auto dim = rewriter.getI64IntegerAttr(torchDim);
-
-    Type elementType =
-        input.getType().cast<RankedTensorType>().getElementType();
-
-    auto torchTensorTy =
-        op->getResult(0).getType().cast<Torch::BaseTensorType>();
-    auto resultTensorType = RankedTensorType::get(torchTensorTy.getSizes(),
-                                                  torchTensorTy.getDtype());
-
-    Value initTensor = rewriter.create<tensor::EmptyOp>(
-        loc, resultTensorType.getShape(), elementType);
-
-    Value softmaxVal =
-        rewriter
-            .create<linalg::SoftmaxOp>(loc, initTensor.getType(), input, dim)
-            .getResult();
-    propagateLayerName(op, softmaxVal.getDefiningOp());
-
-    auto torchTensorCast =
-        ToTorchTensorTypeCast(rewriter, softmaxVal, op->getResult(0).getType());
-    rewriter.replaceOp(op, torchTensorCast);
-    return success();
-  }
-};
-
 class XTenGlobalAveragePool2DOpConversion : public ConversionPattern {
 public:
   explicit XTenGlobalAveragePool2DOpConversion(MLIRContext *context)
@@ -1774,7 +1740,7 @@ public:
         XTenConv2dReluMaxPoolOpConversion, XTenConv2dReluPadMaxPoolOpConversion,
         XTenPartialConv2dReLUOpConversion, XTenConv2dTensorAddOpConversion,
         XTenConv2dTensorAddReLUOpConversion,
-        XTenConv2dTensorAddLReLUOpConversion, XTenSoftmaxOpConversion,
+        XTenConv2dTensorAddLReLUOpConversion,
         XTenGlobalAveragePool2DOpConversion,
         XTenConv2dTensorAddGlobalAveragePoolOpConversion,
         XTenConv2dTensorAddReLUGlobalAveragePoolOpConversion,
