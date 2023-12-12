@@ -14,7 +14,7 @@
 include "xten/Dialect/XTenNN/IR/XTenNNBase.td"
 include "xten/Dialect/XTenNN/IR/XTenNNTypes.td"
 
-include "mlir/IR/FunctionInterfaces.td"
+include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/IR/OpAsmInterface.td"
 include "mlir/IR/RegionKindInterface.td"
 include "mlir/IR/SymbolInterfaces.td"
@@ -115,11 +115,11 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
     Where 2^shift is equal to the scale of the quantize operation and
     the shift is an attribute of the operation in si32.
 
-    Round will saturate to the range of the output type and the rounding mode is set to half 
+    Round will saturate to the range of the output type and the rounding mode is set to half
     to nearest even.
   }];
 
-  let arguments = (ins 
+  let arguments = (ins
     F32Tensor:$input,
     SI32Attr:$shift
   );
@@ -148,7 +148,7 @@ def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
     the shift is an attribute of the operation in si32.
   }];
 
-  let arguments = (ins 
+  let arguments = (ins
     XTenNN_AnyTensorSignlessOrUnsignedInteger:$input,
     SI32Attr:$shift
   );
@@ -171,7 +171,7 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
     This implementation follows closely to what `ml_program.global_load_const` implements. As it too
     does not implement the ConstantLike trait.
   }];
-  let arguments = (ins 
+  let arguments = (ins
     StrAttr:$key,
     StrAttr:$file
   );
