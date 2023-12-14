@@ -304,8 +304,10 @@ public:
 
       // Recursively collect details of the operands of this operand.
       LogicalResult result = collectOperandInfo(opFwdIt->second);
-      if (result.failed())
+      if (result.failed()) {
         signalPassFailure();
+        return LogicalResult::failure();
+      }
     }
     return LogicalResult::success();
   }
@@ -357,6 +359,11 @@ public:
         return; // Nothing more to compute.
       opInfo = &opToInfo.at(opInfo->consumers.front());
     }
+
+    // Avoid recomputing BranchRunning for operations we already visited.
+    auto opIt = completed.find(opInfo->op);
+    if (opIt != completed.end())
+      return;
 
     // At a joining point - collect this branch and proceed iff all incoming
     // branches have been collected.
@@ -447,6 +454,7 @@ public:
 
     if (collectOperandInfo(retFwd).failed()) {
       signalPassFailure();
+      return;
     }
 
     auto prevFwdIt = opToInfo.find(currFn);
