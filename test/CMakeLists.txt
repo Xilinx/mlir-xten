@@ -25,4 +25,3 @@ add_lit_testsuite(check-aten "Running the aten regression tests"
 set_target_properties(check-aten PROPERTIES FOLDER "Tests")
 
 add_lit_testsuites(ATEN ${CMAKE_CURRENT_SOURCE_DIR} DEPENDS ${TEST_DEPENDS})
-
