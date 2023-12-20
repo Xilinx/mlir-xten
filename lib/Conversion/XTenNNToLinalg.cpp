@@ -59,6 +59,8 @@ inline Value getConstantOrSplat(OpBuilder *b, Location loc, Type t,
   return b->create<arith::ConstantOp>(loc, t, cast<TypedAttr>(v));
 }
 
+// Adapted from the StableHLO to Linalg lowering in
+// https://github.com/openxla/stablehlo/blob/main/stablehlo/conversions/linalg/transforms/MapStablehloToScalarOp.h
 Value mapSignOpToStdScalarOp(Location loc, ArrayRef<Type> resultTypes,
                              Value operand, OpBuilder *b) {
   Type elementType = getElementTypeOrSelf(operand.getType());
@@ -86,9 +88,13 @@ Value mapSignOpToStdScalarOp(Location loc, ArrayRef<Type> resultTypes,
                                    b->getIntegerAttr(integerType, 1));
     Value cmp = b->create<::mlir::arith::CmpIOp>(loc, arith::CmpIPredicate::eq,
                                                  operand, zero);
+    // This signed shift will either fill the integer with zeros or with ones,
+    // depending on the sign. The or will then make sure that the positive case
+    // returns a 1.
     Value ashr =
         b->create<::mlir::arith::ShRSIOp>(loc, operand, bitwidthMinusOne);
     Value orOp = b->create<::mlir::arith::OrIOp>(loc, ashr, one);
+    // Check if the input was a 0
     return b->create<::mlir::arith::SelectOp>(loc, cmp, zero, orOp);
   }
   if (elementType.isa<ComplexType>()) {

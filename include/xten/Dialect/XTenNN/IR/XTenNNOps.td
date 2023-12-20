@@ -192,6 +192,7 @@ def XtenNN_UnifiedSignOp: XTenNN_Op<"unified.sign", [Pure, TosaExtension, Elemen
   let summary = "Calculate the sign of the given input tensor element-wise";
   let description = [{
     Calculate the sign of the given input tensor element-wise. If input > 0, output 1. if input < 0, output -1. if input == 0, output 0.
+    If the input is a NaN, the output will be a copy of the input element.
   }];
   let arguments = (ins
     AnyTensor:$input
