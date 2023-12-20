@@ -181,4 +181,25 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
   let assemblyFormat = [{ attr-dict `->` type($output) }];
 }
 
+//===----------------------------------------------------------------------===//
+// Ops that are missing from the TOSA standard
+//===----------------------------------------------------------------------===//
+
+def TosaExtension : NativeOpTrait<"TosaExtension">;
+
+def XtenNN_UnifiedSignOp: XTenNN_Op<"unified.sign", [Pure, TosaExtension]> {
+  let summary = "Calculate the sign of the given input tensor element-wise";
+  let description = [{
+    Calculate the sign of the given input tensor element-wise. If input > 0, output 1. if input < 0, output -1. if input == 0, output 0.
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+  let results = (outs
+    AnyTensor:$output
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+}
+
 #endif // XTENNN_OPS

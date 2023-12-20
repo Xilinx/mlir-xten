@@ -13,6 +13,7 @@ TosaToXTenNN.cpp
 XTenToAffine.cpp
 XTenToLinalg.cpp
 XTenNNToTosa.cpp
+XTenNNToLinalg.cpp
 
 DEPENDS
 XTenConversionIncGen
