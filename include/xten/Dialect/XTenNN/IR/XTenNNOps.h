@@ -23,6 +23,9 @@
 namespace mlir::OpTrait {
 template <typename ConcreteType>
 class TosaExtension : public TraitBase<ConcreteType, TosaExtension> {};
+
+template <typename ConcreteType>
+class ElementwiseUnary : public TraitBase<ConcreteType, ElementwiseUnary> {};
 } // namespace mlir::OpTrait
 
 #define GET_OP_CLASSES

@@ -186,8 +186,9 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
 //===----------------------------------------------------------------------===//
 
 def TosaExtension : NativeOpTrait<"TosaExtension">;
+def ElementwiseUnary : NativeOpTrait<"ElementwiseUnary">;
 
-def XtenNN_UnifiedSignOp: XTenNN_Op<"unified.sign", [Pure, TosaExtension]> {
+def XtenNN_UnifiedSignOp: XTenNN_Op<"unified.sign", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
   let summary = "Calculate the sign of the given input tensor element-wise";
   let description = [{
     Calculate the sign of the given input tensor element-wise. If input > 0, output 1. if input < 0, output -1. if input == 0, output 0.
