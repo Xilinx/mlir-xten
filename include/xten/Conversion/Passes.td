@@ -72,4 +72,11 @@ def XTenNNToTosa : Pass<"xten-nn-to-tosa", "ModuleOp"> {
   ];
 }
 
+def ConvertXTenNNToLinalg : Pass<"convert-xtennn-to-linalg", "mlir::func::FuncOp"> {
+  let summary = "Convert XTenNN operations to Linalg.";
+  let description = [{
+    Partial conversion of XTenNN operations to Linalg.
+  }];
+}
+
 #endif
