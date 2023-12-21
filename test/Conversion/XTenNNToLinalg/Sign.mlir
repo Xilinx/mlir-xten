@@ -1,7 +1,7 @@
 // RUN: aten-opt --convert-xtennn-to-linalg %s | FileCheck %s
 
 func.func @sign(%arg0: tensor<1x10xf32>) -> tensor<1x10xf32> {
-    %0 = xten_nn.unified.sign %arg0 : (tensor<1x10xf32>) -> tensor<1x10xf32>
+    %0 = xten_nn.sign %arg0 : (tensor<1x10xf32>) -> tensor<1x10xf32>
     return %0 : tensor<1x10xf32>
 // CHECK-LABEL:   func.func @sign(
 // CHECK-SAME:                    %[[VAL_0:.*]]: tensor<1x10xf32>) -> tensor<1x10xf32> {
@@ -22,7 +22,7 @@ func.func @sign(%arg0: tensor<1x10xf32>) -> tensor<1x10xf32> {
 // -----
 
 func.func @sign_int(%arg0: tensor<1x10xi4>) -> tensor<1x10xi4> {
-    %0 = xten_nn.unified.sign %arg0 : (tensor<1x10xi4>) -> tensor<1x10xi4>
+    %0 = xten_nn.sign %arg0 : (tensor<1x10xi4>) -> tensor<1x10xi4>
     return %0 : tensor<1x10xi4>
 // CHECK-LABEL:   func.func @sign_int(
 // CHECK-SAME:                        %[[VAL_0:.*]]: tensor<1x10xi4>) -> tensor<1x10xi4> {
@@ -44,7 +44,7 @@ func.func @sign_int(%arg0: tensor<1x10xi4>) -> tensor<1x10xi4> {
 // -----
 
 func.func @sign_complex(%arg0: tensor<1x10xcomplex<f32>>) -> tensor<1x10xcomplex<f32>> {
-    %0 = xten_nn.unified.sign %arg0 : (tensor<1x10xcomplex<f32>>) -> tensor<1x10xcomplex<f32>>
+    %0 = xten_nn.sign %arg0 : (tensor<1x10xcomplex<f32>>) -> tensor<1x10xcomplex<f32>>
     return %0 : tensor<1x10xcomplex<f32>>
 // CHECK-LABEL:   func.func @sign_complex(
 // CHECK-SAME:                            %[[VAL_0:.*]]: tensor<1x10xcomplex<f32>>) -> tensor<1x10xcomplex<f32>> {

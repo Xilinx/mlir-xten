@@ -103,12 +103,12 @@ Value mapSignOpToStdScalarOp(Location loc, ArrayRef<Type> resultTypes,
   return nullptr;
 }
 
-class UnifiedSignToLinalg : public OpConversionPattern<UnifiedSignOp> {
+class SignToLinalg : public OpConversionPattern<SignOp> {
 public:
-  using OpConversionPattern<UnifiedSignOp>::OpConversionPattern;
-  using OpAdaptor = typename UnifiedSignOp::Adaptor;
+  using OpConversionPattern<SignOp>::OpConversionPattern;
+  using OpAdaptor = typename SignOp::Adaptor;
   LogicalResult
-  matchAndRewrite(UnifiedSignOp op, OpAdaptor adaptor,
+  matchAndRewrite(SignOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     auto loc = op->getLoc();
     ValueRange inputs = adaptor.getOperands();
@@ -166,14 +166,14 @@ struct ConvertXtenNNtoLinalg
     auto funcOp = getOperation();
 
     ConversionTarget target(*context);
-    target.addIllegalOp<UnifiedSignOp>();
+    target.addIllegalOp<SignOp>();
     target.addLegalDialect<linalg::LinalgDialect, scf::SCFDialect,
                            complex::ComplexDialect, math::MathDialect,
                            shape::ShapeDialect, tensor::TensorDialect,
                            arith::ArithDialect>();
 
     RewritePatternSet patterns(context);
-    patterns.add<UnifiedSignToLinalg>(context);
+    patterns.add<SignToLinalg>(context);
 
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();
