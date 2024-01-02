@@ -20,6 +20,14 @@
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "xten/Dialect/XTenNN/Interfaces/EnclaveOpInterfaces.h"
 
+namespace mlir::OpTrait {
+template <typename ConcreteType>
+class TosaExtension : public TraitBase<ConcreteType, TosaExtension> {};
+
+template <typename ConcreteType>
+class ElementwiseUnary : public TraitBase<ConcreteType, ElementwiseUnary> {};
+} // namespace mlir::OpTrait
+
 #define GET_OP_CLASSES
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h.inc"
 

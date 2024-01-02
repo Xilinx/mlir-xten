@@ -21,6 +21,10 @@
 namespace xilinx {
 namespace xten {
 
+#define GEN_PASS_DECL
+#define GEN_PASS_REGISTRATION
+#include "xten/Conversion/Passes.h.inc"
+
 void registerConversionPasses();
 
 } // namespace xten
