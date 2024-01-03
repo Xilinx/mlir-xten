@@ -149,6 +149,70 @@ public:
   }
 };
 
+/// Mish(x) = x * tanh(Softplus(x))
+///   where:     Softplus(x) = log(1+exp(x))
+///   therefore: Mish(x) = x * tanh(log(1+exp(x)))
+Value mapMishOpToArithAndMathOps(Location loc, Value operand, OpBuilder *b) {
+  Type elementType = getElementTypeOrSelf(operand.getType());
+  if (!isa<FloatType>(elementType)) {
+    return nullptr;
+  }
+
+  Value exp = b->create<::mlir::math::ExpOp>(loc, operand);
+  Value one =
+      b->create<arith::ConstantOp>(loc, b->getFloatAttr(elementType, 1));
+  Value add = b->create<::mlir::arith::AddFOp>(loc, one, exp);
+  Value log = b->create<::mlir::math::LogOp>(loc, add);
+  Value tanh = b->create<::mlir::math::TanhOp>(loc, log);
+  return b->create<::mlir::arith::MulFOp>(loc, operand, tanh);
+}
+
+class MishToLinalg : public OpConversionPattern<MishOp> {
+public:
+  using OpConversionPattern<MishOp>::OpConversionPattern;
+  using OpAdaptor = typename MishOp::Adaptor;
+
+  LogicalResult
+  matchAndRewrite(MishOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto loc = op->getLoc();
+    ValueRange inputs = adaptor.getOperands();
+    auto resultTy = cast<ShapedType>(op.getOutput().getType());
+    Value output = getEmptyTensor(rewriter, loc, resultTy, {});
+
+    int64_t maxRank = getMaxRank(adaptor.getOperands());
+
+    // Create indexing maps.
+    AffineMap scalarMap = AffineMap::get(maxRank, 0, rewriter.getContext());
+    AffineMap idMap = rewriter.getMultiDimIdentityMap(maxRank);
+    SmallVector<AffineMap> maps;
+    for (Value v : inputs)
+      maps.push_back(isScalar(v) ? scalarMap : idMap);
+    maps.push_back(idMap);
+    // Build `linalg.generic` op.
+    bool failed = false;
+    auto linalgOp = rewriter.create<linalg::GenericOp>(
+        loc, resultTy ? resultTy : TypeRange{}, inputs, output, maps,
+        mlir::tosa::getNParallelLoopsAttrs(maxRank),
+        [&](OpBuilder &nestedBuilder, Location /*nested_loc*/,
+            ValueRange args) {
+          Value innerResult =
+              mapMishOpToArithAndMathOps(loc, args.front(), &rewriter);
+          if (!innerResult) {
+            failed = true;
+          } else {
+            nestedBuilder.create<linalg::YieldOp>(loc, innerResult);
+          }
+        },
+        linalg::getPrunedAttributeList(op));
+    if (failed)
+      return failure();
+
+    rewriter.replaceOp(op, linalgOp.getResults());
+    return success();
+  }
+};
+
 struct ConvertXtenNNtoLinalg
     : public xilinx::xten::impl::ConvertXTenNNToLinalgBase<
           ConvertXtenNNtoLinalg> {
@@ -173,7 +237,7 @@ struct ConvertXtenNNtoLinalg
                            arith::ArithDialect>();
 
     RewritePatternSet patterns(context);
-    patterns.add<SignToLinalg>(context);
+    patterns.add<SignToLinalg, MishToLinalg>(context);
 
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();
