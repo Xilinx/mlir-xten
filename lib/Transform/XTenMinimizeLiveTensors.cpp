@@ -14,8 +14,6 @@
 
 #include "PassDetail.h"
 
-#include "xten/Dialect/XTen/XTenDialect.h"
-#include "xten/Dialect/XTen/XTenOps.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
 #include "xten/Util/Util.h"
 
