@@ -204,4 +204,19 @@ def XtenNN_SignOp: XTenNN_Op<"sign", [Pure, TosaExtension, ElementwiseUnary, Sam
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
 }
 
+def XtenNN_MishOp: XTenNN_Op<"mish", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
+  let summary = "Calculate the mish operation of the given input tensor element-wise";
+  let description = [{
+    Calculate the mish operation (Self Regularized Non-Monotonic Neural Activation Function) of the given input tensor element-wise.
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+  let results = (outs
+    AnyTensor:$output
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+}
+
 #endif // XTENNN_OPS

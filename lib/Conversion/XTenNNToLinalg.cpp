@@ -103,12 +103,52 @@ Value mapSignOpToStdScalarOp(Location loc, ArrayRef<Type> resultTypes,
   return nullptr;
 }
 
-class SignToLinalg : public OpConversionPattern<SignOp> {
+// Mish(x) = x * tanh(Softplus(x, 1.0, 20.0))
+//   where:
+//     Softplus(x, b, th) = x * b > th ? x : log(1 + exp(x * b)) / b
+//   therefore:
+//     Mish(x) = x * tanh( (x > 20.0 ? x : log(1 + exp(x))) )
+//
+// Sources:
+//  Mish decomposition:
+//  https://github.com/llvm/torch-mlir/blob/main/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp#L4255
+//  Softplus decomposition:
+//  https://github.com/llvm/torch-mlir/blob/main/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp#L3255
+Value mapMishOpToArithAndMathOps(Location loc, ArrayRef<Type> /*resultTypes*/,
+                                 Value operand, OpBuilder *b) {
+  Type elementType = getElementTypeOrSelf(operand.getType());
+  if (!isa<FloatType>(elementType)) {
+    return nullptr;
+  }
+
+  // Build: log(1 + exp(x))
+  Value exp = b->create<::mlir::math::ExpOp>(loc, operand);
+  Value one =
+      b->create<arith::ConstantOp>(loc, b->getFloatAttr(elementType, 1));
+  Value add = b->create<::mlir::arith::AddFOp>(loc, one, exp);
+  Value log = b->create<::mlir::math::LogOp>(loc, add);
+
+  // Build: x > 20.0 ? x : log(1 + exp(x))
+  Value twenty =
+      b->create<arith::ConstantOp>(loc, b->getFloatAttr(elementType, 20));
+  Value cmpOp =
+      b->create<arith::CmpFOp>(loc, arith::CmpFPredicate::UGT, operand, twenty);
+  Value softplus = b->create<arith::SelectOp>(loc, cmpOp, operand, log);
+
+  // Finish: x * tanh(x > 20.0 ? x : log(1 + exp(x)))
+  Value tanh = b->create<::mlir::math::TanhOp>(loc, softplus);
+  return b->create<::mlir::arith::MulFOp>(loc, operand, tanh);
+}
+
+template <typename SrcOpT,
+          Value codegenFunc(Location, ArrayRef<Type>, Value, OpBuilder *)>
+class ElementWiseOpToLinalg : public OpConversionPattern<SrcOpT> {
 public:
-  using OpConversionPattern<SignOp>::OpConversionPattern;
-  using OpAdaptor = typename SignOp::Adaptor;
+  using OpConversionPattern<SrcOpT>::OpConversionPattern;
+  using OpAdaptor = typename SrcOpT::Adaptor;
+
   LogicalResult
-  matchAndRewrite(SignOp op, OpAdaptor adaptor,
+  matchAndRewrite(SrcOpT op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     auto loc = op->getLoc();
     ValueRange inputs = adaptor.getOperands();
@@ -124,6 +164,7 @@ public:
     for (Value v : inputs)
       maps.push_back(isScalar(v) ? scalarMap : idMap);
     maps.push_back(idMap);
+
     // Build `linalg.generic` op.
     bool failed = false;
     auto linalgOp = rewriter.create<linalg::GenericOp>(
@@ -132,8 +173,8 @@ public:
         [&](OpBuilder &nestedBuilder, Location /*nested_loc*/,
             ValueRange args) {
           Type innerResultTy = getElementTypeOrSelf(output);
-          Value innerResult = mapSignOpToStdScalarOp(loc, innerResultTy,
-                                                     args.front(), &rewriter);
+          Value innerResult =
+              (*codegenFunc)(loc, innerResultTy, args.front(), &rewriter);
           if (!innerResult) {
             failed = true;
           } else {
@@ -141,6 +182,7 @@ public:
           }
         },
         linalg::getPrunedAttributeList(op));
+
     if (failed)
       return failure();
 
@@ -148,6 +190,9 @@ public:
     return success();
   }
 };
+
+using SignToLinalg = ElementWiseOpToLinalg<SignOp, mapSignOpToStdScalarOp>;
+using MishToLinalg = ElementWiseOpToLinalg<MishOp, mapMishOpToArithAndMathOps>;
 
 struct ConvertXtenNNtoLinalg
     : public xilinx::xten::impl::ConvertXTenNNToLinalgBase<
@@ -173,7 +218,7 @@ struct ConvertXtenNNtoLinalg
                            arith::ArithDialect>();
 
     RewritePatternSet patterns(context);
-    patterns.add<SignToLinalg>(context);
+    patterns.add<SignToLinalg, MishToLinalg>(context);
 
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();

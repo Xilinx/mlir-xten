@@ -9,16 +9,11 @@ add_mlir_library(XTenTransformPasses
   ATenDialectOpStats.cpp
   ATenLoweringPass.cpp
   ATenOpReport.cpp
-  ATenVisualGraph.cpp
   LowerToLibATenPass.cpp
   Passes.cpp
   XTenMinimizeLiveTensors.cpp
 
   DEPENDS
-  MLIRXTenOpsIncGen
   XTenTransformIncGen
   MLIRLinalgDialect
-
-  LINK_LIBS
-  XTenDialect
   )
