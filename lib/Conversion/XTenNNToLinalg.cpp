@@ -103,12 +103,34 @@ Value mapSignOpToStdScalarOp(Location loc, ArrayRef<Type> resultTypes,
   return nullptr;
 }
 
-class SignToLinalg : public OpConversionPattern<SignOp> {
+/// Mish(x) = x * tanh(Softplus(x))
+///   where:     Softplus(x) = log(1+exp(x))
+///   therefore: Mish(x) = x * tanh(log(1+exp(x)))
+Value mapMishOpToArithAndMathOps(Location loc, ArrayRef<Type> /*resultTypes*/,
+                                 Value operand, OpBuilder *b) {
+  Type elementType = getElementTypeOrSelf(operand.getType());
+  if (!isa<FloatType>(elementType)) {
+    return nullptr;
+  }
+
+  Value exp = b->create<::mlir::math::ExpOp>(loc, operand);
+  Value one =
+      b->create<arith::ConstantOp>(loc, b->getFloatAttr(elementType, 1));
+  Value add = b->create<::mlir::arith::AddFOp>(loc, one, exp);
+  Value log = b->create<::mlir::math::LogOp>(loc, add);
+  Value tanh = b->create<::mlir::math::TanhOp>(loc, log);
+  return b->create<::mlir::arith::MulFOp>(loc, operand, tanh);
+}
+
+template <typename SrcOpT,
+          Value codegenFunc(Location, ArrayRef<Type>, Value, OpBuilder *)>
+class ElementWiseOpToLinalg : public OpConversionPattern<SrcOpT> {
 public:
-  using OpConversionPattern<SignOp>::OpConversionPattern;
-  using OpAdaptor = typename SignOp::Adaptor;
+  using OpConversionPattern<SrcOpT>::OpConversionPattern;
+  using OpAdaptor = typename SrcOpT::Adaptor;
+
   LogicalResult
-  matchAndRewrite(SignOp op, OpAdaptor adaptor,
+  matchAndRewrite(SrcOpT op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     auto loc = op->getLoc();
     ValueRange inputs = adaptor.getOperands();
@@ -124,6 +146,7 @@ public:
     for (Value v : inputs)
       maps.push_back(isScalar(v) ? scalarMap : idMap);
     maps.push_back(idMap);
+
     // Build `linalg.generic` op.
     bool failed = false;
     auto linalgOp = rewriter.create<linalg::GenericOp>(
@@ -132,8 +155,8 @@ public:
         [&](OpBuilder &nestedBuilder, Location /*nested_loc*/,
             ValueRange args) {
           Type innerResultTy = getElementTypeOrSelf(output);
-          Value innerResult = mapSignOpToStdScalarOp(loc, innerResultTy,
-                                                     args.front(), &rewriter);
+          Value innerResult =
+              (*codegenFunc)(loc, innerResultTy, args.front(), &rewriter);
           if (!innerResult) {
             failed = true;
           } else {
@@ -141,6 +164,7 @@ public:
           }
         },
         linalg::getPrunedAttributeList(op));
+
     if (failed)
       return failure();
 
@@ -148,6 +172,9 @@ public:
     return success();
   }
 };
+
+using SignToLinalg = ElementWiseOpToLinalg<SignOp, mapSignOpToStdScalarOp>;
+using MishToLinalg = ElementWiseOpToLinalg<MishOp, mapMishOpToArithAndMathOps>;
 
 struct ConvertXtenNNtoLinalg
     : public xilinx::xten::impl::ConvertXTenNNToLinalgBase<
@@ -173,7 +200,7 @@ struct ConvertXtenNNtoLinalg
                            arith::ArithDialect>();
 
     RewritePatternSet patterns(context);
-    patterns.add<SignToLinalg>(context);
+    patterns.add<SignToLinalg, MishToLinalg>(context);
 
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();
