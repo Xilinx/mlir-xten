@@ -14,35 +14,12 @@
 
 include "mlir/Pass/PassBase.td"
 
-def ATenToXTen : Pass<"aten-to-xten", "ModuleOp"> {
-  let summary = "Convert ATen dialect to XTen dialect";
-  let constructor = "xilinx::xten::createATenToXTenPass()";
-}
-
-def XTenToAffine : Pass<"xten-to-affine", "ModuleOp"> {
-  let summary = "Convert XTen dialect to Affine dialect";
-  let constructor = "xilinx::xten::createXTenToAffinePass()";
-  let dependentDialects = ["mlir::affine::AffineDialect"];
-}
-
-def XTenToLinalg : Pass<"xten-to-linalg", "ModuleOp"> {
-  let summary = "Convert XTen dialect to Linalg dialect";
-  let constructor = "xilinx::xten::createXTenToLinalgPass()";
-  let dependentDialects = [
-    "linalg::LinalgDialect",
-    "bufferization::BufferizationDialect",
-    "memref::MemRefDialect",
-    "mlir::torch::Torch::TorchDialect",
-    "mlir::torch::TorchConversion::TorchConversionDialect",
-  ];
-}
-
 def TOSAToXTenNN : Pass<"tosa-to-xten-nn", "ModuleOp"> {
   let summary = "Partial Conversion of TOSA to XTenNN.";
   let description = [{Converts all TOSA operators that match to the quantization
   operators in XTenNN.
   }];
-  let constructor = "amd::xten_nn::createTOSAToXTenNNPass()";  
+  let constructor = "amd::xten_nn::createTOSAToXTenNNPass()";
   let dependentDialects = [
     "mlir::tosa::TosaDialect",
     "amd::xten_nn::XTenNNDialect"
@@ -54,7 +31,7 @@ def XTenNNToTosa : Pass<"xten-nn-to-tosa", "ModuleOp"> {
   let description = [{
   Partial conversion of XTenNN operations to TOSA.
 
-  This pass only converts XTenNN quantize and dequantize operations 
+  This pass only converts XTenNN quantize and dequantize operations
   who operate on signed integer tensors to TOSA.
 
   Currently, unsigned integer tensor support in TOSA does not allow

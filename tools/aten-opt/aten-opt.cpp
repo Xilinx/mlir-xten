@@ -28,8 +28,6 @@
 #include "torch-mlir/InitAll.h"
 
 #include "xten/Conversion/Passes.h"
-#include "xten/Dialect/XTen/XTenDialect.h"
-#include "xten/Dialect/XTen/XTenPasses.h"
 #include "xten/Dialect/XTenNN/IR/XTenNN.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 #include "xten/Dialect/XTenNN/Transforms/Passes.h"
@@ -47,13 +45,12 @@ int main(int argc, char **argv) {
   mlir::test::registerTestConstantFold();
   xilinx::xten::registerTransformPasses();
   xilinx::xten::registerConversionPasses();
-  xilinx::xten::registerXTenPasses();
   amd::xten_nn::registerXTenNNPasses();
 
   DialectRegistry registry;
   registerAllDialects(registry);
   mlir::registerAllDialects(registry);
-  registry.insert<xilinx::xten::XTenDialect, amd::xten_nn::XTenNNDialect,
+  registry.insert<amd::xten_nn::XTenNNDialect,
                   torch::Torch::TorchDialect,
                   torch::TorchConversion::TorchConversionDialect>();
 

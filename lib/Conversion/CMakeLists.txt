@@ -7,24 +7,13 @@
 # (c) Copyright 2023 Advanced Micro Devices, Inc.
 
 add_mlir_library(XTenConversionPasses
-ATenToXTenPass.cpp
 Passes.cpp
 TosaToXTenNN.cpp
-XTenToAffine.cpp
-XTenToLinalg.cpp
 XTenNNToTosa.cpp
 XTenNNToLinalg.cpp
 
 DEPENDS
 XTenConversionIncGen
-XTenDialect
-
-# For more information on why these two libraries are commented out refer to:
-# - include/xten/Conversion/ATenToXTen.td
-# - include/xten/Conversion/XTenFusions.td
-
-# ATenToXTenIncGen 
-# ATenToXTenIncGen2
 
 LINK_COMPONENTS
 Core

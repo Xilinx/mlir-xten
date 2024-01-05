@@ -6,5 +6,4 @@
 # (c) Copyright 2021 Xilinx Inc.
 # (c) Copyright 2022 Advanced Micro Devices, Inc.
 
-add_subdirectory(XTen)
 add_subdirectory(XTenNN)
