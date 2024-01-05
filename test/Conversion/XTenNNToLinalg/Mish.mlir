@@ -12,8 +12,11 @@ func.func @mish(%arg0: tensor<1x10xf32>) -> tensor<1x10xf32> {
 // CHECK:      %[[ONE:.+]] = arith.constant 1.000000e+00 : f32
 // CHECK:      %[[ADD:.+]] = arith.addf %[[ONE]], %[[EXP]] : f32
 // CHECK:      %[[LOG:.+]] = math.log %[[ADD]] : f32
-// CHECK:      %[[TANH:.+]] = math.tanh %[[LOG]] : f32
-// CHECK:      %[[MUL:.+]] = arith.mulf %[[IN]], %5 : f32
+// CHECK:      %[[TWENTY:.+]] = arith.constant 2.000000e+01 : f32
+// CHECK:      %[[CMP:.+]] = arith.cmpf ugt, %[[IN]], %[[TWENTY]] : f32
+// CHECK:      %[[SOFTPLUS:.+]] = arith.select %[[CMP]], %[[IN]], %[[LOG]] : f32
+// CHECK:      %[[TANH:.+]] = math.tanh %[[SOFTPLUS]] : f32
+// CHECK:      %[[MUL:.+]] = arith.mulf %[[IN]], %[[TANH]] : f32
 // CHECK:      linalg.yield %[[MUL]] : f32
 // CHECK:    } -> tensor<1x10xf32>
 
