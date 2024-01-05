@@ -103,9 +103,17 @@ Value mapSignOpToStdScalarOp(Location loc, ArrayRef<Type> resultTypes,
   return nullptr;
 }
 
-/// Mish(x) = x * tanh(Softplus(x))
-///   where:     Softplus(x) = log(1+exp(x))
-///   therefore: Mish(x) = x * tanh(log(1+exp(x)))
+// Mish(x) = x * tanh(Softplus(x, 1.0, 20.0))
+//   where:
+//     Softplus(x, b, th) = x * b > th ? x : log(1 + exp(x * b)) / b
+//   therefore:
+//     Mish(x) = x * tanh( (x > 20.0 ? x : log(1 + exp(x))) )
+//
+// Sources:
+//  Mish decomposition:
+//  https://github.com/llvm/torch-mlir/blob/main/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp#L4255
+//  Softplus decomposition:
+//  https://github.com/llvm/torch-mlir/blob/main/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp#L3255
 Value mapMishOpToArithAndMathOps(Location loc, ArrayRef<Type> /*resultTypes*/,
                                  Value operand, OpBuilder *b) {
   Type elementType = getElementTypeOrSelf(operand.getType());
@@ -113,12 +121,22 @@ Value mapMishOpToArithAndMathOps(Location loc, ArrayRef<Type> /*resultTypes*/,
     return nullptr;
   }
 
+  // Build: log(1 + exp(x))
   Value exp = b->create<::mlir::math::ExpOp>(loc, operand);
   Value one =
       b->create<arith::ConstantOp>(loc, b->getFloatAttr(elementType, 1));
   Value add = b->create<::mlir::arith::AddFOp>(loc, one, exp);
   Value log = b->create<::mlir::math::LogOp>(loc, add);
-  Value tanh = b->create<::mlir::math::TanhOp>(loc, log);
+
+  // Build: x > 20.0 ? x : log(1 + exp(x))
+  Value twenty =
+      b->create<arith::ConstantOp>(loc, b->getFloatAttr(elementType, 20));
+  Value cmpOp =
+      b->create<arith::CmpFOp>(loc, arith::CmpFPredicate::UGT, operand, twenty);
+  Value softplus = b->create<arith::SelectOp>(loc, cmpOp, operand, log);
+
+  // Finish: x * tanh(x > 20.0 ? x : log(1 + exp(x)))
+  Value tanh = b->create<::mlir::math::TanhOp>(loc, softplus);
   return b->create<::mlir::arith::MulFOp>(loc, operand, tanh);
 }
 
