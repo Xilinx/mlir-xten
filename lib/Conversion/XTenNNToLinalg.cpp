@@ -226,3 +226,13 @@ struct ConvertXtenNNtoLinalg
 };
 
 } // namespace
+
+namespace amd {
+namespace xten_nn {
+
+std::unique_ptr<mlir::Pass> createXTenNNToLinalgPass() {
+  return std::make_unique<ConvertXtenNNtoLinalg>();
+}
+
+} // namespace xten_nn
+} // namespace amd

@@ -14,6 +14,7 @@
 
 #include "xten/Conversion/TosaToXTenNNPass.h"
 #include "xten/Conversion/XTenNNToTosaPass.h"
+#include "xten/Conversion/XTenNNToLinalgPass.h"
 
 namespace xilinx {
 namespace xten {
