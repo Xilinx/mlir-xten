@@ -219,4 +219,22 @@ def XtenNN_MishOp: XTenNN_Op<"mish", [Pure, TosaExtension, ElementwiseUnary, Sam
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
 }
 
+def XtenNN_EluOp: XTenNN_Op<"elu", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
+  let summary = "Calculate the elu operation of the given input tensor element-wise";
+  let description = [{
+    Calculate the elu operation (Exponential Linear Unit) of the given input tensor element-wise.
+    ELU(x) =  x,                  if x >  0
+              alpha * (exp(x)-1), if x <= 0
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    F32Attr:$alpha
+  );
+  let results = (outs
+    AnyTensor:$output
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+}
+
 #endif // XTENNN_OPS

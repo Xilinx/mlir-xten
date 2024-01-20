@@ -61,8 +61,9 @@ inline Value getConstantOrSplat(OpBuilder *b, Location loc, Type t,
 
 // Adapted from the StableHLO to Linalg lowering in
 // https://github.com/openxla/stablehlo/blob/main/stablehlo/conversions/linalg/transforms/MapStablehloToScalarOp.h
-Value mapSignOpToStdScalarOp(Location loc, ArrayRef<Type> resultTypes,
+Value mapSignOpToStdScalarOp(SignOp op, ArrayRef<Type> resultTypes,
                              Value operand, OpBuilder *b) {
+  Location loc = op->getLoc();
   Type elementType = getElementTypeOrSelf(operand.getType());
   if (auto floatType = elementType.dyn_cast<FloatType>()) {
     Value zero =
@@ -114,8 +115,9 @@ Value mapSignOpToStdScalarOp(Location loc, ArrayRef<Type> resultTypes,
 //  https://github.com/llvm/torch-mlir/blob/main/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp#L4255
 //  Softplus decomposition:
 //  https://github.com/llvm/torch-mlir/blob/main/lib/Dialect/Torch/Transforms/DecomposeComplexOps.cpp#L3255
-Value mapMishOpToArithAndMathOps(Location loc, ArrayRef<Type> /*resultTypes*/,
+Value mapMishOpToArithAndMathOps(MishOp op, ArrayRef<Type> /*resultTypes*/,
                                  Value operand, OpBuilder *b) {
+  Location loc = op->getLoc();
   Type elementType = getElementTypeOrSelf(operand.getType());
   if (!isa<FloatType>(elementType)) {
     return nullptr;
@@ -140,8 +142,34 @@ Value mapMishOpToArithAndMathOps(Location loc, ArrayRef<Type> /*resultTypes*/,
   return b->create<::mlir::arith::MulFOp>(loc, operand, tanh);
 }
 
+// Elu(x) = x > 0 ? x : alpha * (exp(x) - 1)
+Value mapEluOpToArithAndMathOps(EluOp op, ArrayRef<Type> /*resultTypes*/,
+                                Value operand, OpBuilder *b) {
+  Location loc = op->getLoc();
+  Type elementType = getElementTypeOrSelf(operand.getType());
+  if (!isa<FloatType>(elementType)) {
+    return nullptr;
+  }
+
+  // Build: exp(x) - 1
+  Value exp = b->create<::mlir::math::ExpOp>(loc, operand);
+  Value one =
+      b->create<arith::ConstantOp>(loc, b->getFloatAttr(elementType, 1));
+  Value sub = b->create<::mlir::arith::SubFOp>(loc, exp, one);
+  Value alphaAsValue = b->create<mlir::arith::ConstantFloatOp>(
+      loc, EluOpAdaptor(op).getAlpha(), cast<FloatType>(elementType));
+  Value mul = b->create<::mlir::arith::MulFOp>(loc, alphaAsValue, sub);
+
+  // Build: x > 0 ? x : alpha * (exp(x) - 1)
+  Value zero =
+      b->create<arith::ConstantOp>(loc, b->getFloatAttr(elementType, 0));
+  Value cmpOp =
+      b->create<arith::CmpFOp>(loc, arith::CmpFPredicate::UGT, operand, zero);
+  return b->create<arith::SelectOp>(loc, cmpOp, operand, mul);
+}
+
 template <typename SrcOpT,
-          Value codegenFunc(Location, ArrayRef<Type>, Value, OpBuilder *)>
+          Value codegenFunc(SrcOpT, ArrayRef<Type>, Value, OpBuilder *)>
 class ElementWiseOpToLinalg : public OpConversionPattern<SrcOpT> {
 public:
   using OpConversionPattern<SrcOpT>::OpConversionPattern;
@@ -174,7 +202,7 @@ public:
             ValueRange args) {
           Type innerResultTy = getElementTypeOrSelf(output);
           Value innerResult =
-              (*codegenFunc)(loc, innerResultTy, args.front(), &rewriter);
+              (*codegenFunc)(op, innerResultTy, args.front(), &rewriter);
           if (!innerResult) {
             failed = true;
           } else {
@@ -193,6 +221,7 @@ public:
 
 using SignToLinalg = ElementWiseOpToLinalg<SignOp, mapSignOpToStdScalarOp>;
 using MishToLinalg = ElementWiseOpToLinalg<MishOp, mapMishOpToArithAndMathOps>;
+using EluToLinalg = ElementWiseOpToLinalg<EluOp, mapEluOpToArithAndMathOps>;
 
 struct ConvertXtenNNtoLinalg
     : public xilinx::xten::impl::ConvertXTenNNToLinalgBase<
@@ -218,7 +247,7 @@ struct ConvertXtenNNtoLinalg
                            arith::ArithDialect>();
 
     RewritePatternSet patterns(context);
-    patterns.add<SignToLinalg, MishToLinalg>(context);
+    patterns.add<SignToLinalg, MishToLinalg, EluToLinalg>(context);
 
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();
