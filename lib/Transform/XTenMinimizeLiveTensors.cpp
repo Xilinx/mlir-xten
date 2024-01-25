@@ -198,7 +198,7 @@ FailureOr<SmallVector<Value>> getFmOperands(Operation *op) {
     return {op->getOperands()};
   
   if (isTemplatedGraph(op))
-    return {{op->getOperand(0)}};
+    return {op->getOperands()};
 
   // Otherwise, this is a PseudoOp and IFM is the first operand.
   if (!(isAnyPseudoOp(op) || isInterfaceOp(op))) {

@@ -311,7 +311,6 @@ func.func @support_for_inteface_op(%arg0: tensor<1x3x224x224xf32>) -> tensor<1x6
 
 // -----
 
-
 // CHECK-LABEL: func.func @support_for_inteface_op
 // CHECK: LayerName = "InCoreChain_0"{{.*}} Reason = "InCoreChain"
 // CHECK: LayerName = "Transpose"{{.*}} Reason = "TemplatedGraph"
