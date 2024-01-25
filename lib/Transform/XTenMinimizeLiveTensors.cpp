@@ -125,6 +125,10 @@ bool isConcatSubgraph(Operation *op) {
   return isSourceOp(op, "onnx.Concat") || isPseudoOp(op, "Concat");
 }
 
+bool isTemplatedGraph(Operation *op) {
+  return verifyStrAttr(op, "Reason", "TemplatedGraph").succeeded();
+}
+
 bool isGlobalAvgPool(Operation *op) {
   constexpr StringRef attr = "mllib_ops";
   if (!op->hasAttr(attr))
@@ -191,6 +195,9 @@ FailureOr<SmallVector<Value>> getFmOperands(Operation *op) {
     return {getSubgraphIFMs(op)};
 
   if (isConcatSubgraph(op))
+    return {op->getOperands()};
+  
+  if (isTemplatedGraph(op))
     return {op->getOperands()};
 
   // Otherwise, this is a PseudoOp and IFM is the first operand.

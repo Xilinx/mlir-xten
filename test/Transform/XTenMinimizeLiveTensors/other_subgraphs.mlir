@@ -308,3 +308,26 @@ func.func @support_for_inteface_op(%arg0: tensor<1x3x224x224xf32>) -> tensor<1x6
   } -> tensor<1x64x56x56xf32>
   return %5 : tensor<1x64x56x56xf32>
 }
+
+// -----
+
+// CHECK-LABEL: func.func @support_for_inteface_op
+// CHECK: LayerName = "InCoreChain_0"{{.*}} Reason = "InCoreChain"
+// CHECK: LayerName = "Transpose"{{.*}} Reason = "TemplatedGraph"
+// CHECK: LayerName = "InCoreChain_1"{{.*}} Reason = "InCoreChain"
+func.func @support_for_inteface_op(%arg0: tensor<1x3x224x224xf32>) -> tensor<1x64x56x56xf32> {
+  %0 = "tosa.const"() {value = dense<2.000000e-02> : tensor<64x3x7x7xf32>} : () -> tensor<64x3x7x7xf32>
+  %1 = xten_nn.subgraph (%arg1 = %arg0: tensor<1x3x224x224xf32>)  attributes {IfmOperands = [0 : index], LayerName = "InCoreChain_0", OutputName = "Conv", Reason = "InCoreChain"} {
+    %0 = tensor.empty() : tensor<1x4x224x224xf32>
+    xten_nn.output %0 : tensor<1x4x224x224xf32>
+  } -> tensor<1x4x224x224xf32>
+  %2 = xten_nn.subgraph (%arg1 = %1: tensor<1x4x224x224xf32>)  attributes {IfmOperands = [0 : index], LayerName = "Transpose", OutputName = "TransposeAdf", Reason = "TemplatedGraph"} {
+    %0 = tensor.empty() : tensor<1x4x224x224xf32>
+    xten_nn.output %0 : tensor<1x4x224x224xf32>
+  } -> tensor<1x4x224x224xf32>
+  %3 = xten_nn.subgraph (%arg1 = %2: tensor<1x4x224x224xf32>)  attributes {IfmOperands = [0 : index], LayerName = "InCoreChain_1", Reason = "InCoreChain"} {
+    %6 = tensor.empty() : tensor<1x64x56x56xf32>
+    xten_nn.output %6 : tensor<1x64x56x56xf32>
+  } -> tensor<1x64x56x56xf32>
+  return %3 : tensor<1x64x56x56xf32>
+}
