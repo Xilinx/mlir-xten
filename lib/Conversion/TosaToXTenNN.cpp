@@ -13,7 +13,6 @@
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
 
 #include "mlir/IR/Matchers.h"
-#include "mlir/Transforms/CommutativityUtils.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 #include "llvm/ADT/APFloat.h"
@@ -296,8 +295,6 @@ public:
     MLIRContext *context = module.getContext();
     RewritePatternSet patterns(context);
 
-    // Ensures constants on the add, mul, sub are on the RHS
-    populateCommutativityUtilsPatterns(patterns);
     // Patterns for finding the QDQ and folding MULs.
     patterns
         .insert<MoveScalarTensorToRHSOfMul, CastsToQDQOps, FoldMulsToQDQOps>(

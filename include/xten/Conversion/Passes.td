@@ -54,6 +54,10 @@ def ConvertXTenNNToLinalg : Pass<"convert-xtennn-to-linalg", "mlir::func::FuncOp
   let description = [{
     Partial conversion of XTenNN operations to Linalg.
   }];
+  let constructor = "amd::xten_nn::createXTenNNToLinalgPass()";
+  let dependentDialects = [
+    "mlir::linalg::LinalgDialect"
+  ];
 }
 
 #endif
