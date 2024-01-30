@@ -24,7 +24,7 @@ func.func @single_qdq(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x1x7x7xf32> {
 // -----
 
 func.func @single_concat_at_input(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32> {
-  %0 = "tosa.concat"(%arg0, %arg0) {axis = 1} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
+  %0 = "tosa.concat"(%arg0, %arg0) {axis = 1 : i64} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
   %1 = "xten_nn.quantize"(%0) {shift = -3 : si32} : (tensor<1x2x7x7xf32>) -> tensor<1x2x7x7xi8>
   %2 = "xten_nn.dequantize"(%1) {shift = -3 : si32} : (tensor<1x2x7x7xi8>) -> tensor<1x2x7x7xf32>
   return %2 : tensor<1x2x7x7xf32>
@@ -51,7 +51,7 @@ func.func @single_concat_at_input(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x2x7x7x
 func.func @single_concat_at_output(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32> {
   %0 = "xten_nn.quantize"(%arg0) {shift = -3 : si32} : (tensor<1x1x7x7xf32>) -> tensor<1x1x7x7xi8>
   %1 = "xten_nn.dequantize"(%0) {shift = -3 : si32} : (tensor<1x1x7x7xi8>) -> tensor<1x1x7x7xf32>
-  %2 = "tosa.concat"(%1, %1) {axis = 1} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
+  %2 = "tosa.concat"(%1, %1) {axis = 1 : i64} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
   return %2 : tensor<1x2x7x7xf32>
 }
 
@@ -74,10 +74,10 @@ func.func @single_concat_at_output(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x2x7x7
 // -----
 
 func.func @non_foldable_concats(%arg0: tensor<1x1x7x7xf32>) -> tensor<2x2x7x7xf32> {
-  %0 = "tosa.concat"(%arg0, %arg0) {axis = 1} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
+  %0 = "tosa.concat"(%arg0, %arg0) {axis = 1 : i64} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
   %1 = "xten_nn.quantize"(%0) {shift = -3 : si32} : (tensor<1x2x7x7xf32>) -> tensor<1x2x7x7xi8>
   %2 = "xten_nn.dequantize"(%1) {shift = -3 : si32} : (tensor<1x2x7x7xi8>) -> tensor<1x2x7x7xf32>
-  %3 = "tosa.concat"(%2, %2) {axis = 0} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<2x2x7x7xf32>
+  %3 = "tosa.concat"(%2, %2) {axis = 0 : i64} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<2x2x7x7xf32>
   return %3 : tensor<2x2x7x7xf32>
 }
 
@@ -102,10 +102,10 @@ func.func @non_foldable_concats(%arg0: tensor<1x1x7x7xf32>) -> tensor<2x2x7x7xf3
 // -----
 
 func.func @foldable_concats(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32> {
-  %0 = "tosa.concat"(%arg0, %arg0) {axis = 1} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
+  %0 = "tosa.concat"(%arg0, %arg0) {axis = 1 : i64} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
   %1 = "xten_nn.quantize"(%0) {shift = -3 : si32} : (tensor<1x2x7x7xf32>) -> tensor<1x2x7x7xi8>
   %2 = "xten_nn.dequantize"(%1) {shift = -3 : si32} : (tensor<1x2x7x7xi8>) -> tensor<1x2x7x7xf32>
-  %3 = "tosa.concat"(%2, %2) {axis = 1} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
+  %3 = "tosa.concat"(%2, %2) {axis = 1 : i64} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
   return %3 : tensor<1x4x7x7xf32>
 }
 
@@ -127,11 +127,11 @@ func.func @foldable_concats(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32> {
 // -----
 
 func.func @multiple_foldable_user_concats(%arg0: tensor<1x1x7x7xf32>) -> (tensor<1x4x7x7xf32>, tensor<1x4x7x7xf32>) {
-  %0 = "tosa.concat"(%arg0, %arg0) {axis = 1} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
+  %0 = "tosa.concat"(%arg0, %arg0) {axis = 1 : i64} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
   %1 = "xten_nn.quantize"(%0) {shift = -3 : si32} : (tensor<1x2x7x7xf32>) -> tensor<1x2x7x7xi8>
   %2 = "xten_nn.dequantize"(%1) {shift = -3 : si32} : (tensor<1x2x7x7xi8>) -> tensor<1x2x7x7xf32>
-  %3 = "tosa.concat"(%2, %2) {axis = 1} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
-  %4 = "tosa.concat"(%2, %2) {axis = 1} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
+  %3 = "tosa.concat"(%2, %2) {axis = 1 : i64} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
+  %4 = "tosa.concat"(%2, %2) {axis = 1 : i64} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
   return %3, %4 : tensor<1x4x7x7xf32>, tensor<1x4x7x7xf32>
 }
 
@@ -155,11 +155,11 @@ func.func @multiple_foldable_user_concats(%arg0: tensor<1x1x7x7xf32>) -> (tensor
 // -----
 
 func.func @partially_foldable_user_concats(%arg0: tensor<1x1x7x7xf32>) -> (tensor<1x4x7x7xf32>, tensor<2x2x7x7xf32>) {
-  %0 = "tosa.concat"(%arg0, %arg0) {axis = 1} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
+  %0 = "tosa.concat"(%arg0, %arg0) {axis = 1 : i64} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
   %1 = "xten_nn.quantize"(%0) {shift = -3 : si32} : (tensor<1x2x7x7xf32>) -> tensor<1x2x7x7xi8>
   %2 = "xten_nn.dequantize"(%1) {shift = -3 : si32} : (tensor<1x2x7x7xi8>) -> tensor<1x2x7x7xf32>
-  %3 = "tosa.concat"(%2, %2) {axis = 1} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32> // This is foldable
-  %4 = "tosa.concat"(%2, %2) {axis = 0} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<2x2x7x7xf32> // This is not foldable
+  %3 = "tosa.concat"(%2, %2) {axis = 1 : i64} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32> // This is foldable
+  %4 = "tosa.concat"(%2, %2) {axis = 0 : i64} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<2x2x7x7xf32> // This is not foldable
   return %3, %4 : tensor<1x4x7x7xf32>, tensor<2x2x7x7xf32>
 }
 
@@ -186,10 +186,10 @@ func.func @partially_foldable_user_concats(%arg0: tensor<1x1x7x7xf32>) -> (tenso
 // -----
 
 func.func @qdq_different_shift(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32> {
-  %0 = "tosa.concat"(%arg0, %arg0) {axis = 1} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
+  %0 = "tosa.concat"(%arg0, %arg0) {axis = 1 : i64} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
   %1 = "xten_nn.quantize"(%0) {shift = -5 : si32} : (tensor<1x2x7x7xf32>) -> tensor<1x2x7x7xi8>
   %2 = "xten_nn.dequantize"(%1) {shift = -3 : si32} : (tensor<1x2x7x7xi8>) -> tensor<1x2x7x7xf32>
-  %3 = "tosa.concat"(%2, %2) {axis = 1} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
+  %3 = "tosa.concat"(%2, %2) {axis = 1 : i64} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
   return %3 : tensor<1x4x7x7xf32>
 }
 
