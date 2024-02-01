@@ -89,7 +89,7 @@ LogicalResult amd::xten_nn::enclave_interface_defaults::verify(Operation *op) {
   auto self = cast<EnclaveOp>(op);
 
   if (self.getEnclaveBody().empty() ||
-      !isRegionReturnLike(&self.getEnclaveBody().back()))
+      !isa<RegionBranchTerminatorOpInterface>(&self.getEnclaveBody().back()))
     return op->emitOpError() << "missing terminator";
   auto terminator = self.getTerminator();
 

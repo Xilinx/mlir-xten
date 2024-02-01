@@ -15,6 +15,8 @@
 #include "mlir/IR/Matchers.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
+#include "llvm/ADT/APFloat.h"
+
 using namespace mlir;
 
 namespace {
@@ -64,10 +66,14 @@ struct ConstantFloatLog2Binder {
   ///\return true if constant op with log2(float_value) as a whole integer
   ///\return false otherwise
   bool match(Operation *op) {
-    FloatAttr::ValueType value((float)0.0);
-    if (!detail::constant_float_op_binder(&value).match(op))
+    mlir::DenseElementsAttr value;
+    if (!matchPattern(op, m_Constant(&value)))
       return false;
-    std::optional<int32_t> log2value = getLog2Value(value.convertToFloat());
+    if (!value.isSplat()) {
+      return false;
+    }
+    std::optional<int32_t> log2value =
+        getLog2Value(value.getSplatValue<llvm::APFloat>().convertToFloat());
     if (log2value.has_value()) {
       *bindValue = IntegerAttr::ValueType(32, log2value.value(), true);
       return true;

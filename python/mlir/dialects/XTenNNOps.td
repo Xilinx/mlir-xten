@@ -11,7 +11,6 @@
 #ifndef PYTHON_BINDINGS_XTENNN_OPS
 #define PYTHON_BINDINGS_XTENNN_OPS
 
-include "mlir/Bindings/Python/Attributes.td"
 include "xten/Dialect/XTenNN/IR/XTenNNOps.td"
 
 #endif
