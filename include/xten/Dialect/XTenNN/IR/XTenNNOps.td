@@ -188,14 +188,16 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
 def TosaExtension : NativeOpTrait<"TosaExtension">;
 def ElementwiseUnary : NativeOpTrait<"ElementwiseUnary">;
 
-def XtenNN_SignOp: XTenNN_Op<"sign", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
-  let summary = "Calculate the sign of the given input tensor element-wise";
+def XtenNN_EluOp: XTenNN_Op<"elu", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
+  let summary = "Calculate the elu operation of the given input tensor element-wise";
   let description = [{
-    Calculate the sign of the given input tensor element-wise. If input > 0, output 1. if input < 0, output -1. if input == 0, output 0.
-    If the input is a NaN, the output will be a copy of the input element.
+    Calculate the elu operation (Exponential Linear Unit) of the given input tensor element-wise.
+    ELU(x) =  x,                  if x >  0
+              alpha * (exp(x)-1), if x <= 0
   }];
   let arguments = (ins
-    AnyTensor:$input
+    AnyTensor:$input,
+    F32Attr:$alpha
   );
   let results = (outs
     AnyTensor:$output
@@ -219,16 +221,30 @@ def XtenNN_MishOp: XTenNN_Op<"mish", [Pure, TosaExtension, ElementwiseUnary, Sam
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
 }
 
-def XtenNN_EluOp: XTenNN_Op<"elu", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
-  let summary = "Calculate the elu operation of the given input tensor element-wise";
+def XtenNN_RoundOp: XTenNN_Op<"round", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
+  let summary = "Calculate the round operation of the given input tensor element-wise.";
   let description = [{
-    Calculate the elu operation (Exponential Linear Unit) of the given input tensor element-wise.
-    ELU(x) =  x,                  if x >  0
-              alpha * (exp(x)-1), if x <= 0
+    Calculate the round operation of the given input tensor element-wise.
+    In case of halves, the rule is to round them to the nearest even integer as does the 'round' operation in torch and onnx.
   }];
   let arguments = (ins
-    AnyTensor:$input,
-    F32Attr:$alpha
+    AnyTensor:$input
+  );
+  let results = (outs
+    AnyTensor:$output
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+}
+
+def XtenNN_SignOp: XTenNN_Op<"sign", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
+  let summary = "Calculate the sign of the given input tensor element-wise";
+  let description = [{
+    Calculate the sign of the given input tensor element-wise. If input > 0, output 1. if input < 0, output -1. if input == 0, output 0.
+    If the input is a NaN, the output will be a copy of the input element.
+  }];
+  let arguments = (ins
+    AnyTensor:$input
   );
   let results = (outs
     AnyTensor:$output

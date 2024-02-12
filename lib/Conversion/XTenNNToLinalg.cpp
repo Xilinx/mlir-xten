@@ -168,6 +168,15 @@ Value mapEluOpToArithAndMathOps(EluOp op, ArrayRef<Type> /*resultTypes*/,
   return b->create<arith::SelectOp>(loc, cmpOp, operand, mul);
 }
 
+Value mapXTenNNRoundOpToRoundEvenOp(RoundOp op, ArrayRef<Type> /*resultTypes*/,
+                                    Value operand, OpBuilder *b) {
+  Type elementType = getElementTypeOrSelf(operand.getType());
+  if (!isa<FloatType>(elementType)) {
+    return operand;
+  }
+  return b->create<::mlir::math::RoundEvenOp>(op->getLoc(), operand);
+}
+
 template <typename SrcOpT,
           Value codegenFunc(SrcOpT, ArrayRef<Type>, Value, OpBuilder *)>
 class ElementWiseOpToLinalg : public OpConversionPattern<SrcOpT> {
@@ -219,9 +228,11 @@ public:
   }
 };
 
-using SignToLinalg = ElementWiseOpToLinalg<SignOp, mapSignOpToStdScalarOp>;
-using MishToLinalg = ElementWiseOpToLinalg<MishOp, mapMishOpToArithAndMathOps>;
 using EluToLinalg = ElementWiseOpToLinalg<EluOp, mapEluOpToArithAndMathOps>;
+using MishToLinalg = ElementWiseOpToLinalg<MishOp, mapMishOpToArithAndMathOps>;
+using RoundToLinalg =
+    ElementWiseOpToLinalg<RoundOp, mapXTenNNRoundOpToRoundEvenOp>;
+using SignToLinalg = ElementWiseOpToLinalg<SignOp, mapSignOpToStdScalarOp>;
 
 struct ConvertXtenNNtoLinalg
     : public xilinx::xten::impl::ConvertXTenNNToLinalgBase<
@@ -247,7 +258,8 @@ struct ConvertXtenNNtoLinalg
                            arith::ArithDialect>();
 
     RewritePatternSet patterns(context);
-    patterns.add<SignToLinalg, MishToLinalg, EluToLinalg>(context);
+    patterns.add<EluToLinalg, MishToLinalg, RoundToLinalg, SignToLinalg>(
+        context);
 
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();
