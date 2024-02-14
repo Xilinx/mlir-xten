@@ -110,7 +110,7 @@ public:
     // Calculate (x / 2 ^ shift)
     auto mulOp = rewriter.create<tosa::MulOp>(
         quantizeOp.getLoc(), inputType, quantizeOp->getOperand(0),
-        constOp->getResult(0), rewriter.getI32IntegerAttr(0));
+        constOp->getResult(0), rewriter.getI8IntegerAttr(0));
 
     // TOSA only supports signed integers of i8, i16 or i32 here we convert our
     // si<?> to this types and add a clamp to mimic arbitrary bit width.
@@ -188,7 +188,7 @@ public:
     rewriter.replaceOpWithNewOp<tosa::MulOp>(
         dequantizeOp, dequantizeOp->getResult(0).getType(),
         castOp->getResult(0), constOp->getResult(0),
-        rewriter.getI32IntegerAttr(0));
+        rewriter.getI8IntegerAttr(0));
     return success();
   }
 };
