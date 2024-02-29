@@ -227,3 +227,30 @@ void amd::xten_nn::XTenNNDialect::registerOps() {
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.cpp.inc"
       >();
 }
+
+LogicalResult amd::xten_nn::GroupConv2dOp::verify() {
+  auto inputShape = cast<ShapedType>(getInput().getType()).getShape();
+  auto weightShape = cast<ShapedType>(getWeights().getType()).getShape();
+  const auto group = getGroup();
+
+  if (inputShape[3] == static_cast<int64_t>(group) &&
+      weightShape[1] == static_cast<int64_t>(group)) {
+    return emitOpError(
+        "groups needs to be different than input and output channel");
+  }
+
+  if (group > 0) {
+    return emitOpError("groups expected to be atleast one");
+  }
+
+  auto pads = getPad().getValue();
+  auto firstDenseI64Array = dyn_cast<DenseI64ArrayAttr>(pads[0]);
+  auto secondDenseI64Array = dyn_cast<DenseI64ArrayAttr>(pads[1]);
+  if (!firstDenseI64Array || !secondDenseI64Array ||
+      firstDenseI64Array.size() != 2 || secondDenseI64Array.size() != 2) {
+    return emitOpError(
+        "pad attribute expected to be a 2x2 i64 array. Eg: [[0, 1], [1, 0]]");
+  }
+
+  return success();
+}
