@@ -87,6 +87,10 @@ void amd::xten_nn::enclave_interface_defaults::uncapture(
 
 LogicalResult amd::xten_nn::enclave_interface_defaults::verify(Operation *op) {
   auto self = cast<EnclaveOp>(op);
+  if (! self.getOptionalEnclaveBody()) {
+    // Nothing to check.
+    return success();
+  }
 
   if (self.getEnclaveBody().empty() ||
       !isa<RegionBranchTerminatorOpInterface>(&self.getEnclaveBody().back()))

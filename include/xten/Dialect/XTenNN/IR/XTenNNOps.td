@@ -49,6 +49,14 @@ def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
         This allows code motion between the parent and anonymous
         subgraphs.
 
+        The meaning of the subgraph is described using both attributes and its
+        body. If the body is present, the contents of the body can replace the
+        subgraph operation without any change to what would be computed.
+        The body is not required: in that case the attributes must be enough
+        to identify the operation of the subgraph. (This resembles an func.func
+        without a body: there may be a body in a different module or the
+        compiler may know how to implement it when it is an intrinsic.)
+
         Example:
         ```mlir
         func.func @subgraph(%arg0:  tensor<2xi64>) ->  tensor<2xi64> {
@@ -63,7 +71,7 @@ def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
 
     let arguments = (ins Variadic<AnyType>:$captures);
     let results = (outs Variadic<AnyType>:$results);
-    let regions = (region SizedRegion<1>:$content);
+    let regions = (region MaxSizedRegion<1>:$content);
 
     let hasCustomAssemblyFormat = 1;
     let hasVerifier = 1;

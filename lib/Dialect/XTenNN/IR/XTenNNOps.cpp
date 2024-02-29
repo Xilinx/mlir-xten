@@ -30,18 +30,22 @@ using namespace amd::xten_nn;
 /// Parses a captured SSA operand.
 ///
 /// Format:
-///     ssa-id `=` ssa-id `:` type
+///     One of:
+///       ssa-id `=` ssa-id `:` type
+///       ssa-id `:` type
 static ParseResult parseCapture(OpAsmParser &p,
                                 OpAsmParser::UnresolvedOperand &arg,
                                 OpAsmParser::UnresolvedOperand &src,
                                 Type &type) {
-  // ssa-id `=` ssa-id `:` type
   if (p.parseOperand(arg))
     return failure();
-  if (p.parseEqual())
-    return failure();
-  if (p.parseOperand(src))
-    return failure();
+  if (failed(p.parseOptionalEqual())) {
+    src = arg;
+    arg = {};
+  } else {
+    if (p.parseOperand(src))
+      return failure();
+  }
   if (p.parseColon())
     return failure();
   if (p.parseType(type))
@@ -53,8 +57,16 @@ static ParseResult parseCapture(OpAsmParser &p,
 /// Prints a captured SSA operand.
 ///
 /// See parseCapture() for more details.
+static void printCapture(OpAsmPrinter &p, Value src) {
+  p << src << ": " << src.getType();
+}
+
+/// Prints a captured SSA operand.
+///
+/// See parseCapture() for more details.
 static void printCapture(OpAsmPrinter &p, Value arg, Value src) {
-  p << arg << " = " << src << ": " << src.getType();
+  p << arg << " = ";
+  printCapture(p, src);
 }
 
 /// Parses a comma-separated list of zero or more captured SSA operands.
@@ -80,12 +92,23 @@ static ParseResult parseCaptures(OpAsmParser &p,
 /// Prints a comma-separated list of zero or more captured SSA operands.
 ///
 /// See parseCaptures() for more details.
-static void printCaptures(OpAsmPrinter &p, ValueRange args, ValueRange srcs) {
-  auto srcIt = srcs.begin();
+static void printCaptures(OpAsmPrinter &p, ValueRange srcs) {
   p << '(';
-  llvm::interleaveComma(args, p, [&](auto arg) {
-    assert(srcIt != srcs.end());
-    printCapture(p, arg, *srcIt++);
+  llvm::interleaveComma(srcs, p, [&](auto src) {
+    printCapture(p, src);
+  });
+  p << ')';
+}
+
+/// Prints a comma-separated list of zero or more captured SSA operands.
+///
+/// See parseCaptures() for more details.
+static void printCaptures(OpAsmPrinter &p, ValueRange args, ValueRange srcs) {
+  auto argIt = args.begin();
+  p << '(';
+  llvm::interleaveComma(srcs, p, [&](auto src) {
+    assert(argIt != args.end());
+    printCapture(p, *argIt++, src);
   });
   p << ')';
 }
@@ -105,7 +128,9 @@ static ParseResult parseEnclaveOp(OpAsmParser &p, OperationState &result) {
     return failure();
 
   // `{` ... `}`
-  if (p.parseRegion(*result.addRegion(), args, true))
+  auto &region = *result.addRegion();
+  auto parseResult = p.parseOptionalRegion(region, args, true);
+  if (parseResult.has_value() && failed(*parseResult))
     return failure();
 
   // [ `->` type-list ]
@@ -121,18 +146,26 @@ static ParseResult parseEnclaveOp(OpAsmParser &p, OperationState &result) {
 ///
 /// See parseEnclaveOp() for more details.
 static void printEnclaveOp(OpAsmPrinter &p, EnclaveOp op) {
+  Block *optBody = op.getOptionalEnclaveBody();
   p << ' ';
-  printCaptures(p, op.getEnclaveBody().getArguments(), op.getCaptures());
+  if (optBody) {
+    printCaptures(p, optBody->getArguments(), op.getCaptures());
+  } else {
+    printCaptures(p, op.getCaptures());
+  }
   p << ' ';
 
   p.printOptionalAttrDictWithKeyword(op->getAttrs());
   if (!op->getAttrs().empty())
     p << ' ';
 
-  p.printRegion(*op.getEnclaveBody().getParent(), false);
+  if (optBody) {
+    p.printRegion(*optBody->getParent(), false);
+    p << ' ';
+  }
 
   if (op->getNumResults() > 0) {
-    p << " -> ";
+    p << "-> ";
     interleaveComma(op->getResultTypes(), p);
   };
 }
@@ -153,17 +186,23 @@ void SubgraphOp::print(OpAsmPrinter &p) {
 }
 
 LogicalResult SubgraphOp::verify() {
+  Block *optBody = this->getOptionalEnclaveBody();
+  if (!optBody) {
+    // Nothing to verify
+    return success();
+  }
+
   // The number of captures must match the number of block arguments
-  if (this->getCaptures().size() != this->getEnclaveBody().getNumArguments()) {
+  if (this->getCaptures().size() != optBody->getNumArguments()) {
     return this->emitOpError()
            << "number of operands (" << this->getCaptures().size()
            << ") does not match number of arguments ("
-           << this->getEnclaveBody().getNumArguments() << ")";
+           << optBody->getNumArguments() << ")";
   }
 
   // The type of the arguments must match the types of the block arguments
   for (auto [idx, argType] :
-       enumerate(this->getEnclaveBody().getArgumentTypes())) {
+       enumerate(optBody->getArgumentTypes())) {
     if (this->getCapture(idx).getType() != argType) {
       return this->emitOpError()
              << "type of operand #" << idx << " ("

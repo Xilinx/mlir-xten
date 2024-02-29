@@ -38,6 +38,19 @@ def XTenNN_EnclaveOp : OpInterface<"EnclaveOp"> {
             /*defaultImplementation=*/[{ return $_op.getOperands(); }]
         >,
         InterfaceMethod<
+            /*desc=*/[{Gets the enclave body block, if present.}],
+            /*retTy=*/"::mlir::Block *",
+            /*methodName=*/"getOptionalEnclaveBody",
+            /*args=*/(ins),
+            /*methodBody=*/"",
+            /*defaultImplementation=*/[{
+                auto &region = $_op->getRegion(0);
+                if (region.hasOneBlock())
+                    return &region.front();
+                return {};
+            }]
+        >,
+        InterfaceMethod<
             /*desc=*/[{Gets the enclave body block.}],
             /*retTy=*/"::mlir::Block &",
             /*methodName=*/"getEnclaveBody",

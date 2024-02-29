@@ -10,3 +10,9 @@ func.func @subgraph(%arg0:  tensor<2xi64>) ->  tensor<2xi64> {
     } -> tensor<2xi64>
     return %sum :  tensor<2xi64>
 }
+// -----
+// CHECK-LABEL: xten_nn.subgraph
+func.func @subgraph_empty(%arg0:  tensor<2xi64>) ->  tensor<2xi64> {
+    %sum = xten_nn.subgraph (%arg0 : tensor<2xi64>) -> tensor<2xi64>
+    return %sum :  tensor<2xi64>
+}
