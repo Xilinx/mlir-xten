@@ -11,6 +11,7 @@ Passes.cpp
 TosaToXTenNN.cpp
 XTenNNToTosa.cpp
 XTenNNToLinalg.cpp
+XTenNNToTorch.cpp
 
 DEPENDS
 XTenConversionIncGen

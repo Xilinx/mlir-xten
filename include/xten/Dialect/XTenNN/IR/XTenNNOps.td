@@ -185,8 +185,41 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
 // Ops that are missing from the TOSA standard
 //===----------------------------------------------------------------------===//
 
+def AnyFloatTensor : TensorOf<[AnyFloat]>;
 def TosaExtension : NativeOpTrait<"TosaExtension">;
 def ElementwiseUnary : NativeOpTrait<"ElementwiseUnary">;
+def ElementwiseBinary : NativeOpTrait<"ElementwiseBinary">;
+
+def XtenNN_Atan2Op: XTenNN_Op<"atan2", [Pure, TosaExtension, ElementwiseBinary, SameOperandsAndResultElementType]> {
+  let summary = "Calculate the atan2 of input/other of a given pair of tensor element-wise.";
+  let description = [{
+    Calculate the arctangent of input/other of a given pair of tensor element-wise.
+  }];
+  let arguments = (ins
+    AnyFloatTensor:$input,
+    AnyFloatTensor:$other
+  );
+  let results = (outs
+    AnyFloatTensor:$output
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+}
+
+def XtenNN_CosOp: XTenNN_Op<"cos", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
+  let summary = "Calculate the cos operation of the given input tensor element-wise.";
+  let description = [{
+    Calculate the cosine operation of the given input tensor element-wise.
+  }];
+  let arguments = (ins
+    AnyFloatTensor:$input
+  );
+  let results = (outs
+    AnyFloatTensor:$output
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+}
 
 def XtenNN_EluOp: XTenNN_Op<"elu", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
   let summary = "Calculate the elu operation of the given input tensor element-wise";
@@ -212,10 +245,10 @@ def XtenNN_MishOp: XTenNN_Op<"mish", [Pure, TosaExtension, ElementwiseUnary, Sam
     Calculate the mish operation (Self Regularized Non-Monotonic Neural Activation Function) of the given input tensor element-wise.
   }];
   let arguments = (ins
-    AnyTensor:$input
+    AnyFloatTensor:$input
   );
   let results = (outs
-    AnyTensor:$output
+    AnyFloatTensor:$output
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
@@ -248,6 +281,21 @@ def XtenNN_SignOp: XTenNN_Op<"sign", [Pure, TosaExtension, ElementwiseUnary, Sam
   );
   let results = (outs
     AnyTensor:$output
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+}
+
+def XtenNN_SinOp: XTenNN_Op<"sin", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
+  let summary = "Calculate the sin operation of the given input tensor element-wise.";
+  let description = [{
+    Calculate the sine operation of the given input tensor element-wise.
+  }];
+  let arguments = (ins
+    AnyFloatTensor:$input
+  );
+  let results = (outs
+    AnyFloatTensor:$output
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
