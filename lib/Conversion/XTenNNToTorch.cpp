@@ -70,25 +70,33 @@ Value toBuiltinTensorTypeCast(OpBuilder &builder, Value val, Type type) {
                                                                    type, val);
 }
 
-template <typename... ops>
-class GenericPatternXTenNNToTorch : public RewritePattern {
-public:
-  GenericPatternXTenNNToTorch(MLIRContext *ctx)
-      : RewritePattern(MatchAnyOpTypeTag(), /*benefit=*/1, ctx) {}
+template <typename SrcOpT>
+ValueRange oneToOneXTenNNToTorch(SrcOpT op,
+                                 typename SrcOpT::Adaptor /*adaptor*/,
+                                 ArrayRef<Type> types, ValueRange values,
+                                 OpBuilder *rewriter) {
+  // Start composing new op
+  OperationState state(
+      op->getLoc(), "torch.aten." + std::string(op->getName().stripDialect()),
+      values, types, op->getAttrs(), op->getSuccessors());
 
-  LogicalResult matchAndRewrite(Operation *op,
-                                PatternRewriter &rewriter) const override {
+  // Create the new op
+  return rewriter->create(state)->getResults();
+}
+
+template <typename SrcOpT,
+          ValueRange codegenFunc(SrcOpT, typename SrcOpT::Adaptor,
+                                 ArrayRef<Type>, ValueRange, OpBuilder *)>
+class ApplyXTenNNToTorch : public OpConversionPattern<SrcOpT> {
+public:
+  using OpConversionPattern<SrcOpT>::OpConversionPattern;
+  using OpAdaptor = typename SrcOpT::Adaptor;
+
+  LogicalResult
+  matchAndRewrite(SrcOpT op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
 
     auto *ctx = op->getContext();
-    if (isa<ops...>(op)) {
-      return rewriter.notifyMatchFailure(op->getLoc(),
-                                         "no conversion for this operation.");
-    }
-
-    if (op->getName().getDialectNamespace() != "xten_nn") {
-      return rewriter.notifyMatchFailure(
-          op->getLoc(), "operation doesn't belong to XTenNN dialect.");
-    }
 
     SmallVector<Value> vtensorOperands;
     llvm::transform(
@@ -106,18 +114,14 @@ public:
               getCompatibleTorchDType(ctx, tensorTy.getElementType()));
         });
 
-    // Start composing new op
-    OperationState state(
-        op->getLoc(), "torch.aten." + std::string(op->getName().stripDialect()),
-        vtensorOperands, vtensorResultTypes, op->getAttrs(),
-        op->getSuccessors());
+    // Call the function that creates the new operation.
+    auto newValues = codegenFunc(op, adaptor, vtensorResultTypes,
+                                 vtensorOperands, &rewriter);
 
-    // Create the new op
-    Operation *newOp = rewriter.create(state);
-
-    // Convert Torch builtin types back to MLIR types retrieving the original type of the op.
+    // Convert Torch builtin types back to MLIR types retrieving the
+    // original type of the op.
     SmallVector<Value> vtensorResults;
-    llvm::transform(llvm::enumerate(newOp->getResults()),
+    llvm::transform(llvm::enumerate(newValues),
                     std::back_inserter(vtensorResults), [&](const auto it) {
                       return toBuiltinTensorTypeCast(
                           rewriter, it.value(),
@@ -149,8 +153,17 @@ struct ConvertXTenNNToTorch
                            func::FuncDialect>();
 
     RewritePatternSet patterns(context);
-    patterns.add<GenericPatternXTenNNToTorch<SubgraphOp, LoadExternalConstOp>>(
-        context);
+#define INSERT_ONE_TO_ONE_PATTERN(XTenOp)                                      \
+  target.addIllegalOp<XTenOp>();                                               \
+  patterns.add<ApplyXTenNNToTorch<                                             \
+      XTenOp, oneToOneXTenNNToTorch<amd::xten_nn::XTenOp>>>(context);
+    INSERT_ONE_TO_ONE_PATTERN(Atan2Op)
+    INSERT_ONE_TO_ONE_PATTERN(CosOp)
+    INSERT_ONE_TO_ONE_PATTERN(MishOp)
+    INSERT_ONE_TO_ONE_PATTERN(RoundOp)
+    INSERT_ONE_TO_ONE_PATTERN(SignOp)
+    INSERT_ONE_TO_ONE_PATTERN(SinOp)
+#undef INSERT_UNARY_PATTERN
 
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();
