@@ -1,15 +1,5 @@
 // RUN: aten-opt --convert-xtennn-to-torch  -split-input-file %s | FileCheck %s
 
-func.func @sign_int(%arg0: tensor<1x10xi4>) -> tensor<1x10xi4> {
-    %0 = xten_nn.sign %arg0 : (tensor<1x10xi4>) -> tensor<1x10xi4>
-    return %0 : tensor<1x10xi4>
-// CHECK:      %[[FROM_BUILTIN:.+]] = torch_c.from_builtin_tensor %arg0 : tensor<1x10xi4> -> !torch.vtensor<[1,10],si4>
-// CHECK:      %[[OP:.+]] = torch.aten.sign %[[FROM_BUILTIN]] : !torch.vtensor<[1,10],si4> -> !torch.vtensor<[1,10],si4>
-// CHECK:      torch_c.to_builtin_tensor %[[OP]] : !torch.vtensor<[1,10],si4> -> tensor<1x10xi4>
-}
-
-// -----
-
 func.func @sign_bf16(%arg0: tensor<1x10xbf16>) -> tensor<1x10xbf16> {
     %0 = xten_nn.sign %arg0 : (tensor<1x10xbf16>) -> tensor<1x10xbf16>
     return %0 : tensor<1x10xbf16>

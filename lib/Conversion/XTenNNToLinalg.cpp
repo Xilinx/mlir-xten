@@ -51,14 +51,6 @@ Value getEmptyTensor(OpBuilder &b, Location loc, ShapedType type,
                                    type.cast<RankedTensorType>().getEncoding());
 }
 
-inline Value getConstantOrSplat(OpBuilder *b, Location loc, Type t,
-                                Attribute v) {
-  if (VectorType vecType = t.dyn_cast<VectorType>()) {
-    v = SplatElementsAttr::get(vecType, v);
-  }
-  return b->create<arith::ConstantOp>(loc, t, cast<TypedAttr>(v));
-}
-
 // Elu(x) = x > 0 ? x : alpha * (exp(x) - 1)
 Value mapEluOpToArithAndMathOps(EluOp op, ArrayRef<Type> /*resultTypes*/,
                                 Value operand, OpBuilder *b) {

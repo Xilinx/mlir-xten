@@ -28,33 +28,16 @@ using namespace mlir::torch;
 
 namespace {
 
-Type getCompatibleTorchDType(MLIRContext *ctx, Type dtype) {
-  if (isa<FloatType>(dtype))
-    return dtype;
-
-  auto integerType = dtype.cast<IntegerType>();
-  if (!integerType.isSignless())
-    return dtype;
-
-  // Torch builtin types only support Signed and Unsigned integer types.
-  // Convert Signless to Signed.
-  return IntegerType::get(ctx, integerType.getWidth(),
-                          mlir::IntegerType::Signed);
-}
-
 Value toTorchTensorTypeCast(PatternRewriter &rewriter, Value input) {
 
   auto tensorTy = dyn_cast<ShapedType>(input.getType());
   auto sizes = tensorTy.getShape();
 
-  auto dtype =
-      getCompatibleTorchDType(rewriter.getContext(), tensorTy.getElementType());
-
   return rewriter
       .create<TorchConversion::FromBuiltinTensorOp>(
           input.getLoc(),
           mlir::torch::Torch::ValueTensorType::get(input.getContext(), sizes,
-                                                   dtype),
+                                                   tensorTy.getElementType()),
           input)
       .getResult();
 }
@@ -105,14 +88,12 @@ public:
 
     // Convert MLIR types to Torch builtin types.
     SmallVector<Type> vtensorResultTypes;
-    llvm::transform(
-        op->getResultTypes(), std::back_inserter(vtensorResultTypes),
-        [&](Type ty) {
-          auto tensorTy = cast<TensorType>(ty);
-          return Torch::ValueTensorType::get(
-              ctx, tensorTy.getShape(),
-              getCompatibleTorchDType(ctx, tensorTy.getElementType()));
-        });
+    llvm::transform(op->getResultTypes(),
+                    std::back_inserter(vtensorResultTypes), [&](Type ty) {
+                      auto tensorTy = cast<TensorType>(ty);
+                      return Torch::ValueTensorType::get(
+                          ctx, tensorTy.getShape(), tensorTy.getElementType());
+                    });
 
     // Call the function that creates the new operation.
     auto newValues = codegenFunc(op, adaptor, vtensorResultTypes,
