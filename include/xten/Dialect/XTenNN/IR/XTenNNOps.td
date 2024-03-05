@@ -187,6 +187,36 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
 
 def TosaExtension : NativeOpTrait<"TosaExtension">;
 def ElementwiseUnary : NativeOpTrait<"ElementwiseUnary">;
+class ArrayAttr<int n> : ConfinedAttr<ArrayAttr, [ArrayCount<n>]>;
+class I64DenseArrayAttr<int n> : ConfinedAttr<DenseI64ArrayAttr, [DenseArrayCount<n>]>;
+
+def XtenNN_GroupConv2dOp: XTenNN_Op<"group_conv2d", [Pure, TosaExtension]> {
+  let summary = "Grouped convolution with multiple channel outputs per layer";
+  let description = [{
+    Calculates separates convolutions with multiple channel outputs per layer.
+
+    This operations expects the same TORCH/ONNX's Conv2d datalayout specification for input and
+    weight [NxCxHxW].
+
+    Pad attribute is expected to be two arrays of i64 values, eg: [[0,1], [2,2]]. First and second
+    arrays denote the initial and end padding for H and W dimensions respectively.
+  }];
+  let arguments = (ins
+    4DTensorOf<[BF16, F32]>:$input,
+    4DTensorOf<[BF16, F32]>:$weights,
+    1DTensorOf<[BF16, F32]>:$bias,
+    ArrayAttr<2>:$pad,
+    I64DenseArrayAttr<2>:$stride,
+    I64DenseArrayAttr<2>:$dilation,
+    I64Attr:$group
+  );
+  let results = (outs
+    4DTensorOf<[BF16, F32]>:$output
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+  let hasVerifier = 1;
+}
 
 def XtenNN_EluOp: XTenNN_Op<"elu", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
   let summary = "Calculate the elu operation of the given input tensor element-wise";
