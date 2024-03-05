@@ -239,8 +239,8 @@ LogicalResult amd::xten_nn::GroupConv2dOp::verify() {
         "groups needs to be different than input and output channel");
   }
 
-  if (group > 0) {
-    return emitOpError("groups expected to be atleast one");
+  if (group < 1) {
+    return emitOpError("groups expected to be at least one");
   }
 
   auto pads = getPad().getValue();
