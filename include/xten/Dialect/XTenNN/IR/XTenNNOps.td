@@ -251,6 +251,45 @@ def XtenNN_MishOp: XTenNN_Op<"mish", [Pure, TosaExtension, ElementwiseUnary, Sam
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
 }
 
+def XtenNN_ResizeOp: XTenNN_Op<"resize", [Pure, TosaExtension]> {
+  let summary = "Performs resizing to an image.";
+  let description = [{
+    Performs resizing to input image. Some constrains and information:
+      - It does not perform 'antialias' for linear mode (ONNX's antialias==0)
+      - It performs the resize in all dimensions (ONNX's axes==None)
+      - No sampling is perfomed outside the tensor (ONNX's exclude_outside==0)
+      - The input is always stretched to meet the new required dimensions (ONNX's keep_aspect_ratio_policy==stretch)
+      - Scales
+        - 1D vector with four values specifing the scale for the resize on each dimension
+      - Cordinate Transformation Mode:
+        - 0: half_pixel
+        - 1: asymmetric
+        - 2: align_corners
+      - Mode:
+        - 0: Nearest
+        - 1: Linear
+      - Nearest mode:
+        - 0: floor
+        - 1: round_prefer_ceil
+        - 2: round_prefer_floor
+  }];
+  let arguments = (ins
+    4DTensorOf<[BF16, F32]>:$X,
+    DenseF32ArrayAttr:$scales,
+    I64Attr:$coordinate_transformation_mode,
+    I64Attr:$mode,
+    I64Attr:$nearest_mode
+  );
+
+  let results = (outs
+    4DTensorOf<[BF16, F32]>:$Y
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+
+  let hasVerifier = 1;
+}
+
 def XtenNN_RoundOp: XTenNN_Op<"round", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
   let summary = "Calculate the round operation of the given input tensor element-wise.";
   let description = [{
