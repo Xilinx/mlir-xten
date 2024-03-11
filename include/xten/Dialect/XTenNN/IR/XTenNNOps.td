@@ -190,6 +190,9 @@ def TosaExtension : NativeOpTrait<"TosaExtension">;
 def ElementwiseUnary : NativeOpTrait<"ElementwiseUnary">;
 def ElementwiseBinary : NativeOpTrait<"ElementwiseBinary">;
 
+class ArrayAttr<int n> : ConfinedAttr<ArrayAttr, [ArrayCount<n>]>;
+class I64DenseArrayAttr<int n> : ConfinedAttr<DenseI64ArrayAttr, [DenseArrayCount<n>]>;
+
 def XtenNN_Atan2Op: XTenNN_Op<"atan2", [Pure, TosaExtension, ElementwiseBinary, SameOperandsAndResultElementType]> {
   let summary = "Calculate the atan2 of input/other of a given pair of tensor element-wise.";
   let description = [{
@@ -219,6 +222,34 @@ def XtenNN_CosOp: XTenNN_Op<"cos", [Pure, TosaExtension, ElementwiseUnary, SameO
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+}
+
+def XtenNN_GroupConv2dOp: XTenNN_Op<"group_conv2d", [Pure, TosaExtension]> {
+  let summary = "Grouped convolution with multiple channel outputs per layer";
+  let description = [{
+    Calculates separates convolutions with multiple channel outputs per layer.
+
+    This operations expects the same TORCH/ONNX's Conv2d datalayout specification for input and
+    weight [NxCxHxW].
+
+    Pad attribute is expected to be two arrays of i64 values, eg: [[0,1], [2,2]]. First and second
+    arrays denote the initial and end padding for H and W dimensions respectively.
+  }];
+  let arguments = (ins
+    4DTensorOf<[BF16, F32]>:$input,
+    4DTensorOf<[BF16, F32]>:$weights,
+    1DTensorOf<[BF16, F32]>:$bias,
+    ArrayAttr<2>:$pad,
+    I64DenseArrayAttr<2>:$stride,
+    I64DenseArrayAttr<2>:$dilation,
+    I64Attr:$group
+  );
+  let results = (outs
+    4DTensorOf<[BF16, F32]>:$output
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+  let hasVerifier = 1;
 }
 
 def XtenNN_EluOp: XTenNN_Op<"elu", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
@@ -252,6 +283,45 @@ def XtenNN_MishOp: XTenNN_Op<"mish", [Pure, TosaExtension, ElementwiseUnary, Sam
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+}
+
+def XtenNN_ResizeOp: XTenNN_Op<"resize", [Pure, TosaExtension]> {
+  let summary = "Performs resizing to an image.";
+  let description = [{
+    Performs resizing to input image. Some constrains and information:
+      - It does not perform 'antialias' for linear mode (ONNX's antialias==0)
+      - It performs the resize in all dimensions (ONNX's axes==None)
+      - No sampling is perfomed outside the tensor (ONNX's exclude_outside==0)
+      - The input is always stretched to meet the new required dimensions (ONNX's keep_aspect_ratio_policy==stretch)
+      - Scales
+        - 1D vector with four values specifing the scale for the resize on each dimension
+      - Cordinate Transformation Mode:
+        - 0: half_pixel
+        - 1: asymmetric
+        - 2: align_corners
+      - Mode:
+        - 0: Nearest
+        - 1: Linear
+      - Nearest mode:
+        - 0: floor
+        - 1: round_prefer_ceil
+        - 2: round_prefer_floor
+  }];
+  let arguments = (ins
+    4DTensorOf<[BF16, F32]>:$X,
+    DenseF32ArrayAttr:$scales,
+    I64Attr:$coordinate_transformation_mode,
+    I64Attr:$mode,
+    I64Attr:$nearest_mode
+  );
+
+  let results = (outs
+    4DTensorOf<[BF16, F32]>:$Y
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+
+  let hasVerifier = 1;
 }
 
 def XtenNN_RoundOp: XTenNN_Op<"round", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {

@@ -14,8 +14,11 @@
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/TypeUtilities.h"
-
 #include "mlir/Support/LogicalResult.h"
+
+#include "llvm/Support/FormatVariadic.h"
+#include "llvm/Support/raw_ostream.h"
+
 #include "xten/Dialect/XTenNN/IR/XTenNN.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
@@ -226,4 +229,73 @@ void amd::xten_nn::XTenNNDialect::registerOps() {
 #define GET_OP_LIST
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.cpp.inc"
       >();
+}
+
+LogicalResult amd::xten_nn::GroupConv2dOp::verify() {
+  auto inputShape = cast<ShapedType>(getInput().getType()).getShape();
+  auto weightShape = cast<ShapedType>(getWeights().getType()).getShape();
+  const auto group = getGroup();
+
+  if (inputShape[3] == static_cast<int64_t>(group) &&
+      weightShape[1] == static_cast<int64_t>(group)) {
+    return emitOpError(
+        "groups needs to be different than input and output channel");
+  }
+
+  if (group < 1) {
+    return emitOpError("groups expected to be at least one");
+  }
+
+  auto pads = getPad().getValue();
+  auto firstDenseI64Array = dyn_cast<DenseI64ArrayAttr>(pads[0]);
+  auto secondDenseI64Array = dyn_cast<DenseI64ArrayAttr>(pads[1]);
+  if (!firstDenseI64Array || !secondDenseI64Array ||
+      firstDenseI64Array.size() != 2 || secondDenseI64Array.size() != 2) {
+    return emitOpError(
+        "pad attribute expected to be a 2x2 i64 array. Eg: [[0, 1], [1, 0]]");
+  }
+
+  return success();
+}
+
+static std::string getResizeInvalidModeOption(ArrayRef<const char *> subOptions,
+                                              StringRef option) {
+  std::string result;
+  llvm::raw_string_ostream rso(result);
+
+  unsigned idx = 0;
+  llvm::interleaveComma(subOptions, rso, [&](StringRef option) {
+    rso << llvm::formatv("'{0}'({1})", option, idx++).str();
+  });
+
+  return llvm::formatv("Valid values for '{0}' option are: {1}", option,
+                       rso.str())
+      .str();
+}
+
+LogicalResult amd::xten_nn::ResizeOp::verify() {
+  auto scales = getScales();
+  if (scales.size() != 4) {
+    return emitOpError("'" + getScalesAttrName().strref() +
+                       "' must contain 4 values");
+  }
+
+  constexpr std::array coordinateTransformMode{"half_pixel", "asymmetric",
+                                               "align_corners"};
+  if (getCoordinateTransformationMode() > coordinateTransformMode.size() - 1) {
+    return emitOpError(getResizeInvalidModeOption(
+        coordinateTransformMode, getCoordinateTransformationModeAttrName()));
+  }
+  constexpr std::array mode{"Nearest", "Linear"};
+  if (getMode() > mode.size() - 1) {
+    return emitOpError(getResizeInvalidModeOption(mode, getModeAttrName()));
+  }
+  constexpr std::array nearestMode{"floor", "round_prefer_ceil",
+                                   "round_prefer_floor"};
+  if (getNearestMode() > nearestMode.size() - 1) {
+    return emitOpError(
+        getResizeInvalidModeOption(nearestMode, getNearestModeAttrName()));
+  }
+
+  return success();
 }
