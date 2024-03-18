@@ -8,12 +8,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Interfaces/FunctionImplementation.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/TypeUtilities.h"
+#include "mlir/Interfaces/FunctionImplementation.h"
 #include "mlir/Support/LogicalResult.h"
 
 #include "llvm/Support/FormatVariadic.h"
@@ -214,7 +214,7 @@ OpFoldResult amd::xten_nn::QuantizeOp::fold(FoldAdaptor adaptor) {
   if (!dequantizeOp)
     return {};
 
-  if (dequantizeOp.getShift() != getShift())
+  if (!dequantizeOp->hasOneUse() || dequantizeOp.getShift() != getShift())
     return {};
 
   auto dequantizeInput = dequantizeOp.getInput();
