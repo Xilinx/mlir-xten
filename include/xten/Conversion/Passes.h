@@ -13,8 +13,9 @@
 #define XTEN_CONVERSION_PASSES_H
 
 #include "xten/Conversion/TosaToXTenNNPass.h"
-#include "xten/Conversion/XTenNNToTosaPass.h"
 #include "xten/Conversion/XTenNNToLinalgPass.h"
+#include "xten/Conversion/XTenNNToTorchPass.h"
+#include "xten/Conversion/XTenNNToTosaPass.h"
 
 namespace xilinx {
 namespace xten {

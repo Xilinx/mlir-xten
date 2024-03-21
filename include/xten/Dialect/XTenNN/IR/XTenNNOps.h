@@ -26,6 +26,9 @@ class TosaExtension : public TraitBase<ConcreteType, TosaExtension> {};
 
 template <typename ConcreteType>
 class ElementwiseUnary : public TraitBase<ConcreteType, ElementwiseUnary> {};
+
+template <typename ConcreteType>
+class ElementwiseBinary : public TraitBase<ConcreteType, ElementwiseBinary> {};
 } // namespace mlir::OpTrait
 
 #define GET_OP_CLASSES

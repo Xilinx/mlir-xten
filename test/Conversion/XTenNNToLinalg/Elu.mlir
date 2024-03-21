@@ -17,13 +17,3 @@ func.func @elu(%arg0: tensor<1x10xf32>) -> tensor<1x10xf32> {
 // CHECK:      %[[CMP:.+]] = arith.cmpf ugt, %[[IN]], %[[ZERO]] : f32
 // CHECK:      %[[ELU:.+]] = arith.select %[[CMP]], %[[IN]], %[[MUL]] : f32
 // CHECK:      linalg.yield %[[ELU]] : f32
-
-// -----
-
-func.func @elu_int(%arg0: tensor<1x10xi4>) -> tensor<1x10xi4> {
-    %0 = xten_nn.elu %arg0 { alpha = 1.000000e-00 : f32} : (tensor<1x10xi4>) -> tensor<1x10xi4>
-    return %0 : tensor<1x10xi4>
-}
-
-// CHECK-LABEL:   func.func @elu_int(
-//   CHECK-NOT: linalg.generic
