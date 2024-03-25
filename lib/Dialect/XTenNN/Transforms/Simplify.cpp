@@ -53,7 +53,7 @@ public:
       return failure();
 
     // Update the op in-place.
-    rewriter.modifyOpInPlace(op, [&]() { op.uncapture(unused); });
+    rewriter.updateRootInPlace(op, [&]() { op.uncapture(unused); });
     return success();
   }
 };
