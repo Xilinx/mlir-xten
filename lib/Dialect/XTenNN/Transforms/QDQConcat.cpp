@@ -70,9 +70,9 @@ struct RemoveQDQBetweenConcat : public OpRewritePattern<DequantizeOp> {
       // Foldable concats found. Folding the concats is the responsibility of
       // TOSA canonicalization. Rewire the concat->QDQ->concat to be
       // concat->concat instead.
-      rewriter.startOpModification(user);
+      rewriter.startRootUpdate(user);
       user->replaceUsesOfWith(op, producer.getOutput());
-      rewriter.finalizeOpModification(user);
+      rewriter.finalizeRootUpdate(user);
       modified = true;
     }
 
