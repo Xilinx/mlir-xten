@@ -323,7 +323,7 @@ def XtenNN_DepthToSpaceOp: XTenNN_Op<"depth_to_space", [Pure, TosaExtension]> {
 }
 
 def XtenNN_ReflectPadOp: XTenNN_Op<"reflect_pad", [TosaExtension]> {
-  let summary = "Performs resizing to an image.";
+  let summary = "Performs reflective padding over a tensor input.";
   let description = [{
     Apply a padding with `reflect` mode meaning that the ifm is reflected where the padding is applied:
     data = [
