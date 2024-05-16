@@ -341,7 +341,7 @@ def XtenNN_ReflectPadOp: XTenNN_Op<"reflect_pad", [TosaExtension]> {
   }];
   let arguments = (ins
     4DTensorOf<[BF16, I8]>:$input,
-    4DTensorOf<[I64]>:$pads
+    TensorOf<[I64]>:$pads
   );
 
   let results = (outs
