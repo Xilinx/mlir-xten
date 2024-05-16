@@ -340,12 +340,12 @@ def XtenNN_ReflectPadOp: XTenNN_Op<"reflect_pad", [TosaExtension]> {
 
   }];
   let arguments = (ins
-    4DTensorOf<[BF16, I8]>:$input,
+    4DTensorOf<[BF16, F32]>:$input,
     TensorOf<[I64]>:$pads
   );
 
   let results = (outs
-    4DTensorOf<[BF16, I8]>:$Y
+    4DTensorOf<[BF16, F32]>:$Y
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
