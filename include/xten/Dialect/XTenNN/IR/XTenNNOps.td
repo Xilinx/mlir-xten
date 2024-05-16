@@ -344,6 +344,34 @@ def XtenNN_DepthToSpaceOp: XTenNN_Op<"depth_to_space", [Pure, TosaExtension]> {
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
 }
 
+def XtenNN_ReflectPadOp: XTenNN_Op<"reflect_pad", [TosaExtension]> {
+  let summary = "Performs reflective padding over a tensor input.";
+  let description = [{
+    Apply a padding with `reflect` mode meaning that the ifm is reflected where the padding is applied:
+    data = [
+          [1, 2],
+          [3, 4],
+          [5, 6],
+      ]
+      pads = [0, 2, 0, 0]
+      output = [
+          [1, 2, 1, 2],
+          [3, 4, 3, 4],
+          [5, 6, 5, 6],
+      ]
+
+  }];
+  let arguments = (ins
+    4DTensorOf<[BF16, F32]>:$input,
+    TensorOf<[I64]>:$pads
+  );
+
+  let results = (outs
+    4DTensorOf<[BF16, F32]>:$Y
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+}
 
 def XtenNN_GroupConv2dOp: XTenNN_Op<"group_conv2d", [Pure, TosaExtension]> {
   let summary = "Grouped convolution with multiple channel outputs per layer";
