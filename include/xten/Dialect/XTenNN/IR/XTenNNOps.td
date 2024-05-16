@@ -298,6 +298,28 @@ def XtenNN_CosOp: XTenNN_Op<"cos", [Pure, TosaExtension, ElementwiseUnary, SameO
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
 }
 
+def XtenNN_GridSampleOp: XTenNN_Op<"grid_sample", [Pure]> {
+  let summary = "Performs gridsampling given an input and a flow-field grid.";
+  let description = [{
+    This operation is equivalent to `onnx.GridSample`, and computes the output value through
+    the interpolation of the flow-field grid and the input.
+  }];
+  let arguments = (ins
+    XTenNN_AnyTensorFloat:$X,
+    XTenNN_AnyTensorFloat:$grid,
+    I64Attr:$align_corners,
+    I64Attr:$mode,
+    I64Attr:$padding_mode
+  );
+
+  let results = (outs
+    XTenNN_AnyTensorFloat:$output
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+
+  let hasVerifier = 1;
+}
 
 def XtenNN_DepthToSpaceOp: XTenNN_Op<"depth_to_space", [Pure, TosaExtension]> {
   let summary = "Performs resizing to an image.";

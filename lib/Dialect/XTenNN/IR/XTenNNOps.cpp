@@ -378,8 +378,8 @@ LogicalResult amd::xten_nn::GroupDequantizeOp::verify() {
   return success();
 }
 
-static std::string getResizeInvalidModeOption(ArrayRef<const char *> subOptions,
-                                              StringRef option) {
+static std::string getOpInvalidModeOption(ArrayRef<const char *> subOptions,
+                                          StringRef option) {
   std::string result;
   llvm::raw_string_ostream rso(result);
 
@@ -393,6 +393,21 @@ static std::string getResizeInvalidModeOption(ArrayRef<const char *> subOptions,
       .str();
 }
 
+LogicalResult amd::xten_nn::GridSampleOp::verify() {
+
+  constexpr std::array mode{"bilinear"};
+  if (getMode() > mode.size() - 1) {
+    return emitOpError(getOpInvalidModeOption(mode, getModeAttrName()));
+  }
+  constexpr std::array paddingMode{"zeros", "border"};
+  if (getPaddingMode() > paddingMode.size() - 1) {
+    return emitOpError(
+        getOpInvalidModeOption(paddingMode, getPaddingModeAttrName()));
+  }
+
+  return success();
+}
+
 LogicalResult amd::xten_nn::ResizeOp::verify() {
   auto scales = getScales();
   if (scales.size() != 4) {
@@ -403,18 +418,18 @@ LogicalResult amd::xten_nn::ResizeOp::verify() {
   constexpr std::array coordinateTransformMode{
       "half_pixel", "pytorch_half_pixel", "asymmetric", "align_corners"};
   if (getCoordinateTransformationMode() > coordinateTransformMode.size() - 1) {
-    return emitOpError(getResizeInvalidModeOption(
+    return emitOpError(getOpInvalidModeOption(
         coordinateTransformMode, getCoordinateTransformationModeAttrName()));
   }
   constexpr std::array mode{"Nearest", "Linear"};
   if (getMode() > mode.size() - 1) {
-    return emitOpError(getResizeInvalidModeOption(mode, getModeAttrName()));
+    return emitOpError(getOpInvalidModeOption(mode, getModeAttrName()));
   }
   constexpr std::array nearestMode{"floor", "round_prefer_ceil",
                                    "round_prefer_floor"};
   if (getNearestMode() > nearestMode.size() - 1) {
     return emitOpError(
-        getResizeInvalidModeOption(nearestMode, getNearestModeAttrName()));
+        getOpInvalidModeOption(nearestMode, getNearestModeAttrName()));
   }
 
   return success();
