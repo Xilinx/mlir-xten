@@ -218,11 +218,9 @@ struct ConvertXTenNNToTorch
   patterns.add<ApplyXTenNNToTorch<                                             \
       XTenOp, oneToOneXTenNNToTorch<amd::xten_nn::XTenOp>>>(context);
     INSERT_ONE_TO_ONE_PATTERN(Atan2Op)
-    INSERT_ONE_TO_ONE_PATTERN(CosOp)
     INSERT_ONE_TO_ONE_PATTERN(MishOp)
     INSERT_ONE_TO_ONE_PATTERN(RoundOp)
     INSERT_ONE_TO_ONE_PATTERN(SignOp)
-    INSERT_ONE_TO_ONE_PATTERN(SinOp)
 #undef INSERT_UNARY_PATTERN
 
     patterns.add<ApplyXTenNNToTorch<GroupConv2dOp, groupConv2dToTorch>>(

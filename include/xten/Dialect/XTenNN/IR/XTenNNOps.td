@@ -283,21 +283,6 @@ def XtenNN_Atan2Op: XTenNN_Op<"atan2", [Pure, TosaExtension, ElementwiseBinary, 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
 }
 
-def XtenNN_CosOp: XTenNN_Op<"cos", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
-  let summary = "Calculate the cos operation of the given input tensor element-wise.";
-  let description = [{
-    Calculate the cosine operation of the given input tensor element-wise.
-  }];
-  let arguments = (ins
-    AnyFloatTensor:$input
-  );
-  let results = (outs
-    AnyFloatTensor:$output
-  );
-
-  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
-}
-
 def XtenNN_GridSampleOp: XTenNN_Op<"grid_sample", [Pure]> {
   let summary = "Performs gridsampling given an input and a flow-field grid.";
   let description = [{
@@ -495,21 +480,6 @@ def XtenNN_SignOp: XTenNN_Op<"sign", [Pure, TosaExtension, ElementwiseUnary, Sam
   let description = [{
     Calculate the sign of the given input tensor element-wise. If input > 0, output 1. if input < 0, output -1. if input == 0, output 0.
     If the input is a NaN, the output will be a copy of the input element.
-  }];
-  let arguments = (ins
-    AnyFloatTensor:$input
-  );
-  let results = (outs
-    AnyFloatTensor:$output
-  );
-
-  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
-}
-
-def XtenNN_SinOp: XTenNN_Op<"sin", [Pure, TosaExtension, ElementwiseUnary, SameOperandsAndResultElementType]> {
-  let summary = "Calculate the sin operation of the given input tensor element-wise.";
-  let description = [{
-    Calculate the sine operation of the given input tensor element-wise.
   }];
   let arguments = (ins
     AnyFloatTensor:$input
