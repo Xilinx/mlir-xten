@@ -1,3 +1,5 @@
+// (c) Copyright 2023 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 // RUN: aten-opt %s -xten-minimize-live="dot-before-sched" -split-input-file 2>&1 | FileCheck %s --check-prefix=DOT_BEFORE
 // RUN: aten-opt %s -xten-minimize-live="dot-after-sched" -split-input-file 2>&1 | FileCheck %s --check-prefix=DOT_AFTER
 // RUN: aten-opt %s -xten-minimize-live="dot-sched-cost" -split-input-file 2>&1 | FileCheck %s --check-prefix=DOT_SCHED_COST

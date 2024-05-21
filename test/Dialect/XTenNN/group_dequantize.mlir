@@ -1,3 +1,5 @@
+// (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 // RUN: aten-opt %s -split-input-file -verify-diagnostics
 
 func.func @valid_dequantize_op(%arg0: tensor<1x2xi4>, %scales: tensor<1x1xf32>, %zeros: tensor<1x1xi4>) -> tensor<1x2xf32> {

@@ -1,3 +1,5 @@
+// (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 // RUN: aten-opt %s -split-input-file --xtennn-simplify | FileCheck %s
 
 func.func @net0() -> f64 {

@@ -1,3 +1,5 @@
+// (c) Copyright 2023 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 // RUN: aten-opt %s -xtennn-canonicalize="allow-destructive" -split-input-file | FileCheck %s
 // RUN: aten-opt %s -xtennn-canonicalize -split-input-file | FileCheck %s --check-prefix=SANE
 

@@ -1,3 +1,5 @@
+// (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 //===- XTenMinimizeLiveTensors.h -------------------------------------*- C++ -*-===//
 //
 // This file is licensed under the Apache License v2.0 with LLVM Exceptions.

@@ -1,3 +1,5 @@
+// (c) Copyright 2023 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 // RUN: aten-opt %s -xten-minimize-live -split-input-file -o /dev/null -verify-diagnostics
 
 // Illegal dead code where (dead) operation ConvRelu_1 cannot be scheduled.

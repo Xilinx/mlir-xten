@@ -1,3 +1,5 @@
+// (c) Copyright 2023 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 // RUN: aten-opt %s -split-input-file -verify-diagnostics
 
 func.func @valid_quantize_op_signed(%arg0: tensor<1x2xf32>) -> tensor<1x2xi8> {

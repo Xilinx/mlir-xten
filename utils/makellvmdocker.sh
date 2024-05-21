@@ -1,3 +1,4 @@
+# (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
 # Intended to be run from the toplevel directory
 

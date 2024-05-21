@@ -1,3 +1,5 @@
+// (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 //===- XTenMinimizeLiveTensors.cpp -----------------------------------*- C++
 //-*-===//
 //

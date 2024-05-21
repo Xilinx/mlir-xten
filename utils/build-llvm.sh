@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# (c) Copyright 2021 Xilinx, Inc. All Rights reserved.
+# (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 ##===- utils/build-llvm.sh - Build LLVM for github workflow --*- Script -*-===##
 # 
 # This file licensed under the Apache License v2.0 with LLVM Exceptions.

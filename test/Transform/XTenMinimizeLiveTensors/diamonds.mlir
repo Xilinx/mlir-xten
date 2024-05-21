@@ -1,3 +1,5 @@
+// (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 // RUN: aten-opt %s -xten-minimize-live -split-input-file | FileCheck %s
 
 // A diamond shaped dependency graph, where the order is expected to change.

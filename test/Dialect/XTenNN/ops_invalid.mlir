@@ -1,3 +1,4 @@
+// (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
 // RUN: aten-opt %s -split-input-file -verify-diagnostics
 

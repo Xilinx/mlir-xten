@@ -1,3 +1,5 @@
+// (c) Copyright 2023 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Complex/IR/Complex.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"

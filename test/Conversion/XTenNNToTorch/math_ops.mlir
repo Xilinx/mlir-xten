@@ -1,3 +1,5 @@
+// (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 // RUN: aten-opt --convert-xtennn-to-torch  -split-input-file %s | FileCheck %s
 
 func.func @atan2_bf16(%arg0: tensor<1x10xbf16>, %arg1: tensor<1x10xbf16>) -> tensor<1x10xbf16> {

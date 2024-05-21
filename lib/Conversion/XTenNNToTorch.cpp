@@ -1,3 +1,5 @@
+// (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/Utils/Utils.h"
 #include "mlir/Dialect/Shape/IR/Shape.h"

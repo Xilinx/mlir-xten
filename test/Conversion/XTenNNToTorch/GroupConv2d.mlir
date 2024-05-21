@@ -1,3 +1,5 @@
+// (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 // RUN: aten-opt --convert-xtennn-to-torch -split-input-file %s | FileCheck %s
 
 func.func @test_onnx_conv2d_group(%arg0: tensor<5x64x256x256xf32>, %arg1: tensor<12x16x45x45xf32>) -> tensor<5x12x17x17xf32> {

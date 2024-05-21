@@ -1,3 +1,5 @@
+<!--- (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.--->
+
 # Extensions to Torch-MLIR
 
 ![](https://mlir.llvm.org//mlir-logo.png)

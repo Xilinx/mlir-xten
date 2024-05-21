@@ -1,3 +1,5 @@
+# (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 title: Xilinx XTen MLIR Dialect
 description:  An MLIR Dialect for representing high-level Tensor operations
 theme: jekyll-theme-dinky

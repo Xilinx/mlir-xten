@@ -1,5 +1,8 @@
 #!/bin/sh -l
 
+# (c) Copyright 2021 Xilinx, Inc. All Rights reserved.
+# (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 echo "Hello $1"
 time=$(date)
 echo "::set-output name=time::$time"

@@ -3,8 +3,9 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #
-# (c) Copyright 2021 Xilinx Inc.
-# (c) Copyright 2022 Advanced Micro Devices, Inc.
+
+# (c) Copyright 2021 Xilinx, Inc. All Rights reserved.
+# (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
 llvm_map_components_to_libnames(llvm_libs support core irreader)
 

@@ -1,3 +1,5 @@
+// (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 // RUN: aten-opt --convert-xtennn-to-linalg %s | FileCheck %s
 
 func.func @elu(%arg0: tensor<1x10xf32>) -> tensor<1x10xf32> {

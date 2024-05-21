@@ -1,3 +1,5 @@
+// (c) Copyright 2023 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 // RUN: aten-opt %s -xten-minimize-live -split-input-file | FileCheck %s
 
 // CHECK-LABEL: func.func @multi_incore_chains_multiple_ifms_ofm
