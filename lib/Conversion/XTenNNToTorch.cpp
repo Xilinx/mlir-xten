@@ -1,9 +1,8 @@
-// (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
-
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/Utils/Utils.h"
 #include "mlir/Dialect/Shape/IR/Shape.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
+#include "mlir/IR/Attributes.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Support/LogicalResult.h"
@@ -148,6 +147,27 @@ ValueRange groupConv2dToTorch(GroupConv2dOp op, GroupConv2dOp::Adaptor adaptor,
       ->getResults();
 }
 
+ValueRange depthToSpaceToTorch(DepthToSpaceOp op, DepthToSpaceOp::Adaptor adaptor,
+                              ArrayRef<Type> types, ValueRange values,
+                              ConversionPatternRewriter &rewriter) {
+  auto loc = op->getLoc();
+  auto opName = rewriter.getStringAttr("onnx.DepthToSpace");
+  llvm::SmallVector<Value> operands = {values[0]}; 
+  // Creates NamedAttr with blocksize and mode
+  std::string modeStr = "DCR";
+  if (adaptor.getMode() == 2){
+    modeStr = "CRD";
+  } 
+  auto modeAttr = rewriter.getNamedAttr("torch.onnx.mode", rewriter.getStringAttr(modeStr));
+  auto nameAttr = rewriter.getNamedAttr("name", opName);
+  auto blocksizeAttr = rewriter.getNamedAttr("torch.onnx.blocksize", adaptor.getBlocksizeAttr());
+  llvm::SmallVector<NamedAttribute> attrs ={nameAttr, modeAttr, blocksizeAttr};
+
+  return rewriter
+      .create<Torch::OperatorOp>(loc, types[0], operands, attrs, op->getRegions().size())
+      ->getResults();
+}
+
 template <typename SrcOpT, ValueRange codegenFunc(
                                SrcOpT, typename SrcOpT::Adaptor, ArrayRef<Type>,
                                ValueRange, ConversionPatternRewriter &)>
@@ -228,6 +248,8 @@ struct ConvertXTenNNToTorch
 #undef INSERT_UNARY_PATTERN
 
     patterns.add<ApplyXTenNNToTorch<GroupConv2dOp, groupConv2dToTorch>>(
+        context);
+    patterns.add<ApplyXTenNNToTorch<DepthToSpaceOp, depthToSpaceToTorch>>(
         context);
 
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
