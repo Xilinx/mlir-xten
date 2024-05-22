@@ -149,6 +149,32 @@ ValueRange groupConv2dToTorch(GroupConv2dOp op, GroupConv2dOp::Adaptor adaptor,
       ->getResults();
 }
 
+ValueRange gridSampleToTorch(GridSampleOp op, GridSampleOp::Adaptor adaptor,
+                              ArrayRef<Type> types, ValueRange values,
+                              ConversionPatternRewriter &rewriter) {
+  auto loc = op->getLoc();
+  auto opName = rewriter.getStringAttr("onnx.GridSample");
+  llvm::SmallVector<Value> operands = {values[0], values[1]}; 
+  // Creates NamedAttr with blocksize and mode
+  std::string modeStr = "bilinear";
+  if (adaptor.getMode() == 1){
+    modeStr = "nearest";
+  } 
+  std::string padModeStr = "zeros";
+  if (adaptor.getPaddingMode() == 1) {
+    padModeStr = "border";
+  }
+  auto modeAttr = rewriter.getNamedAttr("torch.onnx.mode", rewriter.getStringAttr(modeStr));
+  auto padModeAttr = rewriter.getNamedAttr("torch.onnx.padding_mode", rewriter.getStringAttr(padModeStr));
+  auto alignCornersAttr = rewriter.getNamedAttr("torch.onnx.align_corners", adaptor.getAlignCornersAttr());
+  auto nameAttr = rewriter.getNamedAttr("name", opName);
+  llvm::SmallVector<NamedAttribute> attrs ={nameAttr, modeAttr, padModeAttr, alignCornersAttr};
+
+  return rewriter
+      .create<Torch::OperatorOp>(loc, types[0], operands, attrs, op->getRegions().size())
+      ->getResults();
+}
+
 ValueRange depthToSpaceToTorch(DepthToSpaceOp op, DepthToSpaceOp::Adaptor adaptor,
                               ArrayRef<Type> types, ValueRange values,
                               ConversionPatternRewriter &rewriter) {
@@ -252,6 +278,8 @@ struct ConvertXTenNNToTorch
     patterns.add<ApplyXTenNNToTorch<GroupConv2dOp, groupConv2dToTorch>>(
         context);
     patterns.add<ApplyXTenNNToTorch<DepthToSpaceOp, depthToSpaceToTorch>>(
+        context);
+    patterns.add<ApplyXTenNNToTorch<GridSampleOp, gridSampleToTorch>>(
         context);
 
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
