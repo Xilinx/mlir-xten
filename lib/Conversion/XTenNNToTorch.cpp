@@ -5,6 +5,7 @@
 #include "mlir/Dialect/Shape/IR/Shape.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/Attributes.h"
+#include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Support/LogicalResult.h"
@@ -36,12 +37,16 @@ Value toTorchTensorTypeCast(PatternRewriter &rewriter, Value input) {
 
   auto tensorTy = dyn_cast<ShapedType>(input.getType());
   auto sizes = tensorTy.getShape();
+  auto tensorEltTy = tensorTy.getElementType();
+  if (tensorEltTy.isSignlessInteger()) {
+    tensorEltTy = rewriter.getIntegerType(tensorTy.getElementTypeBitWidth(), true);
+  }
 
   return rewriter
       .create<TorchConversion::FromBuiltinTensorOp>(
           input.getLoc(),
           mlir::torch::Torch::ValueTensorType::get(input.getContext(), sizes,
-                                                   tensorTy.getElementType()),
+                                                   tensorEltTy),
           input)
       .getResult();
 }
@@ -149,6 +154,51 @@ ValueRange groupConv2dToTorch(GroupConv2dOp op, GroupConv2dOp::Adaptor adaptor,
       ->getResults();
 }
 
+ValueRange padReflectToTorch(ReflectPadOp op, ReflectPadOp::Adaptor adaptor,
+                              ArrayRef<Type> types, ValueRange values,
+                              ConversionPatternRewriter &rewriter) {
+  auto loc = op->getLoc();
+  auto opName = rewriter.getStringAttr("onnx.Pad");
+  // No need to create a `constant` operand if we only have reflect padding since it's unused.
+  // Necessary if we start supporting more modes.
+  llvm::SmallVector<Value> operands = {values[0], values[1]}; 
+  // Creates NamedAttr with blocksize and mode
+  std::string modeStr = "reflect";
+  auto modeAttr = rewriter.getNamedAttr("torch.onnx.mode", rewriter.getStringAttr(modeStr));
+  auto nameAttr = rewriter.getNamedAttr("name", opName);
+  llvm::SmallVector<NamedAttribute> attrs ={nameAttr, modeAttr};
+
+  return rewriter
+      .create<Torch::OperatorOp>(loc, types[0], operands, attrs, op->getRegions().size())
+      ->getResults();
+}
+
+ValueRange gridSampleToTorch(GridSampleOp op, GridSampleOp::Adaptor adaptor,
+                              ArrayRef<Type> types, ValueRange values,
+                              ConversionPatternRewriter &rewriter) {
+  auto loc = op->getLoc();
+  auto opName = rewriter.getStringAttr("onnx.GridSample");
+  llvm::SmallVector<Value> operands = {values[0], values[1]}; 
+  // Creates NamedAttr with blocksize and mode
+  std::string modeStr = "bilinear";
+  if (adaptor.getMode() == 1){
+    modeStr = "nearest";
+  } 
+  std::string padModeStr = "zeros";
+  if (adaptor.getPaddingMode() == 1) {
+    padModeStr = "border";
+  }
+  auto modeAttr = rewriter.getNamedAttr("torch.onnx.mode", rewriter.getStringAttr(modeStr));
+  auto padModeAttr = rewriter.getNamedAttr("torch.onnx.padding_mode", rewriter.getStringAttr(padModeStr));
+  auto alignCornersAttr = rewriter.getNamedAttr("torch.onnx.align_corners", adaptor.getAlignCornersAttr());
+  auto nameAttr = rewriter.getNamedAttr("name", opName);
+  llvm::SmallVector<NamedAttribute> attrs ={nameAttr, modeAttr, padModeAttr, alignCornersAttr};
+
+  return rewriter
+      .create<Torch::OperatorOp>(loc, types[0], operands, attrs, op->getRegions().size())
+      ->getResults();
+}
+
 ValueRange depthToSpaceToTorch(DepthToSpaceOp op, DepthToSpaceOp::Adaptor adaptor,
                               ArrayRef<Type> types, ValueRange values,
                               ConversionPatternRewriter &rewriter) {
@@ -253,6 +303,11 @@ struct ConvertXTenNNToTorch
         context);
     patterns.add<ApplyXTenNNToTorch<DepthToSpaceOp, depthToSpaceToTorch>>(
         context);
+    patterns.add<ApplyXTenNNToTorch<GridSampleOp, gridSampleToTorch>>(
+        context);
+    patterns.add<ApplyXTenNNToTorch<ReflectPadOp, padReflectToTorch>>(
+        context);
+
 
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();
