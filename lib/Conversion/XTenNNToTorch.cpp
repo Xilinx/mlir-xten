@@ -224,9 +224,11 @@ std::optional<ValueRange> gridSampleToTorch(GridSampleOp op, GridSampleOp::Adapt
   if (adaptor.getPaddingMode() == 1) {
     padModeStr = "border";
   }
+  // AlignCorner is supposed to be si64 for torch.
+  auto alignCornerIntAttr = rewriter.getIntegerAttr(rewriter.getIntegerType(64, true), adaptor.getAlignCorners());
   auto modeAttr = rewriter.getNamedAttr("torch.onnx.mode", rewriter.getStringAttr(modeStr));
   auto padModeAttr = rewriter.getNamedAttr("torch.onnx.padding_mode", rewriter.getStringAttr(padModeStr));
-  auto alignCornersAttr = rewriter.getNamedAttr("torch.onnx.align_corners", adaptor.getAlignCornersAttr());
+  auto alignCornersAttr = rewriter.getNamedAttr("torch.onnx.align_corners",  alignCornerIntAttr);
   auto nameAttr = rewriter.getNamedAttr("name", opName);
   llvm::SmallVector<NamedAttribute> attrs ={nameAttr, modeAttr, padModeAttr, alignCornersAttr};
 
@@ -246,9 +248,12 @@ std::optional<ValueRange> depthToSpaceToTorch(DepthToSpaceOp op, DepthToSpaceOp:
   if (adaptor.getMode() == 2){
     modeStr = "CRD";
   } 
+  // Blocksize is an si64 in Torch
+  auto blockSizeIntAttr = rewriter.getIntegerAttr(rewriter.getIntegerType(64, true), adaptor.getBlocksize());
+
   auto modeAttr = rewriter.getNamedAttr("torch.onnx.mode", rewriter.getStringAttr(modeStr));
   auto nameAttr = rewriter.getNamedAttr("name", opName);
-  auto blocksizeAttr = rewriter.getNamedAttr("torch.onnx.blocksize", adaptor.getBlocksizeAttr());
+  auto blocksizeAttr = rewriter.getNamedAttr("torch.onnx.blocksize", blockSizeIntAttr);
   llvm::SmallVector<NamedAttribute> attrs ={nameAttr, modeAttr, blocksizeAttr};
 
   return rewriter
