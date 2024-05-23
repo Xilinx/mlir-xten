@@ -6,8 +6,6 @@
 #include "mlir/Dialect/Shape/IR/Shape.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/Attributes.h"
-#include "mlir/IR/BuiltinAttributeInterfaces.h"
-#include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypeInterfaces.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
@@ -15,7 +13,6 @@
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Transforms/DialectConversion.h"
 
-#include <cstdint>
 #include <optional>
 #include <torch-mlir/Dialect/Torch/IR/TorchDialect.h>
 #include <torch-mlir/Dialect/Torch/IR/TorchOps.h>
