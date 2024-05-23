@@ -1,22 +1,29 @@
 // (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
+#include "llvm/ADT/SmallVector.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/Utils/Utils.h"
 #include "mlir/Dialect/Shape/IR/Shape.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/Attributes.h"
+#include "mlir/IR/BuiltinAttributeInterfaces.h"
+#include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinTypeInterfaces.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Transforms/DialectConversion.h"
 
+#include <cstdint>
+#include <optional>
 #include <torch-mlir/Dialect/Torch/IR/TorchDialect.h>
 #include <torch-mlir/Dialect/Torch/IR/TorchOps.h>
 #include <torch-mlir/Dialect/Torch/Utils/Utils.h>
 #include <torch-mlir/Dialect/TorchConversion/IR/TorchConversionOps.h>
 #include <torch-mlir/Dialect/TorchConversion/Transforms/BackendTypeConversion.h>
 
+#include "torch-mlir/Dialect/Torch/IR/TorchTypes.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
 #include "xten/Util/Util.h"
@@ -84,7 +91,7 @@ Conv2dPadding getPadding(GroupConv2dOp::Adaptor adaptor) {
 }
 
 template <typename SrcOpT>
-ValueRange oneToOneXTenNNToTorch(SrcOpT op,
+std::optional<ValueRange> oneToOneXTenNNToTorch(SrcOpT op,
                                  typename SrcOpT::Adaptor /*adaptor*/,
                                  ArrayRef<Type> types, ValueRange values,
                                  ConversionPatternRewriter &rewriter) {
@@ -97,7 +104,7 @@ ValueRange oneToOneXTenNNToTorch(SrcOpT op,
   return rewriter.create(state)->getResults();
 }
 
-ValueRange groupConv2dToTorch(GroupConv2dOp op, GroupConv2dOp::Adaptor adaptor,
+std::optional<ValueRange> groupConv2dToTorch(GroupConv2dOp op, GroupConv2dOp::Adaptor adaptor,
                               ArrayRef<Type> types, ValueRange values,
                               ConversionPatternRewriter &rewriter) {
   auto loc = op->getLoc();
@@ -154,7 +161,39 @@ ValueRange groupConv2dToTorch(GroupConv2dOp op, GroupConv2dOp::Adaptor adaptor,
       ->getResults();
 }
 
-ValueRange padReflectToTorch(ReflectPadOp op, ReflectPadOp::Adaptor adaptor,
+std::optional<ValueRange> resizeToTorch(ResizeOp op, ResizeOp::Adaptor adaptor,
+                        ArrayRef<Type> types, ValueRange values,
+                        ConversionPatternRewriter &rewriter) {
+  auto loc = op->getLoc();
+  auto opName = rewriter.getStringAttr("onnx.Resize");
+  // Mode Nearest is supported via conversion to tosa and mostly unsupported by torch.operator "onnx" 
+  if (adaptor.getMode() == 0)
+    return std::nullopt;
+  std::string modeStr = "linear";
+  llvm::SmallVector<std::string, 4> numberToTransMode = {"half_pixel", "pytorch_half_pixel", "asymmetric", "align_corners"};
+  std::string coordinateTransStr = numberToTransMode[adaptor.getCoordinateTransformationMode()];
+  auto modeAttr = rewriter.getNamedAttr("torch.onnx.mode", rewriter.getStringAttr(modeStr));
+  auto coordinateModeAttr = rewriter.getNamedAttr("torch.onnx.coordinate_transformation_mode", rewriter.getStringAttr(coordinateTransStr));
+  auto nameAttr = rewriter.getNamedAttr("name", opName);
+  llvm::SmallVector<NamedAttribute> attrs ={nameAttr, modeAttr, coordinateModeAttr};
+
+  auto scalesAttr = adaptor.getScales();
+  // Create a constant for the scales
+  auto denseScales = DenseElementsAttr::get(RankedTensorType::get({(long)scalesAttr.size()}, rewriter.getF32Type()), scalesAttr);
+  auto scalesConst = rewriter.create<Torch::ValueTensorLiteralOp>(loc, 
+                           Torch::ValueTensorType::get(op->getContext(), {scalesAttr.size()}, rewriter.getF32Type()), 
+                           denseScales);
+
+  // Operands in order : X - roi - scales - sizes
+  // roi and sizes are None because they are not supported by the xten representation of resize
+  auto noneConst = rewriter.create<Torch::ConstantNoneOp>(loc);
+  llvm::SmallVector<Value> operands = {values[0], noneConst, scalesConst, noneConst}; 
+  return rewriter
+      .create<Torch::OperatorOp>(loc, types[0], operands, attrs, op->getRegions().size())
+      ->getResults();
+}
+
+std::optional<ValueRange> padReflectToTorch(ReflectPadOp op, ReflectPadOp::Adaptor adaptor,
                               ArrayRef<Type> types, ValueRange values,
                               ConversionPatternRewriter &rewriter) {
   auto loc = op->getLoc();
@@ -173,7 +212,7 @@ ValueRange padReflectToTorch(ReflectPadOp op, ReflectPadOp::Adaptor adaptor,
       ->getResults();
 }
 
-ValueRange gridSampleToTorch(GridSampleOp op, GridSampleOp::Adaptor adaptor,
+std::optional<ValueRange> gridSampleToTorch(GridSampleOp op, GridSampleOp::Adaptor adaptor,
                               ArrayRef<Type> types, ValueRange values,
                               ConversionPatternRewriter &rewriter) {
   auto loc = op->getLoc();
@@ -199,7 +238,7 @@ ValueRange gridSampleToTorch(GridSampleOp op, GridSampleOp::Adaptor adaptor,
       ->getResults();
 }
 
-ValueRange depthToSpaceToTorch(DepthToSpaceOp op, DepthToSpaceOp::Adaptor adaptor,
+std::optional<ValueRange> depthToSpaceToTorch(DepthToSpaceOp op, DepthToSpaceOp::Adaptor adaptor,
                               ArrayRef<Type> types, ValueRange values,
                               ConversionPatternRewriter &rewriter) {
   auto loc = op->getLoc();
@@ -220,7 +259,7 @@ ValueRange depthToSpaceToTorch(DepthToSpaceOp op, DepthToSpaceOp::Adaptor adapto
       ->getResults();
 }
 
-template <typename SrcOpT, ValueRange codegenFunc(
+template <typename SrcOpT, std::optional<ValueRange> codegenFunc(
                                SrcOpT, typename SrcOpT::Adaptor, ArrayRef<Type>,
                                ValueRange, ConversionPatternRewriter &)>
 class ApplyXTenNNToTorch : public OpConversionPattern<SrcOpT> {
@@ -251,11 +290,14 @@ public:
     // Call the function that creates the new operation.
     auto newValues =
         codegenFunc(op, adaptor, vtensorResultTypes, vtensorOperands, rewriter);
+    if (!newValues) {
+      return rewriter.notifyMatchFailure(op.getLoc(), "Operator parameters unsupported");
+    }
 
     // Convert Torch builtin types back to MLIR types retrieving the
     // original type of the op.
     SmallVector<Value> vtensorResults;
-    llvm::transform(llvm::enumerate(newValues),
+    llvm::transform(llvm::enumerate(*newValues),
                     std::back_inserter(vtensorResults), [&](const auto it) {
                       return toBuiltinTensorTypeCast(
                           rewriter, it.value(),
@@ -306,6 +348,8 @@ struct ConvertXTenNNToTorch
     patterns.add<ApplyXTenNNToTorch<GridSampleOp, gridSampleToTorch>>(
         context);
     patterns.add<ApplyXTenNNToTorch<ReflectPadOp, padReflectToTorch>>(
+        context);
+    patterns.add<ApplyXTenNNToTorch<ResizeOp, resizeToTorch>>(
         context);
 
 
