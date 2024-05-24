@@ -361,7 +361,6 @@ struct ConvertXTenNNToTorch
         context);
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();
-    
   }
 };
 
