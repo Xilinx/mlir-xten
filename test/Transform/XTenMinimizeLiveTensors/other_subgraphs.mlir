@@ -283,7 +283,7 @@ func.func @gap_concat_reversed(%arg0 : tensor<1x2x255x255xf32>, %arg1 : tensor<1
 // CHECK:     "InCoreChain_1"
 // CHECK:     "InCoreChain_2"
 // CHECK:     "Concat0"
-func.func @incorechain_ops_with_concat_const_input(%arg0: tensor<1x4x224x224xf32>, %arg1: tensor<1x4x224x224xf32>, %arg2: tensor<1x64x112x112xf32>) -> tensor<1x16x224x224xf32> attributes {input_names = ["global_input_0"], output_names = ["global_outout_0"]} {
+func.func @incorechain_ops_with_concat_const_input(%arg0: tensor<1x4x224x224xf32>, %arg1: tensor<1x4x224x224xf32>, %arg2: tensor<1x64x112x112xf32>) -> tensor<1x16x224x224xf32> {
   %const = "tosa.const"() {value = dense<2.000000e-02> : tensor<1x4x224x224xf32>} : () -> tensor<1x4x224x224xf32>
   %0 = "tosa.const"() {value = dense<2.000000e-02> : tensor<64x4x7x7xf32>} : () -> tensor<64x4x7x7xf32>
   %1 = "tosa.const"() {value = dense<2.000000e-02> : tensor<64xf32>} : () -> tensor<64xf32>
@@ -299,7 +299,7 @@ func.func @incorechain_ops_with_concat_const_input(%arg0: tensor<1x4x224x224xf32
     %0 = tensor.empty() : tensor<1x4x224x224xf32>
     xten_nn.output %0 : tensor<1x4x224x224xf32>
   } -> tensor<1x4x224x224xf32>
-  %5 = xten_nn.subgraph (%arg1 = %2: tensor<1x4x224x224xf32>, %arg2 = %3: tensor<1x4x224x224xf32>, %arg3 = %const: tensor<1x4x224x224xf32>, %arg4 = %4: tensor<1x4x224x224xf32>)  attributes {IfmOperands = [0 : index, 1 : index, 3 : index], LayerName = "Concat0", Reason = "PseudoOp", Op = "Concat", SourceOpAttrs = {axis = 1 : si64, onnx_node_name = "Concat_0", output_bitwidth = 8.000000e+00 : f32, output_narrow = 0 : si64, output_rounding_mode = "ROUND", output_scale_factor = 2.500000e-01 : f32, output_signed = 1 : si64}, argsConstMapping = {}, argsMapping = {"0" = 0 : index, "1" = 1 : index}} {
+  %5 = xten_nn.subgraph (%arg1 = %2: tensor<1x4x224x224xf32>, %arg2 = %3: tensor<1x4x224x224xf32>, %arg3 = %const: tensor<1x4x224x224xf32>, %arg4 = %4: tensor<1x4x224x224xf32>)  attributes {IfmOperands = [0 : index, 1 : index, 3 : index], LayerName = "Concat0", Reason = "PseudoOp", Op = "Concat"} {
       %89 = tensor.empty() : tensor<1x16x224x224xf32>
     xten_nn.output %89 : tensor<1x16x224x224xf32>
   } -> tensor<1x16x224x224xf32>
