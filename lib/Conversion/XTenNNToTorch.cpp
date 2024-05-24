@@ -168,6 +168,8 @@ std::optional<ValueRange> resizeToTorch(ResizeOp op, ResizeOp::Adaptor adaptor,
     return std::nullopt;
   std::string modeStr = "linear";
   llvm::SmallVector<std::string, 4> numberToTransMode = {"half_pixel", "pytorch_half_pixel", "asymmetric", "align_corners"};
+  if (adaptor.getCoordinateTransformationMode() > numberToTransMode.size())
+    return std::nullopt;
   std::string coordinateTransStr = numberToTransMode[adaptor.getCoordinateTransformationMode()];
   auto modeAttr = rewriter.getNamedAttr("torch.onnx.mode", rewriter.getStringAttr(modeStr));
   auto coordinateModeAttr = rewriter.getNamedAttr("torch.onnx.coordinate_transformation_mode", rewriter.getStringAttr(coordinateTransStr));
