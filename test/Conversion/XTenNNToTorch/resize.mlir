@@ -7,7 +7,7 @@ func.func @resize_align_corners_bf16(%arg0: tensor<1x256x16x16xbf16>) -> tensor<
     return %1 : tensor<1x256x32x32xbf16>
 }
 // CHECK-LABEL:  func.func @resize_align_corners_bf16
-// CHECK-SAME:          (%[[ARG:.*]]: tensor<1x256x16x16xbf16>) -> tensor<1x256x32x32xbf16> {
+// CHECK-SAME:          (%[[ARG:.*]]: tensor<1x256x16x16xbf16>) -> tensor<1x256x32x32xbf16> attributes {torch.onnx_meta.opset_version = 19 : si64} {
 // CHECK:    %[[FROM:.*]] = torch_c.from_builtin_tensor %[[ARG]] : tensor<1x256x16x16xbf16> -> !torch.vtensor<[1,256,16,16],bf16>
 // CHECK:    %[[SCALES:.*]] = torch.vtensor.literal(dense<[1.000000e+00, 1.000000e+00, 2.000000e+00, 2.000000e+00]> : tensor<4xf32>) : !torch.vtensor<[4],f32>
 // CHECK:    %[[NONE:.*]] = torch.constant.none
@@ -21,7 +21,7 @@ func.func @resize_pt_half_pixel_bf16(%arg0: tensor<1x256x16x16xbf16>) -> tensor<
     return %1 : tensor<1x256x32x32xbf16>
 }
 // CHECK-LABEL:  func.func @resize_pt_half_pixel_bf16
-// CHECK-SAME:          (%[[ARG:.*]]: tensor<1x256x16x16xbf16>) -> tensor<1x256x32x32xbf16> {
+// CHECK-SAME:          (%[[ARG:.*]]: tensor<1x256x16x16xbf16>) -> tensor<1x256x32x32xbf16> attributes {torch.onnx_meta.opset_version = 19 : si64} {
 // CHECK:    %[[FROM:.*]] = torch_c.from_builtin_tensor %[[ARG]] : tensor<1x256x16x16xbf16> -> !torch.vtensor<[1,256,16,16],bf16>
 // CHECK:    %[[SCALES:.*]] = torch.vtensor.literal(dense<[1.000000e+00, 1.000000e+00, 2.000000e+00, 2.000000e+00]> : tensor<4xf32>) : !torch.vtensor<[4],f32>
 // CHECK:    %[[NONE:.*]] = torch.constant.none
@@ -35,7 +35,7 @@ func.func @resize_half_pixel_f32(%arg0: tensor<1x256x16x16xf32>) -> tensor<1x256
     return %1 : tensor<1x256x32x32xf32>
 }
 // CHECK-LABEL:  func.func @resize_half_pixel_f32
-// CHECK-SAME:          (%[[ARG:.*]]: tensor<1x256x16x16xf32>) -> tensor<1x256x32x32xf32> {
+// CHECK-SAME:          (%[[ARG:.*]]: tensor<1x256x16x16xf32>) -> tensor<1x256x32x32xf32> attributes {torch.onnx_meta.opset_version = 19 : si64} {
 // CHECK:    %[[FROM:.*]] = torch_c.from_builtin_tensor %[[ARG]] : tensor<1x256x16x16xf32> -> !torch.vtensor<[1,256,16,16],f32>
 // CHECK:    %[[SCALES:.*]] = torch.vtensor.literal(dense<[1.000000e+00, 1.000000e+00, 2.000000e+00, 2.000000e+00]> : tensor<4xf32>) : !torch.vtensor<[4],f32>
 // CHECK:    %[[NONE:.*]] = torch.constant.none
