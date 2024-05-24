@@ -325,6 +325,10 @@ struct ConvertXTenNNToTorch
   void runOnOperation() override {
     MLIRContext *context = &getContext();
     auto funcOp = getOperation();
+    funcOp->setAttr(
+        "torch.onnx_meta.opset_version",
+        IntegerAttr::get(IntegerType::get(context, 64, IntegerType::Signed),
+                         19));
 
     ConversionTarget target(*context);
     target.addLegalOp<SubgraphOp>();
@@ -355,8 +359,6 @@ struct ConvertXTenNNToTorch
         context);
     patterns.add<ApplyXTenNNToTorch<ResizeOp, resizeToTorch>>(
         context);
-
-
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();
   }
