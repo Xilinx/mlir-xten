@@ -10,7 +10,7 @@ func.func @gridsample_default_bf16(%arg0: tensor<1x32x576x384xbf16>, %arg1: tens
 // CHECK-SAME:      (%[[ARG0:.*]]: tensor<1x32x576x384xbf16>, %[[ARG1:.*]]: tensor<1x64x16x2xbf16>) -> tensor<1x32x64x16xbf16> {
 // CHECK:    %[[VAL_0:.*]] = torch_c.from_builtin_tensor %[[ARG0]] : tensor<1x32x576x384xbf16> -> !torch.vtensor<[1,32,576,384],bf16>
 // CHECK:    %[[VAL_1:.*]] = torch_c.from_builtin_tensor %[[ARG1]] : tensor<1x64x16x2xbf16> -> !torch.vtensor<[1,64,16,2],bf16>
-// CHECK:    %[[VAL_2:.*]] = torch.operator "onnx.GridSample"(%[[VAL_0]], %[[VAL_1]]) {torch.onnx.align_corners = 1 : i64, torch.onnx.mode = "bilinear", torch.onnx.padding_mode = "zeros"} : (!torch.vtensor<[1,32,576,384],bf16>, !torch.vtensor<[1,64,16,2],bf16>) -> !torch.vtensor<[1,32,64,16],bf16>
+// CHECK:    %[[VAL_2:.*]] = torch.operator "onnx.GridSample"(%[[VAL_0]], %[[VAL_1]]) {torch.onnx.align_corners = 1 : si64, torch.onnx.mode = "bilinear", torch.onnx.padding_mode = "zeros"} : (!torch.vtensor<[1,32,576,384],bf16>, !torch.vtensor<[1,64,16,2],bf16>) -> !torch.vtensor<[1,32,64,16],bf16>
 // CHECK:    %[[VAL_3:.*]] = torch_c.to_builtin_tensor %[[VAL_2]] : !torch.vtensor<[1,32,64,16],bf16> -> tensor<1x32x64x16xbf16>
 // CHECK:    return %[[VAL_3]] : tensor<1x32x64x16xbf16>
 
@@ -24,5 +24,5 @@ func.func @gridsample_default_f32(%arg0: tensor<1x32x576x384xf32>, %arg1: tensor
 // CHECK-SAME:      (%[[ARG0:.*]]: tensor<1x32x576x384xf32>, %[[ARG1:.*]]: tensor<1x64x16x2xf32>) -> tensor<1x32x64x16xf32> {
 // CHECK:    %[[VAL_0:.*]] = torch_c.from_builtin_tensor %[[ARG0]] : tensor<1x32x576x384xf32> -> !torch.vtensor<[1,32,576,384],f32>
 // CHECK:    %[[VAL_1:.*]] = torch_c.from_builtin_tensor %[[ARG1]] : tensor<1x64x16x2xf32> -> !torch.vtensor<[1,64,16,2],f32>
-// CHECK:    %[[VAL_2:.*]] = torch.operator "onnx.GridSample"(%[[VAL_0]], %[[VAL_1]]) {torch.onnx.align_corners = 1 : i64, torch.onnx.mode = "bilinear", torch.onnx.padding_mode = "zeros"} : (!torch.vtensor<[1,32,576,384],f32>, !torch.vtensor<[1,64,16,2],f32>) -> !torch.vtensor<[1,32,64,16],f32>
+// CHECK:    %[[VAL_2:.*]] = torch.operator "onnx.GridSample"(%[[VAL_0]], %[[VAL_1]]) {torch.onnx.align_corners = 1 : si64, torch.onnx.mode = "bilinear", torch.onnx.padding_mode = "zeros"} : (!torch.vtensor<[1,32,576,384],f32>, !torch.vtensor<[1,64,16,2],f32>) -> !torch.vtensor<[1,32,64,16],f32>
 // CHECK:    %[[VAL_3:.*]] = torch_c.to_builtin_tensor %[[VAL_2]] : !torch.vtensor<[1,32,64,16],f32> -> tensor<1x32x64x16xf32>
