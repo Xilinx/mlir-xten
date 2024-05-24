@@ -197,8 +197,8 @@ FailureOr<SmallVector<Value>> getFmOperands(Operation *op) {
     return {getSubgraphIFMs(op)};
 
   if (isConcatSubgraph(op))
-    return {op->getOperands()};
-  
+    return {getSubgraphIFMs(op)};
+
   if (isTemplatedGraph(op))
     return {op->getOperands()};
 
