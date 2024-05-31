@@ -802,7 +802,7 @@ std::map<std::string, uint64_t> getStatistics(Torch::AtenMul_TensorOp op) {
 //   uint64_t input_channels = inputTy.getSizes()[1];
 
 //   // from
-//   https://gitenterprise.xilinx.com/nfraser/torchscope/blob/master/torchscope/helper.py
+//   GHE: nfraser/torchscope/blob/master/torchscope/helper.py
 //   // # 3 components make up the gradInput: 1 gradInput, 2 gradMean, 3 gradVar
 //   // # totalGradInput = gradInput + (dL / dMean * dMean / dInput) +
 //   // #                  (dL / dVar * dVar / dInput)
