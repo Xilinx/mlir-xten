@@ -134,7 +134,7 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
     SI32Attr:$shift
   );
 
-  let results = (outs XTenNN_AnyTensorSignlessOrUnsignedInteger:$output);
+  let results = (outs XTenNN_AnySignlessOrUnsignedIntegerTensor:$output);
 
   let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
 
@@ -159,7 +159,7 @@ def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
   }];
 
   let arguments = (ins
-    XTenNN_AnyTensorSignlessOrUnsignedInteger:$input,
+    XTenNN_AnySignlessOrUnsignedIntegerTensor:$input,
     SI32Attr:$shift
   );
 
@@ -187,15 +187,15 @@ def XTenNN_GroupQuantizeOp: XTenNN_Op<"group_quantize", [
   }];
 
   let arguments = (ins
-    XTenNN_AnyTensorFloat:$input,
-    XTenNN_AnyTensorFloat:$scales,
-    XTenNN_AnyTensorSignlessOrUnsignedInteger:$zeros,
+    XTenNN_AnyFloatTensor:$input,
+    XTenNN_AnyFloatTensor:$scales,
+    XTenNN_AnySignlessOrUnsignedIntegerTensor:$zeros,
     SI32Attr:$min,
     SI32Attr:$max,
     SI32Attr:$bits
 );
 
-  let results = (outs XTenNN_AnyTensorSignlessOrUnsignedInteger:$quants);
+  let results = (outs XTenNN_AnySignlessOrUnsignedIntegerTensor:$quants);
 
   let assemblyFormat = [{ `(`$input `:` type($input) `,` $scales `:` type($scales) `,` $zeros `:` type($zeros)`)` attr-dict `->` type($quants) }];
 
@@ -219,15 +219,15 @@ def XTenNN_GroupDequantizeOp: XTenNN_Op<"group_dequantize", [
   }];
 
   let arguments = (ins
-    XTenNN_AnyTensorSignlessOrUnsignedInteger:$quants,
-    XTenNN_AnyTensorFloat:$scales,
-    XTenNN_AnyTensorSignlessOrUnsignedInteger:$zeros,
+    XTenNN_AnySignlessOrUnsignedIntegerTensor:$quants,
+    XTenNN_AnyFloatTensor:$scales,
+    XTenNN_AnySignlessOrUnsignedIntegerTensor:$zeros,
     SI32Attr:$min,
     SI32Attr:$max,
     SI32Attr:$bits
   );
 
-  let results = (outs XTenNN_AnyTensorFloat:$output);
+  let results = (outs XTenNN_AnyFloatTensor:$output);
 
   let assemblyFormat = [{ `(`$quants `:` type($quants) `,` $scales `:` type($scales)`,` $zeros `:` type($zeros)`)` attr-dict `->` type($output) }];
 
@@ -261,7 +261,6 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
 // Ops that are missing from the TOSA standard
 //===----------------------------------------------------------------------===//
 
-def AnyFloatTensor : TensorOf<[AnyFloat]>;
 def TosaExtension : NativeOpTrait<"TosaExtension">;
 def ElementwiseUnary : NativeOpTrait<"ElementwiseUnary">;
 def ElementwiseBinary : NativeOpTrait<"ElementwiseBinary">;
@@ -275,11 +274,11 @@ def XtenNN_Atan2Op: XTenNN_Op<"atan2", [Pure, TosaExtension, ElementwiseBinary, 
     Calculate the arctangent of input/other of a given pair of tensor element-wise.
   }];
   let arguments = (ins
-    AnyFloatTensor:$input,
-    AnyFloatTensor:$other
+    XTenNN_AnyFloatTensor:$input,
+    XTenNN_AnyFloatTensor:$other
   );
   let results = (outs
-    AnyFloatTensor:$output
+    XTenNN_AnyFloatTensor:$output
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
@@ -291,10 +290,10 @@ def XtenNN_CosOp: XTenNN_Op<"cos", [Pure, TosaExtension, ElementwiseUnary, SameO
     Calculate the cosine operation of the given input tensor element-wise.
   }];
   let arguments = (ins
-    AnyFloatTensor:$input
+    XTenNN_AnyFloatTensor:$input
   );
   let results = (outs
-    AnyFloatTensor:$output
+    XTenNN_AnyFloatTensor:$output
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
@@ -307,15 +306,15 @@ def XtenNN_GridSampleOp: XTenNN_Op<"grid_sample", [Pure]> {
     the interpolation of the flow-field grid and the input.
   }];
   let arguments = (ins
-    XTenNN_AnyTensorFloat:$X,
-    XTenNN_AnyTensorFloat:$grid,
+    AnyTensor:$X,
+    AnyTensor:$grid,
     I64Attr:$align_corners,
     I64Attr:$mode,
     I64Attr:$padding_mode
   );
 
   let results = (outs
-    XTenNN_AnyTensorFloat:$output
+    AnyTensor:$output
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
@@ -334,13 +333,13 @@ def XtenNN_DepthToSpaceOp: XTenNN_Op<"depth_to_space", [Pure, TosaExtension]> {
     - 2: CRD: Elements rearranged in order Column - Row - Depth
   }];
   let arguments = (ins
-    4DTensorOf<[BF16, F32, I8]>:$X,
+    4DTensorOf<[XTenNN_AnyIntegerOrFloat]>:$X,
     I64Attr:$blocksize,
     I64Attr:$mode
   );
 
   let results = (outs
-    4DTensorOf<[BF16, F32, I8]>:$Y
+    4DTensorOf<[XTenNN_AnyIntegerOrFloat]>:$Y
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
@@ -364,12 +363,12 @@ def XtenNN_ReflectPadOp: XTenNN_Op<"reflect_pad", [TosaExtension]> {
 
   }];
   let arguments = (ins
-    4DTensorOf<[BF16, F32]>:$input,
+    4DTensorOf<[XTenNN_AnyIntegerOrFloat]>:$input,
     TensorOf<[I64]>:$pads
   );
 
   let results = (outs
-    4DTensorOf<[BF16, F32]>:$Y
+    4DTensorOf<[XTenNN_AnyIntegerOrFloat]>:$Y
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
@@ -387,16 +386,16 @@ def XtenNN_GroupConv2dOp: XTenNN_Op<"group_conv2d", [Pure, TosaExtension]> {
     arrays denote the initial and end padding for H and W dimensions respectively.
   }];
   let arguments = (ins
-    4DTensorOf<[BF16, F32]>:$input,
-    4DTensorOf<[BF16, F32]>:$weights,
-    1DTensorOf<[BF16, F32]>:$bias,
+    4DTensorOf<[AnyFloat]>:$input,
+    4DTensorOf<[AnyFloat]>:$weights,
+    1DTensorOf<[AnyFloat]>:$bias,
     ArrayAttr<2>:$pad,
     I64DenseArrayAttr<2>:$stride,
     I64DenseArrayAttr<2>:$dilation,
     I64Attr:$group
   );
   let results = (outs
-    4DTensorOf<[BF16, F32]>:$output
+    4DTensorOf<[AnyFloat]>:$output
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
@@ -411,11 +410,11 @@ def XtenNN_EluOp: XTenNN_Op<"elu", [Pure, TosaExtension, ElementwiseUnary, SameO
               alpha * (exp(x)-1), if x <= 0
   }];
   let arguments = (ins
-    AnyFloatTensor:$input,
+    XTenNN_AnyFloatTensor:$input,
     F32Attr:$alpha
   );
   let results = (outs
-    AnyFloatTensor:$output
+    XTenNN_AnyFloatTensor:$output
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
@@ -427,10 +426,10 @@ def XtenNN_MishOp: XTenNN_Op<"mish", [Pure, TosaExtension, ElementwiseUnary, Sam
     Calculate the mish operation (Self Regularized Non-Monotonic Neural Activation Function) of the given input tensor element-wise.
   }];
   let arguments = (ins
-    AnyFloatTensor:$input
+    XTenNN_AnyFloatTensor:$input
   );
   let results = (outs
-    AnyFloatTensor:$output
+    XTenNN_AnyFloatTensor:$output
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
@@ -460,7 +459,7 @@ def XtenNN_ResizeOp: XTenNN_Op<"resize", [Pure, TosaExtension]> {
         - 2: round_prefer_floor
   }];
   let arguments = (ins
-    4DTensorOf<[BF16, F32]>:$X,
+    4DTensorOf<[XTenNN_AnyIntegerOrFloat]>:$X,
     DenseF32ArrayAttr:$scales,
     I64Attr:$coordinate_transformation_mode,
     I64Attr:$mode,
@@ -468,7 +467,7 @@ def XtenNN_ResizeOp: XTenNN_Op<"resize", [Pure, TosaExtension]> {
   );
 
   let results = (outs
-    4DTensorOf<[BF16, F32]>:$Y
+    4DTensorOf<[XTenNN_AnyIntegerOrFloat]>:$Y
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
@@ -483,10 +482,10 @@ def XtenNN_RoundOp: XTenNN_Op<"round", [Pure, TosaExtension, ElementwiseUnary, S
     In case of halves, the rule is to round them to the nearest even integer as does the 'round' operation in torch and onnx.
   }];
   let arguments = (ins
-    AnyFloatTensor:$input
+    XTenNN_AnyFloatTensor:$input
   );
   let results = (outs
-    AnyFloatTensor:$output
+    XTenNN_AnyFloatTensor:$output
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
@@ -499,10 +498,10 @@ def XtenNN_SignOp: XTenNN_Op<"sign", [Pure, TosaExtension, ElementwiseUnary, Sam
     If the input is a NaN, the output will be a copy of the input element.
   }];
   let arguments = (ins
-    AnyFloatTensor:$input
+    XTenNN_AnyFloatTensor:$input
   );
   let results = (outs
-    AnyFloatTensor:$output
+    XTenNN_AnyFloatTensor:$output
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
@@ -514,10 +513,10 @@ def XtenNN_SinOp: XTenNN_Op<"sin", [Pure, TosaExtension, ElementwiseUnary, SameO
     Calculate the sine operation of the given input tensor element-wise.
   }];
   let arguments = (ins
-    AnyFloatTensor:$input
+    XTenNN_AnyFloatTensor:$input
   );
   let results = (outs
-    AnyFloatTensor:$output
+    XTenNN_AnyFloatTensor:$output
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];

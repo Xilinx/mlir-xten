@@ -15,14 +15,13 @@
 
 include "xten/Dialect/XTenNN/IR/XTenNNBase.td"
 
-def XTenNN_AnyTensorSignlessOrUnsignedInteger : TensorOf<
+def XTenNN_AnySignlessOrUnsignedIntegerTensor : TensorOf<
     [AnySignlessInteger, AnyUnsignedInteger], 
     [], 
     "signless-or-unsigned-tensor">;
 
-def XTenNN_AnyTensorFloat : TensorOf<
-    [AnyFloat],
-    [],
-    "signless-or-unsigned-tensor">;
+def XTenNN_AnyFloatTensor : TensorOf<[AnyFloat]>;
+
+def XTenNN_AnyIntegerOrFloat : AnyTypeOf<[AnyInteger, AnyFloat], "Integer or Float">;
 
 #endif // XTENNN_TYPES
