@@ -22,6 +22,6 @@ def XTenNN_AnySignlessOrUnsignedIntegerTensor : TensorOf<
 
 def XTenNN_AnyFloatTensor : TensorOf<[AnyFloat]>;
 
-def XTenNN_AnyIntegerOrFloat : AnyTypeOf<[AnySignlessInteger, AnyFloat], "Integer or Float">;
+def XTenNN_AnyIntegerOrFloat : AnyTypeOf<[AnyInteger, AnyFloat], "Integer or Float">;
 
 #endif // XTENNN_TYPES
