@@ -163,10 +163,17 @@ std::optional<ValueRange> resizeToTorch(ResizeOp op, ResizeOp::Adaptor adaptor,
                         ConversionPatternRewriter &rewriter) {
   auto loc = op->getLoc();
   auto opName = rewriter.getStringAttr("onnx.Resize");
-  // Mode Nearest is supported via conversion to tosa and mostly unsupported by torch.operator "onnx" 
-  if (adaptor.getMode() == 0)
-    return std::nullopt;
-  std::string modeStr = "linear";
+  std::string modeStr;
+  switch (adaptor.getMode()) {
+    case 0:
+      modeStr = "nearest";
+      break;
+    case 1:
+      modeStr = "linear";
+      break;
+    default:
+      return std::nullopt;
+  }
   llvm::SmallVector<std::string, 4> numberToTransMode = {"half_pixel", "pytorch_half_pixel", "asymmetric", "align_corners"};
   if (adaptor.getCoordinateTransformationMode() > numberToTransMode.size())
     return std::nullopt;
@@ -185,8 +192,10 @@ std::optional<ValueRange> resizeToTorch(ResizeOp op, ResizeOp::Adaptor adaptor,
 
   // Operands in order : X - roi - scales - sizes
   // roi and sizes are None because they are not supported by the xten representation of resize
+  // sizes is omitted from the argument list because convert-torch-onnx-to-torch expects it to
+  // be non-none when present.
   auto noneConst = rewriter.create<Torch::ConstantNoneOp>(loc);
-  llvm::SmallVector<Value> operands = {values[0], noneConst, scalesConst, noneConst}; 
+  llvm::SmallVector<Value> operands = {values[0], noneConst, scalesConst};
   return rewriter
       .create<Torch::OperatorOp>(loc, types[0], operands, attrs, op->getRegions().size())
       ->getResults();
