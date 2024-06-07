@@ -163,18 +163,37 @@ std::optional<ValueRange> resizeToTorch(ResizeOp op, ResizeOp::Adaptor adaptor,
                         ConversionPatternRewriter &rewriter) {
   auto loc = op->getLoc();
   auto opName = rewriter.getStringAttr("onnx.Resize");
-  // Mode Nearest is supported via conversion to tosa and mostly unsupported by torch.operator "onnx" 
-  if (adaptor.getMode() == 0)
-    return std::nullopt;
-  std::string modeStr = "linear";
+  std::string modeStr;
+  switch (adaptor.getMode()) {
+    case 0:
+      modeStr = "nearest";
+      break;
+    case 1:
+      modeStr = "linear";
+      break;
+    default:
+      return std::nullopt;
+  }
+  llvm::SmallVector<NamedAttribute> attrs;
+
   llvm::SmallVector<std::string, 4> numberToTransMode = {"half_pixel", "pytorch_half_pixel", "asymmetric", "align_corners"};
   if (adaptor.getCoordinateTransformationMode() > numberToTransMode.size())
     return std::nullopt;
   std::string coordinateTransStr = numberToTransMode[adaptor.getCoordinateTransformationMode()];
-  auto modeAttr = rewriter.getNamedAttr("torch.onnx.mode", rewriter.getStringAttr(modeStr));
-  auto coordinateModeAttr = rewriter.getNamedAttr("torch.onnx.coordinate_transformation_mode", rewriter.getStringAttr(coordinateTransStr));
-  auto nameAttr = rewriter.getNamedAttr("name", opName);
-  llvm::SmallVector<NamedAttribute> attrs ={nameAttr, modeAttr, coordinateModeAttr};
+  attrs.push_back(rewriter.getNamedAttr("torch.onnx.mode", rewriter.getStringAttr(modeStr)));
+
+  if (modeStr == "nearest") {
+    llvm::SmallVector<std::string, 4> numberToNearestModeStr = {"floor", "round_prefer_ceil", "round_prefer_floor"};
+    if (adaptor.getNearestMode() > numberToNearestModeStr.size())
+      return std::nullopt;
+
+    std::string nearestModeStr = numberToNearestModeStr[adaptor.getNearestMode()];
+    attrs.push_back(rewriter.getNamedAttr("torch.onnx.nearest_mode", rewriter.getStringAttr(nearestModeStr)));
+  }
+
+  attrs.push_back(rewriter.getNamedAttr("torch.onnx.coordinate_transformation_mode", rewriter.getStringAttr(coordinateTransStr)));
+  attrs.push_back(rewriter.getNamedAttr("name", opName));
+
 
   auto scalesAttr = adaptor.getScales();
   // Create a constant for the scales
@@ -185,8 +204,10 @@ std::optional<ValueRange> resizeToTorch(ResizeOp op, ResizeOp::Adaptor adaptor,
 
   // Operands in order : X - roi - scales - sizes
   // roi and sizes are None because they are not supported by the xten representation of resize
+  // sizes is omitted from the argument list because convert-torch-onnx-to-torch expects it to
+  // be non-none when present.
   auto noneConst = rewriter.create<Torch::ConstantNoneOp>(loc);
-  llvm::SmallVector<Value> operands = {values[0], noneConst, scalesConst, noneConst}; 
+  llvm::SmallVector<Value> operands = {values[0], noneConst, scalesConst};
   return rewriter
       .create<Torch::OperatorOp>(loc, types[0], operands, attrs, op->getRegions().size())
       ->getResults();
