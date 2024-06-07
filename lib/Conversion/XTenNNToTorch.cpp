@@ -174,14 +174,26 @@ std::optional<ValueRange> resizeToTorch(ResizeOp op, ResizeOp::Adaptor adaptor,
     default:
       return std::nullopt;
   }
+  llvm::SmallVector<NamedAttribute> attrs;
+
   llvm::SmallVector<std::string, 4> numberToTransMode = {"half_pixel", "pytorch_half_pixel", "asymmetric", "align_corners"};
   if (adaptor.getCoordinateTransformationMode() > numberToTransMode.size())
     return std::nullopt;
   std::string coordinateTransStr = numberToTransMode[adaptor.getCoordinateTransformationMode()];
-  auto modeAttr = rewriter.getNamedAttr("torch.onnx.mode", rewriter.getStringAttr(modeStr));
-  auto coordinateModeAttr = rewriter.getNamedAttr("torch.onnx.coordinate_transformation_mode", rewriter.getStringAttr(coordinateTransStr));
-  auto nameAttr = rewriter.getNamedAttr("name", opName);
-  llvm::SmallVector<NamedAttribute> attrs ={nameAttr, modeAttr, coordinateModeAttr};
+  attrs.push_back(rewriter.getNamedAttr("torch.onnx.mode", rewriter.getStringAttr(modeStr)));
+
+  if (modeStr == "nearest") {
+    llvm::SmallVector<std::string, 4> numberToNearestModeStr = {"floor", "round_prefer_ceil", "round_prefer_floor"};
+    if (adaptor.getNearestMode() > numberToNearestModeStr.size())
+      return std::nullopt;
+
+    std::string nearestModeStr = numberToNearestModeStr[adaptor.getNearestMode()];
+    attrs.push_back(rewriter.getNamedAttr("torch.onnx.nearest_mode", rewriter.getStringAttr(nearestModeStr)));
+  }
+
+  attrs.push_back(rewriter.getNamedAttr("torch.onnx.coordinate_transformation_mode", rewriter.getStringAttr(coordinateTransStr)));
+  attrs.push_back(rewriter.getNamedAttr("name", opName));
+
 
   auto scalesAttr = adaptor.getScales();
   // Create a constant for the scales
