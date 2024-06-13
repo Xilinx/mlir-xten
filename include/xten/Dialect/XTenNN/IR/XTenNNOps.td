@@ -482,10 +482,10 @@ def XtenNN_RoundOp: XTenNN_Op<"round", [Pure, TosaExtension, ElementwiseUnary, S
     In case of halves, the rule is to round them to the nearest even integer as does the 'round' operation in torch and onnx.
   }];
   let arguments = (ins
-    XTenNN_AnyFloatTensor:$input
+    AnyTensor:$input
   );
   let results = (outs
-    XTenNN_AnyFloatTensor:$output
+    AnyTensor:$output
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
@@ -498,10 +498,10 @@ def XtenNN_SignOp: XTenNN_Op<"sign", [Pure, TosaExtension, ElementwiseUnary, Sam
     If the input is a NaN, the output will be a copy of the input element.
   }];
   let arguments = (ins
-    XTenNN_AnyFloatTensor:$input
+    AnyTensor:$input
   );
   let results = (outs
-    XTenNN_AnyFloatTensor:$output
+    AnyTensor:$output
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
