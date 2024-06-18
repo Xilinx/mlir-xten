@@ -37,33 +37,25 @@ using namespace mlir::torch;
 
 namespace {
 
-Type toTorchTensorTypeCast(PatternRewriter &rewriter, Type ty) {
-  auto tensorTy = ty.cast<TensorType>();
+Type toTorchTensorTypeCast(PatternRewriter &rewriter, ShapedType ty) {
+  auto elementType = ty.getElementType();
 
-  auto elementType = dyn_cast<IntegerType>(tensorTy.getElementType());
-  if (elementType && elementType.isSignlessInteger()) {
-    elementType = rewriter.getIntegerType(tensorTy.getElementType().getIntOrFloatBitWidth(), true);
-    return Torch::ValueTensorType::get(
-        ty.getContext(), tensorTy.getShape(), elementType);
+  auto intElementType = dyn_cast<IntegerType>(ty.getElementType());
+  if (intElementType && intElementType.isSignlessInteger()) {
+      elementType = rewriter.getIntegerType(elementType.getIntOrFloatBitWidth(),
+        /*isSigned=*/true);
   }
+
   return Torch::ValueTensorType::get(
-      ty.getContext(), tensorTy.getShape(), tensorTy.getElementType());
+      ty.getContext(), ty.getShape(), elementType);
 }
 
 Value toTorchTensorTypeCast(PatternRewriter &rewriter, Value input) {
-
   auto tensorTy = dyn_cast<ShapedType>(input.getType());
-  auto sizes = tensorTy.getShape();
-  auto tensorEltTy = tensorTy.getElementType();
-  if (tensorEltTy.isSignlessInteger()) {
-    tensorEltTy = rewriter.getIntegerType(tensorTy.getElementTypeBitWidth(), true);
-  }
-
   return rewriter
       .create<TorchConversion::FromBuiltinTensorOp>(
           input.getLoc(),
-          mlir::torch::Torch::ValueTensorType::get(input.getContext(), sizes,
-                                                   tensorEltTy),
+          toTorchTensorTypeCast(rewriter, tensorTy),
           input)
       .getResult();
 }
@@ -309,8 +301,6 @@ public:
   matchAndRewrite(SrcOpT op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
 
-    auto *ctx = op->getContext();
-
     SmallVector<Value> vtensorOperands;
     llvm::transform(
         op->getOperands(), std::back_inserter(vtensorOperands),
@@ -320,7 +310,7 @@ public:
     SmallVector<Type> vtensorResultTypes;
     llvm::transform(op->getResultTypes(),
                     std::back_inserter(vtensorResultTypes), [&](Type ty) {
-                      return toTorchTensorTypeCast(rewriter, ty);
+                      return toTorchTensorTypeCast(rewriter, cast<ShapedType>(ty));
                     });
 
     // Call the function that creates the new operation.
