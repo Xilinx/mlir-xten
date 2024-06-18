@@ -46,3 +46,16 @@ func.func @reflect_pad_i32(%arg0: tensor<1x3x4x5xi32> , %arg1: tensor<8xi64>) ->
 // CHECK:    %[[OP:.*]] = torch.operator "onnx.Pad"(%[[FROM_ARG_0]], %[[FROM_ARG_1]]) {torch.onnx.mode = "reflect"} : (!torch.vtensor<[1,3,4,5],si32>, !torch.vtensor<[8],si64>) -> !torch.vtensor<[1,3,6,7],si32>
 // CHECK:    %[[TO:.*]] = torch_c.to_builtin_tensor %[[OP]] : !torch.vtensor<[1,3,6,7],si32> -> tensor<1x3x6x7xi32>
 // CHECK:    return %[[TO]] : tensor<1x3x6x7xi32>
+
+func.func @reflect_pad_i1(%arg0: tensor<1x3x4x5xi1> , %arg1: tensor<8xi64>) -> tensor<1x3x6x7xi1> {
+    %0 = xten_nn.reflect_pad %arg0, %arg1 : (tensor<1x3x4x5xi1>, tensor<8xi64>) -> tensor<1x3x6x7xi1>
+    return %0 : tensor<1x3x6x7xi1>
+}
+
+// CHECK-LABEL: func @reflect_pad_i1
+// CHECK-SAME: (%[[ARG_0:.*]]: tensor<1x3x4x5xi1>, %[[ARG_1:.*]]: tensor<8xi64>) -> tensor<1x3x6x7xi1> attributes {torch.onnx_meta.opset_version = 19 : si64} {
+// CHECK:   %[[FROM_ARG_0:.*]] = torch_c.from_builtin_tensor %[[ARG_0]] : tensor<1x3x4x5xi1> -> !torch.vtensor<[1,3,4,5],i1>
+// CHECK:   %[[FROM_ARG_1:.*]] = torch_c.from_builtin_tensor %[[ARG_1]] : tensor<8xi64> -> !torch.vtensor<[8],si64>
+// CHECK:   %[[OP:.*]] = torch.operator "onnx.Pad"(%[[FROM_ARG_0]], %[[FROM_ARG_1]]) {torch.onnx.mode = "reflect"} : (!torch.vtensor<[1,3,4,5],i1>, !torch.vtensor<[8],si64>) -> !torch.vtensor<[1,3,6,7],i1>
+// CHECK:   %[[TO:.*]] = torch_c.to_builtin_tensor %[[OP]] : !torch.vtensor<[1,3,6,7],i1> -> tensor<1x3x6x7xi1>
+// CHECK:   return %[[TO]] : tensor<1x3x6x7xi1>

@@ -41,7 +41,7 @@ Type toTorchTensorTypeCast(PatternRewriter &rewriter, ShapedType ty) {
   auto elementType = ty.getElementType();
 
   auto intElementType = dyn_cast<IntegerType>(ty.getElementType());
-  if (intElementType && intElementType.isSignlessInteger()) {
+  if (intElementType && intElementType.isSignlessInteger() && intElementType.getWidth() != 1) {
       elementType = rewriter.getIntegerType(elementType.getIntOrFloatBitWidth(),
         /*isSigned=*/true);
   }
