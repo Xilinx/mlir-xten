@@ -17,6 +17,7 @@ func.func @reflect_pad_bf16(%arg0: tensor<1x32x122x122xbf16>) -> tensor<1x32x124
 // CHECK:    return %[[TO]] : tensor<1x32x124x124xbf16>
 
 // -----
+
 func.func @reflect_pad_f32(%arg0: tensor<1x32x122x122xf32>) -> tensor<1x32x124x124xf32> {
     %pad = "tosa.const"() <{value = dense<[0, 0, 1, 1, 0, 0, 1, 1]> : tensor<8xi64>}> : () -> tensor<8xi64>
     %reflect_pad = xten_nn.reflect_pad %arg0, %pad {LayerName = "Pad_282", OutputName = "Pad_282"} : (tensor<1x32x122x122xf32>, tensor<8xi64>) -> (tensor<1x32x124x124xf32>)
@@ -30,3 +31,18 @@ func.func @reflect_pad_f32(%arg0: tensor<1x32x122x122xf32>) -> tensor<1x32x124x1
 // CHECK:    %[[OP:.*]] = torch.operator "onnx.Pad"(%[[FROM_ARG]], %[[FROM_PADS]]) {torch.onnx.mode = "reflect"} : (!torch.vtensor<[1,32,122,122],f32>, !torch.vtensor<[8],si64>) -> !torch.vtensor<[1,32,124,124],f32>
 // CHECK:    %[[TO:.*]] = torch_c.to_builtin_tensor %[[OP]] : !torch.vtensor<[1,32,124,124],f32> -> tensor<1x32x124x124xf32>
 // CHECK:    return %[[TO]] : tensor<1x32x124x124xf32>
+
+// -----
+
+func.func @reflect_pad_i32(%arg0: tensor<1x3x4x5xi32> , %arg1: tensor<8xi64>) -> tensor<1x3x6x7xi32> {
+    %0 = xten_nn.reflect_pad %arg0, %arg1 : (tensor<1x3x4x5xi32>, tensor<8xi64>) -> tensor<1x3x6x7xi32>
+    return %0 : tensor<1x3x6x7xi32>
+}
+
+// CHECK-LABEL: func @reflect_pad_i32
+// CHECK-SAME: (%[[ARG_0:.*]]: tensor<1x3x4x5xi32>, %[[ARG_1:.*]]: tensor<8xi64>) -> tensor<1x3x6x7xi32> attributes {torch.onnx_meta.opset_version = 19 : si64} {
+// CHECK:    %[[FROM_ARG_0:.*]] = torch_c.from_builtin_tensor %[[ARG_0]] : tensor<1x3x4x5xi32> -> !torch.vtensor<[1,3,4,5],si32>
+// CHECK:    %[[FROM_ARG_1:.*]] = torch_c.from_builtin_tensor %[[ARG_1]] : tensor<8xi64> -> !torch.vtensor<[8],si64>
+// CHECK:    %[[OP:.*]] = torch.operator "onnx.Pad"(%[[FROM_ARG_0]], %[[FROM_ARG_1]]) {torch.onnx.mode = "reflect"} : (!torch.vtensor<[1,3,4,5],si32>, !torch.vtensor<[8],si64>) -> !torch.vtensor<[1,3,6,7],si32>
+// CHECK:    %[[TO:.*]] = torch_c.to_builtin_tensor %[[OP]] : !torch.vtensor<[1,3,6,7],si32> -> tensor<1x3x6x7xi32>
+// CHECK:    return %[[TO]] : tensor<1x3x6x7xi32>

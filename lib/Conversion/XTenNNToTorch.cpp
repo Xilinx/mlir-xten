@@ -37,6 +37,19 @@ using namespace mlir::torch;
 
 namespace {
 
+Type toTorchTensorTypeCast(PatternRewriter &rewriter, Type ty) {
+  auto tensorTy = ty.cast<TensorType>();
+
+  auto elementType = dyn_cast<IntegerType>(tensorTy.getElementType());
+  if (elementType && elementType.isSignlessInteger()) {
+    elementType = rewriter.getIntegerType(tensorTy.getElementType().getIntOrFloatBitWidth(), true);
+    return Torch::ValueTensorType::get(
+        ty.getContext(), tensorTy.getShape(), elementType);
+  }
+  return Torch::ValueTensorType::get(
+      ty.getContext(), tensorTy.getShape(), tensorTy.getElementType());
+}
+
 Value toTorchTensorTypeCast(PatternRewriter &rewriter, Value input) {
 
   auto tensorTy = dyn_cast<ShapedType>(input.getType());
@@ -307,9 +320,7 @@ public:
     SmallVector<Type> vtensorResultTypes;
     llvm::transform(op->getResultTypes(),
                     std::back_inserter(vtensorResultTypes), [&](Type ty) {
-                      auto tensorTy = cast<TensorType>(ty);
-                      return Torch::ValueTensorType::get(
-                          ctx, tensorTy.getShape(), tensorTy.getElementType());
+                      return toTorchTensorTypeCast(rewriter, ty);
                     });
 
     // Call the function that creates the new operation.
