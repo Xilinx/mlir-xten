@@ -37,20 +37,25 @@ using namespace mlir::torch;
 
 namespace {
 
-Value toTorchTensorTypeCast(PatternRewriter &rewriter, Value input) {
+Type toTorchTensorTypeCast(PatternRewriter &rewriter, ShapedType ty) {
+  auto elementType = ty.getElementType();
 
-  auto tensorTy = dyn_cast<ShapedType>(input.getType());
-  auto sizes = tensorTy.getShape();
-  auto tensorEltTy = tensorTy.getElementType();
-  if (tensorEltTy.isSignlessInteger()) {
-    tensorEltTy = rewriter.getIntegerType(tensorTy.getElementTypeBitWidth(), true);
+  auto intElementType = dyn_cast<IntegerType>(ty.getElementType());
+  if (intElementType && intElementType.isSignlessInteger() && intElementType.getWidth() != 1) {
+      elementType = rewriter.getIntegerType(elementType.getIntOrFloatBitWidth(),
+        /*isSigned=*/true);
   }
 
+  return Torch::ValueTensorType::get(ty.getContext(), ty.getShape(),
+                                     elementType);
+}
+
+Value toTorchTensorTypeCast(PatternRewriter &rewriter, Value input) {
+  auto tensorTy = cast<ShapedType>(input.getType());
   return rewriter
       .create<TorchConversion::FromBuiltinTensorOp>(
-          input.getLoc(),
-          mlir::torch::Torch::ValueTensorType::get(input.getContext(), sizes,
-                                                   tensorEltTy),
+          input.getLoc(), toTorchTensorTypeCast(rewriter, tensorTy),
+
           input)
       .getResult();
 }
@@ -296,8 +301,6 @@ public:
   matchAndRewrite(SrcOpT op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
 
-    auto *ctx = op->getContext();
-
     SmallVector<Value> vtensorOperands;
     llvm::transform(
         op->getOperands(), std::back_inserter(vtensorOperands),
@@ -307,9 +310,7 @@ public:
     SmallVector<Type> vtensorResultTypes;
     llvm::transform(op->getResultTypes(),
                     std::back_inserter(vtensorResultTypes), [&](Type ty) {
-                      auto tensorTy = cast<TensorType>(ty);
-                      return Torch::ValueTensorType::get(
-                          ctx, tensorTy.getShape(), tensorTy.getElementType());
+                      return toTorchTensorTypeCast(rewriter, cast<ShapedType>(ty));
                     });
 
     // Call the function that creates the new operation.
