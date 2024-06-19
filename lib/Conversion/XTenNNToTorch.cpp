@@ -40,22 +40,22 @@ namespace {
 Type toTorchTensorTypeCast(PatternRewriter &rewriter, ShapedType ty) {
   auto elementType = ty.getElementType();
 
-  auto intElementType = dyn_cast<IntegerType>(ty.getElementType());
+  auto intElementType = dyn_ cast<IntegerType>(ty.getElementType());
   if (intElementType && intElementType.isSignlessInteger() && intElementType.getWidth() != 1) {
       elementType = rewriter.getIntegerType(elementType.getIntOrFloatBitWidth(),
         /*isSigned=*/true);
   }
 
-  return Torch::ValueTensorType::get(
-      ty.getContext(), ty.getShape(), elementType);
+  return Torch::ValueTensorType::get(ty.getContext(), ty.getShape(),
+                                     elementType);
 }
 
 Value toTorchTensorTypeCast(PatternRewriter &rewriter, Value input) {
   auto tensorTy = dyn_cast<ShapedType>(input.getType());
   return rewriter
       .create<TorchConversion::FromBuiltinTensorOp>(
-          input.getLoc(),
-          toTorchTensorTypeCast(rewriter, tensorTy),
+          input.getLoc(), toTorchTensorTypeCast(rewriter, tensorTy),
+
           input)
       .getResult();
 }
