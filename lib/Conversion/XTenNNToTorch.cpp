@@ -202,10 +202,14 @@ std::optional<ValueRange> resizeToTorch(ResizeOp op, ResizeOp::Adaptor adaptor,
 
   auto scalesAttr = adaptor.getScales();
   // Create a constant for the scales
-  auto denseScales = DenseElementsAttr::get(RankedTensorType::get({(long)scalesAttr.size()}, rewriter.getF32Type()), scalesAttr);
-  auto scalesConst = rewriter.create<Torch::ValueTensorLiteralOp>(loc, 
-                           Torch::ValueTensorType::get(op->getContext(), {scalesAttr.size()}, rewriter.getF32Type()), 
-                           denseScales);
+  auto shape =
+      llvm::SmallVector<int64_t>{static_cast<int64_t>(scalesAttr.size())};
+  auto denseScales = DenseElementsAttr::get(
+      RankedTensorType::get(shape, rewriter.getF32Type()), scalesAttr);
+  auto valueTensorType = Torch::ValueTensorType::get(op->getContext(), shape,
+                                                     rewriter.getF32Type());
+  auto scalesConst = rewriter.create<Torch::ValueTensorLiteralOp>(
+      loc, valueTensorType, denseScales);
 
   // Operands in order : X - roi - scales - sizes
   // roi and sizes are None because they are not supported by the xten representation of resize
