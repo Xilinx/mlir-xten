@@ -16,6 +16,7 @@
 include "xten/Dialect/XTenNN/IR/XTenNNBase.td"
 include "xten/Dialect/XTenNN/IR/XTenNNTypes.td"
 
+include "mlir/IR/EnumAttr.td"
 include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/IR/OpAsmInterface.td"
 include "mlir/IR/RegionKindInterface.td"
@@ -34,6 +35,29 @@ class XTenNN_Op<string mnemonic, list<Trait> traits = []>
 //===----------------------------------------------------------------------===//
 // SubgraphOp
 //===----------------------------------------------------------------------===//
+
+def MicroKernel: I32EnumAttrCase<"MicroKernel", 0>;
+def TemplatedGraph: I32EnumAttrCase<"TemplatedGraph", 1>;
+def InCoreChain: I32EnumAttrCase<"InCoreChain", 2>;
+def MllibKernel: I32EnumAttrCase<"MllibKernel", 3>;
+def PseudoOp: I32EnumAttrCase<"PseudoOp", 4>;
+def MemTileChain: I32EnumAttrCase<"MemTileChain", 5>;
+def Interface: I32EnumAttrCase<"Interface", 6>;
+def CpuBecause: I32EnumAttrCase<"CpuBecause", 7>;
+
+def ReasonEnum : I32EnumAttr<"ReasonEnum", "List of possible reasons for a subgraph to exist",
+                           [MicroKernel,
+                            TemplatedGraph,
+                            InCoreChain,
+                            MllibKernel,
+                            PseudoOp,
+                            MemTileChain,
+                            Interface,
+                            CpuBecause]> {
+  let cppNamespace = "amd::xten_nn";
+  let stringToSymbolFnName = "reasonStrToEnum";
+  let symbolToStringFnName = "toString";
+}
 
 def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
             DeclareOpInterfaceMethods<InferShapedTypeOpInterface,
@@ -71,7 +95,7 @@ def XTenNN_SubgraphOp : XTenNN_Op<"subgraph", [
         ```
     }];
 
-    let arguments = (ins Variadic<AnyType>:$captures);
+    let arguments = (ins Variadic<AnyType>:$captures, StrAttr:$Reason);
     let results = (outs Variadic<AnyType>:$results);
     let regions = (region MaxSizedRegion<1>:$content);
 

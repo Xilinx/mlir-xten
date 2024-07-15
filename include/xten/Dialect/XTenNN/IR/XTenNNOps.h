@@ -22,6 +22,9 @@
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "xten/Dialect/XTenNN/Interfaces/EnclaveOpInterfaces.h"
 
+// Include enums
+#include "xten/Dialect/XTenNN/IR/XTenNNEnums.h.inc"
+
 namespace mlir::OpTrait {
 template <typename ConcreteType>
 class TosaExtension : public TraitBase<ConcreteType, TosaExtension> {};
