@@ -71,26 +71,27 @@ Value toBuiltinTensorTypeCast(OpBuilder &builder, Value val, Type type) {
                                                                    type, val);
 }
 
-struct Conv2dPadding {
+struct Padding2d {
   std::array<int64_t, 2> hPadding;
   std::array<int64_t, 2> wPadding;
 
   [[nodiscard]] bool isSymmetric() const {
     return hPadding[0] == hPadding[1] && wPadding[0] == wPadding[1];
   }
+
+  template <typename T>
+  static Padding2d get(T adaptor) {
+    auto pad = adaptor.getPad();
+    assert(pad.size() == 2 && "expected 2 elements by definition");
+
+    auto hPadding = cast<DenseI64ArrayAttr>(pad[0]);
+    auto wPadding = cast<DenseI64ArrayAttr>(pad[1]);
+    assert(hPadding.size() == 2 && "expected 2 elements by definition");
+    assert(wPadding.size() == 2 && "expected 2 elements by definition");
+
+    return {{hPadding[0], hPadding[1]}, {wPadding[0], wPadding[1]}};
+  }
 };
-
-Conv2dPadding getPadding(GroupConv2dOp::Adaptor adaptor) {
-  auto pad = adaptor.getPad();
-  assert(pad.size() == 2 && "expected 2 elements by definition");
-
-  auto hPadding = cast<DenseI64ArrayAttr>(pad[0]);
-  auto wPadding = cast<DenseI64ArrayAttr>(pad[1]);
-  assert(hPadding.size() == 2 && "expected 2 elements by definition");
-  assert(wPadding.size() == 2 && "expected 2 elements by definition");
-
-  return {{hPadding[0], hPadding[1]}, {wPadding[0], wPadding[1]}};
-}
 
 template <typename SrcOpT>
 std::optional<ValueRange> oneToOneXTenNNToTorch(SrcOpT op,
@@ -113,7 +114,7 @@ std::optional<ValueRange> groupConv2dToTorch(GroupConv2dOp op, GroupConv2dOp::Ad
 
   auto newInput = values[0];
   mlir::Value conv2dPads;
-  Conv2dPadding structPadding = getPadding(adaptor);
+  auto structPadding = Padding2d::get(adaptor);
   if (!structPadding.isSymmetric()) {
     // Padding is not symmetric which is the only mode aten conv2d op supports.
     // We circumvent this problem by adding a padding operation
@@ -160,6 +161,37 @@ std::optional<ValueRange> groupConv2dToTorch(GroupConv2dOp op, GroupConv2dOp::Ad
   return rewriter
       .create<Torch::AtenConv2dOp>(loc, types[0], newInput, newWeights, newBias,
                                    stride, conv2dPads, dilation, group)
+      ->getResults();
+}
+
+std::optional<ValueRange>
+convTranspose2dToTorch(ConvTransposeOp op, ConvTransposeOp::Adaptor adaptor,
+                       ArrayRef<Type> types, ValueRange values,
+                       ConversionPatternRewriter &rewriter) {
+  auto loc = op->getLoc();
+
+  auto newInput = values[0];
+  auto newWeights = values[1];
+  auto newBias = values[2];
+
+  auto stride = Torch::toTorchList(loc, rewriter, adaptor.getStride().vec());
+  auto dilation =
+      Torch::toTorchList(loc, rewriter, adaptor.getDilation().vec());
+  auto group =
+      rewriter.create<Torch::ConstantIntOp>(loc, adaptor.getGroupAttr());
+  auto outputPadding =
+      Torch::toTorchList(loc, rewriter, adaptor.getOutputPadding().vec());
+
+  // TODO: check the order is matched with what torch needs.
+  auto pads = Padding2d::get(adaptor);
+  auto inputPadding = Torch::toTorchList(
+      loc, rewriter,
+      {pads.hPadding[0], pads.hPadding[1], pads.wPadding[0], pads.hPadding[1]});
+
+  return rewriter
+      .create<Torch::AtenConvTranspose2dInputOp>(
+          loc, types[0], newInput, newWeights, newBias, stride, inputPadding,
+          outputPadding, group, dilation)
       ->getResults();
 }
 
@@ -377,11 +409,10 @@ struct ConvertXTenNNToTorch
         context);
     patterns.add<ApplyXTenNNToTorch<DepthToSpaceOp, depthToSpaceToTorch>>(
         context);
-    patterns.add<ApplyXTenNNToTorch<GridSampleOp, gridSampleToTorch>>(
-        context);
-    patterns.add<ApplyXTenNNToTorch<ReflectPadOp, padReflectToTorch>>(
-        context);
-    patterns.add<ApplyXTenNNToTorch<ResizeOp, resizeToTorch>>(
+    patterns.add<ApplyXTenNNToTorch<GridSampleOp, gridSampleToTorch>>(context);
+    patterns.add<ApplyXTenNNToTorch<ReflectPadOp, padReflectToTorch>>(context);
+    patterns.add<ApplyXTenNNToTorch<ResizeOp, resizeToTorch>>(context);
+    patterns.add<ApplyXTenNNToTorch<ConvTransposeOp, convTranspose2dToTorch>>(
         context);
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();
