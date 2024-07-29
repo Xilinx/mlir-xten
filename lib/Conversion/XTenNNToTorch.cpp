@@ -46,8 +46,13 @@ Type toTorchTensorTypeCast(PatternRewriter &rewriter, ShapedType ty) {
         /*isSigned=*/true);
   }
 
-  return Torch::ValueTensorType::get(ty.getContext(), ty.getShape(),
-                                     elementType);
+  if (!ty.hasRank()) {
+    return Torch::ValueTensorType::get(ty.getContext(), {}, elementType);
+  }
+
+  return Torch::ValueTensorType::get(
+      ty.getContext(), Torch::makeShapeTorchCompatible(ty.getShape()),
+      elementType);
 }
 
 Value toTorchTensorTypeCast(PatternRewriter &rewriter, Value input) {
