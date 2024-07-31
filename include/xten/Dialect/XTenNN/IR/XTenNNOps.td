@@ -492,4 +492,28 @@ def XtenNN_SignOp: XTenNN_Op<"sign", [Pure, TosaExtension, ElementwiseUnary, Sam
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
 }
 
+def XtenNN_ConvTransposeOp: XTenNN_Op<"ConvTranspose",[Pure, TosaExtension]> {
+  let summary = "Perform ConvTranspose operation";
+  let description = [{
+    This operation is equivalent to `onnx.ConvTranspose` and computes the ConvTranspose.
+  }];
+
+  let arguments = (ins
+    4DTensorOf<[AnyFloat]>:$input,
+    4DTensorOf<[AnyFloat]>:$weights,
+    1DTensorOf<[AnyFloat]>:$bias,
+    ArrayAttr<2>:$pad,
+    I64DenseArrayAttr<2>:$output_padding,
+    I64DenseArrayAttr<2>:$stride,
+    I64DenseArrayAttr<2>:$dilation,
+    I64Attr:$group
+  );
+
+  let results = (outs
+    4DTensorOf<[AnyFloat]>:$output
+  );
+
+  let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
+}
+
 #endif // XTENNN_OPS

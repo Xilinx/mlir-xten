@@ -46,8 +46,13 @@ Type toTorchTensorTypeCast(PatternRewriter &rewriter, ShapedType ty) {
         /*isSigned=*/true);
   }
 
-  return Torch::ValueTensorType::get(ty.getContext(), ty.getShape(),
-                                     elementType);
+  if (!ty.hasRank()) {
+    return Torch::ValueTensorType::get(ty.getContext(), {}, elementType);
+  }
+
+  return Torch::ValueTensorType::get(
+      ty.getContext(), Torch::makeShapeTorchCompatible(ty.getShape()),
+      elementType);
 }
 
 Value toTorchTensorTypeCast(PatternRewriter &rewriter, Value input) {
@@ -71,26 +76,54 @@ Value toBuiltinTensorTypeCast(OpBuilder &builder, Value val, Type type) {
                                                                    type, val);
 }
 
-struct Conv2dPadding {
+struct Padding2d {
   std::array<int64_t, 2> hPadding;
   std::array<int64_t, 2> wPadding;
 
   [[nodiscard]] bool isSymmetric() const {
     return hPadding[0] == hPadding[1] && wPadding[0] == wPadding[1];
   }
+
+  template <typename T>
+  static Padding2d get(T adaptor) {
+    auto pad = adaptor.getPad();
+    assert(pad.size() == 2 && "expected 2 elements by definition");
+
+    auto hPadding = cast<DenseI64ArrayAttr>(pad[0]);
+    auto wPadding = cast<DenseI64ArrayAttr>(pad[1]);
+    assert(hPadding.size() == 2 && "expected 2 elements by definition");
+    assert(wPadding.size() == 2 && "expected 2 elements by definition");
+
+    return {{hPadding[0], hPadding[1]}, {wPadding[0], wPadding[1]}};
+  }
+
+  // Zero padding of the input value with hPadding and wPadding using
+  // AtenConstantPadNdOp.
+  Value createZeroAtenPadOp(ConversionPatternRewriter &rewriter, Location loc,
+                            Value input) {
+
+    // Build new vtensor result type
+    auto ty = cast<Torch::ValueTensorType>(input.getType());
+    mlir::Type paddingResultTy;
+    std::optional<llvm::ArrayRef<int64_t>> optSizes = ty.getOptionalSizes();
+    if (optSizes) {
+      auto newSizes = ty.getSizes().vec();
+      newSizes[2] += hPadding[0] + hPadding[1];
+      newSizes[3] += wPadding[0] + wPadding[1];
+      paddingResultTy = Torch::ValueTensorType::get(
+          rewriter.getContext(), newSizes, ty.getOptionalDtype());
+    } else {
+      paddingResultTy = Torch::ValueTensorType::get(
+          rewriter.getContext(), ty.getOptionalSizes(), ty.getOptionalDtype());
+    }
+
+    auto zeroPadValue = rewriter.create<Torch::ConstantIntOp>(loc, 0);
+    auto pads = Torch::toTorchList(
+        loc, rewriter, {hPadding[0], hPadding[1], wPadding[0], wPadding[1]});
+    return rewriter.create<Torch::AtenConstantPadNdOp>(
+        loc, paddingResultTy, input, pads, zeroPadValue);
+  }
 };
-
-Conv2dPadding getPadding(GroupConv2dOp::Adaptor adaptor) {
-  auto pad = adaptor.getPad();
-  assert(pad.size() == 2 && "expected 2 elements by definition");
-
-  auto hPadding = cast<DenseI64ArrayAttr>(pad[0]);
-  auto wPadding = cast<DenseI64ArrayAttr>(pad[1]);
-  assert(hPadding.size() == 2 && "expected 2 elements by definition");
-  assert(wPadding.size() == 2 && "expected 2 elements by definition");
-
-  return {{hPadding[0], hPadding[1]}, {wPadding[0], wPadding[1]}};
-}
 
 template <typename SrcOpT>
 std::optional<ValueRange> oneToOneXTenNNToTorch(SrcOpT op,
@@ -113,33 +146,11 @@ std::optional<ValueRange> groupConv2dToTorch(GroupConv2dOp op, GroupConv2dOp::Ad
 
   auto newInput = values[0];
   mlir::Value conv2dPads;
-  Conv2dPadding structPadding = getPadding(adaptor);
+  auto structPadding = Padding2d::get(adaptor);
   if (!structPadding.isSymmetric()) {
     // Padding is not symmetric which is the only mode aten conv2d op supports.
     // We circumvent this problem by adding a padding operation
-
-    // Build new vtensor result type
-    auto ty = cast<Torch::ValueTensorType>(newInput.getType());
-    mlir::Type paddingResultTy;
-    std::optional<llvm::ArrayRef<int64_t>> optSizes = ty.getOptionalSizes();
-    if (optSizes) {
-      auto newSizes = ty.getSizes().vec();
-      newSizes[2] += structPadding.hPadding[0] + structPadding.hPadding[1];
-      newSizes[3] += structPadding.wPadding[0] + structPadding.wPadding[1];
-      paddingResultTy = Torch::ValueTensorType::get(op->getContext(), newSizes,
-                                                    ty.getOptionalDtype());
-    } else {
-      paddingResultTy = Torch::ValueTensorType::get(
-          op->getContext(), ty.getOptionalSizes(), ty.getOptionalDtype());
-    }
-
-    auto zeroPadValue = rewriter.create<Torch::ConstantIntOp>(loc, 0);
-    auto pads = Torch::toTorchList(
-        loc, rewriter,
-        {structPadding.hPadding[0], structPadding.hPadding[1],
-         structPadding.wPadding[0], structPadding.wPadding[1]});
-    newInput = rewriter.create<Torch::AtenConstantPadNdOp>(
-        loc, paddingResultTy, newInput, pads, zeroPadValue);
+    newInput = structPadding.createZeroAtenPadOp(rewriter, loc, newInput);
 
     // We want zero pad for the Conv2d since we are going to apply it with a
     // padding op
@@ -160,6 +171,43 @@ std::optional<ValueRange> groupConv2dToTorch(GroupConv2dOp op, GroupConv2dOp::Ad
   return rewriter
       .create<Torch::AtenConv2dOp>(loc, types[0], newInput, newWeights, newBias,
                                    stride, conv2dPads, dilation, group)
+      ->getResults();
+}
+
+std::optional<ValueRange>
+convTranspose2dToTorch(ConvTransposeOp op, ConvTransposeOp::Adaptor adaptor,
+                       ArrayRef<Type> types, ValueRange values,
+                       ConversionPatternRewriter &rewriter) {
+  auto loc = op->getLoc();
+
+  auto newInput = values[0];
+  auto newWeights = values[1];
+  auto newBias = values[2];
+
+  auto stride = Torch::toTorchList(loc, rewriter, adaptor.getStride().vec());
+  auto dilation =
+      Torch::toTorchList(loc, rewriter, adaptor.getDilation().vec());
+  auto group =
+      rewriter.create<Torch::ConstantIntOp>(loc, adaptor.getGroupAttr());
+  auto outputPadding =
+      Torch::toTorchList(loc, rewriter, adaptor.getOutputPadding().vec());
+
+  mlir::Value padValue;
+  auto structPadding = Padding2d::get(adaptor);
+  if (!structPadding.isSymmetric()) {
+    // AtenConvTranspose2dInputOp supports only symmetric padding. This can be
+    // handled by creating a pad operation on the input.
+    newInput = structPadding.createZeroAtenPadOp(rewriter, loc, newInput);
+    padValue = Torch::toTorchList(loc, rewriter, {0, 0});
+  } else {
+    padValue = Torch::toTorchList(
+        loc, rewriter, {structPadding.hPadding[0], structPadding.wPadding[0]});
+  }
+
+  return rewriter
+      .create<Torch::AtenConvTranspose2dInputOp>(
+          loc, types[0], newInput, newWeights, newBias, stride, padValue,
+          outputPadding, group, dilation)
       ->getResults();
 }
 
@@ -377,11 +425,10 @@ struct ConvertXTenNNToTorch
         context);
     patterns.add<ApplyXTenNNToTorch<DepthToSpaceOp, depthToSpaceToTorch>>(
         context);
-    patterns.add<ApplyXTenNNToTorch<GridSampleOp, gridSampleToTorch>>(
-        context);
-    patterns.add<ApplyXTenNNToTorch<ReflectPadOp, padReflectToTorch>>(
-        context);
-    patterns.add<ApplyXTenNNToTorch<ResizeOp, resizeToTorch>>(
+    patterns.add<ApplyXTenNNToTorch<GridSampleOp, gridSampleToTorch>>(context);
+    patterns.add<ApplyXTenNNToTorch<ReflectPadOp, padReflectToTorch>>(context);
+    patterns.add<ApplyXTenNNToTorch<ResizeOp, resizeToTorch>>(context);
+    patterns.add<ApplyXTenNNToTorch<ConvTransposeOp, convTranspose2dToTorch>>(
         context);
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();
