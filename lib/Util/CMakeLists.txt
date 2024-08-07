@@ -7,11 +7,13 @@
 # (c) Copyright 2021 Xilinx, Inc. All Rights reserved.
 # (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
-add_mlir_library(XTenUtil
-  Util.cpp
-
-  LINK_LIBS PUBLIC
-  MLIRIR
-  MLIRPass
-  MLIRTransforms
-)
+if(MLIR_XTEN_WITH_TORCH)
+  add_mlir_library(XTenUtil
+    Util.cpp
+  
+    LINK_LIBS PUBLIC
+    MLIRIR
+    MLIRPass
+    MLIRTransforms
+  )
+endif()

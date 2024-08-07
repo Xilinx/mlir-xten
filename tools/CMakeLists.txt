@@ -7,4 +7,6 @@
 # (c) Copyright 2021 Xilinx, Inc. All Rights reserved.
 # (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
-add_subdirectory(aten-opt)
+if(MLIR_XTEN_WITH_TORCH)
+  add_subdirectory(aten-opt)
+endif()

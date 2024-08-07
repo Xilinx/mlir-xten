@@ -31,29 +31,31 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-function(TORCH_MLIR_detect_pybind11_install)
-  if(pybind11_DIR)
-    message(STATUS "Using explicit pybind11 cmake directory: ${pybind11_DIR} (-Dpybind11_DIR to change)")
-  else()
-    message(STATUS "Checking for pybind11 in python path...")
-    execute_process(
-      COMMAND "${Python3_EXECUTABLE}"
-      -c "import pybind11;print(pybind11.get_cmake_dir(), end='')"
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-      RESULT_VARIABLE STATUS
-      OUTPUT_VARIABLE PACKAGE_DIR
-      ERROR_QUIET)
-    if(NOT STATUS EQUAL "0")
-      message(CHECK_FAIL "not found (install via 'pip install pybind11' or set pybind11_DIR)")
-      return()
+if(MLIR_XTEN_WITH_TORCH)
+  function(TORCH_MLIR_detect_pybind11_install)
+    if(pybind11_DIR)
+      message(STATUS "Using explicit pybind11 cmake directory: ${pybind11_DIR} (-Dpybind11_DIR to change)")
+    else()
+      message(STATUS "Checking for pybind11 in python path...")
+      execute_process(
+        COMMAND "${Python3_EXECUTABLE}"
+        -c "import pybind11;print(pybind11.get_cmake_dir(), end='')"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        RESULT_VARIABLE STATUS
+        OUTPUT_VARIABLE PACKAGE_DIR
+        ERROR_QUIET)
+      if(NOT STATUS EQUAL "0")
+        message(CHECK_FAIL "not found (install via 'pip install pybind11' or set pybind11_DIR)")
+        return()
+      endif()
+      set(pybind11_DIR "${PACKAGE_DIR}" PARENT_SCOPE)
     endif()
-    set(pybind11_DIR "${PACKAGE_DIR}" PARENT_SCOPE)
-  endif()
-endfunction()
-TORCH_MLIR_detect_pybind11_install()
-find_package(pybind11 REQUIRED)
-set(pybind11_INCLUDE_DIR ${pybind11_INCLUDE_DIR})
-find_package(Python3 COMPONENTS Interpreter Development)
+  endfunction()
+  TORCH_MLIR_detect_pybind11_install()
+  find_package(pybind11 REQUIRED)
+  set(pybind11_INCLUDE_DIR ${pybind11_INCLUDE_DIR})
+  find_package(Python3 COMPONENTS Interpreter Development)
+endif()
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   find_package(MLIR REQUIRED CONFIG)
@@ -110,8 +112,14 @@ include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${XTEN_SOURCE_DIR}/include)
 include_directories(${XTEN_BINARY_DIR}/include)
 
-# TORCH_MLIR
-include_directories(${TORCH_MLIR_INCLUDE_DIRS})
+if(NOT DEFINED MLIR_XTEN_WITH_TORCH)
+  set(MLIR_XTEN_WITH_TORCH TRUE)
+endif()
+
+if(MLIR_XTEN_WITH_TORCH)
+  # TORCH_MLIR
+  include_directories(${TORCH_MLIR_INCLUDE_DIRS})
+endif()
 
 add_definitions(${LLVM_DEFINITIONS})
 
@@ -120,15 +128,17 @@ add_definitions(${LLVM_DEFINITIONS})
 umbrella_lit_testsuite_begin(check-xten-all)
 
 # Make sure we build the docs
-if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-add_custom_target(docs ALL)
-add_dependencies(docs mlir-doc)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  add_custom_target(docs ALL)
+  add_dependencies(docs mlir-doc)
 endif()
 
 add_subdirectory(include)
 add_subdirectory(lib)
 add_subdirectory(tools)
-add_subdirectory(python)
+if(MLIR_XTEN_WITH_TORCH)
+  add_subdirectory(python)
+endif()
 add_subdirectory(test)
 
 umbrella_lit_testsuite_end(check-xten-all)
