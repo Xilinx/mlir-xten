@@ -258,10 +258,9 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
 }
 
 def XTenNN_KernelOp : XTenNN_Op<"kernel", []> {
-    let summary = "Defines an opaque kernel";
+    let summary = "An opaque kernel";
     let description = [{
         The `xten_nn.kernel` operation defines an opaque computation with a name.
-        ```
     }];
 
     let arguments = (ins
