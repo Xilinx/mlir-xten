@@ -257,6 +257,22 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
   let assemblyFormat = [{ attr-dict `->` type($output) }];
 }
 
+def XTenNN_KernelOp : XTenNN_Op<"kernel", []> {
+    let summary = "Defines an opaque kernel";
+    let description = [{
+        The `xten_nn.kernel` operation defines an opaque computation with a name.
+        ```
+    }];
+
+    let arguments = (ins
+      Variadic<AnyType>:$arguments,
+      StrAttr:$name
+    );
+    let results = (outs Variadic<AnyType>:$results);
+
+    let assemblyFormat = [{ $name custom<KernelArgumentList>(type($arguments), $arguments) attr-dict `->` type($results) }];
+}
+
 //===----------------------------------------------------------------------===//
 // Ops that are missing from the TOSA standard
 //===----------------------------------------------------------------------===//

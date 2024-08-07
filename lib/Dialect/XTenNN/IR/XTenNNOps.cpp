@@ -172,6 +172,56 @@ static void printEnclaveOp(OpAsmPrinter &p, EnclaveOp op) {
   };
 }
 
+
+//===----------------------------------------------------------------------===//
+// KernelOp
+//===----------------------------------------------------------------------===//
+
+/// Parses a list of ssa values with their types.
+/// `(` (ssa-id `:` type (`,` ssa-id `:` type)*)? `)`
+///
+/// This method is used by the tablegen assembly format for the kernel op.
+static ParseResult parseKernelArgumentList(
+    OpAsmParser &parser, SmallVectorImpl<Type> &types,
+    SmallVectorImpl<OpAsmParser::UnresolvedOperand> &arguments) {
+  if (parser.parseLParen())
+    return failure();
+
+  if (succeeded(parser.parseOptionalRParen()))
+    return success();
+
+  while(true) {
+    OpAsmParser::UnresolvedOperand argument;
+    Type type;
+    if (parser.parseOperand(argument) ||
+        parser.parseColon() ||
+        parser.parseType(type))
+      return failure();
+
+    types.push_back(type);
+    arguments.push_back(argument);
+
+    if (succeeded(parser.parseOptionalRParen()))
+      return success();
+
+    if (parser.parseComma())
+      return failure();
+  }
+}
+
+/// Prints a list of ssa values with their types.
+/// `(` (ssa-id `:` type (`,` ssa-id `:` type)*)? `)`
+///
+/// This method is used by the tablegen assembly format for the kernel op.
+static void printKernelArgumentList(OpAsmPrinter &printer, Operation *op,
+                                   TypeRange types,
+                                   OperandRange arguments) {
+  printer << "(";
+  llvm::interleaveComma(llvm::zip(arguments, types), printer, 
+    [&](const auto &a) { printer << get<0>(a) << " : " << get<1>(a); });
+  printer << ")";
+}
+
 #define GET_OP_CLASSES
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.cpp.inc"
 

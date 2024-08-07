@@ -52,9 +52,7 @@ int main(int argc, char **argv) {
   DialectRegistry registry;
   registerAllDialects(registry);
   mlir::registerAllDialects(registry);
-  registry.insert<amd::xten_nn::XTenNNDialect,
-                  torch::Torch::TorchDialect,
-                  torch::TorchConversion::TorchConversionDialect>();
+  registry.insert<amd::xten_nn::XTenNNDialect>();
 
   return failed(MlirOptMain(argc, argv, "MLIR modular optimizer driver\n",
                             registry));
