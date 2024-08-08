@@ -26,6 +26,10 @@ namespace xten {
 #define GEN_PASS_REGISTRATION
 #include "xten/Conversion/Passes.h.inc"
 
+#ifdef MLIR_XTEN_WITH_TORCH
+#include "xten/Conversion/PassesTorch.h.inc"
+#endif
+
 void registerConversionPasses();
 
 } // namespace xten

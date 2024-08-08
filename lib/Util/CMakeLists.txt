@@ -8,12 +8,17 @@
 # (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
 if(MLIR_XTEN_WITH_TORCH)
-  add_mlir_library(XTenUtil
-    Util.cpp
-  
-    LINK_LIBS PUBLIC
-    MLIRIR
-    MLIRPass
-    MLIRTransforms
-  )
+    set(TORCHUTIL TorchUtil.cpp)
 endif()
+
+add_mlir_library(XTenUtil
+  Util.cpp
+  ${TORCHUTIL}
+  
+  PARTIAL_SOURCES_INTENDED
+
+  LINK_LIBS PUBLIC
+  MLIRIR
+  MLIRPass
+  MLIRTransforms
+)

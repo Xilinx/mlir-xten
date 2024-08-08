@@ -21,21 +21,6 @@ set(LIBS
   XTenTransformPasses
   XTenUtil
   XTenNNDialect
-  TorchMLIRInitAll
-  TorchMLIRTMTensorPasses
-  TorchMLIRTMTensorDialect
-  TorchMLIRTorchDialect
-  TorchMLIRTorchConversionDialect
-  TorchMLIRTorchUtils
-  TorchMLIRTorchPasses
-  TorchMLIRTorchConversionPasses
-  TorchMLIRConversionUtils
-  TorchMLIRTorchToLinalg
-  TorchMLIRTorchToSCF
-  TorchMLIRTorchToArith
-  TorchMLIRTorchToTosa
-  TorchMLIRConversionPasses
-  TorchMLIRRefBackend
   ${dialect_libs}
   ${conversion_libs}
   MLIRTestTransforms
