@@ -1,6 +1,7 @@
 // (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
 // RUN: aten-opt --convert-xtennn-to-torch  -split-input-file %s | FileCheck %s
+// REQUIRES: torch
 
 func.func @resize_align_corners_bf16(%arg0: tensor<1x256x16x16xbf16>) -> tensor<1x256x32x32xbf16> {
     %1 = xten_nn.resize %arg0 {coordinate_transformation_mode = 3 : i64, mode = 1 : i64, nearest_mode = 0 : i64, scales = array<f32: 1.000000e+00, 1.000000e+00, 2.000000e+00, 2.000000e+00>} : (tensor<1x256x16x16xbf16>) -> tensor<1x256x32x32xbf16>

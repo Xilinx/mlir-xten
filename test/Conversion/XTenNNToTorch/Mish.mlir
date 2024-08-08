@@ -1,6 +1,7 @@
 // (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
 // RUN: aten-opt --convert-xtennn-to-torch  -split-input-file %s | FileCheck %s
+// REQUIRES: torch
 
 func.func @mish(%arg0: tensor<1x10xf32>) -> tensor<1x10xf32> {
     %0 = xten_nn.mish %arg0 : (tensor<1x10xf32>) -> tensor<1x10xf32>

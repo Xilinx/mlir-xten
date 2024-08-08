@@ -1,6 +1,7 @@
 // (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
 // RUN: aten-opt --convert-xtennn-to-torch  -split-input-file %s | FileCheck %s
+// REQUIRES: torch
 
 func.func @depth_to_space_CRD_bf16(%arg0: tensor<1x16x256x256xbf16>) -> tensor<1x4x512x512xbf16> {
     %dts = xten_nn.depth_to_space %arg0 {blocksize = 2 : i64, mode = 2 : i64} : (tensor<1x16x256x256xbf16>) -> tensor<1x4x512x512xbf16>

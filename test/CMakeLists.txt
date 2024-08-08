@@ -7,24 +7,24 @@
 # (c) Copyright 2021 Xilinx, Inc. All Rights reserved.
 # (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
-if(MLIR_XTEN_WITH_TORCH)
-  configure_lit_site_cfg(
-    ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in
-    ${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg.py
-    MAIN_CONFIG
-    ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
+llvm_canonicalize_cmake_booleans(MLIR_XTEN_WITH_TORCH)
+
+configure_lit_site_cfg(
+  ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in
+  ${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg.py
+  MAIN_CONFIG
+  ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
+)
+  
+set(TEST_DEPENDS
+  FileCheck count not
+  aten-opt
   )
   
-  set(TEST_DEPENDS
-    FileCheck count not
-    aten-opt
-    )
+add_lit_testsuite(check-aten "Running the aten regression tests"
+  ${CMAKE_CURRENT_BINARY_DIR}
+  DEPENDS ${TEST_DEPENDS}
+  )
+set_target_properties(check-aten PROPERTIES FOLDER "Tests")
   
-  add_lit_testsuite(check-aten "Running the aten regression tests"
-    ${CMAKE_CURRENT_BINARY_DIR}
-    DEPENDS ${TEST_DEPENDS}
-    )
-  set_target_properties(check-aten PROPERTIES FOLDER "Tests")
-  
-  add_lit_testsuites(ATEN ${CMAKE_CURRENT_SOURCE_DIR} DEPENDS ${TEST_DEPENDS})
-endif()
+add_lit_testsuites(ATEN ${CMAKE_CURRENT_SOURCE_DIR} DEPENDS ${TEST_DEPENDS})
