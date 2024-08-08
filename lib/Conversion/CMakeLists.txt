@@ -27,3 +27,7 @@ add_mlir_library(XTenConversionPasses
   
   LINK_LIBS PUBLIC
 )
+
+if(MLIR_XTEN_WITH_TORCH)
+  target_compile_definitions(obj.XTenConversionPasses PRIVATE MLIR_XTEN_WITH_TORCH=1)
+endif()

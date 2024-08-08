@@ -9,7 +9,9 @@
 
 set(LLVM_TARGET_DEFINITIONS Passes.td)
 mlir_tablegen(Passes.h.inc -gen-pass-decls -name XTenConversion)
-mlir_tablegen(PassesTorch.h.inc -gen-pass-decls -name XTenConversion)
-add_public_tablegen_target(XTenConversionIncGen)
 
-add_mlir_doc(Passes PassesTorch XTenConversionPasses ./ -gen-pass-doc)
+set(LLVM_TARGET_DEFINITIONS PassesTorch.td)
+mlir_tablegen(PassesTorch.h.inc -gen-pass-decls -name XTenConversion)
+
+add_mlir_doc(Passes XTenConversionPasses ./ -gen-pass-doc)
+add_public_tablegen_target(XTenConversionIncGen)

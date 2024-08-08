@@ -1,5 +1,5 @@
-#ifndef XTEN_CONVERSION_PASSES
-#define XTEN_CONVERSION_PASSES
+#ifndef XTEN_CONVERSION_PASSES_TORCH
+#define XTEN_CONVERSION_PASSES_TORCH
 
 include "mlir/Pass/PassBase.td"
 
@@ -15,4 +15,4 @@ def ConvertXTenNNToTorch : Pass<"convert-xtennn-to-torch", "mlir::func::FuncOp">
   ];
 }
 
-#endif
+#endif // XTEN_CONVERSION_PASSES_TORCH

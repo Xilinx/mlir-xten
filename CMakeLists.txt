@@ -31,6 +31,10 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
+if(NOT DEFINED MLIR_XTEN_WITH_TORCH)
+  set(MLIR_XTEN_WITH_TORCH TRUE)
+endif()
+
 if(MLIR_XTEN_WITH_TORCH)
   function(TORCH_MLIR_detect_pybind11_install)
     if(pybind11_DIR)
@@ -111,10 +115,6 @@ include_directories(${MLIR_INCLUDE_DIRS})
 
 include_directories(${XTEN_SOURCE_DIR}/include)
 include_directories(${XTEN_BINARY_DIR}/include)
-
-if(NOT DEFINED MLIR_XTEN_WITH_TORCH)
-  set(MLIR_XTEN_WITH_TORCH TRUE)
-endif()
 
 if(MLIR_XTEN_WITH_TORCH)
   # TORCH_MLIR

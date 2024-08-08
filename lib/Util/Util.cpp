@@ -76,27 +76,27 @@ std::string getMangledFuncName(ModuleOp module, std::string prefix,
 }
 } // namespace
 
-func::FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value> operands, ArrayRef<Type> retTys)
-{
-  Builder builder(module);
-
-  SmallVector<Type, 16> tys;
-  for (auto o : operands)
-    tys.push_back(o.getType());
-
-  auto fnTy = builder.getFunctionType(tys, retTys);
-
-  std::string fnName = getMangledFuncName(module, prefix+"_AtenAcapOp", fnTy);
-  auto fn = module.lookupSymbol<func::FuncOp>(fnName);
-
-  if (!fn) {
-    fn = func::FuncOp::create(builder.getUnknownLoc(), fnName, fnTy);
-    fn.setPrivate();
-    module.push_back(fn);
-  }
-
-  return fn;
-}
+//func::FuncOp getATenFn(ModuleOp module, std::string prefix, ArrayRef<Value> operands, ArrayRef<Type> retTys)
+//{
+//  Builder builder(module);
+//
+//  SmallVector<Type, 16> tys;
+//  for (auto o : operands)
+//    tys.push_back(o.getType());
+//
+//  auto fnTy = builder.getFunctionType(tys, retTys);
+//
+//  std::string fnName = getMangledFuncName(module, prefix+"_AtenAcapOp", fnTy);
+//  auto fn = module.lookupSymbol<func::FuncOp>(fnName);
+//
+//  if (!fn) {
+//    fn = func::FuncOp::create(builder.getUnknownLoc(), fnName, fnTy);
+//    fn.setPrivate();
+//    module.push_back(fn);
+//  }
+//
+//  return fn;
+//}
 
 } // namespace xten
 } // namespace xilinx

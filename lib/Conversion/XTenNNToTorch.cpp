@@ -26,9 +26,10 @@
 #include "xten/Util/Util.h"
 
 namespace xilinx::xten {
-#define GEN_PASS_DECL_CONVERTXTENNNTOTORCH
+namespace torch {
 #define GEN_PASS_DEF_CONVERTXTENNNTOTORCH
-#include "xten/Conversion/Passes.h.inc"
+#include "xten/Conversion/PassesTorch.h.inc"
+}
 } // namespace xilinx::xten
 
 using namespace mlir;
@@ -387,13 +388,13 @@ public:
 };
 
 struct ConvertXTenNNToTorch
-    : public xilinx::xten::impl::ConvertXTenNNToTorchBase<
+    : public xilinx::xten::torch::impl::ConvertXTenNNToTorchBase<
           ConvertXTenNNToTorch> {
 
   void getDependentDialects(DialectRegistry &registry) const override {
     registry.insert<amd::xten_nn::XTenNNDialect, torch::Torch::TorchDialect,
                     tensor::TensorDialect>();
-    TorchConversion::getBackendTypeConversionDependentDialects(registry);
+    mlir::torch::TorchConversion::getBackendTypeConversionDependentDialects(registry);
   }
 
   void runOnOperation() override {
