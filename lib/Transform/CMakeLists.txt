@@ -10,7 +10,6 @@
 if(MLIR_XTEN_WITH_TORCH)
   set(TORCH_SRCS
     ATenDialectOpStats.cpp
-    ATenLoweringPass.cpp
     ATenOpReport.cpp 
     LowerToLibATenPass.cpp
   )

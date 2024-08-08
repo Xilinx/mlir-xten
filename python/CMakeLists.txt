@@ -28,7 +28,6 @@ target_link_libraries(_xten
   PRIVATE
   XTenTransformPasses
   XTenConversionPasses
-  XTenUtil
   TorchMLIRTorchDialect
   TorchMLIRTorchConversionDialect
   TorchMLIRTorchConversionPasses
