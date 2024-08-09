@@ -16,21 +16,6 @@
 
 include "mlir/Pass/PassBase.td"
 
-// def ATenLowering : Pass<"aten-lowering", "ModuleOp"> {
-//   let summary = "ATen dialect lowering to function calls";
-//   let constructor = "xilinx::xten::createATenLoweringPass()";
-// }
-
-def ATenOpReport : Pass<"aten-op-report", "ModuleOp"> {
-  let summary = "Generate ATen dialect operation statistics";
-  let constructor = "xilinx::xten::createATenOpReportPass()";
-}
-
-def LowerToLibATen : Pass<"lower-to-libaten", "ModuleOp"> {
-  let summary = "Lower ATen Ops to library calls";
-  let constructor = "xilinx::xten::createLowerToLibATenPass()";
-}
-
 def XTenMinimizeLiveTensors : Pass<"xten-minimize-live", "func::FuncOp"> {
   let summary = "Reorder xten operations to minimize the total size of the live tensors";
   let constructor = "xilinx::xten::createXTenMinimizeLiveTensorsPass()";

@@ -23,9 +23,6 @@
 
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 
-#include "torch-mlir/Dialect/Torch/IR/TorchDialect.h"
-#include "torch-mlir/Dialect/TorchConversion/IR/TorchConversionDialect.h"
-
 namespace xilinx {
 namespace xten {
 

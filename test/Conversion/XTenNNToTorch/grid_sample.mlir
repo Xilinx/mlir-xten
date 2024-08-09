@@ -1,6 +1,7 @@
 // (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
 // RUN: aten-opt --convert-xtennn-to-torch  -split-input-file %s | FileCheck %s
+// REQUIRES: torch
 
 func.func @gridsample_default_bf16(%arg0: tensor<1x32x576x384xbf16>, %arg1: tensor<1x64x16x2xbf16>) -> tensor<1x32x64x16xbf16> {
     %0 = xten_nn.grid_sample %arg0, %arg1 {align_corners = 1 : i64, mode = 0 : i64, padding_mode = 0 : i64} : (tensor<1x32x576x384xbf16>, tensor<1x64x16x2xbf16>) -> tensor<1x32x64x16xbf16>

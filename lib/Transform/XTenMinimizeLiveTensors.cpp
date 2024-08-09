@@ -17,7 +17,6 @@
 #include "PassDetail.h"
 
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
-#include "xten/Util/Util.h"
 
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/Support/Debug.h>

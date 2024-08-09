@@ -39,6 +39,7 @@ config.llvm_host_triple = '@LLVM_HOST_TRIPLE@'
 config.host_arch = "@HOST_ARCH@"
 config.aie_src_root = "@CMAKE_SOURCE_DIR@"
 config.aie_obj_root = "@CMAKE_BINARY_DIR@"
+config.torch = @MLIR_XTEN_ENABLE_TORCH@
 
 # Support substitution of the tools_dir with user parameters. This is
 # used when we can't determine the tool dir at configuration time.
@@ -55,4 +56,4 @@ import lit.llvm
 lit.llvm.initialize(lit_config, config)
 
 # Let the main config do the real work.
-lit_config.load_config(config, "@CMAKE_SOURCE_DIR@/test/lit.cfg.py")
+lit_config.load_config(config, "@CMAKE_CURRENT_SOURCE_DIR@/lit.cfg.py")

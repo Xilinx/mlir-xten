@@ -6,19 +6,28 @@
 
 # (c) Copyright 2021 Xilinx, Inc. All Rights reserved.
 # (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+if(MLIR_XTEN_ENABLE_TORCH)
+    set(XTENNNTOTORCH XTenNNToTorch.cpp)
+endif()
 
 add_mlir_library(XTenConversionPasses
-Passes.cpp
-TosaToXTenNN.cpp
-XTenNNToTosa.cpp
-XTenNNToLinalg.cpp
-XTenNNToTorch.cpp
+  Passes.cpp
+  TosaToXTenNN.cpp
+  XTenNNToTosa.cpp
+  XTenNNToLinalg.cpp
+  ${XTENNNTOTORCH}
 
-DEPENDS
-XTenConversionIncGen
+  PARTIAL_SOURCES_INTENDED
 
-LINK_COMPONENTS
-Core
-
-LINK_LIBS PUBLIC
+  DEPENDS
+  XTenConversionIncGen
+  
+  LINK_COMPONENTS
+  Core
+  
+  LINK_LIBS PUBLIC
 )
+
+if(MLIR_XTEN_ENABLE_TORCH)
+  target_compile_definitions(obj.XTenConversionPasses PRIVATE MLIR_XTEN_ENABLE_TORCH=1)
+endif()

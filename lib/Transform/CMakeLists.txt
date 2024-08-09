@@ -8,14 +8,10 @@
 # (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
 add_mlir_library(XTenTransformPasses
-  ATenDialectOpStats.cpp
-  ATenLoweringPass.cpp
-  ATenOpReport.cpp
-  LowerToLibATenPass.cpp
-  Passes.cpp
-  XTenMinimizeLiveTensors.cpp
-
-  DEPENDS
-  XTenTransformIncGen
-  MLIRLinalgDialect
-  )
+ Passes.cpp
+ XTenMinimizeLiveTensors.cpp
+ 
+ DEPENDS
+ XTenTransformIncGen
+ MLIRLinalgDialect
+)
