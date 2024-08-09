@@ -57,7 +57,6 @@ config.excludes = [
     "README.txt",
     "LICENSE.txt",
     "XTenToAffine",
-    "ATenOpReport",
 ]
 
 # test_source_root: The root path where tests are located.
