@@ -31,11 +31,11 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-if(NOT DEFINED MLIR_XTEN_WITH_TORCH)
-  set(MLIR_XTEN_WITH_TORCH TRUE)
+if(NOT DEFINED MLIR_XTEN_ENABLE_TORCH)
+  option(MLIR_XTEN_ENABLE_TORCH "Enable torch-mlir" ON)
 endif()
 
-if(MLIR_XTEN_WITH_TORCH)
+if(MLIR_XTEN_ENABLE_TORCH)
   function(TORCH_MLIR_detect_pybind11_install)
     if(pybind11_DIR)
       message(STATUS "Using explicit pybind11 cmake directory: ${pybind11_DIR} (-Dpybind11_DIR to change)")
@@ -116,7 +116,7 @@ include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${XTEN_SOURCE_DIR}/include)
 include_directories(${XTEN_BINARY_DIR}/include)
 
-if(MLIR_XTEN_WITH_TORCH)
+if(MLIR_XTEN_ENABLE_TORCH)
   # TORCH_MLIR
   include_directories(${TORCH_MLIR_INCLUDE_DIRS})
 endif()

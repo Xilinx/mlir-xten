@@ -7,7 +7,7 @@
 # (c) Copyright 2021 Xilinx, Inc. All Rights reserved.
 # (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
-llvm_canonicalize_cmake_booleans(MLIR_XTEN_WITH_TORCH)
+llvm_canonicalize_cmake_booleans(MLIR_XTEN_ENABLE_TORCH)
 
 configure_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in
@@ -20,11 +20,11 @@ set(TEST_DEPENDS
   FileCheck count not
   aten-opt
   )
-  
+
 add_lit_testsuite(check-aten "Running the aten regression tests"
   ${CMAKE_CURRENT_BINARY_DIR}
   DEPENDS ${TEST_DEPENDS}
   )
 set_target_properties(check-aten PROPERTIES FOLDER "Tests")
-  
+
 add_lit_testsuites(ATEN ${CMAKE_CURRENT_SOURCE_DIR} DEPENDS ${TEST_DEPENDS})

@@ -16,7 +16,7 @@
 
 void xilinx::xten::registerConversionPasses() { 
     registerXTenConversionPasses();
-#ifdef MLIR_XTEN_WITH_TORCH
+#ifdef MLIR_XTEN_ENABLE_TORCH
 #define GEN_PASS_REGISTRATION
     xilinx::xten::torch::registerXTenConversionPasses();
 #endif

@@ -16,8 +16,8 @@ llvm_update_compile_flags(aten-opt)
 get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
 get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 
-if(MLIR_XTEN_WITH_TORCH)
-  target_compile_definitions(aten-opt PRIVATE MLIR_XTEN_WITH_TORCH=1)
+if(MLIR_XTEN_ENABLE_TORCH)
+  target_compile_definitions(aten-opt PRIVATE MLIR_XTEN_ENABLE_TORCH=1)
   set(torch_libs 
     TorchMLIRInitAll
     TorchMLIRTMTensorPasses

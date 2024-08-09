@@ -24,7 +24,7 @@ set_target_properties(_xten PROPERTIES PREFIX "")
 get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
 get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 
-if(MLIR_XTEN_WITH_TORCH)
+if(MLIR_XTEN_ENABLE_TORCH)
   set(torch_libs
     TorchMLIRTorchDialect
     TorchMLIRTorchConversionDialect
