@@ -23,7 +23,6 @@
 #include "torch-mlir/Dialect/Torch/IR/TorchTypes.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
-#include "xten/Util/Util.h"
 
 namespace xilinx::xten {
 namespace torch {
