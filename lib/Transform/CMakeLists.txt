@@ -7,19 +7,7 @@
 # (c) Copyright 2021 Xilinx, Inc. All Rights reserved.
 # (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
-if(MLIR_XTEN_WITH_TORCH)
-  set(TORCH_SRCS
-    ATenDialectOpStats.cpp
-    ATenOpReport.cpp 
-    LowerToLibATenPass.cpp
-  )
-endif()
-
 add_mlir_library(XTenTransformPasses
- ${TORCHLOWERATEN}
-
- PARTIAL_SOURCES_INTENDED
-
  Passes.cpp
  XTenMinimizeLiveTensors.cpp
  
