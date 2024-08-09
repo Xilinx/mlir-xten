@@ -257,6 +257,26 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
   let assemblyFormat = [{ attr-dict `->` type($output) }];
 }
 
+def XTenNN_KernelOp : XTenNN_Op<"kernel", []> {
+    let summary = "An opaque kernel";
+    let description = [{
+        The `xten_nn.kernel` operation defines an opaque computation with a name.
+        Example:
+        ```
+          %c = xten_nn.kernel "myKernel" (%arg0 : tensor<2xi64>) {attr = 4 : i32} -> tensor<2xi64>
+          %d:2 = xten_nn.kernel "frob" (%arg0 : tensor<2xi64>, %arg1 : tensor<4xi64>) -> tensor<2xi64>, tensor<1xi64>
+        ```
+    }];
+
+    let arguments = (ins
+      Variadic<AnyType>:$arguments,
+      StrAttr:$name
+    );
+    let results = (outs Variadic<AnyType>:$results);
+
+    let hasCustomAssemblyFormat = 1;
+}
+
 //===----------------------------------------------------------------------===//
 // Ops that are missing from the TOSA standard
 //===----------------------------------------------------------------------===//

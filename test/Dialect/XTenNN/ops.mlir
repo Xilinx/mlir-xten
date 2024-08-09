@@ -18,3 +18,19 @@ func.func @subgraph_empty(%arg0:  tensor<2xi64>) ->  tensor<2xi64> {
     %sum = xten_nn.subgraph (%arg0 : tensor<2xi64>) -> tensor<2xi64>
     return %sum :  tensor<2xi64>
 }
+
+
+// -----
+
+// CHECK-LABEL: kernel
+func.func @kernel(%arg0: tensor<2xi64>, %arg1 : tensor<4xi64>) {
+    %a = xten_nn.kernel "myKernel" () -> tensor<2xi64>
+    // CHECK: xten_nn.kernel "myKernel" () -> tensor<2xi64>
+    %b = xten_nn.kernel "myKernel" (%arg0 : tensor<2xi64>) -> tensor<2xi64>
+    // CHECK: xten_nn.kernel "myKernel" (%arg0 : tensor<2xi64>) -> tensor<2xi64>
+    %c = xten_nn.kernel "myKernel" (%arg0 : tensor<2xi64>) {attr = 4 : i32} -> tensor<2xi64>
+    // CHECK: xten_nn.kernel "myKernel" (%arg0 : tensor<2xi64>) {attr = 4 : i32} -> tensor<2xi64>
+    %d:2 = xten_nn.kernel "myKernel" (%arg0 : tensor<2xi64>, %arg1 : tensor<4xi64>) -> tensor<2xi64>, tensor<1xi64>
+    // CHECK: xten_nn.kernel "myKernel" (%arg0 : tensor<2xi64>, %arg1 : tensor<4xi64>) -> tensor<2xi64>, tensor<1xi64>
+    return
+}

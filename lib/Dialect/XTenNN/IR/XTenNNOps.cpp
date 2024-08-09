@@ -172,6 +172,81 @@ static void printEnclaveOp(OpAsmPrinter &p, EnclaveOp op) {
   };
 }
 
+
+//===----------------------------------------------------------------------===//
+// KernelOp
+//===----------------------------------------------------------------------===//
+
+/// Parses a list of ssa values with their types.
+/// `(` (ssa-id `:` type (`,` ssa-id `:` type)*)? `)`
+///
+/// This method is used by the tablegen assembly format for the kernel op.
+static ParseResult parseKernelArgumentList(OpAsmParser &p,
+                                           SmallVectorImpl<Value> &operands) {
+  return p.parseCommaSeparatedList(
+      OpAsmParser::Delimiter::Paren,
+      [&]() -> ParseResult {
+        OpAsmParser::UnresolvedOperand operand;
+        Type type;
+        if (p.parseOperand(operand))
+          return failure();
+        if (p.parseOptionalColon())
+          return p.emitError(p.getCurrentLocation(),
+                             "expected ':`, (argument format is val : type)");
+
+        if (p.parseType(type) || p.resolveOperand(operand, type, operands))
+          return failure();
+        return success();
+      },
+      " in argument list");
+}
+
+/// Prints a list of ssa values with their types.
+/// `(` (ssa-id `:` type (`,` ssa-id `:` type)*)? `)`
+///
+/// This method is used by the tablegen assembly format for the kernel op.
+static void printKernelArgumentList(OpAsmPrinter &p, TypeRange types,
+                                    OperandRange arguments) {
+  p << "(";
+  llvm::interleaveComma(llvm::zip(arguments, types), p, [&](const auto &a) {
+    p << get<0>(a) << " : " << get<1>(a);
+  });
+  p << ")";
+}
+
+// Parse
+//  $name custom<KernelArgumentList>(type($arguments), $arguments) attr-dict
+//  `->` type($results)
+ParseResult KernelOp::parse(OpAsmParser &p, OperationState &result) {
+  StringAttr name;
+  if (p.parseAttribute(name, "name", result.attributes))
+    return failure();
+
+  if (parseKernelArgumentList(p, result.operands) ||
+      p.parseOptionalAttrDict(result.attributes) || p.parseArrow() ||
+      p.parseTypeList(result.types))
+    return failure();
+
+  return success();
+}
+
+// Parse
+//  $name custom<KernelArgumentList>(type($arguments), $arguments) attr-dict
+//  `->` type($results)
+void KernelOp::print(OpAsmPrinter &p) {
+  p << ' ';
+  p << getNameAttr();
+  p << ' ';
+  printKernelArgumentList(p, getOperandTypes(), getOperands());
+  p << ' ';
+  SmallVector<StringRef> elidedAttrs = {"name"};
+  p.printOptionalAttrDict(getOperation()->getAttrs(), elidedAttrs);
+  if (getOperation()->getAttrs().size() > elidedAttrs.size())
+    p << ' ';
+  p << "-> ";
+  p << getResultTypes();
+}
+
 #define GET_OP_CLASSES
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.cpp.inc"
 
