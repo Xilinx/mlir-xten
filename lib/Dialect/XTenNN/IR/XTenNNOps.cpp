@@ -223,8 +223,14 @@ ParseResult KernelOp::parse(OpAsmParser &p, OperationState &result) {
     return failure();
 
   if (parseKernelArgumentList(p, result.operands) ||
-      p.parseOptionalAttrDict(result.attributes) || p.parseArrow() ||
-      p.parseTypeList(result.types))
+      p.parseOptionalAttrDict(result.attributes))
+    return failure();
+
+  // If the op has no results, the `-> type($results)` is absent.
+  if (p.parseOptionalArrow())
+    return success();
+
+  if (p.parseTypeList(result.types))
     return failure();
 
   return success();
@@ -243,8 +249,10 @@ void KernelOp::print(OpAsmPrinter &p) {
   p.printOptionalAttrDict(getOperation()->getAttrs(), elidedAttrs);
   if (getOperation()->getAttrs().size() > elidedAttrs.size())
     p << ' ';
-  p << "-> ";
-  p << getResultTypes();
+  if (getNumResults()) {
+    p << "-> ";
+    p << getResultTypes();
+  }
 }
 
 #define GET_OP_CLASSES
