@@ -60,3 +60,10 @@ func.func @kernel_missing_name() {
     %b = xten_nn.kernel () -> tensor<2xi64>
     return
 }
+
+// -----
+
+func.func @kernel_missing_result(%arg0: i8, %arg1: i8) {
+    // expected-error@+1 {{expected non-function type}}
+    xten_nn.kernel "myKernel" () ->
+}

@@ -24,6 +24,8 @@ func.func @subgraph_empty(%arg0:  tensor<2xi64>) ->  tensor<2xi64> {
 
 // CHECK-LABEL: kernel
 func.func @kernel(%arg0: tensor<2xi64>, %arg1 : tensor<4xi64>) {
+    xten_nn.kernel "myKernel" ()
+    // CHECK: xten_nn.kernel "myKernel" ()
     %a = xten_nn.kernel "myKernel" () -> tensor<2xi64>
     // CHECK: xten_nn.kernel "myKernel" () -> tensor<2xi64>
     %b = xten_nn.kernel "myKernel" (%arg0 : tensor<2xi64>) -> tensor<2xi64>
