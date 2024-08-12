@@ -7,6 +7,7 @@
 # (c) Copyright 2021 Xilinx, Inc. All Rights reserved.
 # (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
+add_subdirectory(CAPI)
 add_subdirectory(Conversion)
 add_subdirectory(Dialect)
 add_subdirectory(Transform)
