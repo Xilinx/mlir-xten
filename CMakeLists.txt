@@ -31,9 +31,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-if(NOT DEFINED MLIR_XTEN_ENABLE_TORCH)
-  option(MLIR_XTEN_ENABLE_TORCH "Enable torch-mlir" ON)
-endif()
+option(MLIR_XTEN_ENABLE_TORCH "Enable torch-mlir" ON)
 
 function(detect_pybind11_install)
   if(pybind11_DIR)
