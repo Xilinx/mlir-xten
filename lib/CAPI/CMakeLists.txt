@@ -2,7 +2,7 @@ add_mlir_public_c_api_library(
   XTenCAPI
   Dialects.cpp
   ADDITIONAL_HEADER_DIRS
-  ${XTEN_SOURCE_DIR}/include/pl-c/
+  ${XTEN_SOURCE_DIR}/include/xten-c/
   ENABLE_AGGREGATION
   LINK_LIBS
   PUBLIC
