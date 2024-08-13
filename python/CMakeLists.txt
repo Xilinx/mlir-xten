@@ -54,14 +54,17 @@ RUNTIME DESTINATION bin COMPONENT python)
 install(DIRECTORY xten
 DESTINATION python COMPONENT python)
 
-declare_mlir_python_sources(XTenPythonSources)
-declare_mlir_python_sources(XTenPythonSources.Dialects
-  ADD_TO_PARENT XTenPythonSources)
+if(MLIR_ENABLE_BINDINGS_PYTHON)
+  include(AddMLIRPython)
+  declare_mlir_python_sources(XTenPythonSources)
+  declare_mlir_python_sources(XTenPythonSources.Dialects
+    ADD_TO_PARENT XTenPythonSources)
 
-declare_mlir_dialect_python_bindings(
-    ADD_TO_PARENT XTenPythonSources.Dialects
-    ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/mlir"
-    TD_FILE dialects/XTenNNOps.td
-    SOURCES
-      dialects/xten_nn.py
-    DIALECT_NAME xten_nn)
+  declare_mlir_dialect_python_bindings(
+      ADD_TO_PARENT XTenPythonSources.Dialects
+      ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/mlir"
+      TD_FILE dialects/XTenNNOps.td
+      SOURCES
+        dialects/xten_nn.py
+      DIALECT_NAME xten_nn)
+endif()
