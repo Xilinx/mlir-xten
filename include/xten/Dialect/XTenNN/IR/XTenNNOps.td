@@ -512,6 +512,31 @@ def XtenNN_SignOp: XTenNN_Op<"sign", [Pure, TosaExtension, ElementwiseUnary, Sam
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
 }
 
+def XtenNN_TopK: XTenNN_Op<"topk", [
+                            InferTensorTypeAdaptor,
+                            Pure, TosaExtension]> {
+  let summary = "Calculate the topk";
+  let description = [{
+    Follows the specification of ONNX TopK at opset 11, except
+    that
+    - this operation does not return the `Indices` output.
+    - the input `K` must be a compile-time constant
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    I64Attr:$k,
+    I64Attr:$axis,
+    I1Attr:$largest,
+    I1Attr:$sorted
+  );
+  let results = (outs
+    AnyRankedTensor:$output
+  );
+
+  let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
+}
+
+
 def XtenNN_ConvTransposeOp: XTenNN_Op<"ConvTranspose",[Pure, TosaExtension]> {
   let summary = "Perform ConvTranspose operation";
   let description = [{

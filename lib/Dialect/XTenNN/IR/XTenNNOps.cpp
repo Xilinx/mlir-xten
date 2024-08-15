@@ -519,3 +519,26 @@ LogicalResult amd::xten_nn::ResizeOp::verify() {
 
   return success();
 }
+
+LogicalResult TopK::inferReturnTypeComponents(
+    MLIRContext *context, std::optional<Location> location,
+    TopK::Adaptor adaptor,
+    SmallVectorImpl<ShapedTypeComponents> &inferredReturnShapes) {
+
+  auto inTy = cast<RankedTensorType>(adaptor.getInput().getType());
+  auto axis = adaptor.getAxis();
+  if (axis >= (uint64_t)inTy.getRank()) {
+    return emitOptionalError(location, "expected axis <= rank of input");
+  }
+  auto dimSize = inTy.getDimSize(axis);
+  if ((uint64_t)dimSize < adaptor.getK()) {
+    return emitOptionalError(location, "expected k <= dimension size");
+  }
+
+  SmallVector<int64_t> resultShape{inTy.getShape()};
+  resultShape[axis] = adaptor.getK();
+
+  inferredReturnShapes.push_back(
+      ShapedTypeComponents(resultShape, inTy.getElementType()));
+  return success();
+}
