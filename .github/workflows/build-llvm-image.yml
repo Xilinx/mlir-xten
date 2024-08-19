@@ -38,6 +38,8 @@ jobs:
         python3 -m venv .venv
         source .venv/bin/activate
 
+    # Reuse the requirements from mlir
+    # mlir-xten is an extension to mlir and should work under the same environment.
     - name: Install requirements.txt
       run: |
         pip install -r ./llvm-project/mlir/python/requirements.txt
@@ -49,7 +51,7 @@ jobs:
       shell: bash
       id: build-llvm
       run: |
-        cmake -G Ninja \
+        cmake -GNinja \
               -Bbuild \
               llvm-project/llvm \
               -DCMAKE_BUILD_TYPE=Release \
