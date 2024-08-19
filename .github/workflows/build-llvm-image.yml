@@ -4,67 +4,55 @@
 name: Build x86 LLVM-Nightly Image
 
 on: 
-  # Allow manually triggering rebuild.
+  pull_request:
   workflow_dispatch:
   # Run every week (on Sunday). 
   schedule:
     - cron:  '0 0 * * SUN'
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  build-llvm-image:
+  buildandtest:
+    name: Build & Test
     runs-on: ubuntu-latest
+
     steps:
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - name: Get Repo
-      uses: actions/checkout@v2
+    - uses: actions/checkout@v4
+
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1
       with:
-        fetch-depth: 2
-        submodules: "true"
-        
-    - name: Ccache for C++ compilation
-      uses: hendrikmuhs/ccache-action@4687d037e4d7cf725512d9b819137a3af34d39b3
-      with:
-        key: ${{ runner.os }}-clangreleaseasserts-${{ steps.get-submodule-hash.outputs.hash }}
+        key: ${{ matrix.os }}
+        variant: sccache
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-        
-    - name: Log in to the Container registry
-      uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Install Ninja
+      uses: llvm/actions/install-ninja@main
 
-    - name: Extract metadata (tags, labels) for Docker
-      id: meta-llvm
-      uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-llvm
-
-    - name: Build and push LLVM image
-      uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
-      with:
-        context: .
-        push: true
-        tags: ${{ steps.meta-llvm.outputs.tags }}
-        labels: ${{ steps.meta-llvm.outputs.labels }}
-        file: .github/workflows/llvmmlir.Dockerfile
-
-      # env:
-      #   DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
-      # run: |
-      #   # Swaps utils/clone-mlir for a different shell script that clones the latest version of llvm/mlir.
-      #   mv $GITHUB_WORKSPACE/utils/clone-mlir.sh $GITHUB_WORKSPACE/utils/clone-mlir-backup.sh
-      #   cp $GITHUB_WORKSPACE/utils/clone-mlir-master.sh $GITHUB_WORKSPACE/utils/clone-mlir.sh
-      #   # Build docker image for x86 arch, with the latest llvm/mlir and subsequently publish it.
-      #   docker build --tag onnxmlirczar/onnx-mlir-llvmimage:x86-nightly -f $GITHUB_WORKSPACE/.github/workflows/prereq.Dockerfile $GITHUB_WORKSPACE/utils
-      #   docker login -u onnxmlirczar -p "$DOCKER_HUB_TOKEN" 
-      #   docker push onnxmlirczar/onnx-mlir-llvmimage:x86-nightly
-
-
-        
+    - name: Build and Test
+      shell: bash
+      id: build-llvm
+      run: |
+        cmake -G Ninja \
+              -Bbuild \
+              llvm-project/llvm \
+              -DCMAKE_BUILD_TYPE=Relase \
+              -DCMAKE_C_COMPILER=clang \
+              -DCMAKE_CXX_COMPILER=clang++ \
+              -DLLVM_USE_LINKER=lld \
+              -DLLVM_ENABLE_PROJECTS=mlir \
+              -DLLVM_TARGETS_TO_BUILD=host \
+              -DLLVM_BUILD_TOOLS=OFF \
+              -DLLVM_BUILD_UTILS=OFF \
+              -DLLVM_BUILD_RUNTIMES=OFF \
+              -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+              -DLLVM_EXTERNAL_PROJECTS=mlir-xten \
+              -DMLIR_XTEN_ENABLE_TORCH=OFF \
+              -DLLVM_EXTERNAL_MLIR_XTEN_SOURCE_DIR=.
+        ninja -C build check-xten-all
