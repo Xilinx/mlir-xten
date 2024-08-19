@@ -24,12 +24,23 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: true
 
     - name: Setup ccache
       uses: hendrikmuhs/ccache-action@v1
       with:
         key: ${{ matrix.os }}
         variant: sccache
+
+    - name: Set virtual env
+      run: |
+        python3 -m venv .venv
+        source .venv/bin/activate
+
+    - name: Install requirements.txt
+      run: |
+        pip install -r ./llvm-project/mlir/python/requirements.txt
 
     - name: Install Ninja
       uses: llvm/actions/install-ninja@main
@@ -41,7 +52,7 @@ jobs:
         cmake -G Ninja \
               -Bbuild \
               llvm-project/llvm \
-              -DCMAKE_BUILD_TYPE=Relase \
+              -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_C_COMPILER=clang \
               -DCMAKE_CXX_COMPILER=clang++ \
               -DLLVM_USE_LINKER=lld \
