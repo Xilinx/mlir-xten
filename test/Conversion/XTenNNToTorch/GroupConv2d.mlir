@@ -41,7 +41,7 @@ func.func @test_onnx_conv2d_group_asymmetric_pads(%arg0: tensor<5x64x255x253xf32
 //  CHECK-DAG:   %[[VAL_8:.*]] = torch.constant.int 0
 //  CHECK-DAG:   %[[VAL_9:.*]] = torch.constant.int 0
 //  CHECK-DAG:   %[[VAL_10:.*]] = torch.constant.int 3
-//  CHECK-DAG:   %[[VAL_11:.*]] = torch.prim.ListConstruct %[[VAL_7]], %[[VAL_8]], %[[VAL_9]], %[[VAL_10]] : (!torch.int, !torch.int, !torch.int, !torch.int) -> !torch.list<int>
+//  CHECK-DAG:   %[[VAL_11:.*]] = torch.prim.ListConstruct %[[VAL_8]], %[[VAL_10]], %[[VAL_7]], %[[VAL_9]] : (!torch.int, !torch.int, !torch.int, !torch.int) -> !torch.list<int>
 // CHECK-NEXT:   %[[VAL_12:.*]] = torch.aten.constant_pad_nd %[[VAL_3]], %[[VAL_11]], %[[VAL_6]] : !torch.vtensor<[5,64,255,253],f32>, !torch.list<int>, !torch.int -> !torch.vtensor<[5,64,256,256],f32>
 //  CHECK-DAG:   %[[VAL_13:.*]] = torch.constant.int 0
 //  CHECK-DAG:   %[[VAL_14:.*]] = torch.constant.int 0
