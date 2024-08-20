@@ -49,3 +49,12 @@ func.func @topk(%arg0: tensor<10x8xf32>) {
     // CHECK: xten_nn.topk(%arg0 : tensor<10x8xf32>, %[[C7]] : i64) {axis = 1 : i64, largest = true, sorted = true} -> tensor<10x7xf32>, tensor<10x7xi64>
     return
 }
+
+// -----
+
+// CHECK-LABEL: topk_arg
+func.func @topk_arg(%arg0: tensor<10x8xf32>, %k: i64) {
+    xten_nn.topk(%arg0 : tensor<10x8xf32>, %k : i64) {axis = 1 : i64, largest = true, sorted = true} -> tensor<10x?xf32>, tensor<10x?xi64>
+    // CHECK: xten_nn.topk(%arg0 : tensor<10x8xf32>, %arg1 : i64) {axis = 1 : i64, largest = true, sorted = true} -> tensor<10x?xf32>, tensor<10x?xi64>
+    return
+}

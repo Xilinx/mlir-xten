@@ -13,6 +13,7 @@
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/BuiltinTypeInterfaces.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/TypeUtilities.h"
@@ -530,7 +531,11 @@ LogicalResult amd::xten_nn::ResizeOp::verify() {
   return success();
 }
 
-std::optional<uint64_t> getConstantK(Operation *op) {
+std::optional<uint64_t> getConstantK(Value k) {
+  auto *op = k.getDefiningOp();
+  if (!op) {
+    return {};
+  }
   auto constantOp = dyn_cast<arith::ConstantOp>(op);
   if (!constantOp)
     return {};
@@ -551,24 +556,21 @@ LogicalResult TopK::inferReturnTypeComponents(
   if (axis >= (uint64_t)inTy.getRank()) {
     return emitOptionalError(location, "expected axis <= rank of input");
   }
-  auto dimSize = inTy.getDimSize(axis);
-  auto k = getConstantK(adaptor.getK().getDefiningOp());
 
-  if (!k) {
-    return emitOptionalError(location, "expected constant k");
+  auto dimSize = inTy.getDimSize(axis);
+  auto k = getConstantK(adaptor.getK());
+  if (k) {
+    if ((uint64_t)dimSize < *k) {
+      return emitOptionalError(location, "expected k <= dimension size");
+    }
   }
 
   if (dimSize < 0) {
-    // TODO: Support negative dimSize
-    return emitOptionalError(location, "expected positive axis");
-  }
-
-  if ((uint64_t)dimSize < *k) {
-    return emitOptionalError(location, "expected k <= dimension size");
+    return emitOptionalError(location, "expected positive dimSize");
   }
 
   SmallVector<int64_t> resultShape{inTy.getShape()};
-  resultShape[axis] = *k;
+  resultShape[axis] = k ? *k : ShapedType::kDynamic;
 
   inferredReturnShapes.push_back(
       ShapedTypeComponents(resultShape, inTy.getElementType()));
