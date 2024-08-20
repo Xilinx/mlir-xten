@@ -552,6 +552,7 @@ LogicalResult TopK::inferReturnTypeComponents(
     SmallVectorImpl<ShapedTypeComponents> &inferredReturnShapes) {
 
   auto inTy = cast<RankedTensorType>(adaptor.getInput().getType());
+
   auto axis = adaptor.getAxis();
   if (axis >= (uint64_t)inTy.getRank()) {
     return emitOptionalError(location, "expected axis <= rank of input");
@@ -559,14 +560,11 @@ LogicalResult TopK::inferReturnTypeComponents(
 
   auto dimSize = inTy.getDimSize(axis);
   auto k = getConstantK(adaptor.getK());
-  if (k) {
+  // If both k and dim are known statically, we can check that k < dim
+  if (k && dimSize != ShapedType::kDynamic) {
     if ((uint64_t)dimSize < *k) {
       return emitOptionalError(location, "expected k <= dimension size");
     }
-  }
-
-  if (dimSize < 0) {
-    return emitOptionalError(location, "expected positive dimSize");
   }
 
   SmallVector<int64_t> resultShape{inTy.getShape()};
