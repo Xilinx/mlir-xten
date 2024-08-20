@@ -72,8 +72,17 @@ func.func @kernel_missing_result(%arg0: i8, %arg1: i8) {
 
 func.func @topk_wrong_output_shape(%arg0: tensor<10x10xf32>) {
     // expected-error@+2 {{failed to infer returned types}}
-    // expected-error@+1 {{'xten_nn.topk' op inferred type(s) 'tensor<7x10xf32>' are incompatible with return type(s) of operation 'tensor<1xf32>'}}
-    %a = xten_nn.topk(%arg0 : tensor<10x10xf32>) {axis = 0 : i64, k = 7 : i64, largest = true, sorted = true} -> tensor<1xf32>
+    // expected-error@+1 {{'xten_nn.topk' op inferred type(s) 'tensor<7x10xf32>', 'tensor<7x10xi64>' are incompatible with return type(s) of operation 'tensor<1xf32>', 'tensor<1xi64>'}}
+    %a, %b = xten_nn.topk(%arg0 : tensor<10x10xf32>) {axis = 0 : i64, k = 7 : i64, largest = true, sorted = true} -> tensor<1xf32>, tensor<1xi64>
+    return
+}
+
+// -----
+
+func.func @topk_wrong_indices_shape(%arg0: tensor<10x10xf32>) {
+    // expected-error@+2 {{failed to infer returned types}}
+    // expected-error@+1 {{'xten_nn.topk' op inferred type(s) 'tensor<7x10xf32>', 'tensor<7x10xi64>' are incompatible with return type(s) of operation 'tensor<7x10xf32>', 'tensor<7x10xf32>'}}
+    %a, %b = xten_nn.topk(%arg0 : tensor<10x10xf32>) {axis = 0 : i64, k = 7 : i64, largest = true, sorted = true} -> tensor<7x10xf32>, tensor<7x10xf32>
     return
 }
 
@@ -82,7 +91,7 @@ func.func @topk_wrong_output_shape(%arg0: tensor<10x10xf32>) {
 func.func @topk_wrong_axis(%arg0: tensor<10x10xf32>) {
     // expected-error@+2 {{failed to infer returned types}}
     // expected-error@+1 {{expected axis <= rank of input}}
-    %a = xten_nn.topk(%arg0 : tensor<10x10xf32>) {axis = 3 : i64, k = 7 : i64, largest = true, sorted = true} -> tensor<10x10xf32>
+    %a, %b = xten_nn.topk(%arg0 : tensor<10x10xf32>) {axis = 3 : i64, k = 7 : i64, largest = true, sorted = true} -> tensor<10x10xf32>, tensor<1xi64>
     return
 }
 
@@ -91,6 +100,6 @@ func.func @topk_wrong_axis(%arg0: tensor<10x10xf32>) {
 func.func @topk_large_k(%arg0: tensor<10x10xf32>) {
     // expected-error@+2 {{failed to infer returned types}}
     // expected-error@+1 {{expected k <= dimension size}}
-    %a = xten_nn.topk(%arg0 : tensor<10x10xf32>) {axis = 0 : i64, k = 100 : i64, largest = true, sorted = true} -> tensor<10x10xf32>
+    %a, %b = xten_nn.topk(%arg0 : tensor<10x10xf32>) {axis = 0 : i64, k = 100 : i64, largest = true, sorted = true} -> tensor<10x10xf32>, tensor<1xi64>
     return
 }

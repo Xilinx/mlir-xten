@@ -517,10 +517,7 @@ def XtenNN_TopK: XTenNN_Op<"topk", [
                             Pure, TosaExtension]> {
   let summary = "Calculate the topk";
   let description = [{
-    Follows the specification of ONNX TopK at opset 11, except
-    that
-    - this operation does not return the `Indices` output.
-    - the input `K` must be a compile-time constant
+    Follows the specification of ONNX TopK at opset 11
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
@@ -529,11 +526,9 @@ def XtenNN_TopK: XTenNN_Op<"topk", [
     I1Attr:$largest,
     I1Attr:$sorted
   );
-  let results = (outs
-    AnyRankedTensor:$output
-  );
+  let results = (outs AnyRankedTensor:$output, AnyRankedTensor:$indices);
 
-  let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
+  let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) `,` type($indices) }];
 }
 
 

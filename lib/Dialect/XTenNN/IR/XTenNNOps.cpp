@@ -96,9 +96,7 @@ static ParseResult parseCaptures(OpAsmParser &p,
 /// See parseCaptures() for more details.
 static void printCaptures(OpAsmPrinter &p, ValueRange srcs) {
   p << '(';
-  llvm::interleaveComma(srcs, p, [&](auto src) {
-    printCapture(p, src);
-  });
+  llvm::interleaveComma(srcs, p, [&](auto src) { printCapture(p, src); });
   p << ')';
 }
 
@@ -171,7 +169,6 @@ static void printEnclaveOp(OpAsmPrinter &p, EnclaveOp op) {
     interleaveComma(op->getResultTypes(), p);
   };
 }
-
 
 //===----------------------------------------------------------------------===//
 // KernelOp
@@ -286,8 +283,7 @@ LogicalResult SubgraphOp::verify() {
   }
 
   // The type of the arguments must match the types of the block arguments
-  for (auto [idx, argType] :
-       enumerate(optBody->getArgumentTypes())) {
+  for (auto [idx, argType] : enumerate(optBody->getArgumentTypes())) {
     if (this->getCapture(idx).getType() != argType) {
       return this->emitOpError()
              << "type of operand #" << idx << " ("
@@ -349,11 +345,12 @@ OpFoldResult amd::xten_nn::QuantizeOp::fold(FoldAdaptor adaptor) {
 }
 
 OpFoldResult amd::xten_nn::GroupQuantizeOp::fold(FoldAdaptor adaptor) {
-  // Fold away cases where a xten_nn.group_quantize is preceeded by xten_nn.group_dequantize
-  // that uses the same shift factor and has same types.
+  // Fold away cases where a xten_nn.group_quantize is preceeded by
+  // xten_nn.group_dequantize that uses the same shift factor and has same
+  // types.
 
-  auto dequantizeOp =
-      dyn_cast_or_null<amd::xten_nn::GroupDequantizeOp>(getInput().getDefiningOp());
+  auto dequantizeOp = dyn_cast_or_null<amd::xten_nn::GroupDequantizeOp>(
+      getInput().getDefiningOp());
   if (!dequantizeOp)
     return {};
 
@@ -412,19 +409,25 @@ LogicalResult amd::xten_nn::GroupQuantizeOp::verify() {
   auto quantsShape = cast<ShapedType>(getQuants().getType()).getShape();
 
   if (inputShape != quantsShape) {
-    return emitOpError() << "input and quants must have the same shape (" << inputShape << " v " << quantsShape << ")";
+    return emitOpError() << "input and quants must have the same shape ("
+                         << inputShape << " v " << quantsShape << ")";
   }
 
   if (scalesShape != zerosShape) {
-    return emitOpError() << "scales and zeros must have the same shape (" << scalesShape << " v " << zerosShape << ")";
+    return emitOpError() << "scales and zeros must have the same shape ("
+                         << scalesShape << " v " << zerosShape << ")";
   }
 
   if (scalesShape.back() != 1) {
-    return emitOpError() << "groups needs to be expressed in the innermost dimension of scales vs quants (" << scalesShape.back() << ")" ;
+    return emitOpError() << "groups needs to be expressed in the innermost "
+                            "dimension of scales vs quants ("
+                         << scalesShape.back() << ")";
   }
 
   if (scalesShape.drop_back() != quantsShape.drop_back()) {
-    return emitOpError() << "scales and quants must have the same shape except for the innermost dimension (" << scalesShape << " v " << quantsShape << ")";
+    return emitOpError() << "scales and quants must have the same shape except "
+                            "for the innermost dimension ("
+                         << scalesShape << " v " << quantsShape << ")";
   }
 
   // TODO validate:
@@ -441,19 +444,25 @@ LogicalResult amd::xten_nn::GroupDequantizeOp::verify() {
   auto quantsShape = cast<ShapedType>(getQuants().getType()).getShape();
 
   if (outputShape != quantsShape) {
-    return emitOpError() << "output and quants must have the same shape (" << outputShape << " v " << quantsShape << ")";
+    return emitOpError() << "output and quants must have the same shape ("
+                         << outputShape << " v " << quantsShape << ")";
   }
 
   if (scalesShape != zerosShape) {
-    return emitOpError() << "scales and zeros must have the same shape (" << scalesShape << " v " << zerosShape << ")";
+    return emitOpError() << "scales and zeros must have the same shape ("
+                         << scalesShape << " v " << zerosShape << ")";
   }
 
   if (scalesShape.back() != 1) {
-    return emitOpError() << "groups needs to be expressed in the innermost dimension of scales vs quants (" << scalesShape.back() << ")" ;
+    return emitOpError() << "groups needs to be expressed in the innermost "
+                            "dimension of scales vs quants ("
+                         << scalesShape.back() << ")";
   }
 
   if (scalesShape.drop_back() != quantsShape.drop_back()) {
-    return emitOpError() << "scales and quants must have the same shape except for the innermost dimension (" << scalesShape << " v " << quantsShape << ")";
+    return emitOpError() << "scales and quants must have the same shape except "
+                            "for the innermost dimension ("
+                         << scalesShape << " v " << quantsShape << ")";
   }
 
   // TODO validate:
@@ -540,5 +549,7 @@ LogicalResult TopK::inferReturnTypeComponents(
 
   inferredReturnShapes.push_back(
       ShapedTypeComponents(resultShape, inTy.getElementType()));
+  inferredReturnShapes.push_back(
+      ShapedTypeComponents(resultShape, IntegerType::get(context, 64)));
   return success();
 }
