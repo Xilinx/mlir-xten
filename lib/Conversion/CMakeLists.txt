@@ -21,6 +21,7 @@ add_mlir_library(XTenConversionPasses
 
   DEPENDS
   XTenConversionIncGen
+  MLIRLinalgOpsIncGen
   
   LINK_COMPONENTS
   Core
