@@ -560,9 +560,9 @@ LogicalResult TopK::inferReturnTypeComponents(
 
   auto dimSize = inTy.getDimSize(axis);
   auto k = getConstantK(adaptor.getK());
-  // If both k and dim are known statically, we can check that k < dim
+  // If both k and dim are known statically, we can check that k <= dim
   if (k && dimSize != ShapedType::kDynamic) {
-    if ((uint64_t)dimSize < *k) {
+    if ((uint64_t)dimSize <= *k) {
       return emitOptionalError(location, "expected k <= dimension size");
     }
   }
