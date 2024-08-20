@@ -529,8 +529,6 @@ def XtenNN_TopK: XTenNN_Op<"topk", [
   let results = (outs AnyRankedTensor:$output, AnyRankedTensor:$indices);
 
   let assemblyFormat = [{ `(`$input `:` type($input) `,` $k `:` type($k)`)` attr-dict `->` type($output) `,` type($indices) }];
-
-  let hasVerifier = 1;
 }
 
 

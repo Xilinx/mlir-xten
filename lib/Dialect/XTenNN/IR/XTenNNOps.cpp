@@ -552,31 +552,27 @@ LogicalResult TopK::inferReturnTypeComponents(
     return emitOptionalError(location, "expected axis <= rank of input");
   }
   auto dimSize = inTy.getDimSize(axis);
-  uint64_t k = *getConstantK(adaptor.getK().getDefiningOp());
+  auto k = getConstantK(adaptor.getK().getDefiningOp());
+
+  if (!k) {
+    return emitOptionalError(location, "expected constant k");
+  }
 
   if (dimSize < 0) {
     // TODO: Support negative dimSize
-    return emitOptionalError(location, "expected positive k");
+    return emitOptionalError(location, "expected positive axis");
   }
 
-  if ((uint64_t)dimSize < k) {
+  if ((uint64_t)dimSize < *k) {
     return emitOptionalError(location, "expected k <= dimension size");
   }
 
   SmallVector<int64_t> resultShape{inTy.getShape()};
-  resultShape[axis] = k;
+  resultShape[axis] = *k;
 
   inferredReturnShapes.push_back(
       ShapedTypeComponents(resultShape, inTy.getElementType()));
   inferredReturnShapes.push_back(
       ShapedTypeComponents(resultShape, IntegerType::get(context, 64)));
-  return success();
-}
-
-LogicalResult amd::xten_nn::TopK::verify() {
-  if (!isa<arith::ConstantOp>(getK().getDefiningOp())) {
-    return failure();
-  }
-
   return success();
 }
