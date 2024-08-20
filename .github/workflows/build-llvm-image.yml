@@ -5,6 +5,9 @@ name: Build x86 LLVM-Nightly Image
 
 on: 
   pull_request:
+  push:
+    branches:
+      - feature/fused-ops
   workflow_dispatch:
   # Run every week (on Sunday). 
   schedule:
