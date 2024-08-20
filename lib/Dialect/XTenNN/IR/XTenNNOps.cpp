@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OpImplementation.h"
@@ -529,6 +530,17 @@ LogicalResult amd::xten_nn::ResizeOp::verify() {
   return success();
 }
 
+std::optional<uint64_t> getConstantK(Operation *op) {
+  auto constantOp = dyn_cast<arith::ConstantOp>(op);
+  if (!constantOp)
+    return {};
+  auto intAttr = dyn_cast<IntegerAttr>(constantOp.getValue());
+  if (!intAttr)
+    return {};
+  return (uint64_t)
+      intAttr.getInt(); // Always positive by definition of onnx.topk
+}
+
 LogicalResult TopK::inferReturnTypeComponents(
     MLIRContext *context, std::optional<Location> location,
     TopK::Adaptor adaptor,
@@ -540,16 +552,31 @@ LogicalResult TopK::inferReturnTypeComponents(
     return emitOptionalError(location, "expected axis <= rank of input");
   }
   auto dimSize = inTy.getDimSize(axis);
-  if ((uint64_t)dimSize < adaptor.getK()) {
+  uint64_t k = *getConstantK(adaptor.getK().getDefiningOp());
+
+  if (dimSize < 0) {
+    // TODO: Support negative dimSize
+    return emitOptionalError(location, "expected positive k");
+  }
+
+  if ((uint64_t)dimSize < k) {
     return emitOptionalError(location, "expected k <= dimension size");
   }
 
   SmallVector<int64_t> resultShape{inTy.getShape()};
-  resultShape[axis] = adaptor.getK();
+  resultShape[axis] = k;
 
   inferredReturnShapes.push_back(
       ShapedTypeComponents(resultShape, inTy.getElementType()));
   inferredReturnShapes.push_back(
       ShapedTypeComponents(resultShape, IntegerType::get(context, 64)));
+  return success();
+}
+
+LogicalResult amd::xten_nn::TopK::verify() {
+  if (!isa<arith::ConstantOp>(getK().getDefiningOp())) {
+    return failure();
+  }
+
   return success();
 }

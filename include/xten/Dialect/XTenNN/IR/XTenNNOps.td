@@ -520,15 +520,17 @@ def XtenNN_TopK: XTenNN_Op<"topk", [
     Follows the specification of ONNX TopK at opset 11
   }];
   let arguments = (ins
-    AnyRankedTensor:$input,
-    I64Attr:$k,
+    AnyTensor:$input,
+    I64:$k,
     I64Attr:$axis,
     I1Attr:$largest,
     I1Attr:$sorted
   );
   let results = (outs AnyRankedTensor:$output, AnyRankedTensor:$indices);
 
-  let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) `,` type($indices) }];
+  let assemblyFormat = [{ `(`$input `:` type($input) `,` $k `:` type($k)`)` attr-dict `->` type($output) `,` type($indices) }];
+
+  let hasVerifier = 1;
 }
 
 
