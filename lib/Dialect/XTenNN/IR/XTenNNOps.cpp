@@ -575,3 +575,9 @@ LogicalResult TopK::inferReturnTypeComponents(
       ShapedTypeComponents(resultShape, IntegerType::get(context, 64)));
   return success();
 }
+
+bool TopK::isCompatibleReturnTypes(mlir::TypeRange l, mlir::TypeRange r) {
+  if (l.size() != r.size() || l.size() != 2)
+    return false;
+  return succeeded(verifyCompatibleShapes(l, r));
+}

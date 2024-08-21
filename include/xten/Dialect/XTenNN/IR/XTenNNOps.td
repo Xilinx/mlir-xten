@@ -529,6 +529,12 @@ def XtenNN_TopK: XTenNN_Op<"topk", [
   let results = (outs AnyRankedTensor:$output, AnyRankedTensor:$indices);
 
   let assemblyFormat = [{ `(`$input `:` type($input) `,` $k `:` type($k)`)` attr-dict `->` type($output) `,` type($indices) }];
+
+  let extraClassDeclaration = [{
+    /// Returns when two result types are compatible for this op; method used by
+    /// InferTypeOpInterface.
+    static bool isCompatibleReturnTypes(mlir::TypeRange l, mlir::TypeRange r);
+  }];
 }
 
 
