@@ -61,6 +61,17 @@ func.func @topk_arg(%arg0: tensor<10x8xf32>, %k: i64) {
 
 // -----
 
+// Make sure that the topk verification does not fail if the result type is
+// static even though it cannot be statically infered due to the dynamic k
+// CHECK-LABEL: topk_arg_type_inference
+func.func @topk_arg_type_inference(%arg0: tensor<10x8xf32>, %k: i64) {
+    xten_nn.topk(%arg0 : tensor<10x8xf32>, %k : i64) {axis = 1 : i64, largest = true, sorted = true} -> tensor<10x3xf32>, tensor<10x3xi64>
+    // CHECK: xten_nn.topk(%arg0 : tensor<10x8xf32>, %arg1 : i64) {axis = 1 : i64, largest = true, sorted = true} -> tensor<10x3xf32>, tensor<10x3xi64>
+    return
+}
+
+// -----
+
 // CHECK-LABEL: topk_arg_dyn_in
 func.func @topk_arg_dyn_in(%arg0: tensor<?x?xf32>, %k: i64) {
     xten_nn.topk(%arg0 : tensor<?x?xf32>, %k : i64) {axis = 1 : i64, largest = true, sorted = true} -> tensor<?x?xf32>, tensor<?x?xi64>
