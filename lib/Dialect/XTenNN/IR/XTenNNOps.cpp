@@ -579,5 +579,9 @@ LogicalResult TopK::inferReturnTypeComponents(
 bool TopK::isCompatibleReturnTypes(mlir::TypeRange l, mlir::TypeRange r) {
   if (l.size() != r.size() || l.size() != 2)
     return false;
-  return succeeded(verifyCompatibleShapes(l, r));
+
+  auto sameElementType =
+      getElementTypeOrSelf(l[0]) == getElementTypeOrSelf(r[0]) &&
+      getElementTypeOrSelf(l[1]) == getElementTypeOrSelf(r[1]);
+  return sameElementType && succeeded(verifyCompatibleShapes(l, r));
 }
