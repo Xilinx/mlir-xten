@@ -89,6 +89,12 @@ else()
 
   list(APPEND CMAKE_MODULE_PATH ${MLIR_MAIN_SRC_DIR}/cmake/modules)
   list(APPEND CMAKE_MODULE_PATH ${LLVM_MAIN_SRC_DIR}/cmake)
+
+  if (MLIR_XTEN_ENABLE_TORCH)
+    set(TORCH_MLIR_INCLUDE_DIRS
+      ${LLVM_EXTERNAL_TORCH_MLIR_SOURCE_DIR}/include
+      ${LLVM_BINARY_DIR}/tools/torch-mlir/include)
+  endif()
 endif()
 
 # Define the default arguments to use with 'lit', and an option for the user to
@@ -113,7 +119,6 @@ include_directories(${XTEN_SOURCE_DIR}/include)
 include_directories(${XTEN_BINARY_DIR}/include)
 
 if(MLIR_XTEN_ENABLE_TORCH)
-  # TORCH_MLIR
   include_directories(${TORCH_MLIR_INCLUDE_DIRS})
 endif()
 

@@ -15,7 +15,5 @@ add_mlir_dialect_library(XTenNNDialect
 
   LINK_LIBS PUBLIC
   MLIRIR
-  MLIRPass
-  MLIRTransforms
   XTenNNInterfaces
 )
