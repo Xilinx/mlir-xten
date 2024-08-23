@@ -19,5 +19,6 @@ add_mlir_dialect_library(XTenNNTransforms
   MLIRPass
   MLIRTransforms
   MLIRFuncDialect
+  MLIRTosaDialect
   XTenNNDialect
 )
