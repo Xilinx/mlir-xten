@@ -118,8 +118,17 @@ struct Padding2d {
     }
 
     auto zeroPadValue = rewriter.create<Torch::ConstantIntOp>(loc, 0);
-    auto pads = Torch::toTorchList(
-        loc, rewriter, {hPadding[0], hPadding[1], wPadding[0], wPadding[1]});
+    // Padding for AtenConstantPadNd starts from the innermost dimension
+    // to the outermost ones specifying (begin, end) values.
+    // Therefore, we must first specify padding_left and padding_right,
+    // and padding_top and padding_bottom afterwards.
+    auto pads = Torch::toTorchList(loc, rewriter,
+                                   {
+                                       wPadding[0],
+                                       wPadding[1],
+                                       hPadding[0],
+                                       hPadding[1],
+                                   });
     return rewriter.create<Torch::AtenConstantPadNdOp>(
         loc, paddingResultTy, input, pads, zeroPadValue);
   }
