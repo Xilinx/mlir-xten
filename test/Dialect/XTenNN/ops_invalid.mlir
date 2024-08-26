@@ -93,7 +93,7 @@ func.func @topk_wrong_indices_shape(%arg0: tensor<10x10xf32>) {
 func.func @topk_wrong_axis(%arg0: tensor<10x10xf32>) {
     %k = arith.constant 7 : i64
     // expected-error@+2 {{failed to infer returned types}}
-    // expected-error@+1 {{expected axis <= rank of input}}
+    // expected-error@+1 {{expected axis to be within "rank < axis <= rank - 1" of input}}
     %a, %b = xten_nn.topk(%arg0 : tensor<10x10xf32>, %k : i64) {axis = 3 : i64, largest = true, sorted = true} -> tensor<10x10xf32>, tensor<1xi64>
     return
 }
@@ -105,5 +105,15 @@ func.func @topk_large_k(%arg0: tensor<10x10xf32>) {
     // expected-error@+2 {{failed to infer returned types}}
     // expected-error@+1 {{expected k <= dimension size}}
     %a, %b = xten_nn.topk(%arg0 : tensor<10x10xf32>, %k : i64) {axis = 0 : i64, largest = true, sorted = true} -> tensor<10x10xf32>, tensor<1xi64>
+    return
+}
+
+// -----
+
+func.func @topk_negative_axis(%arg0: tensor<10x10xf32>) {
+    %k = arith.constant 100 : i64
+    // expected-error@+2 {{failed to infer returned types}}
+    // expected-error@+1 {{expected axis to be within "rank < axis <= rank - 1" of input}}
+    %a, %b = xten_nn.topk(%arg0 : tensor<10x10xf32>, %k : i64) {axis = -3 : i64, largest = true, sorted = true} -> tensor<10x10xf32>, tensor<1xi64>
     return
 }
