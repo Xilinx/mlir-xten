@@ -13,9 +13,5 @@ add_mlir_library(XTenTransformPasses
  
  DEPENDS
  XTenTransformIncGen
- 
- LINK_LIBS
- PUBLIC
- XTenNNDialect
- MLIRFuncDialect
+ MLIRLinalgDialect
 )

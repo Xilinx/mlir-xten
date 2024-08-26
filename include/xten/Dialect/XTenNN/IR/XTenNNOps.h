@@ -13,6 +13,7 @@
 #ifndef XTENNNOPS_H
 #define XTENNNOPS_H
 
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/OpDefinition.h"

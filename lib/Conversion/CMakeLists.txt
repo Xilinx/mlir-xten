@@ -7,8 +7,7 @@
 # (c) Copyright 2021 Xilinx, Inc. All Rights reserved.
 # (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 if(MLIR_XTEN_ENABLE_TORCH)
-    set(TorchSrc XTenNNToTorch.cpp)
-    set(TorchLib TorchMLIRTorchDialect TorchMLIRTorchConversionPasses)
+    set(XTENNNTOTORCH XTenNNToTorch.cpp)
 endif()
 
 add_mlir_library(XTenConversionPasses
@@ -16,25 +15,18 @@ add_mlir_library(XTenConversionPasses
   TosaToXTenNN.cpp
   XTenNNToTosa.cpp
   XTenNNToLinalg.cpp
-  ${TorchSrc}
+  ${XTENNNTOTORCH}
 
   PARTIAL_SOURCES_INTENDED
 
   DEPENDS
   XTenConversionIncGen
+  MLIRLinalgOpsIncGen
   
   LINK_COMPONENTS
   Core
   
   LINK_LIBS PUBLIC
-  MLIRAffineDialect
-  MLIRFuncDialect
-  MLIRLinalgDialect
-  MLIRMemRefDialect
-  MLIRTosaDialect
-  MLIRVectorDialect
-  XTenNNDialect
-  ${TorchLib}
 )
 
 if(MLIR_XTEN_ENABLE_TORCH)
