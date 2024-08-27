@@ -264,9 +264,7 @@ ParseResult SubgraphOp::parse(OpAsmParser &p, OperationState &result) {
   return parseEnclaveOp(p, result);
 }
 
-void SubgraphOp::print(OpAsmPrinter &p) {
-  printEnclaveOp(p, *this);
-}
+void SubgraphOp::print(OpAsmPrinter &p) { printEnclaveOp(p, *this); }
 
 LogicalResult SubgraphOp::verify() {
   Block *optBody = this->getOptionalEnclaveBody();
@@ -554,10 +552,10 @@ LogicalResult TopK::inferReturnTypeComponents(
 
   auto axis = (int64_t)adaptor.getAxis();
   // onnx spec: axis: [-r, r-1]
-  if (!(axis >= -inTy.getRank()) || !(axis < inTy.getRank())) {
-    return emitOptionalError(
-        location,
-        "expected axis to be within \"rank < axis <= rank - 1\" of input");
+  if (axis < -inTy.getRank() || axis >= inTy.getRank()) {
+    return emitOptionalError(location,
+                             "expected axis to be within [-rank,rank) (where "
+                             "rank is the rank of the input)");
   }
 
   // normalize axis: [0, r)
@@ -565,7 +563,7 @@ LogicalResult TopK::inferReturnTypeComponents(
     axis += inTy.getRank();
   }
 
-  assert((axis >= 0 && axis < inTy.getRank()) && "axis with wrong value");
+  assert((axis >= 0 && axis < inTy.getRank()) && "axis has invalid value");
 
   auto dimSize = inTy.getDimSize(axis);
   auto k = getConstantK(adaptor.getK());
