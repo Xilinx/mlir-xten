@@ -17,3 +17,4 @@ add_mlir_dialect_library(XTenNNDialect
   MLIRIR
   XTenNNInterfaces
 )
+target_compile_options(obj.XTenNNDialect PRIVATE -g3 -O0)

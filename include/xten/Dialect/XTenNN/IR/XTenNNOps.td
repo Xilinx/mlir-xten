@@ -24,7 +24,7 @@ include "mlir/Interfaces/CallInterfaces.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
-
+include "mlir/Interfaces/DestinationStyleOpInterface.td"
 
 class XTenNN_Op<string mnemonic, list<Trait> traits = []>
     : Op<XTenNN_Dialect, mnemonic, traits> {
@@ -257,22 +257,27 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
   let assemblyFormat = [{ attr-dict `->` type($output) }];
 }
 
-def XTenNN_KernelOp : XTenNN_Op<"kernel", []> {
+def XTenNN_KernelOp : XTenNN_Op<"kernel", [AttrSizedOperandSegments, DestinationStyleOpInterface]> {
     let summary = "An opaque kernel";
     let description = [{
         The `xten_nn.kernel` operation defines an opaque computation with a name.
         Example:
         ```
-          %c = xten_nn.kernel "myKernel" (%arg0 : tensor<2xi64>) {attr = 4 : i32} -> tensor<2xi64>
+          %c = xten_nn.kernel "myKernel" ins(%arg0 : tensor<2xi64>) {attr = 4 : i32} -> tensor<2xi64>
           %d:2 = xten_nn.kernel "frob" (%arg0 : tensor<2xi64>, %arg1 : tensor<4xi64>) -> tensor<2xi64>, tensor<1xi64>
         ```
     }];
 
     let arguments = (ins
       Variadic<AnyType>:$arguments,
+      Variadic<AnyType>:$outputs,
       StrAttr:$name
     );
     let results = (outs Variadic<AnyType>:$results);
+
+    let extraClassDeclaration = [{
+      mlir::MutableOperandRange getDpsInitsMutable() { return getOutputsMutable(); }
+    }];
 
     let hasCustomAssemblyFormat = 1;
 }

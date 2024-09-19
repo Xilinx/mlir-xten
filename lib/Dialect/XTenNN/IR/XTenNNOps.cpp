@@ -220,9 +220,20 @@ ParseResult KernelOp::parse(OpAsmParser &p, OperationState &result) {
   if (p.parseAttribute(name, "name", result.attributes))
     return failure();
 
-  if (parseKernelArgumentList(p, result.operands) ||
+  if (p.parseKeyword("ins") || parseKernelArgumentList(p, result.operands))
+    return failure();
+
+  auto numInputOperands = result.operands.size();
+
+  if (p.parseKeyword("outs") ||parseKernelArgumentList(p, result.operands) ||
       p.parseOptionalAttrDict(result.attributes))
     return failure();
+
+  auto numOutputOperands = result.operands.size() - numInputOperands;
+
+  auto &prop = result.getOrAddProperties<Properties>();
+  prop.setOperandSegmentSizes({static_cast<int32_t>(numInputOperands),
+                               static_cast<int32_t>(numOutputOperands)});
 
   // If the op has no results, the `-> type($results)` is absent.
   if (p.parseOptionalArrow())
@@ -240,8 +251,10 @@ ParseResult KernelOp::parse(OpAsmParser &p, OperationState &result) {
 void KernelOp::print(OpAsmPrinter &p) {
   p << ' ';
   p << getNameAttr();
-  p << ' ';
-  printKernelArgumentList(p, getOperandTypes(), getOperands());
+  p << " ins";
+  printKernelArgumentList(p, getArguments().getTypes(), getArguments());
+  p << " outs";
+  printKernelArgumentList(p, getOutputs().getTypes(), getOutputs());
   p << ' ';
   SmallVector<StringRef> elidedAttrs = {"name"};
   p.printOptionalAttrDict(getOperation()->getAttrs(), elidedAttrs);
