@@ -220,6 +220,21 @@ convTranspose2dToTorch(ConvTransposeOp op, ConvTransposeOp::Adaptor adaptor,
       ->getResults();
 }
 
+std::optional<ValueRange>
+reduceMeanToTorch(ReduceMeanOp op, ReduceMeanOp::Adaptor adaptor,
+                  ArrayRef<Type> types, ValueRange values,
+                  ConversionPatternRewriter &rewriter) {
+  auto loc = op->getLoc();
+  auto noneConst = rewriter.create<Torch::ConstantNoneOp>(loc);
+  auto keepdims =
+      rewriter.create<Torch::ConstantBoolOp>(loc, adaptor.getKeepdims());
+  auto axes = Torch::toTorchList(loc, rewriter, adaptor.getAxes().vec());
+  return rewriter
+      .create<Torch::AtenMeanDimOp>(loc, types[0], values[0], axes, keepdims,
+                                    noneConst)
+      ->getResults();
+}
+
 std::optional<ValueRange> resizeToTorch(ResizeOp op, ResizeOp::Adaptor adaptor,
                         ArrayRef<Type> types, ValueRange values,
                         ConversionPatternRewriter &rewriter) {
@@ -439,6 +454,7 @@ struct ConvertXTenNNToTorch
     patterns.add<ApplyXTenNNToTorch<ResizeOp, resizeToTorch>>(context);
     patterns.add<ApplyXTenNNToTorch<ConvTransposeOp, convTranspose2dToTorch>>(
         context);
+    patterns.add<ApplyXTenNNToTorch<ReduceMeanOp, reduceMeanToTorch>>(context);
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();
   }
