@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/ADT/SmallVector.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -26,6 +27,7 @@
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
 #include "xten/Dialect/XTenNN/Interfaces/EnclaveOpInterfaces.h"
+#include <cstdint>
 
 using namespace mlir;
 using namespace amd::xten_nn;
@@ -264,7 +266,9 @@ ParseResult SubgraphOp::parse(OpAsmParser &p, OperationState &result) {
   return parseEnclaveOp(p, result);
 }
 
-void SubgraphOp::print(OpAsmPrinter &p) { printEnclaveOp(p, *this); }
+void SubgraphOp::print(OpAsmPrinter &p) {
+  printEnclaveOp(p, *this);
+}
 
 LogicalResult SubgraphOp::verify() {
   Block *optBody = this->getOptionalEnclaveBody();
@@ -592,4 +596,40 @@ bool TopK::isCompatibleReturnTypes(mlir::TypeRange l, mlir::TypeRange r) {
       getElementTypeOrSelf(l[0]) == getElementTypeOrSelf(r[0]) &&
       getElementTypeOrSelf(l[1]) == getElementTypeOrSelf(r[1]);
   return sameElementType && succeeded(verifyCompatibleShapes(l, r));
+}
+
+LogicalResult ReduceMeanOp::inferReturnTypeComponents(
+    MLIRContext * /*context*/, std::optional<Location> location,
+    ReduceMeanOp::Adaptor adaptor,
+    SmallVectorImpl<ShapedTypeComponents> &inferredReturnShapes) {
+
+  auto inTy = cast<RankedTensorType>(adaptor.getInput().getType());
+  auto inDims = inTy.getShape();
+  auto keepDims = adaptor.getKeepdims();
+
+  auto axes = adaptor.getAxes();
+  llvm::SmallVector<int64_t> newAxes(inDims);
+  for (auto axis : axes) {
+    // onnx spec: axis: [-r, r-1]
+    if (axis < -inTy.getRank() || axis >= inTy.getRank()) {
+      return emitOptionalError(location,
+                               "expected axis to be within [-rank,rank) (where "
+                               "rank is the rank of the input)");
+    }
+    // normalize axis: [0, r)
+    if (axis < 0) {
+      axis += inTy.getRank();
+    }
+    assert((axis >= 0 && axis < inTy.getRank()) && "axis has invalid value");
+
+    if (keepDims) {
+      newAxes[axis] = 1;
+    } else {
+      newAxes.erase(newAxes.begin() + axis);
+    }
+  }
+
+  inferredReturnShapes.push_back(
+      ShapedTypeComponents(newAxes, inTy.getElementType()));
+  return success();
 }
