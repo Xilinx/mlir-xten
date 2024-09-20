@@ -604,11 +604,11 @@ LogicalResult ReduceMeanOp::inferReturnTypeComponents(
     SmallVectorImpl<ShapedTypeComponents> &inferredReturnShapes) {
 
   auto inTy = cast<RankedTensorType>(adaptor.getInput().getType());
-  auto inDims = inTy.getShape();
   auto keepDims = adaptor.getKeepdims();
-
   auto axes = adaptor.getAxes();
-  llvm::SmallVector<int64_t> newAxes(inDims);
+
+  // Sanitize axes
+  llvm::SmallVector<int64_t> newAxes;
   for (auto axis : axes) {
     // onnx spec: axis: [-r, r-1]
     if (axis < -inTy.getRank() || axis >= inTy.getRank()) {
@@ -616,20 +616,45 @@ LogicalResult ReduceMeanOp::inferReturnTypeComponents(
                                "expected axis to be within [-rank,rank) (where "
                                "rank is the rank of the input)");
     }
+
     // normalize axis: [0, r)
     if (axis < 0) {
       axis += inTy.getRank();
     }
-    assert((axis >= 0 && axis < inTy.getRank()) && "axis has invalid value");
 
-    if (keepDims) {
-      newAxes[axis] = 1;
+    assert((axis >= 0 && axis < inTy.getRank()) && "axis has invalid value");
+    newAxes.push_back(axis);
+  }
+
+  SmallVector<int64_t, 4> outputShape;
+  auto inputShape = inTy.getShape();
+  for (auto [idx, dim] : llvm::enumerate(inputShape)) {
+    if (llvm::is_contained(axes, idx)) {
+      if (keepDims) {
+        outputShape.push_back(1);
+      }
     } else {
-      newAxes.erase(newAxes.begin() + axis);
+      outputShape.push_back(dim);
     }
   }
 
+  llvm::errs() << keepDims << "############\n";
+  for (auto elem : newAxes) {
+    llvm::errs() << elem << ",";
+  }
+  llvm::errs() << "\n";
+
+  for (auto elem : inputShape) {
+    llvm::errs() << elem << ",";
+  }
+  llvm::errs() << "\n";
+
+  for (auto elem : outputShape) {
+    llvm::errs() << elem << ",";
+  }
+  llvm::errs() << "\n";
+
   inferredReturnShapes.push_back(
-      ShapedTypeComponents(newAxes, inTy.getElementType()));
+      ShapedTypeComponents(outputShape, inTy.getElementType()));
   return success();
 }
