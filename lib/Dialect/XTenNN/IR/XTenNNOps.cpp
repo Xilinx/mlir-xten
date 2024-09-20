@@ -638,22 +638,6 @@ LogicalResult ReduceMeanOp::inferReturnTypeComponents(
     }
   }
 
-  llvm::errs() << keepDims << "############\n";
-  for (auto elem : newAxes) {
-    llvm::errs() << elem << ",";
-  }
-  llvm::errs() << "\n";
-
-  for (auto elem : inputShape) {
-    llvm::errs() << elem << ",";
-  }
-  llvm::errs() << "\n";
-
-  for (auto elem : outputShape) {
-    llvm::errs() << elem << ",";
-  }
-  llvm::errs() << "\n";
-
   inferredReturnShapes.push_back(
       ShapedTypeComponents(outputShape, inTy.getElementType()));
   return success();
