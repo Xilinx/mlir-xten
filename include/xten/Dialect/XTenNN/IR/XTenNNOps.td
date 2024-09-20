@@ -562,20 +562,25 @@ def XtenNN_ConvTransposeOp: XTenNN_Op<"ConvTranspose",[Pure, TosaExtension]> {
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
 }
 
-def XtenNN_ReduceMeanOp: XTenNN_Op<"reduce_mean", [Pure, TosaExtension]> {
+def XtenNN_ReduceMeanOp: XTenNN_Op<"reduce_mean", [
+                                    Pure, TosaExtension, 
+                                    InferTensorTypeAdaptor]> {
   let summary = "Reduce Mean operation";
   let description = [{
     This operation is equivalent to `onnx.ReduceMean` and computes the mean of
     the input tensor's elements along the provided axes.
   }];
+
   let arguments = (ins
     AnyRankedTensor:$input,
     DenseI64ArrayAttr:$axes,
     I64Attr:$keepdims
   );
+
   let results = (outs
     AnyRankedTensor:$output
   );
+  
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
 }
 
