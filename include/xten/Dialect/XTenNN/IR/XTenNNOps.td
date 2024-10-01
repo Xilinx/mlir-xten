@@ -265,12 +265,14 @@ def XTenNN_KernelOp : XTenNN_Op<"kernel", []> {
         ```
           %c = xten_nn.kernel "myKernel" (%arg0 : tensor<2xi64>) {attr = 4 : i32} -> tensor<2xi64>
           %d:2 = xten_nn.kernel "frob" (%arg0 : tensor<2xi64>, %arg1 : tensor<4xi64>) -> tensor<2xi64>, tensor<1xi64>
+          %e = xten_nn.kernel "matmul" (%arg0 : tensor<2xi64>) instantiation_args {N = 42 : i32} {attr = 4 : i32} -> tensor<2xi64>
         ```
     }];
 
     let arguments = (ins
       Variadic<AnyType>:$arguments,
-      StrAttr:$name
+      StrAttr:$name,
+      OptionalAttr<DictionaryAttr>:$instantiation_args
     );
     let results = (outs Variadic<AnyType>:$results);
 

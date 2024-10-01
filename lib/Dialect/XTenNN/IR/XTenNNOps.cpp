@@ -10,16 +10,21 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/IR/Attributes.h"
 #include "mlir/IR/Builders.h"
+#include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/OpImplementation.h"
+#include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/TypeUtilities.h"
 #include "mlir/Interfaces/FunctionImplementation.h"
 #include "mlir/Support/LogicalResult.h"
 
+#include "llvm/Support/Casting.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -222,8 +227,18 @@ ParseResult KernelOp::parse(OpAsmParser &p, OperationState &result) {
   if (p.parseAttribute(name, "name", result.attributes))
     return failure();
 
-  if (parseKernelArgumentList(p, result.operands) ||
-      p.parseOptionalAttrDict(result.attributes))
+  if (parseKernelArgumentList(p, result.operands))
+    return failure();
+
+  if(succeeded(p.parseOptionalKeyword("instantiation_args"))) {
+    NamedAttrList instantiationArgs;
+    if(p.parseOptionalAttrDict(instantiationArgs))
+      return failure();
+    DictionaryAttr dictAttr = DictionaryAttr::get(p.getContext(), instantiationArgs);
+    result.addAttribute("instantiation_args", dictAttr);
+  }
+
+  if(p.parseOptionalAttrDict(result.attributes))
     return failure();
 
   // If the op has no results, the `-> type($results)` is absent.
@@ -245,9 +260,21 @@ void KernelOp::print(OpAsmPrinter &p) {
   p << ' ';
   printKernelArgumentList(p, getOperandTypes(), getOperands());
   p << ' ';
-  SmallVector<StringRef> elidedAttrs = {"name"};
+  auto instantiationArgs = getInstantiationArgs();
+  if(instantiationArgs != std::nullopt && !(instantiationArgs->empty())) {
+    p << "instantiation_args ";
+    p.printOptionalAttrDict(instantiationArgs->getValue());
+    p << ' ';
+  }
+  SmallVector<StringRef> elidedAttrs = {"name", "instantiation_args"};
   p.printOptionalAttrDict(getOperation()->getAttrs(), elidedAttrs);
-  if (getOperation()->getAttrs().size() > elidedAttrs.size())
+  if (llvm::any_of(
+          getOperation()->getAttrs(), [&elidedAttrs](NamedAttribute a) {
+            auto name = a.getName();
+            return llvm::any_of(elidedAttrs, [&name](StringRef elidedName) {
+              return name == elidedName;
+            });
+          }))
     p << ' ';
   if (getNumResults()) {
     p << "-> ";
