@@ -277,6 +277,17 @@ def XTenNN_KernelOp : XTenNN_Op<"kernel", []> {
     );
     let results = (outs Variadic<AnyType>:$results);
 
+    let builders = [
+      OpBuilder<(ins
+        "::mlir::TypeRange":$results,
+        "::mlir::ValueRange":$arguments,
+        "::llvm::StringRef":$name), [{
+          build($_builder, $_state, results, arguments, name, 
+            ::mlir::ArrayAttr(), ::mlir::ArrayAttr());
+        }]
+      >
+    ];
+
     let hasCustomAssemblyFormat = 1;
     let hasVerifier = 1;
 }
