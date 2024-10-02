@@ -272,11 +272,13 @@ def XTenNN_KernelOp : XTenNN_Op<"kernel", []> {
     let arguments = (ins
       Variadic<AnyType>:$arguments,
       StrAttr:$name,
-      OptionalAttr<DictionaryAttr>:$instantiation_args
+      OptionalAttr<ArrayAttr>:$instantiation_args,
+      OptionalAttr<ArrayAttr>:$instantiation_arg_names
     );
     let results = (outs Variadic<AnyType>:$results);
 
     let hasCustomAssemblyFormat = 1;
+    let hasVerifier = 1;
 }
 
 //===----------------------------------------------------------------------===//
