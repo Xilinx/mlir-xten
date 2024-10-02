@@ -233,7 +233,7 @@ static ParseResult parseKernelInstantiationArgs(OpAsmParser &p,
   if (failed(p.parseCommaSeparatedList([&p, &names, &values]() {
         std::string name;
         if (succeeded(p.parseOptionalString(&name))) {
-            names.push_back(StringAttr::get(p.getContext(), name));
+          names.push_back(StringAttr::get(p.getContext(), name));
           if (failed(p.parseEqual()))
             return failure();
         }
