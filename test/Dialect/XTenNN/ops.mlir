@@ -35,11 +35,11 @@ func.func @kernel(%arg0: tensor<2xi64>, %arg1 : tensor<4xi64>) {
     %d:2 = xten_nn.kernel "myKernel" (%arg0 : tensor<2xi64>, %arg1 : tensor<4xi64>) -> tensor<2xi64>, tensor<1xi64>
     // CHECK: xten_nn.kernel "myKernel" (%arg0 : tensor<2xi64>, %arg1 : tensor<4xi64>) -> tensor<2xi64>, tensor<1xi64>
     %e = xten_nn.kernel "matmul" (%arg0 : tensor<2xi64>) instantiation_args {N = 42 : i32, idx = 56 : index} {attr = 4 : i32} -> tensor<2xi64>
-    // CHECK: xten_nn.kernel "matmul" (%arg0 : tensor<2xi64>) instantiation_args {N = 42 : i32, idx = 56 : index} {attr = 4 : i32} -> tensor<2xi64>
+    // CHECK: xten_nn.kernel "matmul" (%arg0 : tensor<2xi64>) instantiation_args {"N" = 42 : i32, "idx" = 56 : index} {attr = 4 : i32} -> tensor<2xi64>
     %f = xten_nn.kernel "matmul" (%arg0 : tensor<2xi64>) instantiation_args {42 : i32, 56 : index} {attr = 4 : i32} -> tensor<2xi64>
     // CHECK: xten_nn.kernel "matmul" (%arg0 : tensor<2xi64>) instantiation_args {42 : i32, 56 : index} {attr = 4 : i32} -> tensor<2xi64>
-    %g = xten_nn.kernel "matmul" (%arg0 : tensor<2xi64>) instantiation_args {42, 56} {attr = 4 : i32} -> tensor<2xi64>
-    // CHECK: xten_nn.kernel "matmul" (%arg0 : tensor<2xi64>) instantiation_args {42, 56} {attr = 4 : i32} -> tensor<2xi64>
+    %g = xten_nn.kernel "matmul" (%arg0 : tensor<2xi64>) instantiation_args {42, 56, 1.0} {attr = 4 : i32} -> tensor<2xi64>
+    // CHECK: xten_nn.kernel "matmul" (%arg0 : tensor<2xi64>) instantiation_args {42 : i64, 56 : i64, 1.000000e+00 : f64} {attr = 4 : i32} -> tensor<2xi64>
     return
 }
 
