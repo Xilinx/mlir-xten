@@ -232,17 +232,14 @@ static ParseResult parseKernelInstantiationArgs(OpAsmParser &p,
 
   if (failed(p.parseCommaSeparatedList([&p, &names, &values]() {
         std::string name;
-        bool hasName = false;
         if (succeeded(p.parseOptionalString(&name))) {
-          hasName = true;
+            names.push_back(StringAttr::get(p.getContext(), name));
           if (failed(p.parseEqual()))
             return failure();
         }
         Attribute attr;
         auto res = p.parseOptionalAttribute(attr);
         if (res.has_value() && succeeded(*res)) {
-          if (hasName)
-            names.push_back(StringAttr::get(p.getContext(), name));
           values.push_back(attr);
         }
         if (res.has_value() && failed(*res))
