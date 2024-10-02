@@ -72,7 +72,7 @@ func.func @kernel_missing_result(%arg0: i8, %arg1: i8) {
 
 func.func @kernel_instantiation_list_different_length(%arg0: i8, %arg1: i8) {
     // expected-error@+1 {{instantiation arg names must be either empty or as long as instantiation args}}
-    %x = xten_nn.kernel "myKernel" () instantiation_args {N = 42 : i32, 51 : index} -> i32
+    %x = xten_nn.kernel "myKernel" () instantiation_args ["N" = 42 : i32, 51 : index] -> i32
     return
 }
 
@@ -83,6 +83,15 @@ func.func @kernel_instantiation_list_non_empty(%arg0: i8, %arg1: i8) {
     %x = xten_nn.kernel "myKernel" () {instantiation_arg_names = ["N"]} -> i32
     return
 }
+
+// -----
+
+func.func @kernel_instantiation_list_non_quoted(%arg0: i8, %arg1: i8) {
+    // expected-error@+1 {{expected ']'}}
+    %x = xten_nn.kernel "myKernel" () instantiation_args [N = 42 : i32] -> i32
+    return
+}
+
 
 // -----
 

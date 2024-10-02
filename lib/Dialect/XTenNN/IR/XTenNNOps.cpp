@@ -223,17 +223,17 @@ static void printKernelArgumentList(OpAsmPrinter &p, TypeRange types,
 }
 
 // Parse
-// {((name = )?value, )*((name = )?value)}
+// [((name = )?value, )*((name = )?value)]
 static ParseResult parseKernelInstantiationArgs(OpAsmParser &p,
                                                 SmallVector<Attribute> &values,
                                                 SmallVector<Attribute> &names) {
-  if (failed(p.parseLBrace()))
+  if (failed(p.parseLSquare()))
     return failure();
 
   if (failed(p.parseCommaSeparatedList([&p, &names, &values]() {
         std::string name;
         bool hasName = false;
-        if (succeeded(p.parseOptionalKeywordOrString(&name))) {
+        if (succeeded(p.parseOptionalString(&name))) {
           hasName = true;
           if (failed(p.parseEqual()))
             return failure();
@@ -253,20 +253,20 @@ static ParseResult parseKernelInstantiationArgs(OpAsmParser &p,
     return failure();
   }
 
-  if (failed(p.parseRBrace()))
+  if (failed(p.parseRSquare()))
     return failure();
 
   return success();
 }
 
 // Print
-// instantiation_args {((name = )?value, )*((name = )?value)}
+// instantiation_args [((name = )?value, )*((name = )?value)]
 static void
 printKernelInstantiationArgs(OpAsmPrinter &p,
                              ArrayRef<Attribute> instantiationArgs,
                              ArrayRef<Attribute> instantiationArgNames) {
   if (!instantiationArgs.empty()) {
-    p << "instantiation_args {";
+    p << "instantiation_args [";
     auto zipped = llvm::zip_longest(instantiationArgNames, instantiationArgs);
     for (auto iter = zipped.begin(); iter != zipped.end(); ++iter) {
       if (iter != zipped.begin())
@@ -277,7 +277,7 @@ printKernelInstantiationArgs(OpAsmPrinter &p,
       if (value)
         p.printAttribute(*value);
     }
-    p << '}';
+    p << ']';
   }
 }
 
@@ -358,14 +358,16 @@ void KernelOp::print(OpAsmPrinter &p) {
 
 LogicalResult KernelOp::verify() {
   if (getInstantiationArgNames().has_value()) {
-    if (!getInstantiationArgs().has_value())
+    if (!getInstantiationArgs().has_value()) {
       return emitOpError(
           "cannot have instantiation arg names without instantiation args");
+    }
     if (!(getInstantiationArgNamesAttr().empty() ||
           getInstantiationArgNamesAttr().size() ==
-              getInstantiationArgsAttr().size()))
+              getInstantiationArgsAttr().size())) {
       return emitOpError("instantiation arg names must be either empty or as "
                          "long as instantiation args");
+    }
   }
 
   return success();
