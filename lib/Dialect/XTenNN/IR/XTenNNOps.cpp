@@ -222,9 +222,11 @@ static void printKernelArgumentList(OpAsmPrinter &p, TypeRange types,
   p << ")";
 }
 
+// Parse
+// {((name = )?value, )*((name = )?value)}
 static ParseResult parseKernelInstantiationArgs(OpAsmParser &p,
-                                          SmallVector<Attribute> &values,
-                                          SmallVector<Attribute> &names) {
+                                                SmallVector<Attribute> &values,
+                                                SmallVector<Attribute> &names) {
   if (failed(p.parseLBrace()))
     return failure();
 
@@ -257,6 +259,8 @@ static ParseResult parseKernelInstantiationArgs(OpAsmParser &p,
   return success();
 }
 
+// Print
+// instantiation_args {((name = )?value, )*((name = )?value)}
 static void
 printKernelInstantiationArgs(OpAsmPrinter &p,
                              ArrayRef<Attribute> instantiationArgs,
@@ -278,7 +282,8 @@ printKernelInstantiationArgs(OpAsmPrinter &p,
 }
 
 // Parse
-//  $name custom<KernelArgumentList>(type($arguments), $arguments) attr-dict
+//  $name custom<KernelArgumentList>(type($arguments), $arguments)
+//  (instantiation_args custom<InstantiationArgs>)? attr-dict
 //  `->` type($results)
 ParseResult KernelOp::parse(OpAsmParser &p, OperationState &result) {
   StringAttr name;
@@ -314,8 +319,9 @@ ParseResult KernelOp::parse(OpAsmParser &p, OperationState &result) {
   return success();
 }
 
-// Parse
-//  $name custom<KernelArgumentList>(type($arguments), $arguments) attr-dict
+// Print
+//  $name custom<KernelArgumentList>(type($arguments), $arguments)
+//  (instantiation_args custom<InstantiationArgs>)? attr-dict
 //  `->` type($results)
 void KernelOp::print(OpAsmPrinter &p) {
   p << ' ';
@@ -353,11 +359,13 @@ void KernelOp::print(OpAsmPrinter &p) {
 LogicalResult KernelOp::verify() {
   if (getInstantiationArgNames().has_value()) {
     if (!getInstantiationArgs().has_value())
-      return emitOpError("cannot have instantiation arg names without instantiation args");
+      return emitOpError(
+          "cannot have instantiation arg names without instantiation args");
     if (!(getInstantiationArgNamesAttr().empty() ||
           getInstantiationArgNamesAttr().size() ==
               getInstantiationArgsAttr().size()))
-      return emitOpError("instantiation arg names must be either empty or as long as instantiation args");
+      return emitOpError("instantiation arg names must be either empty or as "
+                         "long as instantiation args");
   }
 
   return success();
