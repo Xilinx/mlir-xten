@@ -70,6 +70,31 @@ func.func @kernel_missing_result(%arg0: i8, %arg1: i8) {
 
 // -----
 
+func.func @kernel_instantiation_list_different_length(%arg0: i8, %arg1: i8) {
+    // expected-error@+1 {{instantiation arg names must be either empty or as long as instantiation args}}
+    %x = xten_nn.kernel "myKernel" () instantiation_args ["N" = 42 : i32, 51 : index] -> i32
+    return
+}
+
+// -----
+
+func.func @kernel_instantiation_list_non_empty(%arg0: i8, %arg1: i8) {
+    // expected-error@+1 {{cannot have instantiation arg names without instantiation args}}
+    %x = xten_nn.kernel "myKernel" () {instantiation_arg_names = ["N"]} -> i32
+    return
+}
+
+// -----
+
+func.func @kernel_instantiation_list_non_quoted(%arg0: i8, %arg1: i8) {
+    // expected-error@+1 {{expected ']'}}
+    %x = xten_nn.kernel "myKernel" () instantiation_args [N = 42 : i32] -> i32
+    return
+}
+
+
+// -----
+
 func.func @topk_wrong_output_shape(%arg0: tensor<10x10xf32>) {
     %k = arith.constant 7 : i64
     // expected-error@+2 {{failed to infer returned types}}

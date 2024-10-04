@@ -10,23 +10,31 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/ADT/SmallVector.h"
+#include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
+
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/IR/Attributes.h"
 #include "mlir/IR/Builders.h"
+#include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/OpDefinition.h"
 #include "mlir/IR/OpImplementation.h"
+#include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/TypeUtilities.h"
 #include "mlir/Interfaces/FunctionImplementation.h"
 #include "mlir/Support/LogicalResult.h"
 
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/Support/Casting.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "xten/Dialect/XTenNN/IR/XTenNN.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
-#include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
 #include "xten/Dialect/XTenNN/Interfaces/EnclaveOpInterfaces.h"
+
 #include <cstdint>
 
 using namespace mlir;
@@ -215,15 +223,87 @@ static void printKernelArgumentList(OpAsmPrinter &p, TypeRange types,
 }
 
 // Parse
-//  $name custom<KernelArgumentList>(type($arguments), $arguments) attr-dict
+// [((name = )?value, )*((name = )?value)]
+static ParseResult parseKernelInstantiationArgs(OpAsmParser &p,
+                                                SmallVector<Attribute> &values,
+                                                SmallVector<Attribute> &names) {
+  if (failed(p.parseLSquare()))
+    return failure();
+
+  if (failed(p.parseCommaSeparatedList([&p, &names, &values]() {
+        std::string name;
+        if (succeeded(p.parseOptionalString(&name))) {
+          names.push_back(StringAttr::get(p.getContext(), name));
+          if (failed(p.parseEqual()))
+            return failure();
+        }
+        Attribute attr;
+        auto res = p.parseOptionalAttribute(attr);
+        if (res.has_value() && succeeded(*res)) {
+          values.push_back(attr);
+        }
+        if (res.has_value() && failed(*res))
+          return failure();
+
+        return success();
+      }))) {
+    return failure();
+  }
+
+  if (failed(p.parseRSquare()))
+    return failure();
+
+  return success();
+}
+
+// Print
+// instantiation_args [((name = )?value, )*((name = )?value)]
+static void
+printKernelInstantiationArgs(OpAsmPrinter &p,
+                             ArrayRef<Attribute> instantiationArgs,
+                             ArrayRef<Attribute> instantiationArgNames) {
+  if (!instantiationArgs.empty()) {
+    p << "instantiation_args [";
+    auto zipped = llvm::zip_longest(instantiationArgNames, instantiationArgs);
+    for (auto iter = zipped.begin(); iter != zipped.end(); ++iter) {
+      if (iter != zipped.begin())
+        p << ", ";
+      auto [name, value] = *iter;
+      if (name)
+        p << *name << " = ";
+      if (value)
+        p.printAttribute(*value);
+    }
+    p << ']';
+  }
+}
+
+// Parse
+//  $name custom<KernelArgumentList>(type($arguments), $arguments)
+//  (instantiation_args custom<InstantiationArgs>)? attr-dict
 //  `->` type($results)
 ParseResult KernelOp::parse(OpAsmParser &p, OperationState &result) {
   StringAttr name;
   if (p.parseAttribute(name, "name", result.attributes))
     return failure();
 
-  if (parseKernelArgumentList(p, result.operands) ||
-      p.parseOptionalAttrDict(result.attributes))
+  if (parseKernelArgumentList(p, result.operands))
+    return failure();
+
+  if (succeeded(p.parseOptionalKeyword("instantiation_args"))) {
+    SmallVector<Attribute> values;
+    SmallVector<Attribute> names;
+    if (failed(parseKernelInstantiationArgs(p, values, names)))
+      return failure();
+    result.addAttribute("instantiation_args",
+                        ArrayAttr::get(p.getContext(), values));
+    if (!names.empty()) {
+      result.addAttribute("instantiation_arg_names",
+                          ArrayAttr::get(p.getContext(), names));
+    }
+  }
+
+  if (p.parseOptionalAttrDict(result.attributes))
     return failure();
 
   // If the op has no results, the `-> type($results)` is absent.
@@ -236,8 +316,9 @@ ParseResult KernelOp::parse(OpAsmParser &p, OperationState &result) {
   return success();
 }
 
-// Parse
-//  $name custom<KernelArgumentList>(type($arguments), $arguments) attr-dict
+// Print
+//  $name custom<KernelArgumentList>(type($arguments), $arguments)
+//  (instantiation_args custom<InstantiationArgs>)? attr-dict
 //  `->` type($results)
 void KernelOp::print(OpAsmPrinter &p) {
   p << ' ';
@@ -245,14 +326,48 @@ void KernelOp::print(OpAsmPrinter &p) {
   p << ' ';
   printKernelArgumentList(p, getOperandTypes(), getOperands());
   p << ' ';
-  SmallVector<StringRef> elidedAttrs = {"name"};
+  auto instantiationArgs = getInstantiationArgs();
+  auto instantiationArgNames = getInstantiationArgNames();
+  if (instantiationArgs != std::nullopt) {
+    printKernelInstantiationArgs(p, instantiationArgs->getValue(),
+                                 (instantiationArgNames == std::nullopt)
+                                     ? ArrayRef<Attribute>()
+                                     : instantiationArgNames->getValue());
+    p << ' ';
+  }
+
+  SmallVector<StringRef> elidedAttrs = {"name", "instantiation_args",
+                                        "instantiation_arg_names"};
   p.printOptionalAttrDict(getOperation()->getAttrs(), elidedAttrs);
-  if (getOperation()->getAttrs().size() > elidedAttrs.size())
+  if (llvm::any_of(
+          getOperation()->getAttrs(), [&elidedAttrs](NamedAttribute a) {
+            auto name = a.getName();
+            return llvm::any_of(elidedAttrs, [&name](StringRef elidedName) {
+              return name == elidedName;
+            });
+          }))
     p << ' ';
   if (getNumResults()) {
     p << "-> ";
     p << getResultTypes();
   }
+}
+
+LogicalResult KernelOp::verify() {
+  if (getInstantiationArgNames().has_value()) {
+    if (!getInstantiationArgs().has_value()) {
+      return emitOpError(
+          "cannot have instantiation arg names without instantiation args");
+    }
+    if (!(getInstantiationArgNamesAttr().empty() ||
+          getInstantiationArgNamesAttr().size() ==
+              getInstantiationArgsAttr().size())) {
+      return emitOpError("instantiation arg names must be either empty or as "
+                         "long as instantiation args");
+    }
+  }
+
+  return success();
 }
 
 #define GET_OP_CLASSES
@@ -266,9 +381,7 @@ ParseResult SubgraphOp::parse(OpAsmParser &p, OperationState &result) {
   return parseEnclaveOp(p, result);
 }
 
-void SubgraphOp::print(OpAsmPrinter &p) {
-  printEnclaveOp(p, *this);
-}
+void SubgraphOp::print(OpAsmPrinter &p) { printEnclaveOp(p, *this); }
 
 LogicalResult SubgraphOp::verify() {
   Block *optBody = this->getOptionalEnclaveBody();
