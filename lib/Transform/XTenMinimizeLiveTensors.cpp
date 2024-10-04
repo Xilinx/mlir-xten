@@ -199,7 +199,7 @@ FailureOr<SmallVector<Value>> getFmOperands(Operation *op) {
     return {getSubgraphIFMs(op)};
 
   if (isTemplatedGraph(op))
-    return {op->getOperands()};
+    return {getSubgraphIFMs(op)};
 
   // Otherwise, this is a PseudoOp and IFM is the first operand.
   if (!(isAnyPseudoOp(op) || isInterfaceOp(op))) {
@@ -225,7 +225,8 @@ size_t getSize(Value val) {
 
   if (auto complexType = elementType.dyn_cast<ComplexType>()) {
     elementType = complexType.getElementType();
-    return (elementType.getIntOrFloatBitWidth() * type.getNumElements() * 2) / 8;
+    return (elementType.getIntOrFloatBitWidth() * type.getNumElements() * 2) /
+           8;
   }
   llvm_unreachable("Does not know how to compute size");
 }
@@ -299,7 +300,8 @@ public:
       } else {
         fmResults = SmallVector<Value>(currFn.getBody().front().getArguments());
       }
-      std::optional<Value> const sharesResultMemory = sharesMemoryWithResult(defOp);
+      std::optional<Value> const sharesResultMemory =
+          sharesMemoryWithResult(defOp);
       OpInfo info = {.op = defOp,
                      .operands = *fmOperands,
                      .results = fmResults,
