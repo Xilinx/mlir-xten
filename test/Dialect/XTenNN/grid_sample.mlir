@@ -1,3 +1,5 @@
+// (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 // RUN: aten-opt %s -split-input-file --verify-diagnostics
 
 func.func @test_grid_sample_valid1(%arg0: tensor<1x3x1152x1344xf32>, %arg1: tensor<1x1152x1344x2xf32>) -> tensor<*xf32> {

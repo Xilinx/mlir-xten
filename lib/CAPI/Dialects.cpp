@@ -1,3 +1,5 @@
+// (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
+
 //===- Dialects.cpp - C Interface for Dialects ----------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.

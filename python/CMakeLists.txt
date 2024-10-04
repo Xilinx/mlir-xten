@@ -7,42 +7,6 @@
 # (c) Copyright 2021 Xilinx, Inc. All Rights reserved.
 # (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
-include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_BINARY_DIR}
-  ${Python3_INCLUDE_DIRS}
-  ${pybind11_INCLUDE_DIR}
-)
-add_library(_xten SHARED
-  XTenModule.cpp
-)
-if(MSVC)
-  target_compile_options(_xten PUBLIC "/EHsc")
-endif()
-
-set_target_properties(_xten PROPERTIES PREFIX "")
-get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
-get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
-
-target_link_libraries(_xten
-  PRIVATE
-  XTenTransformPasses
-  XTenConversionPasses
-  ${Python3_LIBRARIES}
-  ${dialect_libs}
-  ${conversion_libs}
-  MLIRPass
-  MLIRIR
-)
-
-install(TARGETS _xten
-LIBRARY DESTINATION python COMPONENT python
-ARCHIVE DESTINATION python COMPONENT python
-RUNTIME DESTINATION bin COMPONENT python)
-
-install(DIRECTORY xten
-DESTINATION python COMPONENT python)
-
 if(MLIR_ENABLE_BINDINGS_PYTHON)
   include(AddMLIRPython)
   declare_mlir_python_sources(XTenPythonSources)
