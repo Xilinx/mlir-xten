@@ -40,6 +40,10 @@ func.func @kernel(%arg0: tensor<2xi64>, %arg1 : tensor<4xi64>) {
     // CHECK: xten_nn.kernel "matmul" (%arg0 : tensor<2xi64>) instantiation_args [42 : i32, 56 : index] {attr = 4 : i32} -> tensor<2xi64>
     %g = xten_nn.kernel "matmul" (%arg0 : tensor<2xi64>) instantiation_args [42, 56, 1.0] {attr = 4 : i32} -> tensor<2xi64>
     // CHECK: xten_nn.kernel "matmul" (%arg0 : tensor<2xi64>) instantiation_args [42 : i64, 56 : i64, 1.000000e+00 : f64] {attr = 4 : i32} -> tensor<2xi64>
+    %h = xten_nn.kernel "readInput" (%arg0 : tensor<2xi64>) instantiation_args ["type" = "double", "length" = 42 : i64] {attr = 4 : i32} -> tensor<2xi64>
+    // CHECK: xten_nn.kernel "readInput" (%arg0 : tensor<2xi64>) instantiation_args ["type" = "double", "length" = 42 : i64] {attr = 4 : i32} -> tensor<2xi64>
+    %i = xten_nn.kernel "readInput" (%arg0 : tensor<2xi64>) instantiation_args ["double", 42 : i64] {attr = 4 : i32} -> tensor<2xi64>
+    // CHECK: xten_nn.kernel "readInput" (%arg0 : tensor<2xi64>) instantiation_args ["double", 42 : i64] {attr = 4 : i32} -> tensor<2xi64>
     return
 }
 
