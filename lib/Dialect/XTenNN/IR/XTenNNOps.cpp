@@ -233,9 +233,12 @@ static ParseResult parseKernelInstantiationArgs(OpAsmParser &p,
   if (failed(p.parseCommaSeparatedList([&p, &names, &values]() {
         std::string name;
         if (succeeded(p.parseOptionalString(&name))) {
+          if (failed(p.parseOptionalEqual())) {
+            // This is an unnamed string parameter (e.g. class name).
+            values.push_back(StringAttr::get(p.getContext(), name));
+            return success();
+          }
           names.push_back(StringAttr::get(p.getContext(), name));
-          if (failed(p.parseEqual()))
-            return failure();
         }
         Attribute attr;
         auto res = p.parseOptionalAttribute(attr);
