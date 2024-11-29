@@ -608,11 +608,11 @@ static std::string getOpInvalidModeOption(ArrayRef<const char *> subOptions,
 
 LogicalResult amd::xten_nn::GridSampleOp::verify() {
 
-  constexpr std::array mode{"bilinear"};
+  constexpr std::array mode{"bilinear", "nearest", "cubic"};
   if (getMode() > mode.size() - 1) {
     return emitOpError(getOpInvalidModeOption(mode, getModeAttrName()));
   }
-  constexpr std::array paddingMode{"zeros", "border"};
+  constexpr std::array paddingMode{"zeros", "border", "reflection"};
   if (getPaddingMode() > paddingMode.size() - 1) {
     return emitOpError(
         getOpInvalidModeOption(paddingMode, getPaddingModeAttrName()));
