@@ -224,7 +224,11 @@ public:
     }
 
     // Sum the shifts of the quantize, dequantize and update the operations
-    llvm::APInt shiftSum(32, dequantizeOp.getShift(), true);
+    if (!dequantizeOp.getShift()) {
+      return rewriter.notifyMatchFailure(dequantizeOp.getLoc(),
+                                         "Dequantize op has no shift");
+    }
+    llvm::APInt shiftSum(32, *dequantizeOp.getShift(), true);
     bool overflow = false;
     shiftSum = shiftSum.sadd_ov(dequantizeShift, overflow);
     if (overflow) {
