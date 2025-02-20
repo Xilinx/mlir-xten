@@ -36,7 +36,8 @@ struct RemoveQDQBetweenConcat : public OpRewritePattern<DequantizeOp> {
                                 PatternRewriter &rewriter) const override {
     // Match concat->QDQ->concat and remove QDQ, if concats would be foldable.
     // Removing a QDQ is already destructive. Try to be a little-less
-    // destructive by checking that the QDQ nodes have the same shift.
+    // destructive by checking that the QDQ nodes have the same scale +
+    // zeropoint.
     auto quantize =
         llvm::dyn_cast_or_null<QuantizeOp>(op.getInput().getDefiningOp());
     if (!quantize) {
@@ -44,9 +45,11 @@ struct RemoveQDQBetweenConcat : public OpRewritePattern<DequantizeOp> {
           op, "DequantizeOp input not produced by QuantizeOp.");
     }
 
-    if (quantize.getShift() != op.getShift()) {
-      return rewriter.notifyMatchFailure(
-          op, "DequantizeOp and QuantizeOp do not share the same shift value.");
+    if (quantize.getScale() != op.getScale() ||
+        quantize.getZeroPoint() != op.getZeroPoint()) {
+      return rewriter.notifyMatchFailure(op,
+                                         "DequantizeOp and QuantizeOp do not "
+                                         "share the same scale + zero_point.");
     }
 
     // Try to match an incoming concat

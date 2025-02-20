@@ -22,6 +22,15 @@ def XTenNN_AnySignlessOrUnsignedIntegerTensor : TensorOf<
 
 def XTenNN_AnyFloatTensor : TensorOf<[AnyFloat]>;
 
+def XTenNN_AnyIntegerAttr:
+    TypedAttrBase<
+      AnyInteger, "IntegerAttr",
+      CPred<"::llvm::isa<::mlir::IntegerAttr>($_self)">,
+      "Any integer attr"> {
+  let returnType = [{ ::llvm::APInt }];
+  let constBuilderCall = ?;
+}
+
 def XTenNN_AnyIntegerOrFloat : AnyTypeOf<[AnyInteger, AnyFloat], "Integer or Float">;
 
 #endif // XTENNN_TYPES

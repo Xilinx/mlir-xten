@@ -35,6 +35,7 @@
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 #include "xten/Dialect/XTenNN/Interfaces/EnclaveOpInterfaces.h"
 
+#include <cfenv>
 #include <cstdint>
 
 using namespace mlir;
@@ -444,23 +445,139 @@ LogicalResult SubgraphOp::inferReturnTypeComponents(
 // XTenNNDialect
 //===----------------------------------------------------------------------===//
 
+namespace {
+std::optional<int32_t> getShiftValue(float constValue) {
+  const float log2Value = std::log2f(constValue);
+
+  // The log2 of the value must not have fractions.
+  if (std::roundf(log2Value) != log2Value)
+    return {};
+
+  return static_cast<int32_t>(log2Value);
+}
+
+float getScaleFromShift(int32_t shift) {
+  std::feclearexcept(FE_ALL_EXCEPT);
+  errno = 0;
+  const float scale = exp2f(shift);
+  assert(!std::fetestexcept(FE_OVERFLOW));
+  assert(errno == 0);
+  return scale;
+}
+} // namespace
+
+void amd::xten_nn::QuantizeOp::build(mlir::OpBuilder &odsBuilder,
+                                     mlir::OperationState &odsState,
+                                     mlir::Type output, mlir::Value input,
+                                     mlir::FloatAttr scale,
+                                     mlir::IntegerAttr zeroPoint) {
+  const bool zeroPointIsZero = zeroPoint.getValue().isZero();
+  assert(scale.getType().isF32());
+  const auto shiftValue = getShiftValue(scale.getValue().convertToFloat());
+  if (zeroPointIsZero && shiftValue) {
+    return build(odsBuilder, odsState, output, input,
+                 odsBuilder.getSI32IntegerAttr(*shiftValue), scale, zeroPoint);
+  }
+  return build(odsBuilder, odsState, output, input, nullptr, scale, zeroPoint);
+}
+
+void amd::xten_nn::QuantizeOp::build(mlir::OpBuilder &odsBuilder,
+                                     mlir::OperationState &odsState,
+                                     mlir::Type output, mlir::Value input,
+                                     int32_t shift) {
+  const auto outputElemType = cast<TensorType>(output).getElementType();
+  return build(odsBuilder, odsState, output, input,
+               odsBuilder.getSI32IntegerAttr(shift),
+               odsBuilder.getF32FloatAttr(getScaleFromShift(shift)),
+               odsBuilder.getIntegerAttr(outputElemType, 0));
+}
+
+LogicalResult amd::xten_nn::QuantizeOp::verify() {
+  if (getResult().getType().getElementType() != getZeroPointAttr().getType()) {
+    return emitOpError("Result elem type needs to match match zero point type");
+  }
+  // if shift is set, zero point needs to be zero and scale needs to match
+  if (getShift()) {
+    const auto computedShift = getShiftValue(getScale().convertToFloat());
+    if (!computedShift || computedShift != *getShift()) {
+      return emitOpError(
+          "Shift set, but does not match shift calculated from scale");
+    }
+    if (!getZeroPoint().isZero()) {
+      return emitOpError("Shift set, but zero_point not zero");
+    }
+  }
+
+  return success();
+}
+
 OpFoldResult amd::xten_nn::QuantizeOp::fold(FoldAdaptor adaptor) {
-  // Fold away cases where a xten_nn.quantize is preceeded by xten_nn.dequantize
-  // that uses the same shift factor and has same types.
+  // Fold away cases where a xten_nn.quantize is preceeded by
+  // xten_nn.dequantize that uses the same scale factor, zeroPoint and has same
+  // types.
 
   auto dequantizeOp =
       dyn_cast_or_null<amd::xten_nn::DequantizeOp>(getInput().getDefiningOp());
   if (!dequantizeOp)
     return {};
 
-  if (!dequantizeOp->hasOneUse() || dequantizeOp.getShift() != getShift())
-    return {};
-
   auto dequantizeInput = dequantizeOp.getInput();
   if (dequantizeInput.getType() != getType())
     return {};
 
+  if (!dequantizeOp->hasOneUse() || dequantizeOp.getScale() != getScale() ||
+      dequantizeOp.getZeroPoint() != getZeroPoint())
+    return {};
+
   return dequantizeInput;
+}
+
+void amd::xten_nn::DequantizeOp::build(mlir::OpBuilder &odsBuilder,
+                                       mlir::OperationState &odsState,
+                                       mlir::Type output, mlir::Value input,
+                                       mlir::FloatAttr scale,
+                                       mlir::IntegerAttr zeroPoint) {
+  const bool zeroPointIsZero = zeroPoint.getValue().isZero();
+  assert(scale.getType().isF32());
+  const auto shiftValue = getShiftValue(scale.getValue().convertToFloat());
+  if (zeroPointIsZero && shiftValue) {
+    return build(odsBuilder, odsState, output, input,
+                 odsBuilder.getSI32IntegerAttr(*shiftValue), scale, zeroPoint);
+  }
+  return build(odsBuilder, odsState, output, input, nullptr, scale, zeroPoint);
+}
+
+void amd::xten_nn::DequantizeOp::build(mlir::OpBuilder &odsBuilder,
+                                       mlir::OperationState &odsState,
+                                       mlir::Type output, mlir::Value input,
+                                       int32_t shift) {
+  const auto inputElemType = cast<TensorType>(input.getType()).getElementType();
+  return build(odsBuilder, odsState, output, input,
+               odsBuilder.getSI32IntegerAttr(shift),
+               odsBuilder.getF32FloatAttr(getScaleFromShift(shift)),
+               odsBuilder.getIntegerAttr(inputElemType, 0));
+}
+
+LogicalResult amd::xten_nn::DequantizeOp::verify() {
+  // Input elem type should match zero point type
+  if (cast<TensorType>(getOperand().getType()).getElementType() !=
+      getZeroPointAttr().getType()) {
+    return emitOpError(
+        "Operand elem type needs to match match zero point type");
+  }
+  // if shift is set, zero point needs to be zero and scale needs to match
+  if (getShift()) {
+    const auto computedShift = getShiftValue(getScale().convertToFloat());
+    if (!computedShift || computedShift != *getShift()) {
+      return emitOpError(
+          "Shift set, but does not match shift calculated from scale");
+    }
+    if (!getZeroPoint().isZero()) {
+      return emitOpError("Shift set, but zero_point not zero");
+    }
+  }
+
+  return success();
 }
 
 OpFoldResult amd::xten_nn::GroupQuantizeOp::fold(FoldAdaptor adaptor) {
