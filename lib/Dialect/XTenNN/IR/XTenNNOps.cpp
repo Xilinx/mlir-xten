@@ -557,6 +557,25 @@ mlir::ParseResult parseQuantizeDequantizeLikeOp(
     result.addAttribute(zeroPointAttrName, zeroPointAttr);
   }
 
+  // Try to populate shift form scale, but only if the zero point is zero
+  if (!result.attributes.getNamed(shiftAttrName)) {
+    const auto scaleAttr = result.attributes.getNamed(scaleAttrName);
+    if (scaleAttr) {
+      const auto calculatedShift =
+          getShiftValue(cast<mlir::FloatAttr>(scaleAttr->getValue())
+                            .getValue()
+                            .convertToFloat());
+      if (calculatedShift &&
+          cast<IntegerAttr>(
+              result.attributes.getNamed(zeroPointAttrName)->getValue())
+              .getValue()
+              .isZero()) {
+        result.addAttribute(shiftAttrName,
+                            builder.getSI32IntegerAttr(*calculatedShift));
+      }
+    }
+  }
+
   if (parser.resolveOperands(inputOperands, inputTypes, inputOperandsLoc,
                              result.operands))
     return mlir::failure();

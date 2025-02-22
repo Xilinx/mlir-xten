@@ -217,7 +217,7 @@ func.func @qdq_different_shift(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32
 
 func.func @qdq_different_zero(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32> {
   %0 = "tosa.concat"(%arg0, %arg0) {axis = 1 : i32} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
-  %1 = xten_nn.quantize(%0 : tensor<1x2x7x7xf32>) {scale = 3.125000e-02 : f32, zero_point = 0 : i8} -> tensor<1x2x7x7xi8>
+  %1 = xten_nn.quantize(%0 : tensor<1x2x7x7xf32>) {shift = -5 : si32} -> tensor<1x2x7x7xi8>
   %2 = xten_nn.dequantize(%1 : tensor<1x2x7x7xi8>) {scale = 3.125000e-02 : f32, zero_point = 1 : i8} -> tensor<1x2x7x7xf32>
   %3 = "tosa.concat"(%2, %2) {axis = 1 : i32} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
   return %3 : tensor<1x4x7x7xf32>
@@ -226,7 +226,7 @@ func.func @qdq_different_zero(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32>
 // CHECK-LABEL:   func.func @qdq_different_zero(
 // CHECK-SAME:                                   %[[VAL_0:.*]]: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32> {
 // CHECK:           %[[VAL_1:.*]] = tosa.concat %[[VAL_0]], %[[VAL_0]] {axis = 1 : i32} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
-// CHECK:           %[[VAL_2:.*]] = xten_nn.quantize(%[[VAL_1]] : tensor<1x2x7x7xf32>) {scale = 3.125000e-02 : f32, zero_point = 0 : i8} -> tensor<1x2x7x7xi8>
+// CHECK:           %[[VAL_2:.*]] = xten_nn.quantize(%[[VAL_1]] : tensor<1x2x7x7xf32>) {shift = -5 : si32} -> tensor<1x2x7x7xi8>
 // CHECK:           %[[VAL_3:.*]] = xten_nn.dequantize(%[[VAL_2]] : tensor<1x2x7x7xi8>) {scale = 3.125000e-02 : f32, zero_point = 1 : i8} -> tensor<1x2x7x7xf32>
 // CHECK:           %[[VAL_4:.*]] = tosa.concat %[[VAL_3]], %[[VAL_3]] {axis = 1 : i32} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
 // CHECK:           return %[[VAL_4]] : tensor<1x4x7x7xf32>
@@ -235,7 +235,7 @@ func.func @qdq_different_zero(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32>
 // SANE-LABEL:   func.func @qdq_different_zero(
 // SANE-SAME:                                   %[[VAL_0:.*]]: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32> {
 // SANE:           %[[VAL_1:.*]] = tosa.concat %[[VAL_0]], %[[VAL_0]] {axis = 1 : i32} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
-// SANE:           %[[VAL_2:.*]] = xten_nn.quantize(%[[VAL_1]] : tensor<1x2x7x7xf32>) {scale = 3.125000e-02 : f32, zero_point = 0 : i8} -> tensor<1x2x7x7xi8>
+// SANE:           %[[VAL_2:.*]] = xten_nn.quantize(%[[VAL_1]] : tensor<1x2x7x7xf32>) {shift = -5 : si32} -> tensor<1x2x7x7xi8>
 // SANE:           %[[VAL_3:.*]] = xten_nn.dequantize(%[[VAL_2]] : tensor<1x2x7x7xi8>) {scale = 3.125000e-02 : f32, zero_point = 1 : i8} -> tensor<1x2x7x7xf32>
 // SANE:           %[[VAL_4:.*]] = tosa.concat %[[VAL_3]], %[[VAL_3]] {axis = 1 : i32} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
 // SANE:           return %[[VAL_4]] : tensor<1x4x7x7xf32>
@@ -246,8 +246,8 @@ func.func @qdq_different_zero(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32>
 
 func.func @qdq_different_scale(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32> {
   %0 = "tosa.concat"(%arg0, %arg0) {axis = 1 : i32} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
-  %1 = xten_nn.quantize(%0 : tensor<1x2x7x7xf32>) {scale = 3.125000e-02 : f32, zero_point = 0 : i8} -> tensor<1x2x7x7xi8>
-  %2 = xten_nn.dequantize(%1 : tensor<1x2x7x7xi8>) {scale = 1.250000e-01 : f32, zero_point = 0 : i8} -> tensor<1x2x7x7xf32>
+  %1 = xten_nn.quantize(%0 : tensor<1x2x7x7xf32>) {shift = -5 : si32} -> tensor<1x2x7x7xi8>
+  %2 = xten_nn.dequantize(%1 : tensor<1x2x7x7xi8>) {shift = -3 : si32} -> tensor<1x2x7x7xf32>
   %3 = "tosa.concat"(%2, %2) {axis = 1 : i32} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
   return %3 : tensor<1x4x7x7xf32>
 }
@@ -255,8 +255,8 @@ func.func @qdq_different_scale(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32
 // CHECK-LABEL:   func.func @qdq_different_scale(
 // CHECK-SAME:                                   %[[VAL_0:.*]]: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32> {
 // CHECK:           %[[VAL_1:.*]] = tosa.concat %[[VAL_0]], %[[VAL_0]] {axis = 1 : i32} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
-// CHECK:           %[[VAL_2:.*]] = xten_nn.quantize(%[[VAL_1]] : tensor<1x2x7x7xf32>) {scale = 3.125000e-02 : f32,  zero_point = 0 : i8} -> tensor<1x2x7x7xi8>
-// CHECK:           %[[VAL_3:.*]] = xten_nn.dequantize(%[[VAL_2]] : tensor<1x2x7x7xi8>) {scale = 1.250000e-01 : f32,  zero_point = 0 : i8} -> tensor<1x2x7x7xf32>
+// CHECK:           %[[VAL_2:.*]] = xten_nn.quantize(%[[VAL_1]] : tensor<1x2x7x7xf32>) {shift = -5 : si32} -> tensor<1x2x7x7xi8>
+// CHECK:           %[[VAL_3:.*]] = xten_nn.dequantize(%[[VAL_2]] : tensor<1x2x7x7xi8>) {shift = -3 : si32} -> tensor<1x2x7x7xf32>
 // CHECK:           %[[VAL_4:.*]] = tosa.concat %[[VAL_3]], %[[VAL_3]] {axis = 1 : i32} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
 // CHECK:           return %[[VAL_4]] : tensor<1x4x7x7xf32>
 // CHECK:         }
@@ -264,8 +264,8 @@ func.func @qdq_different_scale(%arg0: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32
 // SANE-LABEL:   func.func @qdq_different_scale(
 // SANE-SAME:                                   %[[VAL_0:.*]]: tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32> {
 // SANE:           %[[VAL_1:.*]] = tosa.concat %[[VAL_0]], %[[VAL_0]] {axis = 1 : i32} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
-// SANE:           %[[VAL_2:.*]] = xten_nn.quantize(%[[VAL_1]] : tensor<1x2x7x7xf32>) {scale = 3.125000e-02 : f32,  zero_point = 0 : i8} -> tensor<1x2x7x7xi8>
-// SANE:           %[[VAL_3:.*]] = xten_nn.dequantize(%[[VAL_2]] : tensor<1x2x7x7xi8>) {scale = 1.250000e-01 : f32,  zero_point = 0 : i8} -> tensor<1x2x7x7xf32>
+// SANE:           %[[VAL_2:.*]] = xten_nn.quantize(%[[VAL_1]] : tensor<1x2x7x7xf32>) {shift = -5 : si32} -> tensor<1x2x7x7xi8>
+// SANE:           %[[VAL_3:.*]] = xten_nn.dequantize(%[[VAL_2]] : tensor<1x2x7x7xi8>) {shift = -3 : si32} -> tensor<1x2x7x7xf32>
 // SANE:           %[[VAL_4:.*]] = tosa.concat %[[VAL_3]], %[[VAL_3]] {axis = 1 : i32} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
 // SANE:           return %[[VAL_4]] : tensor<1x4x7x7xf32>
 // SANE:         }
