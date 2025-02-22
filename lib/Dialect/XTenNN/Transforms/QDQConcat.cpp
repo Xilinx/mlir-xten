@@ -45,11 +45,16 @@ struct RemoveQDQBetweenConcat : public OpRewritePattern<DequantizeOp> {
           op, "DequantizeOp input not produced by QuantizeOp.");
     }
 
-    if (quantize.getScale() != op.getScale() ||
-        quantize.getZeroPoint() != op.getZeroPoint()) {
+    if (quantize.getScale() != op.getScale()) {
       return rewriter.notifyMatchFailure(op,
                                          "DequantizeOp and QuantizeOp do not "
-                                         "share the same scale + zero_point.");
+                                         "share the same scale");
+    }
+
+    if (quantize.getZeroPoint() != op.getZeroPoint()) {
+      return rewriter.notifyMatchFailure(op,
+                                         "DequantizeOp and QuantizeOp do not "
+                                         "share the same zero_point.");
     }
 
     // Try to match an incoming concat
