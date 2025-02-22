@@ -77,6 +77,42 @@ func.func @valid_dequantize_no_shift(%arg0: tensor<1x2xi16>) -> tensor<1x2xf32> 
 
 // -----
 
+func.func @valid_dequantize_no_zero_point(%arg0: tensor<1x2xi8>) -> tensor<1x2xf32> {
+    %result = xten_nn.dequantize (%arg0: tensor<1x2xi8>) {scale = 0.125 : f32} -> tensor<1x2xf32>
+    return %result : tensor<1x2xf32>
+}
+
+// -----
+
+func.func @valid_dequantize_only_shift(%arg0: tensor<1x2xi8>) -> tensor<1x2xf32> {
+    %result = xten_nn.dequantize (%arg0: tensor<1x2xi8>) {shift = -2 : si32} -> tensor<1x2xf32>
+    return %result : tensor<1x2xf32>
+}
+
+// -----
+
+func.func @invalid_dequantize_shift_and_zero(%arg0: tensor<1x2xi8>) -> tensor<1x2xf32> {
+    // expected-error@+1 {{It is only allowed to set a zero point if scale is set too}}
+    %result = xten_nn.dequantize (%arg0: tensor<1x2xi8>) {shift = -2 : si32, zero_point = 3 : i8} -> tensor<1x2xf32>
+    return %result : tensor<1x2xf32>
+}
+
+// -----
+
+func.func @invalid_no_shift_or_scale(%arg0: tensor<1x2xi8>) -> tensor<1x2xf32> {
+    // expected-error@+1 {{Shift and scale are both missing}}
+    %result = xten_nn.dequantize (%arg0: tensor<1x2xi8>) {} -> tensor<1x2xf32>
+    return %result : tensor<1x2xf32>
+}
+
+// -----
+
+func.func @valid_dqquantize_op_generic(%arg0: tensor<1x2xi8>) -> tensor<1x2xf32> {
+    %result = "xten_nn.dequantize" (%arg0) {shift = -3: si32, scale = 0.125 : f32, zero_point = 0 : i8} : (tensor<1x2xi8>) -> tensor<1x2xf32>
+    return %result : tensor<1x2xf32>
+}
+// -----
+
 func.func @dequantize_op_zero_type_mismatch(%arg0: tensor<1x2xi8>) -> tensor<1x2xf32> {
     // expected-error@+1 {{Operand elem type needs to match match zero point type}}
     %result = xten_nn.dequantize (%arg0: tensor<1x2xi8>) {shift = -3: si32, scale = 0.125 : f32, zero_point = 0 : i7} -> tensor<1x2xf32>

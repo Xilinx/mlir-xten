@@ -144,8 +144,10 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
   ];
 
 
-  let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
-
+  //  `(`$input `:` type($input)`)` attr-dict `->` type($output);
+  // Zero point is optional if scale is set, defaults to 0
+  // If shift is set but not scale, scale is based on the shift. Setting a zero point is not allowed in this case
+  let hasCustomAssemblyFormat = 1;
   let hasFolder = 1;
   let hasVerifier = 1;
 }
@@ -182,7 +184,10 @@ def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
     OpBuilder<(ins "::mlir::Type":$output, "::mlir::Value":$input, "int32_t":$shift)>
   ];
 
-  let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
+  //  `(`$input `:` type($input)`)` attr-dict `->` type($output);
+  // Zero point is optional if scale is set, defaults to 0
+  // If shift is set but not scale, scale is based on the shift. Setting a zero point is not allowed in this case
+  let hasCustomAssemblyFormat = 1;
   let hasVerifier = 1;
 }
 
