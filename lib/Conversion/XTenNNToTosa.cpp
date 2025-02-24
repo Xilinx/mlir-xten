@@ -82,11 +82,11 @@ IntegerMinMax calculateMinMaxOfElementType(TensorType type) {
 }
 
 namespace {
-APFloat convertF32AttrToFloatTy(FloatAttr attr, Type typeToConverTo) {
+APFloat convertF32AttrToFloatTy(FloatAttr attr, Type typeToConvertTo) {
   // Convert from f32 to the float type that is actually used
   assert(attr.getType().isF32());
-  assert(isa<FloatType>(typeToConverTo));
-  auto floatResultType = cast<FloatType>(typeToConverTo);
+  assert(isa<FloatType>(typeToConvertTo));
+  auto floatResultType = cast<FloatType>(typeToConvertTo);
   APFloat scale = attr.getValue();
   bool losesInfo;
   // Ignore inaccuracies, there is nothing we can do.
@@ -120,14 +120,14 @@ public:
     // Convert the scale from f32 to the float type that is actually used
     const llvm::APFloat scale =
         convertF32AttrToFloatTy(quantizeOp.getScaleAttr(), inputElementType);
-    const llvm::APFloat inverseScale =
+    const llvm::APFloat scaleReciprocal =
         llvm::APFloat::getOne(scale.getSemantics()) / scale;
 
     const RankedTensorType constType =
         createSplatType(inputType.getRank(), inputElementType);
     auto constOp = rewriter.create<tosa::ConstOp>(
         quantizeOp->getLoc(), constType,
-        DenseFPElementsAttr::get(constType, {inverseScale}));
+        DenseFPElementsAttr::get(constType, {scaleReciprocal}));
 
     auto mulOp = rewriter.create<tosa::MulOp>(
         quantizeOp.getLoc(), inputType, quantizeOp->getOperand(0),
