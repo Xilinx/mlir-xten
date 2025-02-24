@@ -81,6 +81,22 @@ IntegerMinMax calculateMinMaxOfElementType(TensorType type) {
   return IntegerMinMax{minValue.getSExtValue(), maxValue.getSExtValue()};
 }
 
+namespace {
+APFloat convertF32AttrToFloatTy(FloatAttr attr, Type typeToConverTo) {
+  // Convert from f32 to the float type that is actually used
+  assert(attr.getType().isF32());
+  assert(isa<FloatType>(typeToConverTo));
+  auto floatResultType = cast<FloatType>(typeToConverTo);
+  APFloat scale = attr.getValue();
+  bool losesInfo;
+  // Ignore inaccuracies, there is nothing we can do.
+  [[maybe_unused]] const auto conversionResult =
+      scale.convert(floatResultType.getFloatSemantics(),
+                    llvm::RoundingMode::NearestTiesToEven, &losesInfo);
+  return scale;
+}
+} // namespace
+
 class QuantizeOp : public OpRewritePattern<amd::xten_nn::QuantizeOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
@@ -99,13 +115,16 @@ public:
     }
     const auto inputType =
         cast<TensorType>(quantizeOp->getOperand(0).getType());
+    const auto inputElementType = inputType.getElementType();
 
-    const llvm::APFloat scale = quantizeOp.getScale();
+    // Convert the scale from f32 to the float type that is actually used
+    const llvm::APFloat scale =
+        convertF32AttrToFloatTy(quantizeOp.getScaleAttr(), inputElementType);
     const llvm::APFloat inverseScale =
         llvm::APFloat::getOne(scale.getSemantics()) / scale;
 
     const RankedTensorType constType =
-        createSplatType(inputType.getRank(), inputType.getElementType());
+        createSplatType(inputType.getRank(), inputElementType);
     auto constOp = rewriter.create<tosa::ConstOp>(
         quantizeOp->getLoc(), constType,
         DenseFPElementsAttr::get(constType, {inverseScale}));
@@ -203,7 +222,9 @@ public:
         dequantizeOp.getLoc(), dequantizeOp.getResult().getType(),
         castOp.getResult(), constSubCastOp.getResult());
 
-    const llvm::APFloat scale = dequantizeOp.getScale();
+    // Convert the scale from f32 to the float type that is actually used
+    const llvm::APFloat scale =
+        convertF32AttrToFloatTy(dequantizeOp.getScaleAttr(), resultElementType);
 
     // Create a constant to hold the floating point scale we just calculated
     auto constType = createSplatType(inputType.getRank(), resultElementType);
