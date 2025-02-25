@@ -229,8 +229,32 @@ module attributes {} {
     %0 = "tosa.const"() {value = dense<3.200000e+01> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
     %1 = "tosa.const"() {value = dense<3.125000e-02> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
     %2 = "tosa.mul"(%arg0, %0) {shift = 0 : i8} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
-    %3 = xten_nn.quantize(%2 : tensor<1x3x4x4xf32>) {shift = 3 : si32}  -> tensor<1x3x4x4xi8>
-    %4 = xten_nn.dequantize(%3 : tensor<1x3x4x4xi8>) {shift = 3 : si32}  -> tensor<1x3x4x4xf32>
+    %3 = xten_nn.quantize(%2 : tensor<1x3x4x4xf32>) {shift = 3 : si32, scale = 8.0 : f32, zero_point = 0: i8}  -> tensor<1x3x4x4xi8>
+    %4 = xten_nn.dequantize(%3 : tensor<1x3x4x4xi8>) {shift = 3 : si32, scale = 8.0 : f32, zero_point = 0: i8}  -> tensor<1x3x4x4xf32>
+    %5 = "tosa.mul"(%4, %1) {shift = 0 : i8} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+    return %5 : tensor<1x3x4x4xf32>
+  }
+}
+
+// --
+
+module attributes {} {
+// CHECK-LABEL:    func.func @sum_shifts_no_shifts
+// CHECK-SAME:     ([[PARAM_0_:%.+]]: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> {
+// CHECK-DAG:         [[VAR_0_:%.+]] = "tosa.const"() <{value = dense<3.200000e+01> : tensor<1x1x1x1xf32>}> : () -> tensor<1x1x1x1xf32>
+// CHECK-DAG:         [[VAR_1_:%.+]] = "tosa.const"() <{value = dense<3.125000e-02> : tensor<1x1x1x1xf32>}> : () -> tensor<1x1x1x1xf32>
+// CHECK:             [[VAR_2_:%.+]] = tosa.mul [[PARAM_0_]], [[VAR_0_]] {shift = 0 : i8} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             [[VAR_3_:%.+]] = xten_nn.quantize([[VAR_2_]] : tensor<1x3x4x4xf32>) {scale = 7.000000e+00 : f32, zero_point = 0 : i8} -> tensor<1x3x4x4xi8>
+// CHECK:             [[VAR_4_:%.+]] = xten_nn.dequantize([[VAR_3_]] : tensor<1x3x4x4xi8>) {scale = 7.000000e+00 : f32, zero_point = 0 : i8} -> tensor<1x3x4x4xf32>
+// CHECK:             [[VAR_5_:%.+]] = tosa.mul [[VAR_4_]], [[VAR_1_]] {shift = 0 : i8} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+// CHECK:             return [[VAR_5_]] : tensor<1x3x4x4xf32>
+// CHECK:           }
+  func.func @sum_shifts_no_shifts(%arg0: tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32> {
+    %0 = "tosa.const"() {value = dense<3.200000e+01> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
+    %1 = "tosa.const"() {value = dense<3.125000e-02> : tensor<1x1x1x1xf32>} : () -> tensor<1x1x1x1xf32>
+    %2 = "tosa.mul"(%arg0, %0) {shift = 0 : i8} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
+    %3 = xten_nn.quantize(%2 : tensor<1x3x4x4xf32>) {scale = 7.0 : f32, zero_point = 0: i8}  -> tensor<1x3x4x4xi8>
+    %4 = xten_nn.dequantize(%3 : tensor<1x3x4x4xi8>) {scale = 7.0 : f32, zero_point = 0: i8}  -> tensor<1x3x4x4xf32>
     %5 = "tosa.mul"(%4, %1) {shift = 0 : i8} : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>) -> tensor<1x3x4x4xf32>
     return %5 : tensor<1x3x4x4xf32>
   }

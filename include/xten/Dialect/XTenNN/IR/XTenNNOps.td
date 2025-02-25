@@ -113,59 +113,82 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
             Elementwise,
             Pure,
             SameOperandsAndResultShape]> {
-  let summary = "Quantizes a float32 tensor to a signless or unsigned integer tensor of given width.";
+  let summary = "Quantizes a float tensor to a signless or unsigned integer tensor of given width.";
   let description = [{
-    Quantizes a given float32 tensor into a signless or unsigned integer tensor of given width.
+    Quantizes a given float tensor into a signless or unsigned integer tensor of given width.
     Since tosa is using signless/unsigned types currently, we also consider signless integer types for
     signed ones when the type is not unsigned until tosa support signed integers.
 
     Applies the following linear quantization to the input tensor x:
-      y = round( x / 2^shift )
+      y = round((x / scale) + zero_point)
 
-    Where 2^shift is equal to the scale of the quantize operation and
-    the shift is an attribute of the operation in si32.
+    Iff log2(scale) is representable as si32 and zero_point == 0, shift is set to log2(scale).
+    In this case the quantization is equal to:
+      y = round( x / 2^shift )
 
     Round will saturate to the range of the output type and the rounding mode is set to half
     to nearest even.
   }];
 
   let arguments = (ins
-    F32Tensor:$input,
-    SI32Attr:$shift
+    XTenNN_AnyFloatTensor:$input,
+    OptionalAttr<SI32Attr>:$shift,
+    F32Attr:$scale, // Restricted to F32 for now, but may be relaxed in the future 
+    XTenNN_AnyIntegerAttr:$zero_point
   );
 
   let results = (outs XTenNN_AnySignlessOrUnsignedIntegerTensor:$output);
+  let builders = [
+    OpBuilder<(ins "::mlir::Type":$output, "::mlir::Value":$input, "::mlir::FloatAttr":$scale, "::mlir::IntegerAttr":$zeroPoint)>,
+    OpBuilder<(ins "::mlir::Type":$output, "::mlir::Value":$input, "int32_t":$shift)>
+  ];
 
-  let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
 
+  //  `(`$input `:` type($input)`)` attr-dict `->` type($output);
+  // Zero point is optional if scale is set, defaults to 0
+  // If shift is set but not scale, scale is based on the shift. Setting a zero point is not allowed in this case
+  let hasCustomAssemblyFormat = 1;
   let hasFolder = 1;
+  let hasVerifier = 1;
 }
 
 def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
             Elementwise,
             Pure,
             SameOperandsAndResultShape]> {
-  let summary = "Dequantizes a signless/unsigned integer tensor of given bitwidth to a float32 tensor.";
+  let summary = "Dequantizes a signless/unsigned integer tensor of given bitwidth to a float tensor.";
   let description = [{
-    Dequantizes a signless/unsigned integer tensor of given bitwidth to a float32 tensor.
+    Dequantizes a signless/unsigned integer tensor of given bitwidth to a float tensor.
     Since tosa is using signless/unsigned types currently, we also consider signless integer types for
     signed ones when the type is not unsigned until tosa support signed integers.
 
     Applies the following linear dequantization to the input tensor x:
-      y = x  * ( 2^shift )
+      y = (x - zero_point) * scale
 
-    Where 2^shift is equal to scale of the dequantize operation and
-    the shift is an attribute of the operation in si32.
+    Iff log2(scale) is representable as si32 and zero_point == 0, shift is set to log2(scale).
+    In this case the dequantization is equal to:
+      y = x  * ( 2^shift )
   }];
 
   let arguments = (ins
     XTenNN_AnySignlessOrUnsignedIntegerTensor:$input,
-    SI32Attr:$shift
+    OptionalAttr<SI32Attr>:$shift,
+    F32Attr:$scale, // Restricted to F32 for now, but may be relaxed in the future
+    XTenNN_AnyIntegerAttr:$zero_point
   );
 
-  let results = (outs F32Tensor:$output);
+  let results = (outs XTenNN_AnyFloatTensor:$output);
 
-  let assemblyFormat = [{ `(`$input `:` type($input)`)` attr-dict `->` type($output) }];
+  let builders = [
+    OpBuilder<(ins "::mlir::Type":$output, "::mlir::Value":$input, "::mlir::FloatAttr":$scale, "::mlir::IntegerAttr":$zeroPoint)>,
+    OpBuilder<(ins "::mlir::Type":$output, "::mlir::Value":$input, "int32_t":$shift)>
+  ];
+
+  //  `(`$input `:` type($input)`)` attr-dict `->` type($output);
+  // Zero point is optional if scale is set, defaults to 0
+  // If shift is set but not scale, scale is based on the shift. Setting a zero point is not allowed in this case
+  let hasCustomAssemblyFormat = 1;
+  let hasVerifier = 1;
 }
 
 def XTenNN_GroupQuantizeOp: XTenNN_Op<"group_quantize", [

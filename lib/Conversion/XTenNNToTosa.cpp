@@ -81,6 +81,22 @@ IntegerMinMax calculateMinMaxOfElementType(TensorType type) {
   return IntegerMinMax{minValue.getSExtValue(), maxValue.getSExtValue()};
 }
 
+namespace {
+APFloat convertF32AttrToFloatTy(FloatAttr attr, Type typeToConvertTo) {
+  // Convert from f32 to the float type that is actually used
+  assert(attr.getType().isF32());
+  assert(isa<FloatType>(typeToConvertTo));
+  auto floatResultType = cast<FloatType>(typeToConvertTo);
+  APFloat scale = attr.getValue();
+  bool losesInfo;
+  // Ignore inaccuracies, there is nothing we can do.
+  [[maybe_unused]] const auto conversionResult =
+      scale.convert(floatResultType.getFloatSemantics(),
+                    llvm::RoundingMode::NearestTiesToEven, &losesInfo);
+  return scale;
+}
+} // namespace
+
 class QuantizeOp : public OpRewritePattern<amd::xten_nn::QuantizeOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
@@ -90,37 +106,52 @@ public:
     // The QDQ operations only work on tensors, if they are not, then the
     // verifiers should find the error. At the moment, only signless tensors
     // are supported.
-    auto outputType = cast<TensorType>(quantizeOp->getResult(0).getType());
+    const auto outputType =
+        cast<TensorType>(quantizeOp->getResult(0).getType());
     if (!outputType.getElementType().isSignlessInteger()) {
       return rewriter.notifyMatchFailure(
           quantizeOp.getLoc(),
           "only signless integer tensor types are supported.");
     }
-    auto inputType = dyn_cast<TensorType>(quantizeOp->getOperand(0).getType());
+    const auto inputType =
+        cast<TensorType>(quantizeOp->getOperand(0).getType());
+    const auto inputElementType = inputType.getElementType();
 
-    // Calculate (1 / 2 ^ shift)
-    llvm::APFloat scale(std::pow(static_cast<float>(2.0),
-                                 static_cast<float>(-quantizeOp.getShift())));
+    // Convert the scale from f32 to the float type that is actually used
+    const llvm::APFloat scale =
+        convertF32AttrToFloatTy(quantizeOp.getScaleAttr(), inputElementType);
+    const llvm::APFloat scaleReciprocal =
+        llvm::APFloat::getOne(scale.getSemantics()) / scale;
 
-    // Create a constant that represents the (1 / 2 ^ shift)
-    RankedTensorType constType =
-        createSplatType(inputType.getRank(), rewriter.getF32Type());
+    const RankedTensorType constType =
+        createSplatType(inputType.getRank(), inputElementType);
     auto constOp = rewriter.create<tosa::ConstOp>(
         quantizeOp->getLoc(), constType,
-        DenseFPElementsAttr::get(constType, {scale}));
+        DenseFPElementsAttr::get(constType, {scaleReciprocal}));
 
-    // Calculate (x / 2 ^ shift)
     auto mulOp = rewriter.create<tosa::MulOp>(
         quantizeOp.getLoc(), inputType, quantizeOp->getOperand(0),
         constOp->getResult(0), rewriter.getI8IntegerAttr(0));
+
+    const auto constAddType =
+        createSplatType(inputType.getRank(), outputType.getElementType());
+    auto constAddOp = rewriter.create<tosa::ConstOp>(
+        quantizeOp.getLoc(), constAddType,
+        DenseIntElementsAttr::get(constAddType, {quantizeOp.getZeroPoint()}));
+    auto constAddCastOp = rewriter.create<tosa::CastOp>(
+        quantizeOp.getLoc(), inputType, constAddOp.getResult());
+    auto zeroPointAdd = rewriter.create<tosa::AddOp>(
+        quantizeOp.getLoc(), inputType, mulOp.getResult(),
+        constAddCastOp.getResult());
 
     // TOSA only supports signed integers of i8, i16 or i32 here we convert our
     // si<?> to this types and add a clamp to mimic arbitrary bit width.
     TensorType newIntegerStorageType = getNewStorageType(outputType);
     // Cast from fp32 -> i<Bitwidth> where bit width is the supported storage
     // bit width. Either i8, i16 or i32
-    auto castOp = rewriter.create<tosa::CastOp>(
-        quantizeOp->getLoc(), newIntegerStorageType, mulOp->getResult(0));
+    auto castOp = rewriter.create<tosa::CastOp>(quantizeOp->getLoc(),
+                                                newIntegerStorageType,
+                                                zeroPointAdd->getResult(0));
 
     // Find the max and min of the signed integer type.
     IntegerMinMax intLimits = calculateMinMaxOfElementType(outputType);
@@ -156,7 +187,10 @@ public:
     // The QDQ operations only work on tensors, if they are not, then the
     // verifiers should find the error. At the moment, only signless tensors
     // are supported.
-    auto inputType = cast<TensorType>(dequantizeOp->getOperand(0).getType());
+    const auto resultElementType =
+        dequantizeOp.getResult().getType().getElementType();
+    const auto inputType =
+        cast<TensorType>(dequantizeOp->getOperand(0).getType());
     if (!inputType.getElementType().isSignlessInteger()) {
       return rewriter.notifyMatchFailure(
           dequantizeOp.getLoc(),
@@ -170,18 +204,30 @@ public:
         dequantizeOp.getLoc(), newIntegerStorageType,
         dequantizeOp->getOperand(0));
 
-    // We can then cast from i<8,16,32> -> fp32
+    // We can then cast from i<8,16,32> -> fp
     auto castOp = rewriter.create<tosa::CastOp>(
         dequantizeOp->getLoc(), dequantizeOp->getResult(0).getType(),
         unrealizedCast.getResult(0));
 
-    // Calculate the (x * 2 ^ shift) for the dequantize part
-    llvm::APFloat scale(std::pow(static_cast<float>(2.0),
-                                 static_cast<float>(dequantizeOp.getShift())));
+    // Do the zero_point sub on the float type to to avoid underflows
+    const auto constSubType =
+        createSplatType(inputType.getRank(), inputType.getElementType());
+    auto constSubOp = rewriter.create<tosa::ConstOp>(
+        dequantizeOp.getLoc(), constSubType,
+        DenseIntElementsAttr::get(constSubType, {dequantizeOp.getZeroPoint()}));
+    auto constSubCastOp = rewriter.create<tosa::CastOp>(
+        dequantizeOp.getLoc(), dequantizeOp.getResult().getType(),
+        constSubOp.getResult());
+    auto zeroPointSub = rewriter.create<tosa::SubOp>(
+        dequantizeOp.getLoc(), dequantizeOp.getResult().getType(),
+        castOp.getResult(), constSubCastOp.getResult());
+
+    // Convert the scale from f32 to the float type that is actually used
+    const llvm::APFloat scale =
+        convertF32AttrToFloatTy(dequantizeOp.getScaleAttr(), resultElementType);
 
     // Create a constant to hold the floating point scale we just calculated
-    auto constType =
-        createSplatType(inputType.getRank(), rewriter.getF32Type());
+    auto constType = createSplatType(inputType.getRank(), resultElementType);
     auto constOp = rewriter.create<tosa::ConstOp>(
         dequantizeOp->getLoc(), constType,
         DenseFPElementsAttr::get(constType, {scale}));
@@ -189,7 +235,7 @@ public:
     // Replace the dequantize op with the new operations we just created.
     rewriter.replaceOpWithNewOp<tosa::MulOp>(
         dequantizeOp, dequantizeOp->getResult(0).getType(),
-        castOp->getResult(0), constOp->getResult(0),
+        zeroPointSub->getResult(0), constOp->getResult(0),
         rewriter.getI8IntegerAttr(0));
     return success();
   }
