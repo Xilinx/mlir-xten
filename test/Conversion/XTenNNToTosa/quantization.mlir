@@ -63,6 +63,7 @@ module attributes{} {
 // --
 
 module attributes{} {
+// COM: tosa does not support casts from/to unsigned, but tosa-mlir does as extension    
 // CHECK-LABEL:    func.func @explicit_case_bf16_to_uint16
 // CHECK-SAME:     ([[PARAM_0_:%.+]]: tensor<1x3x4x4xbf16>) -> tensor<1x3x4x4xbf16> {
 // CHECK-DAG:         [[VAR_0_:%.+]] = "tosa.const"() <{value = dense<3.125000e-02> : tensor<1x1x1x1xbf16>}> : () -> tensor<1x1x1x1xbf16>
