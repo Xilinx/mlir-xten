@@ -24,26 +24,20 @@ namespace {
 /// Convert the quantized integer type from signed to a signless version that
 /// matches TOSA.
 ///
-/// TOSA currently supports i8, i16, i32 tensors types. Here we convert the
-/// arbitrary signed type from the XTenNN QDQ operators to one that can be
-/// represented in TOSA.
-/// @TODO: once TOSA moves from signless to signed integers with arbitrary
-/// bit width we no longer need the type conversion.
+/// tosa-mlir supports arbitrary bitwidth, but for historic reasons signless is
+/// used instead of signed
 ///
 ///\param tensorType signed integer tensor type.
 ///\return TensorType new storage type for the \p tensorType.
 TensorType getNewStorageType(TensorType tensorType) {
-  assert(tensorType.getElementType().isSignlessInteger() &&
+  assert(tensorType.getElementType().isInteger() &&
          "quantization should only work with integers");
-  unsigned int integerBitwidth = tensorType.getElementTypeBitWidth();
-  unsigned int storageBitWidth = 32;
-  if (integerBitwidth <= 8) {
-    storageBitWidth = 8;
-  } else if (integerBitwidth <= 16) {
-    storageBitWidth = 16;
-  }
   return tensorType.cloneWith(
-      {}, IntegerType::get(tensorType.getContext(), storageBitWidth));
+      {}, IntegerType::get(tensorType.getContext(),
+                           tensorType.getElementTypeBitWidth(),
+                           (tensorType.getElementType().isUnsignedInteger())
+                               ? IntegerType::Unsigned
+                               : IntegerType::Signless));
 }
 
 RankedTensorType createSplatType(int64_t rank, Type elementType) {
@@ -56,29 +50,6 @@ RankedTensorType createSplatType(int64_t rank, Type elementType) {
     tmpShape.emplace_back(1);
   }
   return RankedTensorType::get(tmpShape, elementType);
-}
-
-/// Hold min and max values of an Integer type
-struct IntegerMinMax {
-  int64_t min = std::numeric_limits<int64_t>::min();
-  int64_t max = std::numeric_limits<int64_t>::max();
-};
-
-/// Calculate the limits of the given Tensor Element Type.
-///
-///\param type the tensor type we are inspecting for the element type.
-///\return IntegerMinMax for the element integer type of the tensor \p type. If
-/// the element type is not a IntegerType then return the min and max of int64_t
-IntegerMinMax calculateMinMaxOfElementType(TensorType type) {
-  IntegerType intType = dyn_cast<IntegerType>(type.getElementType());
-  if (!intType) {
-    return IntegerMinMax{};
-  }
-  auto minValue =
-      llvm::APSInt::getMinValue(intType.getWidth(), type.isUnsignedInteger());
-  auto maxValue =
-      llvm::APSInt::getMaxValue(intType.getWidth(), type.isUnsignedInteger());
-  return IntegerMinMax{minValue.getSExtValue(), maxValue.getSExtValue()};
 }
 
 namespace {
@@ -104,15 +75,9 @@ public:
   LogicalResult matchAndRewrite(amd::xten_nn::QuantizeOp quantizeOp,
                                 PatternRewriter &rewriter) const override {
     // The QDQ operations only work on tensors, if they are not, then the
-    // verifiers should find the error. At the moment, only signless tensors
-    // are supported.
+    // verifiers should find the error.
     const auto outputType =
         cast<TensorType>(quantizeOp->getResult(0).getType());
-    if (!outputType.getElementType().isSignlessInteger()) {
-      return rewriter.notifyMatchFailure(
-          quantizeOp.getLoc(),
-          "only signless integer tensor types are supported.");
-    }
     const auto inputType =
         cast<TensorType>(quantizeOp->getOperand(0).getType());
     const auto inputElementType = inputType.getElementType();
@@ -133,43 +98,38 @@ public:
         quantizeOp.getLoc(), inputType, quantizeOp->getOperand(0),
         constOp->getResult(0), rewriter.getI8IntegerAttr(0));
 
-    const auto constAddType =
-        createSplatType(inputType.getRank(), outputType.getElementType());
-    auto constAddOp = rewriter.create<tosa::ConstOp>(
-        quantizeOp.getLoc(), constAddType,
-        DenseIntElementsAttr::get(constAddType, {quantizeOp.getZeroPoint()}));
-    auto constAddCastOp = rewriter.create<tosa::CastOp>(
-        quantizeOp.getLoc(), inputType, constAddOp.getResult());
-    auto zeroPointAdd = rewriter.create<tosa::AddOp>(
-        quantizeOp.getLoc(), inputType, mulOp.getResult(),
-        constAddCastOp.getResult());
+    mlir::Value castFrom = mulOp->getResult(0);
+    if (!quantizeOp.getZeroPoint().isZero()) {
+      // Do the zero_point calculation on int32 to match the reference
+      // implementation:
+      // https://github.com/onnx/onnx/blob/3d5acaf3e23ae8db7ac01b8cfedb17b8817121f4/onnx/reference/ops/op_quantize_linear.py#L177
+      const auto int32InputType =
+          inputType.cloneWith({}, rewriter.getI32Type());
+      auto castToint32Op = rewriter.create<tosa::CastOp>(
+          quantizeOp->getLoc(), int32InputType, mulOp.getResult());
 
-    // TOSA only supports signed integers of i8, i16 or i32 here we convert our
-    // si<?> to this types and add a clamp to mimic arbitrary bit width.
-    TensorType newIntegerStorageType = getNewStorageType(outputType);
-    // Cast from fp32 -> i<Bitwidth> where bit width is the supported storage
-    // bit width. Either i8, i16 or i32
-    auto castOp = rewriter.create<tosa::CastOp>(quantizeOp->getLoc(),
-                                                newIntegerStorageType,
-                                                zeroPointAdd->getResult(0));
-
-    // Find the max and min of the signed integer type.
-    IntegerMinMax intLimits = calculateMinMaxOfElementType(outputType);
-
-    // Clamp the integer to the min and max we calculated for this custom
-    // bit width
-    auto clampOp = rewriter.createOrFold<tosa::ClampOp>(
-        quantizeOp->getLoc(), newIntegerStorageType, castOp->getResult(0),
-        rewriter.getI64IntegerAttr(intLimits.min),
-        rewriter.getI64IntegerAttr(intLimits.max),
-        rewriter.getF32FloatAttr((float)intLimits.min),
-        rewriter.getF32FloatAttr((float)intLimits.max));
+      const auto constAddType =
+          createSplatType(inputType.getRank(), outputType.getElementType());
+      auto zeroPointConstOp = rewriter.create<tosa::ConstOp>(
+          quantizeOp.getLoc(), constAddType,
+          DenseIntElementsAttr::get(constAddType, {quantizeOp.getZeroPoint()}));
+      auto zeroPointCastOp = rewriter.create<tosa::CastOp>(
+          quantizeOp.getLoc(), int32InputType, zeroPointConstOp.getResult());
+      auto zeroPointAddOp = rewriter.create<tosa::AddOp>(
+          quantizeOp.getLoc(), int32InputType, castToint32Op.getResult(),
+          zeroPointCastOp.getResult());
+      castFrom = zeroPointAddOp->getResult(0);
+    }
+    const TensorType newIntegerStorageType = getNewStorageType(outputType);
+    auto castOp = rewriter.create<tosa::CastOp>(
+        quantizeOp->getLoc(), newIntegerStorageType, castFrom);
 
     // Use an unrealized conversion cast to match the original output type.
     // We convert I back to SI because TOSA does not support the SI type
     // explicitly.
     auto unrealizedCast = rewriter.create<UnrealizedConversionCastOp>(
-        quantizeOp->getLoc(), quantizeOp->getResult(0).getType(), clampOp);
+        quantizeOp->getLoc(), quantizeOp->getResult(0).getType(),
+        castOp->getResult(0));
 
     // Replace the original op with the new decomposition
     rewriter.replaceOp(quantizeOp, {unrealizedCast.getResult(0)});
@@ -185,17 +145,11 @@ public:
   LogicalResult matchAndRewrite(amd::xten_nn::DequantizeOp dequantizeOp,
                                 PatternRewriter &rewriter) const override {
     // The QDQ operations only work on tensors, if they are not, then the
-    // verifiers should find the error. At the moment, only signless tensors
-    // are supported.
+    // verifiers should find the error.
     const auto resultElementType =
         dequantizeOp.getResult().getType().getElementType();
     const auto inputType =
         cast<TensorType>(dequantizeOp->getOperand(0).getType());
-    if (!inputType.getElementType().isSignlessInteger()) {
-      return rewriter.notifyMatchFailure(
-          dequantizeOp.getLoc(),
-          "only signless integer tensor types are supported.");
-    }
 
     TensorType newIntegerStorageType = getNewStorageType(inputType);
     // We need to convert from si<> to i8, i16 or i32 depending on the input
@@ -204,7 +158,6 @@ public:
         dequantizeOp.getLoc(), newIntegerStorageType,
         dequantizeOp->getOperand(0));
 
-    // We can then cast from i<8,16,32> -> fp
     auto castOp = rewriter.create<tosa::CastOp>(
         dequantizeOp->getLoc(), dequantizeOp->getResult(0).getType(),
         unrealizedCast.getResult(0));
@@ -212,13 +165,13 @@ public:
     // Do the zero_point sub on the float type to to avoid underflows
     const auto constSubType =
         createSplatType(inputType.getRank(), inputType.getElementType());
-    auto constSubOp = rewriter.create<tosa::ConstOp>(
+    auto zeroPointConstOp = rewriter.create<tosa::ConstOp>(
         dequantizeOp.getLoc(), constSubType,
         DenseIntElementsAttr::get(constSubType, {dequantizeOp.getZeroPoint()}));
     auto constSubCastOp = rewriter.create<tosa::CastOp>(
         dequantizeOp.getLoc(), dequantizeOp.getResult().getType(),
-        constSubOp.getResult());
-    auto zeroPointSub = rewriter.create<tosa::SubOp>(
+        zeroPointConstOp.getResult());
+    auto zeroPointSubOp = rewriter.create<tosa::SubOp>(
         dequantizeOp.getLoc(), dequantizeOp.getResult().getType(),
         castOp.getResult(), constSubCastOp.getResult());
 
@@ -235,7 +188,7 @@ public:
     // Replace the dequantize op with the new operations we just created.
     rewriter.replaceOpWithNewOp<tosa::MulOp>(
         dequantizeOp, dequantizeOp->getResult(0).getType(),
-        zeroPointSub->getResult(0), constOp->getResult(0),
+        zeroPointSubOp->getResult(0), constOp->getResult(0),
         rewriter.getI8IntegerAttr(0));
     return success();
   }
