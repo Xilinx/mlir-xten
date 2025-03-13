@@ -110,15 +110,15 @@ public:
 
       const auto constAddType =
           createSplatType(inputType.getRank(), outputType.getElementType());
-      auto constAddOp = rewriter.create<tosa::ConstOp>(
+      auto zeroPointConstOp = rewriter.create<tosa::ConstOp>(
           quantizeOp.getLoc(), constAddType,
           DenseIntElementsAttr::get(constAddType, {quantizeOp.getZeroPoint()}));
-      auto constAddCastOp = rewriter.create<tosa::CastOp>(
-          quantizeOp.getLoc(), int32InputType, constAddOp.getResult());
-      auto zeroPointAdd = rewriter.create<tosa::AddOp>(
+      auto zeroPointCastOp = rewriter.create<tosa::CastOp>(
+          quantizeOp.getLoc(), int32InputType, zeroPointConstOp.getResult());
+      auto zeroPointAddOp = rewriter.create<tosa::AddOp>(
           quantizeOp.getLoc(), int32InputType, castToint32Op.getResult(),
-          constAddCastOp.getResult());
-      castFrom = zeroPointAdd->getResult(0);
+          zeroPointCastOp.getResult());
+      castFrom = zeroPointAddOp->getResult(0);
     }
     const TensorType newIntegerStorageType = getNewStorageType(outputType);
     auto castOp = rewriter.create<tosa::CastOp>(
@@ -165,13 +165,13 @@ public:
     // Do the zero_point sub on the float type to to avoid underflows
     const auto constSubType =
         createSplatType(inputType.getRank(), inputType.getElementType());
-    auto constSubOp = rewriter.create<tosa::ConstOp>(
+    auto zeroPointConstOp = rewriter.create<tosa::ConstOp>(
         dequantizeOp.getLoc(), constSubType,
         DenseIntElementsAttr::get(constSubType, {dequantizeOp.getZeroPoint()}));
     auto constSubCastOp = rewriter.create<tosa::CastOp>(
         dequantizeOp.getLoc(), dequantizeOp.getResult().getType(),
-        constSubOp.getResult());
-    auto zeroPointSub = rewriter.create<tosa::SubOp>(
+        zeroPointConstOp.getResult());
+    auto zeroPointSubOp = rewriter.create<tosa::SubOp>(
         dequantizeOp.getLoc(), dequantizeOp.getResult().getType(),
         castOp.getResult(), constSubCastOp.getResult());
 
@@ -188,7 +188,7 @@ public:
     // Replace the dequantize op with the new operations we just created.
     rewriter.replaceOpWithNewOp<tosa::MulOp>(
         dequantizeOp, dequantizeOp->getResult(0).getType(),
-        zeroPointSub->getResult(0), constOp->getResult(0),
+        zeroPointSubOp->getResult(0), constOp->getResult(0),
         rewriter.getI8IntegerAttr(0));
     return success();
   }
