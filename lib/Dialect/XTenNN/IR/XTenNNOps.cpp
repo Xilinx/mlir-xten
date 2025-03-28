@@ -446,8 +446,12 @@ LogicalResult SubgraphOp::inferReturnTypeComponents(
 //===----------------------------------------------------------------------===//
 
 namespace {
-std::optional<int32_t> getShiftValue(float constValue) {
-  const float log2Value = std::log2f(constValue);
+std::optional<int32_t> getShiftValue(const float scale) {
+  if (std::isnan(scale) || std::isinf(scale)) {
+    assert(false && "scale must not be NaN or Inf");
+    return {};
+  }
+  const float log2Value = std::log2f(scale);
 
   // The log2 of the value must not have fractions.
   if (std::roundf(log2Value) != log2Value)
