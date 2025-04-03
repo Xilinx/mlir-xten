@@ -20,13 +20,13 @@ func.func @reflect_pad_bf16(%arg0: tensor<1x32x122x122xbf16>) -> tensor<1x32x124
 // -----
 
 func.func @reflect_pad_bf16_3d(%arg0: tensor<32x122x122xbf16>) -> tensor<32x124x124xbf16> {
-    %pad = "tosa.const"() <{value = dense<[1, 1, 0, 0, 1, 1]> : tensor<6xi64>}> : () -> tensor<6xi64>
+    %pad = "tosa.const"() <{value = dense<[0, 1, 1, 0, 1, 1]> : tensor<6xi64>}> : () -> tensor<6xi64>
     %reflect_pad = xten_nn.reflect_pad %arg0, %pad : (tensor<32x122x122xbf16>, tensor<6xi64>) -> (tensor<32x124x124xbf16>)
     return %reflect_pad : tensor<32x124x124xbf16>
 }
 // CHECK-LABEL:  func.func @reflect_pad_bf16
 // CHECK-SAME:      (%[[ARG:.*]]: tensor<32x122x122xbf16>) -> tensor<32x124x124xbf16> attributes {torch.onnx_meta.opset_version = 19 : si64} {
-// CHECK:    %[[PADS:.*]] = "tosa.const"() <{value = dense<[1, 1, 0, 0, 1, 1]> : tensor<6xi64>}> : () -> tensor<6xi64>
+// CHECK:    %[[PADS:.*]] = "tosa.const"() <{value = dense<[0, 1, 1, 0, 1, 1]> : tensor<6xi64>}> : () -> tensor<6xi64>
 // CHECK:    %[[FROM_ARG:.*]] = torch_c.from_builtin_tensor %[[ARG]] : tensor<32x122x122xbf16> -> !torch.vtensor<[32,122,122],bf16>
 // CHECK:    %[[FROM_PADS:.*]] = torch_c.from_builtin_tensor %[[PADS]] : tensor<6xi64> -> !torch.vtensor<[6],si64>
 // CHECK:    %[[OP:.*]] = torch.operator "onnx.Pad"(%[[FROM_ARG]], %[[FROM_PADS]]) {torch.onnx.mode = "reflect"} : (!torch.vtensor<[32,122,122],bf16>, !torch.vtensor<[6],si64>) -> !torch.vtensor<[32,124,124],bf16>
