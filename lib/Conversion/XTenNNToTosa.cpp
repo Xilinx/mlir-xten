@@ -210,7 +210,7 @@ public:
     tosa::ClampOp::getCanonicalizationPatterns(patterns, context);
 
     FrozenRewritePatternSet frozenSetOfPatterns(std::move(patterns));
-    if (failed(applyPatternsAndFoldGreedily(module, frozenSetOfPatterns))) {
+    if (failed(applyPatternsGreedily(module, frozenSetOfPatterns))) {
       emitError(module->getLoc())
           << "failed to convert XTenNN quantization operations to TOSA.";
       signalPassFailure();
