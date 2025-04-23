@@ -48,8 +48,7 @@ struct CanonicalizePass
     if (allowDestructivePatterns)
       populateDestructiveCanonicalizePatterns(patterns);
 
-    if (applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))
-            .failed())
+    if (applyPatternsGreedily(getOperation(), std::move(patterns)).failed())
       signalPassFailure();
   }
 };

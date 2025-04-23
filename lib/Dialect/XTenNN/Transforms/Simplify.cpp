@@ -20,7 +20,6 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "mlir/Interfaces/SideEffectInterfaces.h"
 
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Debug.h"
@@ -131,7 +130,7 @@ public:
 
     populateSimplifyPatterns(patterns);
 
-    std::ignore = applyPatternsAndFoldGreedily(
+    std::ignore = applyPatternsGreedily(
         getOperation(), FrozenRewritePatternSet(std::move(patterns)));
   }
 };
