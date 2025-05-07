@@ -45,6 +45,9 @@ public:
 
   LogicalResult matchAndRewrite(EnclaveOp op,
                                 PatternRewriter &rewriter) const override {
+    if (! op.getOptionalEnclaveBody())
+      return failure();
+
     // Collect all unused block arguments.
     auto unused = to_vector(
         make_filter_range(op.getEnclaveBody().getArguments(),

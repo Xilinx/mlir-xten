@@ -31,3 +31,13 @@ func.func @net1() -> f64 {
 // CHECK: return %[[r0]] : f64
 }
 
+// -----
+
+func.func @net2() -> f64 {
+    %unused = arith.constant 0.0 : f64
+    %result = xten_nn.subgraph (%unused : f64) -> f64
+    return %result : f64
+// CHECK-LABEL: @net2(
+// CHECK: %[[cst0:.+]] = arith.constant 0.000000e+00 : f64
+// CHECK: %[[result:.+]] = xten_nn.subgraph (%[[cst0]]: f64) -> f64
+}
