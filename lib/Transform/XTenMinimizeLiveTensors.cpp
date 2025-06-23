@@ -24,8 +24,10 @@
 #include <mlir/Support/IndentedOstream.h>
 #include <mlir/Support/LogicalResult.h>
 
+#include <map>
 #include <memory>
-#include <set>
+#include <optional>
+#include <utility>
 
 #define DEBUG_TYPE "xten-minimize-live"
 
