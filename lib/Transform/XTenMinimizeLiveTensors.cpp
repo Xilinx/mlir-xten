@@ -24,6 +24,7 @@
 #include <mlir/Support/IndentedOstream.h>
 #include <mlir/Support/LogicalResult.h>
 
+#include <deque>
 #include <map>
 #include <memory>
 #include <optional>
@@ -272,11 +273,17 @@ public:
   XTenMinimizeLiveTensorsPass(const XTenMinimizeLiveTensorsPass &pass) =
       default;
 
-  // Recursively collect the OpInfo of all FM producers.
-  [[nodiscard]] LogicalResult
-  collectOperandInfo(OpInfo const &opInfo) { // NOLINT(misc-no-recursion)
+  // Collect the OpInfo of all FM producers.
+  LogicalResult collectOperandInfo(OpInfo const &opInfo) {
     // Visit all FM operands to collect their OpInfo.
-    for (auto operand : opInfo.operands) {
+
+    std::deque<std::pair<Value, const OpInfo &>> worklist;
+    for (Value v : opInfo.operands)
+      worklist.emplace_back(v, opInfo);
+
+    while (!worklist.empty()) {
+      const auto [operand, currentOpInfo] = worklist.front();
+      worklist.pop_front();
       Operation *defOp = operand.getDefiningOp();
       if (defOp == nullptr) {
         // Use currFn as stand-in for BlockArguments.
@@ -285,9 +292,9 @@ public:
       }
 
       // If OpInfo is already created, so we only need to note this consumer.
-      auto prevInfoIt = opToInfo.find(defOp);
+      const auto prevInfoIt = opToInfo.find(defOp);
       if (prevInfoIt != opToInfo.end()) {
-        prevInfoIt->second.consumers.push_back(opInfo.op);
+        prevInfoIt->second.consumers.push_back(currentOpInfo.op);
         continue;
       }
 
@@ -308,17 +315,14 @@ public:
                      .operands = *fmOperands,
                      .results = fmResults,
                      .sharesResultMemory = sharesResultMemory,
-                     .consumers = {opInfo.op}};
+                     .consumers = {currentOpInfo.op}};
       setOpSizes(info);
-      auto [opFwdIt, succeeded] = opToInfo.emplace(defOp, std::move(info));
+      const auto [opFwdIt, succeeded] =
+          opToInfo.emplace(defOp, std::move(info));
       assert(succeeded && "unexpected duplicate op in opToInfo");
 
-      // Recursively collect details of the operands of this operand.
-      LogicalResult result = collectOperandInfo(opFwdIt->second);
-      if (result.failed()) {
-        signalPassFailure();
-        return LogicalResult::failure();
-      }
+      for (auto v : llvm::reverse(opFwdIt->second.operands))
+        worklist.emplace_front(v, opFwdIt->second);
     }
     return LogicalResult::success();
   }
@@ -508,6 +512,8 @@ public:
 
 private:
   /// The analysis results for each operation.
+  /// Be careful when trying to replace with a different map type, as code in
+  /// this pass relies on stable iterators/references into the map.
   std::map<Operation *, OpInfo> opToInfo;
   /// The function being analyzed - needed in places to represent
   /// BlockArguments.
