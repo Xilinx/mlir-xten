@@ -309,8 +309,9 @@ public:
                      .results = fmResults,
                      .sharesResultMemory = sharesResultMemory,
                      .consumers = {opInfo.op}};
+      setOpSizes(info);
       auto [opFwdIt, succeeded] = opToInfo.emplace(defOp, std::move(info));
-      setOpSizes(opFwdIt->second);
+      assert(succeeded && "unexpected duplicate op in opToInfo");
 
       // Recursively collect details of the operands of this operand.
       LogicalResult result = collectOperandInfo(opFwdIt->second);
