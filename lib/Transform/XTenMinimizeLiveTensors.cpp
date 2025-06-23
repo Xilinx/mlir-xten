@@ -85,7 +85,7 @@ struct OpInfo {
 mlir::LogicalResult verifyStrAttr(mlir::Operation *op, llvm::StringRef attrKey,
                                   llvm::StringRef attrValue) {
   if (!op->hasAttr(attrKey) ||
-      !(op->getAttr(attrKey).cast<StringAttr>().str() == attrValue)) {
+      !(cast<StringAttr>(op->getAttr(attrKey)).str() == attrValue)) {
     return failure();
   }
   return success();
@@ -225,7 +225,7 @@ size_t getSize(Value val) {
   if (elementType.isIntOrFloat())
     return (elementType.getIntOrFloatBitWidth() * type.getNumElements()) / 8;
 
-  if (auto complexType = elementType.dyn_cast<ComplexType>()) {
+  if (auto complexType = dyn_cast<ComplexType>(elementType)) {
     elementType = complexType.getElementType();
     return (elementType.getIntOrFloatBitWidth() * type.getNumElements() * 2) /
            8;
@@ -280,7 +280,7 @@ public:
       Operation *defOp = operand.getDefiningOp();
       if (defOp == nullptr) {
         // Use currFn as stand-in for BlockArguments.
-        assert(operand.isa<BlockArgument>());
+        assert(isa<BlockArgument>(operand));
         defOp = currFn;
       }
 
