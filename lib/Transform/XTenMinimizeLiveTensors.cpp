@@ -24,8 +24,11 @@
 #include <mlir/Support/IndentedOstream.h>
 #include <mlir/Support/LogicalResult.h>
 
+#include <deque>
+#include <map>
 #include <memory>
-#include <set>
+#include <optional>
+#include <utility>
 
 #define DEBUG_TYPE "xten-minimize-live"
 
@@ -83,7 +86,7 @@ struct OpInfo {
 mlir::LogicalResult verifyStrAttr(mlir::Operation *op, llvm::StringRef attrKey,
                                   llvm::StringRef attrValue) {
   if (!op->hasAttr(attrKey) ||
-      !(op->getAttr(attrKey).cast<StringAttr>().str() == attrValue)) {
+      !(cast<StringAttr>(op->getAttr(attrKey)).str() == attrValue)) {
     return failure();
   }
   return success();
@@ -223,7 +226,7 @@ size_t getSize(Value val) {
   if (elementType.isIntOrFloat())
     return (elementType.getIntOrFloatBitWidth() * type.getNumElements()) / 8;
 
-  if (auto complexType = elementType.dyn_cast<ComplexType>()) {
+  if (auto complexType = dyn_cast<ComplexType>(elementType)) {
     elementType = complexType.getElementType();
     return (elementType.getIntOrFloatBitWidth() * type.getNumElements() * 2) /
            8;
@@ -270,22 +273,28 @@ public:
   XTenMinimizeLiveTensorsPass(const XTenMinimizeLiveTensorsPass &pass) =
       default;
 
-  // Recursively collect the OpInfo of all FM producers.
-  [[nodiscard]] LogicalResult
-  collectOperandInfo(OpInfo const &opInfo) { // NOLINT(misc-no-recursion)
+  // Collect the OpInfo of all FM producers.
+  LogicalResult collectOperandInfo(OpInfo const &opInfo) {
     // Visit all FM operands to collect their OpInfo.
-    for (auto operand : opInfo.operands) {
+
+    std::deque<std::pair<Value, const OpInfo &>> worklist;
+    for (Value v : opInfo.operands)
+      worklist.emplace_back(v, opInfo);
+
+    while (!worklist.empty()) {
+      const auto [operand, currentOpInfo] = worklist.front();
+      worklist.pop_front();
       Operation *defOp = operand.getDefiningOp();
       if (defOp == nullptr) {
         // Use currFn as stand-in for BlockArguments.
-        assert(operand.isa<BlockArgument>());
+        assert(isa<BlockArgument>(operand));
         defOp = currFn;
       }
 
       // If OpInfo is already created, so we only need to note this consumer.
-      auto prevInfoIt = opToInfo.find(defOp);
+      const auto prevInfoIt = opToInfo.find(defOp);
       if (prevInfoIt != opToInfo.end()) {
-        prevInfoIt->second.consumers.push_back(opInfo.op);
+        prevInfoIt->second.consumers.push_back(currentOpInfo.op);
         continue;
       }
 
@@ -306,16 +315,15 @@ public:
                      .operands = *fmOperands,
                      .results = fmResults,
                      .sharesResultMemory = sharesResultMemory,
-                     .consumers = {opInfo.op}};
-      auto [opFwdIt, succeeded] = opToInfo.emplace(defOp, std::move(info));
-      setOpSizes(opFwdIt->second);
+                     .consumers = {currentOpInfo.op},
+                     .orderedProducers = {}};
+      setOpSizes(info);
+      const auto [opFwdIt, succeeded] =
+          opToInfo.emplace(defOp, std::move(info));
+      assert(succeeded && "unexpected duplicate op in opToInfo");
 
-      // Recursively collect details of the operands of this operand.
-      LogicalResult result = collectOperandInfo(opFwdIt->second);
-      if (result.failed()) {
-        signalPassFailure();
-        return LogicalResult::failure();
-      }
+      for (auto v : llvm::reverse(opFwdIt->second.operands))
+        worklist.emplace_front(v, opFwdIt->second);
     }
     return LogicalResult::success();
   }
@@ -341,100 +349,128 @@ public:
     });
   }
 
-  /// Recursively determine branch running sizes.
+  /// Determine branch running sizes.
   ///
   /// \p opInfo points to the info for the op being analyzed.
   /// \p brInfo incoming branch info, to be updated by this op.
   /// \p completed contains the BranchRunning info for any fully
   ///    analyzed operations.
-  void determineBranchRunning(OpInfo *opInfo, // NOLINT(misc-no-recursion)
-                              BranchRunning &brInfo,
+  void determineBranchRunning(OpInfo *opInfo, BranchRunning brInfo,
                               std::map<Operation *, BranchRunning> &completed) {
-    // Analyze simple fallthrough operations.
-    while (opInfo->operands.size() < 2 && opInfo->consumers.size() < 2) {
-      // Avoid recomputing BranchRunning for operations we already visited.
-      auto opIt = completed.find(opInfo->op);
-      if (opIt != completed.end())
-        return;
 
-      brInfo.maxRunning = std::max(brInfo.maxRunning, opInfo->sizes.results);
-      brInfo.lastResults = opInfo->sizes.results;
-      opInfo->orderedProducers = {brInfo.lastOp};
-      brInfo.lastOp = opInfo->op;
-      completed.insert({opInfo->op, brInfo});
+    std::deque<std::pair<OpInfo *, BranchRunning>> worklist;
 
-      if (opInfo->consumers.empty())
-        return; // Nothing more to compute.
-      opInfo = &opToInfo.at(opInfo->consumers.front());
-    }
+    // This lambda is used so that we can use returns from inner loops.
+    // An alternative would be the use of gotos
+    const auto determineBranchRunningImpl =
+        [this, &worklist](OpInfo *opInfo, BranchRunning &brInfo,
+                          std::map<Operation *, BranchRunning> &completed) {
+          // Analyze simple fallthrough operations.
+          while (opInfo->operands.size() < 2 && opInfo->consumers.size() < 2) {
+            // Avoid recomputing BranchRunning for operations we already
+            // visited.
+            auto opIt = completed.find(opInfo->op);
+            if (opIt != completed.end())
+              return;
 
-    // Avoid recomputing BranchRunning for operations we already visited.
-    auto opIt = completed.find(opInfo->op);
-    if (opIt != completed.end())
-      return;
+            brInfo.maxRunning =
+                std::max(brInfo.maxRunning, opInfo->sizes.results);
+            brInfo.lastResults = opInfo->sizes.results;
+            opInfo->orderedProducers = {brInfo.lastOp};
+            brInfo.lastOp = opInfo->op;
+            completed.insert({opInfo->op, brInfo});
 
-    // At a joining point - collect this branch and proceed iff all incoming
-    // branches have been collected.
-    SmallVector<BranchRunning> branches;
-    for (Value val : opInfo->operands) {
-      Operation *op = val.getDefiningOp();
-      if (op == nullptr)
-        op = currFn; // BlockArgument stand-in.
+            if (opInfo->consumers.empty())
+              return; // Nothing more to compute.
+            opInfo = &opToInfo.at(opInfo->consumers.front());
+          }
 
-      auto opIt = completed.find(op);
-      if (opIt == completed.end())
-        return; // Another producer needs to complete first.
-      branches.push_back(opIt->second);
-    }
+          // Avoid recomputing BranchRunning for operations we already visited.
+          auto opIt = completed.find(opInfo->op);
+          if (opIt != completed.end())
+            return;
 
-    // Concat producers should be ordered according to their operands
-    // (op0 before op1 before op2, etc.), so no need to sort them out.
-    if (!isConcatSubgraph(opInfo->op)) {
-      std::sort(branches.begin(), branches.end(),
+          // At a joining point - collect this branch and proceed iff all
+          // incoming branches have been collected.
+          SmallVector<BranchRunning> branches;
+          for (Value val : opInfo->operands) {
+            Operation *op = val.getDefiningOp();
+            if (op == nullptr)
+              op = currFn; // BlockArgument stand-in.
+
+            auto opIt = completed.find(op);
+            if (opIt == completed.end())
+              return; // Another producer needs to complete first.
+            branches.push_back(opIt->second);
+          }
+
+          // Concat producers should be ordered according to their operands
+          // (op0 before op1 before op2, etc.), so no need to sort them out.
+          if (!isConcatSubgraph(opInfo->op)) {
+            std::sort(
+                branches.begin(), branches.end(),
                 [](BranchRunning &aBranch, BranchRunning &bBranch) -> bool {
                   return (aBranch.maxRunning - aBranch.lastResults) >
                          (bBranch.maxRunning - bBranch.lastResults);
                 });
-    } else if (hasAllGAPInputs(opInfo->op)) {
-      // For GAP concats we want right-to-left ordering of the inputs
-      std::reverse(branches.begin(), branches.end());
+          } else if (hasAllGAPInputs(opInfo->op)) {
+            // For GAP concats we want right-to-left ordering of the inputs
+            std::reverse(branches.begin(), branches.end());
+          }
+
+          opInfo->orderedProducers.clear();
+          for (BranchRunning const &branch : branches)
+            opInfo->orderedProducers.push_back(branch.lastOp);
+
+          // Complete the brInfo for this operation.
+          size_t maxRunning = opInfo->sizes.running;
+          for (BranchRunning const &branch : branches)
+            maxRunning = std::max(maxRunning, branch.maxRunning);
+          brInfo.maxRunning = maxRunning;
+          brInfo.lastResults = opInfo->sizes.results;
+          brInfo.lastOp = opInfo->op;
+          completed.insert({opInfo->op, brInfo});
+          assert(opInfo->orderedProducers.size() == opInfo->operands.size());
+
+          // Continue to all consumers.
+          for (Operation *consumer : llvm::reverse(opInfo->consumers)) {
+            BranchRunning nextRunning{.maxRunning = maxRunning,
+                                      .lastResults = opInfo->sizes.results,
+                                      .lastOp = opInfo->op};
+            worklist.emplace_front(&opToInfo.at(consumer), nextRunning);
+          }
+        };
+
+    worklist.emplace_back(opInfo, brInfo);
+    while (!worklist.empty()) {
+      auto [opInfo, brInfo] = worklist.front();
+      worklist.pop_front();
+      determineBranchRunningImpl(opInfo, brInfo, completed);
     }
-
-    opInfo->orderedProducers.clear();
-    for (BranchRunning const &branch : branches)
-      opInfo->orderedProducers.push_back(branch.lastOp);
-
-    // Complete the brInfo for this operation.
-    size_t maxRunning = opInfo->sizes.running;
-    for (BranchRunning const &branch : branches)
-      maxRunning = std::max(maxRunning, branch.maxRunning);
-    brInfo.maxRunning = maxRunning;
-    brInfo.lastResults = opInfo->sizes.results;
-    brInfo.lastOp = opInfo->op;
-    completed.insert({opInfo->op, brInfo});
-
-    // Continue to all consumers.
-    for (Operation *consumer : opInfo->consumers) {
-      BranchRunning nextRunning{.maxRunning = maxRunning,
-                                .lastResults = opInfo->sizes.results,
-                                .lastOp = opInfo->op};
-      determineBranchRunning(&opToInfo.at(consumer), nextRunning, completed);
-    }
-    assert(opInfo->orderedProducers.size() == opInfo->operands.size());
   }
 
   /// Move the operators to the desired lexical order.
-  void moveToOrder(OpInfo const &fwd) { // NOLINT(misc-no-recursion)
-    for (Operation *op : fwd.orderedProducers) {
-      if (op == currFn)
+  void moveToOrder(OpInfo const &fwd) {
+    std::deque<std::pair<Operation *, Operation *>>
+        worklist; // first is the producer,second is the operation it should be
+                  // moved before
+    for (Operation *producer : fwd.orderedProducers) {
+      worklist.emplace_back(producer, fwd.op);
+    }
+    while (!worklist.empty()) {
+      auto [producer, beforeOp] = worklist.front();
+      worklist.pop_front();
+      if (producer == currFn)
         continue; // BlockArguments cannot be moved.
-      OpInfo &visitFwd = opToInfo.at(op);
+      OpInfo &visitFwd = opToInfo.at(producer);
       if (visitFwd.ordered)
         continue;
 
-      op->moveBefore(fwd.op);
+      producer->moveBefore(beforeOp);
       visitFwd.ordered = true;
-      moveToOrder(visitFwd);
+      for (Operation *nextProducer : llvm::reverse(visitFwd.orderedProducers)) {
+        worklist.emplace_front(nextProducer, producer);
+      }
     }
   }
 
@@ -455,7 +491,11 @@ public:
     assert(isa<func::ReturnOp>(returnStmt) &&
            "A function must terminate with a return stmt");
     SmallVector<Value> const retVal = returnStmt->getOperands();
-    OpInfo fwdInfo = {.op = returnStmt, .operands = retVal, .results = {}};
+    OpInfo fwdInfo = {.op = returnStmt,
+                      .operands = retVal,
+                      .results = {},
+                      .consumers = {},
+                      .orderedProducers = {}};
     auto [opFwdIt, succeeded] =
         opToInfo.emplace(returnStmt, std::move(fwdInfo));
     OpInfo const &retFwd = opFwdIt->second;
@@ -505,6 +545,8 @@ public:
 
 private:
   /// The analysis results for each operation.
+  /// Be careful when trying to replace with a different map type, as code in
+  /// this pass relies on stable iterators/references into the map.
   std::map<Operation *, OpInfo> opToInfo;
   /// The function being analyzed - needed in places to represent
   /// BlockArguments.
