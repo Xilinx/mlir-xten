@@ -315,7 +315,8 @@ public:
                      .operands = *fmOperands,
                      .results = fmResults,
                      .sharesResultMemory = sharesResultMemory,
-                     .consumers = {currentOpInfo.op}};
+                     .consumers = {currentOpInfo.op},
+                     .orderedProducers = {}};
       setOpSizes(info);
       const auto [opFwdIt, succeeded] =
           opToInfo.emplace(defOp, std::move(info));
@@ -490,7 +491,11 @@ public:
     assert(isa<func::ReturnOp>(returnStmt) &&
            "A function must terminate with a return stmt");
     SmallVector<Value> const retVal = returnStmt->getOperands();
-    OpInfo fwdInfo = {.op = returnStmt, .operands = retVal, .results = {}};
+    OpInfo fwdInfo = {.op = returnStmt,
+                      .operands = retVal,
+                      .results = {},
+                      .consumers = {},
+                      .orderedProducers = {}};
     auto [opFwdIt, succeeded] =
         opToInfo.emplace(returnStmt, std::move(fwdInfo));
     OpInfo const &retFwd = opFwdIt->second;
