@@ -449,17 +449,27 @@ public:
   }
 
   /// Move the operators to the desired lexical order.
-  void moveToOrder(OpInfo const &fwd) { // NOLINT(misc-no-recursion)
-    for (Operation *op : fwd.orderedProducers) {
-      if (op == currFn)
+  void moveToOrder(OpInfo const &fwd) {
+    std::deque<std::pair<Operation *, Operation *>>
+        worklist; // first is the producer,second is the operation it should be
+                  // moved before
+    for (Operation *producer : fwd.orderedProducers) {
+      worklist.emplace_back(producer, fwd.op);
+    }
+    while (!worklist.empty()) {
+      auto [producer, beforeOp] = worklist.front();
+      worklist.pop_front();
+      if (producer == currFn)
         continue; // BlockArguments cannot be moved.
-      OpInfo &visitFwd = opToInfo.at(op);
+      OpInfo &visitFwd = opToInfo.at(producer);
       if (visitFwd.ordered)
         continue;
 
-      op->moveBefore(fwd.op);
+      producer->moveBefore(beforeOp);
       visitFwd.ordered = true;
-      moveToOrder(visitFwd);
+      for (Operation *nextProducer : llvm::reverse(visitFwd.orderedProducers)) {
+        worklist.emplace_front(nextProducer, producer);
+      }
     }
   }
 
