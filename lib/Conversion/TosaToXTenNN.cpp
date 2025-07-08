@@ -101,8 +101,10 @@ m_ConstantFloatLog2(IntegerAttr::ValueType *bindValue) { // NOLINT
 ///\return true shape does not change from input to output
 ///\return false shape does change from input to output
 bool sameInputAndOutputShape(mlir::Operation *operation) {
-  assert(operation->getNumOperands() == 2 && operation->getNumResults() == 1 &&
-         "expected operation with 2 inputs and one output.");
+  assert(
+      (operation->getNumOperands() == 2 || operation->getNumOperands() == 3) &&
+      operation->getNumResults() == 1 &&
+      "expected operation with 2 inputs and one output.");
   return operation->getOperand(0).getType() ==
          operation->getResult(0).getType();
 }
@@ -179,7 +181,8 @@ public:
     APInt quantizeShift(32, 0, true);
     auto isQDQPattern = m_Op<amd::xten_nn::DequantizeOp>(
         m_Op<amd::xten_nn::QuantizeOp>(m_Op<tosa::MulOp>(
-            matchers::m_Any(), m_ConstantFloatLog2(&quantizeShift))));
+            matchers::m_Any(), m_ConstantFloatLog2(&quantizeShift),
+            matchers::m_Any())));
     if (!dequantizeOp || !isQDQPattern.match(dequantizeOp)) {
       return rewriter.notifyMatchFailure(dequantizeMulOp->getLoc(),
                                          "expected mul->q->dq->mul pattern.");
@@ -261,7 +264,8 @@ public:
 
   LogicalResult matchAndRewrite(tosa::MulOp mulOp,
                                 PatternRewriter &rewriter) const override {
-    if (!m_Op<tosa::MulOp>(m_Constant(), m_Constant()).match(mulOp)) {
+    if (!m_Op<tosa::MulOp>(m_Constant(), m_Constant(), m_Constant())
+             .match(mulOp)) {
       return rewriter.notifyMatchFailure(
           mulOp.getLoc(),
           "only reorganize operands on muls with two constants");
