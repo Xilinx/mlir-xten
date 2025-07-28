@@ -697,7 +697,7 @@ OpFoldResult QuantizeOp::fold(FoldAdaptor /*adaptor*/) {
   if (dequantizeInput.getType() != getType())
     return {};
 
-  if (!dequantizeOp->hasOneUse() || dequantizeOp.getScale() != getScale() ||
+  if (dequantizeOp.getScale() != getScale() ||
       dequantizeOp.getZeroPoint() != getZeroPoint())
     return {};
 
