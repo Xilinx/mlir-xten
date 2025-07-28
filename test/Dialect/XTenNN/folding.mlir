@@ -30,17 +30,18 @@ func.func @no_fold(%arg0: tensor<1x2x7x7xf32>) -> tensor<1x2x7x7xf32> {
 
 // -----
 
-func.func @no_dqq_fold_multiple_uses(%arg0: tensor<1x2x7x7xf32>) -> (tensor<1x2x7x7xf32>, tensor<1x2x7x7xi8>) {
+func.func @dqq_fold_multiple_uses(%arg0: tensor<1x2x7x7xf32>) -> (tensor<1x2x7x7xf32>, tensor<1x2x7x7xi8>) {
   %1 = "xten_nn.quantize"(%arg0) {shift = -3: si32, scale = 0.125 : f32, zero_point = 0 : i8} : (tensor<1x2x7x7xf32>) -> tensor<1x2x7x7xi8>
   %2 = "xten_nn.dequantize"(%1) {shift = -3: si32, scale = 0.125 : f32, zero_point = 0 : i8} : (tensor<1x2x7x7xi8>) -> tensor<1x2x7x7xf32>
   %3 = "xten_nn.quantize"(%2) {shift = -3: si32, scale = 0.125 : f32, zero_point = 0 : i8} : (tensor<1x2x7x7xf32>) -> tensor<1x2x7x7xi8>
   return %2, %3 : tensor<1x2x7x7xf32>, tensor<1x2x7x7xi8>
 }
 
-// CHECK-LABEL: no_dqq_fold_multiple_uses
+// CHECK-LABEL: dqq_fold_multiple_uses
 // CHECK: xten_nn.quantize
 // CHECK: xten_nn.dequantize
-// CHECK: xten_nn.quantize
+// CHECK-NOT: xten_nn.quantize
+// CHECK-NOT: xten_nn.dequantize
 
 // -----
 
