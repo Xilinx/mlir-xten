@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - feature/fused-ops
+      - release_rai_1_5
   workflow_dispatch:
 
 concurrency:
