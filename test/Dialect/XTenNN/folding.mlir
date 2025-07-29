@@ -1,6 +1,6 @@
 // (c) Copyright 2023 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
-// RUN: aten-opt --test-constant-fold --cse --split-input-file %s -o - | FileCheck %s
+// RUN: aten-opt --canonicalize --split-input-file %s -o - | FileCheck %s
 
 func.func @simple_dqq_fold(%arg0: tensor<1x2x7x7xf32>) -> tensor<1x2x7x7xf32> {
   %1 = "xten_nn.quantize"(%arg0) {shift = -3: si32, scale = 0.125 : f32, zero_point = 0 : i8} : (tensor<1x2x7x7xf32>) -> tensor<1x2x7x7xi8>

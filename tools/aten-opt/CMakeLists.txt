@@ -44,7 +44,6 @@ set(LIBS
   ${torch_libs}
   ${dialect_libs}
   ${conversion_libs}
-  MLIRTestTransforms
   MLIROptLib
 )
 
