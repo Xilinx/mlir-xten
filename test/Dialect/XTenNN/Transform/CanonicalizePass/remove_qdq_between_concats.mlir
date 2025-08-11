@@ -137,11 +137,12 @@ func.func @multiple_foldable_user_concats(%arg0: tensor<1x1x7x7xf32>) -> (tensor
   return %3, %4 : tensor<1x4x7x7xf32>, tensor<1x4x7x7xf32>
 }
 
-// CHECK-LABEL:   func.func @multiple_foldable_user_concats(
-// CHECK-SAME:                                              %[[VAL_0:.*]]: tensor<1x1x7x7xf32>) -> (tensor<1x4x7x7xf32>, tensor<1x4x7x7xf32>) {
-// CHECK:           %[[VAL_1:.*]] = tosa.concat %[[VAL_0]], %[[VAL_0]], %[[VAL_0]], %[[VAL_0]] {axis = 1 : i32} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32>
-// CHECK:           %[[VAL_2:.*]] = tosa.concat %[[VAL_0]], %[[VAL_0]], %[[VAL_0]], %[[VAL_0]] {axis = 1 : i32} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32>
-// CHECK:           return %[[VAL_1]], %[[VAL_2]] : tensor<1x4x7x7xf32>, tensor<1x4x7x7xf32>
+// CHECK-LABEL:  func.func @multiple_foldable_user_concats
+// CHECK-SAME:   ([[PARAM_0_:%.+]]: tensor<1x1x7x7xf32>) -> (tensor<1x4x7x7xf32>, tensor<1x4x7x7xf32>) {
+// CHECK:           [[VAR_0_:%.+]] = tosa.concat [[PARAM_0_]], [[PARAM_0_]] {axis = 1 : i32} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
+// CHECK-DAG:       [[VAR_1_:%.+]] = tosa.concat [[VAR_0_]], [[VAR_0_]] {axis = 1 : i32} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
+// CHECK-DAG:       [[VAR_2_:%.+]] = tosa.concat [[VAR_0_]], [[VAR_0_]] {axis = 1 : i32} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
+// CHECK:           return [[VAR_1_]], [[VAR_2_]] : tensor<1x4x7x7xf32>, tensor<1x4x7x7xf32>
 // CHECK:         }
 
 // SANE-LABEL:   func.func @multiple_foldable_user_concats(
@@ -165,14 +166,14 @@ func.func @partially_foldable_user_concats(%arg0: tensor<1x1x7x7xf32>) -> (tenso
   return %3, %4 : tensor<1x4x7x7xf32>, tensor<2x2x7x7xf32>
 }
 
-// CHECK-LABEL:   func.func @partially_foldable_user_concats(
-// CHECK-SAME:                                               %[[VAL_0:.*]]: tensor<1x1x7x7xf32>) -> (tensor<1x4x7x7xf32>, tensor<2x2x7x7xf32>) {
-// CHECK:           %[[VAL_1:.*]] = tosa.concat %[[VAL_0]], %[[VAL_0]] {axis = 1 : i32} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
-// CHECK:           %[[VAL_2:.*]] = xten_nn.quantize(%[[VAL_1]] : tensor<1x2x7x7xf32>) {shift = -3 : si32} -> tensor<1x2x7x7xi8>
-// CHECK:           %[[VAL_3:.*]] = xten_nn.dequantize(%[[VAL_2]] : tensor<1x2x7x7xi8>) {shift = -3 : si32} -> tensor<1x2x7x7xf32>
-// CHECK:           %[[VAL_4:.*]] = tosa.concat %[[VAL_0]], %[[VAL_0]], %[[VAL_0]], %[[VAL_0]] {axis = 1 : i32} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x4x7x7xf32>
-// CHECK:           %[[VAL_5:.*]] = tosa.concat %[[VAL_3]], %[[VAL_3]] {axis = 0 : i32} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<2x2x7x7xf32>
-// CHECK:           return %[[VAL_4]], %[[VAL_5]] : tensor<1x4x7x7xf32>, tensor<2x2x7x7xf32>
+// CHECK-LABEL:  func.func @partially_foldable_user_concats
+// CHECK-SAME:   ([[PARAM_0_:%.+]]: tensor<1x1x7x7xf32>) -> (tensor<1x4x7x7xf32>, tensor<2x2x7x7xf32>) {
+// CHECK:           [[VAR_0_:%.+]] = tosa.concat [[PARAM_0_]], [[PARAM_0_]] {axis = 1 : i32} : (tensor<1x1x7x7xf32>, tensor<1x1x7x7xf32>) -> tensor<1x2x7x7xf32>
+// CHECK:           [[VAR_1_:%.+]] = xten_nn.quantize([[VAR_0_]] : tensor<1x2x7x7xf32>) {shift = -3 : si32} -> tensor<1x2x7x7xi8>
+// CHECK-DAG:       [[VAR_2_:%.+]] = xten_nn.dequantize([[VAR_1_]] : tensor<1x2x7x7xi8>) {shift = -3 : si32} -> tensor<1x2x7x7xf32>
+// CHECK-DAG:       [[VAR_3_:%.+]] = tosa.concat [[VAR_0_]], [[VAR_0_]] {axis = 1 : i32} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<1x4x7x7xf32>
+// CHECK:           [[VAR_4_:%.+]] = tosa.concat [[VAR_2_]], [[VAR_2_]] {axis = 0 : i32} : (tensor<1x2x7x7xf32>, tensor<1x2x7x7xf32>) -> tensor<2x2x7x7xf32>
+// CHECK:           return [[VAR_3_]], [[VAR_4_]] : tensor<1x4x7x7xf32>, tensor<2x2x7x7xf32>
 // CHECK:         }
 
 // SANE-LABEL:   func.func @partially_foldable_user_concats(
