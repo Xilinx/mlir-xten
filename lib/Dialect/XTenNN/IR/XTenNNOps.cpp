@@ -411,6 +411,27 @@ LogicalResult SubgraphOp::verify() {
              << ") does not match argument type (" << argType << ")";
     }
   }
+
+  std::optional<ReasonEnum> reason = reasonStrToEnum(getReason());
+  if (!reason) {
+    SmallVector<llvm::StringRef> validReasons;
+    validReasons.reserve(getMaxEnumValForReasonEnum());
+
+    for (unsigned i = 0; i <= getMaxEnumValForReasonEnum(); i++) {
+      validReasons.push_back(toString(static_cast<ReasonEnum>(i)));
+    }
+
+    std::string commaSeparatedReasons;
+    {
+      llvm::raw_string_ostream rso(commaSeparatedReasons);
+      llvm::interleaveComma(validReasons, rso);
+    }
+
+    return emitOpError() << "invalid provided Reason '" << getReason()
+                         << "'. Valid Reasons are: [" << commaSeparatedReasons
+                         << "]";
+  }
+
   return success();
 }
 
