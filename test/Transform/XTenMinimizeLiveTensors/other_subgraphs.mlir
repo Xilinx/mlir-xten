@@ -377,3 +377,17 @@ func.func @tg_with_constant_ops(%arg0: tensor<1x1x64x8xbf16>) -> tensor<1x1x64x8
     } -> tensor<1x1x64x8xbf16>    
   return %2 : tensor<1x1x64x8xbf16>
 }
+
+// -----
+
+// CHECK-LABEL: func.func @tg_with_constant_ops
+// CHECK: LayerName = "TGConst"{{.*}} Reason = "TemplatedGraph"
+func.func @tg_with_constant_ops(%arg0: tensor<1x1x64x8xbf16>) -> (tensor<1x1x64x8xbf16>, tensor<1x1x64x8xbf16>) {
+  %0 = xten_nn.load_external_const {file = "constants.h5", key = "Test/Constant_2_0"} -> tensor<8xbf16>
+  %2 = xten_nn.subgraph (%arg1 = %0: tensor<8xbf16>)  attributes {LayerName = "TGConst", Reason = "TemplatedGraph"}
+    {
+       %6 = tensor.empty() : tensor<1x1x64x8xbf16>
+       xten_nn.output %6 : tensor<1x1x64x8xbf16>
+    } -> tensor<1x1x64x8xbf16>
+  return %arg0, %2 : tensor<1x1x64x8xbf16>, tensor<1x1x64x8xbf16>
+}
