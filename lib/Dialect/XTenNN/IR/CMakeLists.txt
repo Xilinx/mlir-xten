@@ -14,6 +14,11 @@ add_mlir_dialect_library(XTenNNDialect
   XTenNNIncGen
 
   LINK_LIBS PUBLIC
-  MLIRIR
-  XTenNNInterfaces
+    MLIRArithDialect
+    MLIRIR
+    MLIRBytecodeOpInterface
+    MLIRControlFlowInterfaces
+    MLIRInferTypeOpInterface
+    MLIRSideEffectInterfaces
+    XTenNNInterfaces
 )
