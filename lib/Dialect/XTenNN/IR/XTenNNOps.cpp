@@ -385,7 +385,9 @@ ParseResult SubgraphOp::parse(OpAsmParser &p, OperationState &result) {
   return parseEnclaveOp(p, result);
 }
 
-void SubgraphOp::print(OpAsmPrinter &p) { printEnclaveOp(p, *this); }
+void SubgraphOp::print(OpAsmPrinter &p) {
+  printEnclaveOp(p, *this);
+}
 
 LogicalResult SubgraphOp::verify() {
   Block *optBody = this->getOptionalEnclaveBody();
@@ -1060,4 +1062,22 @@ LogicalResult ReduceMeanOp::inferReturnTypeComponents(
   inferredReturnShapes.push_back(
       ShapedTypeComponents(outputShape, inTy.getElementType()));
   return success();
+}
+
+//===----------------------------------------------------------------------===//
+// LoadExternalConstOp
+//===----------------------------------------------------------------------===//
+
+void LoadExternalConstOp::build(mlir::OpBuilder &odsBuilder,
+                                mlir::OperationState &odsState,
+                                mlir::TypeRange resultTypes,
+                                llvm::StringRef key, llvm::StringRef file) {
+  assert(resultTypes.size() == 1 &&
+         "LoadExternalConstOp must have exactly one result");
+  auto keyAttr = StringAttr::get(odsBuilder.getContext(), key);
+  auto fileAttr = StringAttr::get(odsBuilder.getContext(), file);
+  // Use the auto-generated builder that takes TypeRange, StringAttr,
+  // StringAttr, optional StringAttr
+  LoadExternalConstOp::build(odsBuilder, odsState, resultTypes, keyAttr,
+                             fileAttr, /*method=*/nullptr);
 }
