@@ -1079,5 +1079,5 @@ void LoadExternalConstOp::build(mlir::OpBuilder &odsBuilder,
   // Use the auto-generated builder that takes TypeRange, StringAttr,
   // StringAttr, optional StringAttr
   LoadExternalConstOp::build(odsBuilder, odsState, resultTypes, keyAttr,
-                             fileAttr, /*method=*/nullptr);
+                             fileAttr, /*method=*/StringAttr{});
 }
