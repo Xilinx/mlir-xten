@@ -28,11 +28,16 @@ add_mlir_library(XTenConversionPasses
   
   LINK_LIBS PUBLIC
   MLIRAffineDialect
+  MLIRArithDialect
+  MLIRComplexDialect
   MLIRFuncDialect
   MLIRLinalgDialect
   MLIRMemRefDialect
+  MLIRMathDialect
+  MLIRSCFDialect
+  MLIRShapeDialect
+  MLIRTensorDialect
   MLIRTosaDialect
-  MLIRVectorDialect
   XTenNNDialect
   ${TorchLib}
 )
