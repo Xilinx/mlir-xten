@@ -281,10 +281,6 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
   let results = (outs AnyTensor:$output);
 
   let builders = [
-    OpBuilder<(ins "::mlir::Type":$output, "::mlir::StringAttr":$key,
-                   "::mlir::StringAttr":$file, "::mlir::StringAttr":$method)>,
-    OpBuilder<(ins "::mlir::Type":$output, "::mlir::StringAttr":$key,
-                   "::mlir::StringAttr":$file)>,
     OpBuilder<(ins "::mlir::TypeRange":$resultTypes, "::llvm::StringRef":$key,
                    "::llvm::StringRef":$file)>
   ];
