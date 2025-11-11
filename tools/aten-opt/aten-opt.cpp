@@ -11,23 +11,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/IR/Dialect.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/InitAllDialects.h"
 #include "mlir/InitAllPasses.h"
-#include "mlir/Pass/Pass.h"
-#include "mlir/Pass/PassManager.h"
 #include "mlir/Support/FileUtilities.h"
-#include "mlir/Support/LogicalResult.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/InitLLVM.h"
-#include "llvm/Support/SourceMgr.h"
-#include "llvm/Support/ToolOutputFile.h"
-
 #include "xten/Conversion/Passes.h"
-#include "xten/Dialect/XTenNN/IR/XTenNN.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 #include "xten/Dialect/XTenNN/Transforms/Passes.h"
 #include "xten/Transform/Passes.h"
@@ -35,13 +25,8 @@
 using namespace llvm;
 using namespace mlir;
 
-namespace mlir::test {
-void registerTestConstantFold();
-}
-
 int main(int argc, char **argv) {
   registerAllPasses();
-  mlir::test::registerTestConstantFold();
   xilinx::xten::registerTransformPasses();
   xilinx::xten::registerConversionPasses();
   amd::xten_nn::registerXTenNNPasses();

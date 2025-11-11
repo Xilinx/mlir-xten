@@ -195,21 +195,12 @@ FailureOr<SmallVector<Value>> getFmOperands(Operation *op) {
   if (isa<func::FuncOp>(op))
     return {{}};
 
-  if (isInCoreChain(op))
-    return {getSubgraphIFMs(op)};
-
-  if (isConcatSubgraph(op))
-    return {getSubgraphIFMs(op)};
-
-  if (isTemplatedGraph(op))
-    return {getSubgraphIFMs(op)};
-
-  // Otherwise, this is a PseudoOp and IFM is the first operand.
-  if (!(isAnyPseudoOp(op) || isInterfaceOp(op))) {
+  if (!(isInCoreChain(op) || isConcatSubgraph(op) || isTemplatedGraph(op) ||
+        isAnyPseudoOp(op) || isInterfaceOp(op))) {
     op->emitError("Unknown operation");
     return failure();
   }
-  return {{op->getOperand(0)}};
+  return {getSubgraphIFMs(op)};
 }
 
 /// Return the size of the tensor type of \p val.

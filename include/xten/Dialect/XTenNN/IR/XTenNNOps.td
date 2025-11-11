@@ -133,7 +133,7 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
   let arguments = (ins
     XTenNN_AnyFloatTensor:$input,
     OptionalAttr<SI32Attr>:$shift,
-    F32Attr:$scale, // Restricted to F32 for now, but may be relaxed in the future 
+    F32Attr:$scale, // Restricted to F32 for now, but may be relaxed in the future
     XTenNN_AnyIntegerAttr:$zero_point
   );
 
@@ -231,7 +231,7 @@ def XTenNN_GroupDequantizeOp: XTenNN_Op<"group_dequantize", [
   let summary = "Group dequantizes an integer tensor of given width to a float32 tensor.";
   let description = [{
     Dequantizes an integer tensor of given width to a float32 tensor.
-    
+
     Scales and zeros must have a shape that is broadcastable to the quants shape.
     Output and scales most have the same dtype, as must zeros and quants.
     The range of values in zeros and quants is given by the min and max attributes,
@@ -259,9 +259,11 @@ def XTenNN_GroupDequantizeOp: XTenNN_Op<"group_dequantize", [
 
 def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
             Pure]> {
-  let summary = "Loads a constant from an external h5 file to a const operator.";
+  let summary = "Loads a constant from an external source as a const operator.";
   let description = [{
-    Looks into `file` for `key`, retrieves the value and replace this operator by the loaded value.
+    Represents a constant value that can be provided by a `method`, but the values are not otherwise available.
+    The `method` is compiler-known and implemented, and not defined by this operation.
+    The default conceptual `method` is "h5", indicating that the value is stored in an h5 `file` at index `key`.
 
     Unfortunately, this operation cannot carry the ConstantLike trait as a Fold operation
     is required to be implemented for constants. For this particular operation we cannot return
@@ -272,10 +274,16 @@ def XTenNN_LoadExternalConstOp: XTenNN_Op<"load_external_const", [
   }];
   let arguments = (ins
     StrAttr:$key,
-    StrAttr:$file
+    StrAttr:$file,
+    OptionalAttr<StrAttr>:$method
   );
 
   let results = (outs AnyTensor:$output);
+
+  let builders = [
+    OpBuilder<(ins "::mlir::TypeRange":$resultTypes, "::llvm::StringRef":$key,
+                   "::llvm::StringRef":$file)>
+  ];
 
   let assemblyFormat = [{ attr-dict `->` type($output) }];
 }
@@ -305,7 +313,7 @@ def XTenNN_KernelOp : XTenNN_Op<"kernel", []> {
         "::mlir::TypeRange":$results,
         "::mlir::ValueRange":$arguments,
         "::llvm::StringRef":$name), [{
-          build($_builder, $_state, results, arguments, name, 
+          build($_builder, $_state, results, arguments, name,
             ::mlir::ArrayAttr(), ::mlir::ArrayAttr());
         }]
       >
@@ -388,7 +396,7 @@ def XtenNN_DepthToSpaceOp: XTenNN_Op<"depth_to_space", [Pure, TosaExtension]> {
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
 }
 
-def XtenNN_ReflectPadOp: XTenNN_Op<"reflect_pad", [TosaExtension]> {
+def XtenNN_ReflectPadOp: XTenNN_Op<"reflect_pad", [Pure, TosaExtension]> {
   let summary = "Performs reflective padding over a tensor input.";
   let description = [{
     Apply a padding with `reflect` mode meaning that the ifm is reflected where the padding is applied:
@@ -601,7 +609,7 @@ def XtenNN_ConvTransposeOp: XTenNN_Op<"ConvTranspose",[Pure, TosaExtension]> {
 }
 
 def XtenNN_ReduceMeanOp: XTenNN_Op<"reduce_mean", [
-                                    Pure, TosaExtension, 
+                                    Pure, TosaExtension,
                                     InferTensorTypeAdaptor]> {
   let summary = "Reduce Mean operation";
   let description = [{
@@ -618,7 +626,7 @@ def XtenNN_ReduceMeanOp: XTenNN_Op<"reduce_mean", [
   let results = (outs
     AnyRankedTensor:$output
   );
-  
+
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];
 }
 
