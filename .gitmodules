@@ -2,5 +2,5 @@
 
 [submodule "llvm-project"]
 	path = llvm-project
-	url = https://github.com/Xilinx/llvm-project.git
+	url = https://github.com/Xilinx/llvm-aie.git
 	branch = feature/fused-ops
