@@ -154,8 +154,8 @@ def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
 
 def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
             Elementwise,
-            Pure,
             SameOperandsAndResultShape]> {
+  let interfaces = [MemoryEffectOpInterface];
   let summary = "Dequantizes a signless/unsigned integer tensor of given bitwidth to a float tensor.";
   let description = [{
     Dequantizes a signless/unsigned integer tensor of given bitwidth to a float tensor.

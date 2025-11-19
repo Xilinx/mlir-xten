@@ -768,6 +768,14 @@ LogicalResult DequantizeOp::verify() {
   return success();
 }
 
+void DequantizeOp::getEffects(
+    SmallVectorImpl<SideEffects::EffectInstance<MemoryEffects::Effect>>
+        &effects) {
+  // Mark dequantize as writing to an unknown resource so CSE treats it as
+  // side-effecting.
+  effects.emplace_back(MemoryEffects::Write::get());
+}
+
 OpFoldResult amd::xten_nn::GroupQuantizeOp::fold(FoldAdaptor adaptor) {
   // Fold away cases where a xten_nn.group_quantize is preceeded by
   // xten_nn.group_dequantize that uses the same shift factor and has same
