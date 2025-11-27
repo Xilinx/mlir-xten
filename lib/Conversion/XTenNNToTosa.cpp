@@ -66,6 +66,15 @@ APFloat convertF32AttrToFloatTy(FloatAttr attr, Type typeToConvertTo) {
                     llvm::RoundingMode::NearestTiesToEven, &losesInfo);
   return scale;
 }
+
+Value getZeroShift(PatternRewriter &rewriter, Location loc) {
+  auto shiftValueType = RankedTensorType::get({1}, rewriter.getI8Type());
+  auto shiftValueAttr = DenseElementsAttr::get(shiftValueType, {int8_t(0)});
+
+  auto shiftValue =
+      rewriter.create<tosa::ConstOp>(loc, shiftValueType, shiftValueAttr);
+  return shiftValue;
+}
 } // namespace
 
 class QuantizeOp : public OpRewritePattern<amd::xten_nn::QuantizeOp> {
@@ -96,7 +105,7 @@ public:
 
     auto mulOp = rewriter.create<tosa::MulOp>(
         quantizeOp.getLoc(), inputType, quantizeOp->getOperand(0),
-        constOp->getResult(0), rewriter.getI8IntegerAttr(0));
+        constOp->getResult(0), getZeroShift(rewriter, quantizeOp.getLoc()));
 
     mlir::Value castFrom = mulOp->getResult(0);
     if (!quantizeOp.getZeroPoint().isZero()) {
@@ -189,7 +198,7 @@ public:
     rewriter.replaceOpWithNewOp<tosa::MulOp>(
         dequantizeOp, dequantizeOp->getResult(0).getType(),
         zeroPointSubOp->getResult(0), constOp->getResult(0),
-        rewriter.getI8IntegerAttr(0));
+        getZeroShift(rewriter, dequantizeOp.getLoc()));
     return success();
   }
 };
