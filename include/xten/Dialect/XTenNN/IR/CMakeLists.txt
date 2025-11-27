@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #
 
-# (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+# (c) Copyright 2022 - 2025 Advanced Micro Devices, Inc. All Rights reserved.
 
 set(LLVM_TARGET_DEFINITIONS XTenNNOps.td)
 
@@ -12,6 +12,8 @@ mlir_tablegen(XTenNNBase.h.inc -gen-dialect-decls)
 mlir_tablegen(XTenNNBase.cpp.inc -gen-dialect-defs)
 mlir_tablegen(XTenNNOps.h.inc -gen-op-decls)
 mlir_tablegen(XTenNNOps.cpp.inc -gen-op-defs)
+mlir_tablegen(XTenNNAttrDefs.h.inc -gen-attrdef-decls -attrdefs-dialect=xten_nn)
+mlir_tablegen(XTenNNAttrDefs.cpp.inc -gen-attrdef-defs -attrdefs-dialect=xten_nn)
 
 add_public_tablegen_target(XTenNNDialectIncGen)
 add_dependencies(XTenNNIncGen XTenNNDialectIncGen)
