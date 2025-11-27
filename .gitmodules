@@ -3,4 +3,4 @@
 [submodule "llvm-project"]
 	path = llvm-project
 	url = https://github.com/Xilinx/llvm-aie.git
-	branch = feature/fused-ops
+	branch = aie-public
