@@ -19,6 +19,7 @@ using namespace mlir;
 using namespace amd::xten_nn;
 
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.cpp.inc"
+#include "xten/Dialect/XTenNN/IR/XTenNNTypes.cpp.inc"
 
 void XTenNNDialect::initialize() {
   // Delegate to the registry methods.

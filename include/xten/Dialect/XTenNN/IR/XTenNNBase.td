@@ -33,7 +33,7 @@ def XTenNN_Dialect : Dialect {
 
     }];
 
-  let useDefaultTypePrinterParser = 0;
+  let useDefaultTypePrinterParser = 1;
 }
 
 #endif // XTENNN_BASE

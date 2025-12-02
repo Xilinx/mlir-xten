@@ -12,6 +12,8 @@ mlir_tablegen(XTenNNBase.h.inc -gen-dialect-decls)
 mlir_tablegen(XTenNNBase.cpp.inc -gen-dialect-defs)
 mlir_tablegen(XTenNNOps.h.inc -gen-op-decls)
 mlir_tablegen(XTenNNOps.cpp.inc -gen-op-defs)
+mlir_tablegen(XTenNNTypes.h.inc -gen-typedef-decls -typedefs-dialect=xten_nn)
+mlir_tablegen(XTenNNTypes.cpp.inc -gen-typedef-defs -typedefs-dialect=xten_nn)
 
 add_public_tablegen_target(XTenNNDialectIncGen)
 add_dependencies(XTenNNIncGen XTenNNDialectIncGen)

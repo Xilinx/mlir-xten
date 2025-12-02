@@ -14,6 +14,7 @@
 #define XTENNN_TYPES
 
 include "xten/Dialect/XTenNN/IR/XTenNNBase.td"
+include "mlir/IR/AttrTypeBase.td"
 
 def XTenNN_AnySignlessOrUnsignedIntegerTensor : TensorOf<
     [AnySignlessInteger, AnyUnsignedInteger], 
@@ -31,6 +32,33 @@ def XTenNN_AnyIntegerAttr:
   let constBuilderCall = ?;
 }
 
-def XTenNN_AnyIntegerOrFloat : AnyTypeOf<[AnyInteger, AnyFloat], "Integer or Float">;
+def XtenNN_TypeHasAxis : NativeOpTrait<"HasAxisTrait"> {
+  let cppNamespace = XTenNN_Dialect.cppNamespace;
+}
+
+class XtenNN_Type<string name, list<Trait> traits = []> : TypeDef<XTenNN_Dialect, name, /*traits*/ traits > {
+  let mnemonic = name;
+}
+
+class XtennNN_PerAxisQuantizedType<string name> :
+    XtenNN_Type<name, [XtenNN_TypeHasAxis]> {
+  let parameters = (ins "uint64_t":$axis);
+  let assemblyFormat = "`<``axis``=` $axis `>`";
+}
+
+def XtenNN_MicroExponent6 : XtennNN_PerAxisQuantizedType<"MX6">;
+
+def XtenNN_AnyPerAxisQuantizedType : AnyTypeOf<[XtenNN_MicroExponent6]>;
+
+def IsAxisInRange : CPred<"::llvm::cast<::mlir::RankedTensorType>($_self).getElementType()">;
+
+def XtenNN_PerAxisQuantizedTensor : RankedTensorOf<[XtenNN_AnyPerAxisQuantizedType], [IsAxisInRange]>;
+
+
+
+
+
+def XTenNN_AnyIntegerOrFloat : AnyTypeOf<[AnyInteger, AnyFloat, XtenNN_PerAxisQuantizedTensor], "Integer or Float">;
+
 
 #endif // XTENNN_TYPES

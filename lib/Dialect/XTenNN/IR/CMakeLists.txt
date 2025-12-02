@@ -9,6 +9,7 @@
 add_mlir_dialect_library(XTenNNDialect
   XTenNNBase.cpp
   XTenNNOps.cpp
+  XTenNNTypes.cpp
 
   DEPENDS
   XTenNNIncGen

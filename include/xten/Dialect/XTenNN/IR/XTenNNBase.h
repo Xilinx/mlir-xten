@@ -27,3 +27,6 @@
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h.inc"
 
 //===----------------------------------------------------------------------===//
+
+// Convenience include
+#include "xten/Dialect/XTenNN/IR/XTenNNTypes.h"
