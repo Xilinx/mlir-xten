@@ -35,8 +35,8 @@ def XTenNN_AnyIntegerOrFloat : AnyTypeOf<[AnyInteger, AnyFloat], "Integer or Flo
 
 class XTenNN_LocAttr<string name> : LocationAttrDef<XTenNN_Dialect, name, []>;
 
-def XTenNNSubgraphLocation : XTenNN_LocAttr<"XTenNNSubgraphLocation"> {
-  let mnemonic = "subgraph_loc";
+def XTenNNDictLocation : XTenNN_LocAttr<"XTenNNDictLocation"> {
+  let mnemonic = "dict_loc";
   let parameters = (ins "mlir::DictionaryAttr":$attrs);
 
   let assemblyFormat = "`(` $attrs `)`";
