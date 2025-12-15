@@ -4,9 +4,10 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #
 
-# (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+# (c) Copyright 2022 - 2025 Advanced Micro Devices, Inc. All Rights reserved.
 
 add_mlir_dialect_library(XTenNNDialect
+  XTenNNAttributes.cpp
   XTenNNBase.cpp
   XTenNNOps.cpp
 

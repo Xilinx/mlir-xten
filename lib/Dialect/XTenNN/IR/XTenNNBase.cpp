@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 
-// (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+// (c) Copyright 2022 - 2025 Advanced Micro Devices, Inc. All Rights reserved.
 
 //
 //===----------------------------------------------------------------------===//
@@ -23,4 +23,5 @@ using namespace amd::xten_nn;
 void XTenNNDialect::initialize() {
   // Delegate to the registry methods.
   registerOps();
+  registerAttributes();
 }

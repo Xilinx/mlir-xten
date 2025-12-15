@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 
-// (c) Copyright 2023 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+// (c) Copyright 2023 - 2025 Advanced Micro Devices, Inc. All Rights reserved.
 
 //
 //===----------------------------------------------------------------------===//
@@ -32,5 +32,15 @@ def XTenNN_AnyIntegerAttr:
 }
 
 def XTenNN_AnyIntegerOrFloat : AnyTypeOf<[AnyInteger, AnyFloat], "Integer or Float">;
+
+class XTenNN_LocAttr<string name> : LocationAttrDef<XTenNN_Dialect, name, []>;
+
+def XTenNNDictLocation : XTenNN_LocAttr<"XTenNNDictLocation"> {
+  let mnemonic = "dict_loc";
+  let parameters = (ins "mlir::DictionaryAttr":$attrs);
+
+  let assemblyFormat = "`(` $attrs `)`";
+}
+
 
 #endif // XTENNN_TYPES

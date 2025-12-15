@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 
-// (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+// (c) Copyright 2022 - 2025 Advanced Micro Devices, Inc. All Rights reserved.
 
 //
 //===----------------------------------------------------------------------===//
@@ -30,8 +30,11 @@ def XTenNN_Dialect : Dialect {
   code extraClassDeclaration = [{
     private:
         void registerOps();
+        void registerAttributes();
 
     }];
+
+  let useDefaultAttributePrinterParser = 1;
 
   let useDefaultTypePrinterParser = 0;
 }
