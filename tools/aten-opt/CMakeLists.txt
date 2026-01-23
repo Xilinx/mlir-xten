@@ -39,7 +39,6 @@ endif()
 
 set(LIBS
   XTenConversionPasses
-  XTenTransformPasses
   XTenNNDialect
   ${torch_libs}
   ${dialect_libs}
