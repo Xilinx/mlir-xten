@@ -20,14 +20,12 @@
 #include "xten/Conversion/Passes.h"
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 #include "xten/Dialect/XTenNN/Transforms/Passes.h"
-#include "xten/Transform/Passes.h"
 
 using namespace llvm;
 using namespace mlir;
 
 int main(int argc, char **argv) {
   registerAllPasses();
-  xilinx::xten::registerTransformPasses();
   xilinx::xten::registerConversionPasses();
   amd::xten_nn::registerXTenNNPasses();
 

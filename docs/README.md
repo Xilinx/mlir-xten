@@ -12,7 +12,6 @@ This repository contains the `xten_nn` mlir dialect.
 
 Generated code documentation
 - XTen Passes
-    - [Transform Passes](XTenTransformPasses.md)
     - [Conversion Passes](XTenConversionPasses.md)
 
 -----
