@@ -174,7 +174,8 @@ def XTenNN_DequantizeOp: XTenNN_Op<"dequantize", [
     XTenNN_AnySignlessOrUnsignedIntegerTensor:$input,
     OptionalAttr<SI32Attr>:$shift,
     F32Attr:$scale, // Restricted to F32 for now, but may be relaxed in the future
-    XTenNN_AnyIntegerAttr:$zero_point
+    XTenNN_AnyIntegerAttr:$zero_point,
+    OptionalAttr<StrAttr>:$motive
   );
 
   let results = (outs XTenNN_AnyFloatTensor:$output);

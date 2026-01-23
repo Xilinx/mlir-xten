@@ -729,9 +729,11 @@ void DequantizeOp::build(mlir::OpBuilder &odsBuilder,
   const auto shiftValue = getShiftValue(scale.getValue().convertToFloat());
   if (zeroPointIsZero && shiftValue) {
     return build(odsBuilder, odsState, output, input,
-                 odsBuilder.getSI32IntegerAttr(*shiftValue), scale, zeroPoint);
+                 odsBuilder.getSI32IntegerAttr(*shiftValue), scale, zeroPoint,
+                 nullptr);
   }
-  return build(odsBuilder, odsState, output, input, nullptr, scale, zeroPoint);
+  return build(odsBuilder, odsState, output, input, nullptr, scale, zeroPoint,
+               nullptr);
 }
 
 void DequantizeOp::build(mlir::OpBuilder &odsBuilder,
@@ -743,7 +745,7 @@ void DequantizeOp::build(mlir::OpBuilder &odsBuilder,
   return build(odsBuilder, odsState, output, input,
                odsBuilder.getSI32IntegerAttr(shift),
                odsBuilder.getF32FloatAttr(*scale),
-               odsBuilder.getIntegerAttr(inputElemType, 0));
+               odsBuilder.getIntegerAttr(inputElemType, 0), nullptr);
 }
 
 LogicalResult DequantizeOp::verify() {
