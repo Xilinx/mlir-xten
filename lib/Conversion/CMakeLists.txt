@@ -37,6 +37,9 @@ add_mlir_library(XTenConversionPasses
   MLIRSCFDialect
   MLIRShapeDialect
   MLIRTensorDialect
+  MLIRPass
+  MLIRRewrite
+  MLIRTransformUtils
   MLIRTosaDialect
   XTenNNDialect
   ${TorchLib}
