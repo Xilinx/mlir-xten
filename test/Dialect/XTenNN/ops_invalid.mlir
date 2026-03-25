@@ -1,4 +1,4 @@
-// (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
+// (c) Copyright 2024-2026 Advanced Micro Devices, Inc. All Rights reserved.
 
 // RUN: aten-opt %s -split-input-file -verify-diagnostics
 
@@ -141,4 +141,20 @@ func.func @topk_negative_axis(%arg0: tensor<10x10xf32>) {
     // expected-error@+1 {{expected axis to be within [-rank,rank) (where rank is the rank of the input)}}
     %a, %b = xten_nn.topk(%arg0 : tensor<10x10xf32>, %k : i64) {axis = -3 : i64, largest = true, sorted = true} -> tensor<10x10xf32>, tensor<1xi64>
     return
+}
+
+// -----
+
+func.func @resize_5d_with_4_scales(%arg0: tensor<2x16x16x64x80xbf16>) -> tensor<2x16x32x128x160xbf16> {
+    // expected-error@+1 {{'xten_nn.resize' op 'scales' size must match input rank (5)}}
+    %0 = xten_nn.resize %arg0 {coordinate_transformation_mode = 2 : i64, mode = 0 : i64, nearest_mode = 0 : i64, scales = array<f32: 1.0, 1.0, 2.0, 2.0>} : (tensor<2x16x16x64x80xbf16>) -> tensor<2x16x32x128x160xbf16>
+    return %0 : tensor<2x16x32x128x160xbf16>
+}
+
+// -----
+
+func.func @resize_4d_with_5_scales(%arg0: tensor<1x256x16x16xbf16>) -> tensor<1x256x32x32xbf16> {
+    // expected-error@+1 {{'xten_nn.resize' op 'scales' size must match input rank (4)}}
+    %0 = xten_nn.resize %arg0 {coordinate_transformation_mode = 2 : i64, mode = 0 : i64, nearest_mode = 0 : i64, scales = array<f32: 1.0, 1.0, 2.0, 2.0, 2.0>} : (tensor<1x256x16x16xbf16>) -> tensor<1x256x32x32xbf16>
+    return %0 : tensor<1x256x32x32xbf16>
 }

@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 
-// (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+// (c) Copyright 2022-2026 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
 //
 //===----------------------------------------------------------------------===//
@@ -928,9 +928,14 @@ LogicalResult amd::xten_nn::GridSampleOp::verify() {
 
 LogicalResult amd::xten_nn::ResizeOp::verify() {
   auto scales = getScales();
-  if (scales.size() != 4) {
+  auto rank = cast<RankedTensorType>(getX().getType()).getRank();
+  if (rank != 4 && rank != 5) {
+    return emitOpError("input must be a 4D or 5D tensor");
+  }
+  if (static_cast<int64_t>(scales.size()) != rank) {
     return emitOpError("'" + getScalesAttrName().strref() +
-                       "' must contain 4 values");
+                       "' size must match input rank (" + std::to_string(rank) +
+                       ")");
   }
 
   constexpr std::array coordinateTransformMode{
