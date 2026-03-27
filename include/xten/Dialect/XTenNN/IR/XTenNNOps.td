@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 
-// (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+// (c) Copyright 2022-2026 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
 //
 //===----------------------------------------------------------------------===//
@@ -495,7 +495,7 @@ def XtenNN_ResizeOp: XTenNN_Op<"resize", [Pure, TosaExtension]> {
       - No sampling is perfomed outside the tensor (ONNX's exclude_outside==0)
       - The input is always stretched to meet the new required dimensions (ONNX's keep_aspect_ratio_policy==stretch)
       - Scales
-        - 1D vector with four values specifing the scale for the resize on each dimension
+        - 1D vector with one value per dimension (4 for 2D resize, 5 for 3D resize)
       - Cordinate Transformation Mode:
         - 0: half_pixel
         - 1: pytorch_half_pixel
@@ -510,7 +510,7 @@ def XtenNN_ResizeOp: XTenNN_Op<"resize", [Pure, TosaExtension]> {
         - 2: round_prefer_floor
   }];
   let arguments = (ins
-    4DTensorOf<[XTenNN_AnyIntegerOrFloat]>:$X,
+    TensorRankOf<[XTenNN_AnyIntegerOrFloat], [4, 5]>:$X,
     DenseF32ArrayAttr:$scales,
     I64Attr:$coordinate_transformation_mode,
     I64Attr:$mode,
@@ -518,7 +518,7 @@ def XtenNN_ResizeOp: XTenNN_Op<"resize", [Pure, TosaExtension]> {
   );
 
   let results = (outs
-    4DTensorOf<[XTenNN_AnyIntegerOrFloat]>:$Y
+    TensorRankOf<[XTenNN_AnyIntegerOrFloat], [4, 5]>:$Y
   );
 
   let assemblyFormat = [{ operands attr-dict `:` functional-type(operands, results) }];

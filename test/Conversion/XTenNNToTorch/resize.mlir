@@ -1,4 +1,4 @@
-// (c) Copyright 2024 Advanced Micro Devices, Inc. All Rights reserved.
+// (c) Copyright 2024-2026 Advanced Micro Devices, Inc. All Rights reserved.
 
 // RUN: aten-opt --convert-xtennn-to-torch  -split-input-file %s | FileCheck %s
 // REQUIRES: torch
@@ -82,4 +82,21 @@ func.func @resize_nearest_round_prefer_floor(%arg0: tensor<1x256x16x16xf32>) -> 
 // CHECK:    %[[TO:.*]] = torch_c.to_builtin_tensor %[[RESIZE]] : !torch.vtensor<[1,256,32,32],f32> -> tensor<1x256x32x32xf32>
 // CHECK:    return %[[TO]] : tensor<1x256x32x32xf32>
 
+// -----
 
+func.func @resize_nearest_5d(%arg0: tensor<2x16x16x64x80xbf16>) -> tensor<2x16x32x128x160xbf16> {
+    %1 = xten_nn.resize %arg0 {coordinate_transformation_mode = 2 : i64, mode = 0 : i64, nearest_mode = 0 : i64, scales = array<f32: 1.000000e+00, 1.000000e+00, 2.000000e+00, 2.000000e+00, 2.000000e+00>} : (tensor<2x16x16x64x80xbf16>) -> tensor<2x16x32x128x160xbf16>
+    return %1 : tensor<2x16x32x128x160xbf16>
+}
+// CHECK-LABEL:  func.func @resize_nearest_5d
+// CHECK-SAME:          (%[[ARG:.*]]: tensor<2x16x16x64x80xbf16>) -> tensor<2x16x32x128x160xbf16> attributes {torch.onnx_meta.opset_version = 19 : si64} {
+// CHECK:    %[[FROM:.*]] = torch_c.from_builtin_tensor %[[ARG]] : tensor<2x16x16x64x80xbf16> -> !torch.vtensor<[2,16,16,64,80],bf16>
+// CHECK:    %[[SCALES:.*]] = torch.vtensor.literal(dense<[1.000000e+00, 1.000000e+00, 2.000000e+00, 2.000000e+00, 2.000000e+00]> : tensor<5xf32>) : !torch.vtensor<[5],f32>
+// CHECK:    %[[NONE:.*]] = torch.constant.none
+// CHECK:    %[[RESIZE:.*]] = torch.operator "onnx.Resize"(%[[FROM]], %[[NONE]], %[[SCALES]]) {
+// CHECK-SAME: torch.onnx.coordinate_transformation_mode = "asymmetric"
+// CHECK-SAME: torch.onnx.mode = "nearest"
+// CHECK-SAME: torch.onnx.nearest_mode = "floor"
+// CHECK-SAME: : (!torch.vtensor<[2,16,16,64,80],bf16>, !torch.none, !torch.vtensor<[5],f32>) -> !torch.vtensor<[2,16,32,128,160],bf16>
+// CHECK:    %[[TO:.*]] = torch_c.to_builtin_tensor %[[RESIZE]] : !torch.vtensor<[2,16,32,128,160],bf16> -> tensor<2x16x32x128x160xbf16>
+// CHECK:    return %[[TO]] : tensor<2x16x32x128x160xbf16>
