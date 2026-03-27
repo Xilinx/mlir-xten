@@ -5,7 +5,8 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 
-// (c) Copyright 2022-2026 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
+// (c) Copyright 2022 - 2026 Advanced Micro Devices, Inc. All Rights
+// reserved.
 
 //
 //===----------------------------------------------------------------------===//
@@ -13,6 +14,7 @@
 #include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
 
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Quant/IR/QuantTypes.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinAttributes.h"
@@ -625,6 +627,10 @@ void printQuantizeDequantizeLikeOp(mlir::OpAsmPrinter &p,
   }
 }
 } // namespace
+
+OpFoldResult UnspecifiedOp::fold(FoldAdaptor /*adaptor*/) {
+  return UnspecifiedAttr::get(getContext());
+}
 
 mlir::ParseResult QuantizeOp::parse(mlir::OpAsmParser &parser,
                                     mlir::OperationState &result) {

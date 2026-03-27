@@ -42,5 +42,18 @@ def XTenNNDictLocation : XTenNN_LocAttr<"XTenNNDictLocation"> {
   let assemblyFormat = "`(` $attrs `)`";
 }
 
+def UnspecifiedAttr : AttrDef<XTenNN_Dialect, "Unspecified", []> {
+  let mnemonic = "unspecified";
+  let summary = "Marker for an unspecified value";
+  let description = [{
+    The `#xten_nn.unspecified` attribute marks a value as unspecified.
+
+    The attribute itself is untyped. Its semantics come from the typed context
+    in which it is used:
+    - Integer-typed contexts allow any integer value.
+    - Floating-point contexts allow any finite, non-NaN, non-infinite value.
+  }];
+}
+
 
 #endif // XTENNN_TYPES
