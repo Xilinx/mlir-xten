@@ -21,6 +21,7 @@
 #include "mlir/Interfaces/ControlFlowInterfaces.h"
 #include "mlir/Interfaces/InferTypeOpInterface.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
+#include "xten/Dialect/XTenNN/IR/XTenNNAttributes.h"
 #include "xten/Dialect/XTenNN/Interfaces/EnclaveOpInterfaces.h"
 
 namespace mlir::OpTrait {

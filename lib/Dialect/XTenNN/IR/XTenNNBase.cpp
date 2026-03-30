@@ -12,6 +12,8 @@
 
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 #include "xten/Dialect/XTenNN/IR/XTenNN.h"
+#include "xten/Dialect/XTenNN/IR/XTenNNAttributes.h"
+#include "xten/Dialect/XTenNN/IR/XTenNNOps.h"
 
 #include "mlir/IR/DialectImplementation.h"
 
@@ -24,4 +26,12 @@ void XTenNNDialect::initialize() {
   // Delegate to the registry methods.
   registerOps();
   registerAttributes();
+}
+
+Operation *XTenNNDialect::materializeConstant(OpBuilder &builder,
+                                              Attribute value, Type type,
+                                              Location loc) {
+  if (isa<UnspecifiedAttr>(value))
+    return builder.create<UnspecifiedOp>(loc, type);
+  return nullptr;
 }

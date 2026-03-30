@@ -108,6 +108,27 @@ def XTenNN_OutputOp : XTenNN_Op<"output", [
     let assemblyFormat = [{ attr-dict ($operands^ `:` type($operands))?}];
 }
 
+def XTenNN_UnspecifiedOp : XTenNN_Op<"unspecified", [ConstantLike, Pure]> {
+  let summary = "Materializes an unspecified value";
+  let description = [{
+    The `xten_nn.unspecified` op materializes a constant-like unspecified value.
+
+    For integer result types, the value may be any integer value.
+    For floating-point result types, the value may be any finite, non-NaN,
+    non-infinite value.
+
+    ```mlir
+    %0 = xten_nn.unspecified : tensor<f32>
+    ```
+  }];
+
+  let results = (outs AnyType:$result);
+
+  let assemblyFormat = "attr-dict `:` type($result)";
+
+  let hasFolder = 1;
+}
+
 
 def XTenNN_QuantizeOp: XTenNN_Op<"quantize", [
             Elementwise,
