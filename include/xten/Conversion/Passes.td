@@ -33,8 +33,9 @@ def XTenNNToTosa : Pass<"xten-nn-to-tosa", "ModuleOp"> {
   let description = [{
   Partial conversion of XTenNN operations to TOSA.
 
-  This pass only converts XTenNN quantize and dequantize operations
-  who operate on signed integer tensors to TOSA.
+  This pass converts XTenNN quantize and dequantize operations
+  who operate on signed integer tensors to TOSA. It can also optionally
+  decompose XTenNN depth_to_space operations to TOSA.
 
   Currently, unsigned integer tensor support in TOSA does not allow
   lowerings of operations like:
@@ -48,6 +49,13 @@ def XTenNNToTosa : Pass<"xten-nn-to-tosa", "ModuleOp"> {
   let dependentDialects = [
     "mlir::tosa::TosaDialect",
     "amd::xten_nn::XTenNNDialect"
+  ];
+  let options = [
+    Option<"enableDepthToSpaceDecomposition",
+           "enable-depth-to-space-decomposition",
+           "bool",
+           /*default=*/"false",
+           "Enable decomposition of xten_nn.depth_to_space to TOSA.">,
   ];
 }
 

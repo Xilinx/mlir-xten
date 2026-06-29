@@ -283,12 +283,20 @@ public:
 class XTenNNToTosaPass
     : public xilinx::xten::XTenNNToTosaBase<XTenNNToTosaPass> {
 public:
+  using XTenNNToTosaBase::XTenNNToTosaBase;
+
+  XTenNNToTosaPass(bool enableDepthToSpaceDecomposition) {
+    this->enableDepthToSpaceDecomposition = enableDepthToSpaceDecomposition;
+  }
+
   void runOnOperation() override {
     ModuleOp module = getOperation();
     MLIRContext *context = module.getContext();
     RewritePatternSet patterns(context);
 
-    patterns.insert<QuantizeOp, DequantizeOp, DepthToSpaceOp>(context);
+    patterns.insert<QuantizeOp, DequantizeOp>(context);
+    if (enableDepthToSpaceDecomposition)
+      patterns.insert<DepthToSpaceOp>(context);
     // We insert a clamp to enforce non-standard TOSA dataypes. E.g. i6 signed
     // integer range described with an i8 value. However, in the case we use i8
     // and clamp to values of i8 (i.e. si8) then the clamp can be optimized away
@@ -311,6 +319,11 @@ namespace xten_nn {
 
 std::unique_ptr<mlir::Pass> createXTenNNToTOSAPass() {
   return std::make_unique<XTenNNToTosaPass>();
+}
+
+std::unique_ptr<mlir::Pass>
+createXTenNNToTOSAPass(bool enableDepthToSpaceDecomposition) {
+  return std::make_unique<XTenNNToTosaPass>(enableDepthToSpaceDecomposition);
 }
 
 } // namespace xten_nn

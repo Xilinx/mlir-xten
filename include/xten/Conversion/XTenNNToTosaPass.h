@@ -19,6 +19,8 @@ namespace amd {
 namespace xten_nn {
 
 std::unique_ptr<mlir::Pass> createXTenNNToTOSAPass();
+std::unique_ptr<mlir::Pass>
+createXTenNNToTOSAPass(bool enableDepthToSpaceDecomposition);
 
 } // namespace xten_nn
 } // namespace amd
