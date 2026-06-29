@@ -565,6 +565,268 @@ public:
   }
 };
 
+// Lower grid_sample to an output-indexed linalg.generic. Each output element
+// extracts the normalized x/y grid coordinate, converts it to input-space pixel
+// coordinates, samples the input with the requested interpolation rule, and
+// applies zeros or border padding while materializing the sample.
+class GridSampleToLinalg : public OpConversionPattern<GridSampleOp> {
+public:
+  using OpConversionPattern<GridSampleOp>::OpConversionPattern;
+
+  struct GridSampleParams {
+    Value input;
+    Value grid;
+    RankedTensorType inputTy;
+    RankedTensorType gridTy;
+    RankedTensorType resultTy;
+    uint64_t alignCorners;
+    uint64_t mode;
+    uint64_t paddingMode;
+  };
+
+  static Value gridCoordinateToInput(const GridSampleParams &params,
+                                     OpBuilder &b, Location loc,
+                                     Value gridValue, int64_t dim,
+                                     Type calcType) {
+    gridValue = convertValue(b, loc, gridValue, calcType);
+    const double inputSize = params.inputTy.getDimSize(dim);
+    const Value one = createFloatConstant(b, loc, calcType, 1.0);
+    const Value half = createFloatConstant(b, loc, calcType, 0.5);
+    const Value shifted = b.create<arith::AddFOp>(loc, gridValue, one);
+
+    if (params.alignCorners) {
+      const Value sizeMinusOne =
+          createFloatConstant(b, loc, calcType, inputSize - 1.0);
+      const Value scaled = b.create<arith::MulFOp>(loc, shifted, sizeMinusOne);
+      return b.create<arith::MulFOp>(loc, scaled, half);
+    }
+
+    const Value size = createFloatConstant(b, loc, calcType, inputSize);
+    const Value scaled = b.create<arith::MulFOp>(loc, shifted, size);
+    const Value shiftedBack = b.create<arith::SubFOp>(loc, scaled, one);
+    return b.create<arith::MulFOp>(loc, shiftedBack, half);
+  }
+
+  static Value isIndexInBounds(OpBuilder &b, Location loc, Value index,
+                               int64_t size) {
+    const Value zero = createIndexConstant(b, loc, 0);
+    const Value upper = createIndexConstant(b, loc, size - 1);
+    const Value aboveLower =
+        b.create<arith::CmpIOp>(loc, arith::CmpIPredicate::sge, index, zero);
+    const Value belowUpper =
+        b.create<arith::CmpIOp>(loc, arith::CmpIPredicate::sle, index, upper);
+    return b.create<arith::AndIOp>(loc, aboveLower, belowUpper);
+  }
+
+  static Value sampleInput(const GridSampleParams &params, OpBuilder &b,
+                           Location loc, Value n, Value c, Value h, Value w,
+                           Type resultElementTy) {
+    Value sampleH = h;
+    Value sampleW = w;
+    Value inBounds;
+    if (params.paddingMode == 0) {
+      Value hInBounds =
+          isIndexInBounds(b, loc, h, params.inputTy.getDimSize(2));
+      Value wInBounds =
+          isIndexInBounds(b, loc, w, params.inputTy.getDimSize(3));
+      inBounds = b.create<arith::AndIOp>(loc, hInBounds, wInBounds);
+      sampleH = clampIndex(b, loc, h, params.inputTy.getDimSize(2) - 1);
+      sampleW = clampIndex(b, loc, w, params.inputTy.getDimSize(3) - 1);
+    } else {
+      sampleH = clampIndex(b, loc, h, params.inputTy.getDimSize(2) - 1);
+      sampleW = clampIndex(b, loc, w, params.inputTy.getDimSize(3) - 1);
+    }
+
+    Value sample =
+        b.create<tensor::ExtractOp>(loc, params.input,
+                                    ValueRange{n, c, sampleH, sampleW});
+    if (params.paddingMode == 0) {
+      const Value zero = createFloatConstant(b, loc, resultElementTy, 0.0);
+      sample = b.create<arith::SelectOp>(loc, inBounds, sample, zero);
+    }
+    return sample;
+  }
+
+  static Value getNearestIndex(OpBuilder &b, Location loc, Value coord,
+                               Type calcType) {
+    const Value floorCoord = b.create<math::FloorOp>(loc, coord);
+    const Value floorIndex = castFloatToIndex(b, loc, floorCoord);
+    const Value one = createIndexConstant(b, loc, 1);
+    const Value upperIndex = b.create<arith::AddIOp>(loc, floorIndex, one);
+
+    const Value fraction = b.create<arith::SubFOp>(loc, coord, floorCoord);
+    const Value half = createFloatConstant(b, loc, calcType, 0.5);
+    const Value takeUpper =
+        b.create<arith::CmpFOp>(loc, arith::CmpFPredicate::OGT, fraction, half);
+    const Value isTie =
+        b.create<arith::CmpFOp>(loc, arith::CmpFPredicate::OEQ, fraction, half);
+
+    const Value floorInt =
+        b.create<arith::IndexCastOp>(loc, b.getI64Type(), floorIndex);
+    const Value two = b.create<arith::ConstantIntOp>(loc, 2, 64);
+    const Value remainder = b.create<arith::RemSIOp>(loc, floorInt, two);
+    const Value zero = b.create<arith::ConstantIntOp>(loc, 0, 64);
+    const Value floorIsOdd =
+        b.create<arith::CmpIOp>(loc, arith::CmpIPredicate::ne, remainder, zero);
+    const Value tieTakesUpper =
+        b.create<arith::AndIOp>(loc, isTie, floorIsOdd);
+    const Value selectUpper =
+        b.create<arith::OrIOp>(loc, takeUpper, tieTakesUpper);
+    return b.create<arith::SelectOp>(loc, selectUpper, upperIndex, floorIndex);
+  }
+
+  static Value buildNearest(const GridSampleParams &params, OpBuilder &b,
+                            Location loc, Type calcType,
+                            Type resultElementTy) {
+    const Value n = b.create<linalg::IndexOp>(loc, 0);
+    const Value c = b.create<linalg::IndexOp>(loc, 1);
+    const Value outH = b.create<linalg::IndexOp>(loc, 2);
+    const Value outW = b.create<linalg::IndexOp>(loc, 3);
+    const Value zero = createIndexConstant(b, loc, 0);
+    const Value one = createIndexConstant(b, loc, 1);
+    const Value gridX =
+        b.create<tensor::ExtractOp>(loc, params.grid,
+                                    ValueRange{n, outH, outW, zero});
+    const Value gridY =
+        b.create<tensor::ExtractOp>(loc, params.grid,
+                                    ValueRange{n, outH, outW, one});
+    const Value inputX =
+        gridCoordinateToInput(params, b, loc, gridX, 3, calcType);
+    const Value inputY =
+        gridCoordinateToInput(params, b, loc, gridY, 2, calcType);
+    const Value x = getNearestIndex(b, loc, inputX, calcType);
+    const Value y = getNearestIndex(b, loc, inputY, calcType);
+    return sampleInput(params, b, loc, n, c, y, x, resultElementTy);
+  }
+
+  static Value buildBilinear(const GridSampleParams &params, OpBuilder &b,
+                             Location loc, Type calcType,
+                             Type resultElementTy) {
+    const Value n = b.create<linalg::IndexOp>(loc, 0);
+    const Value c = b.create<linalg::IndexOp>(loc, 1);
+    const Value outH = b.create<linalg::IndexOp>(loc, 2);
+    const Value outW = b.create<linalg::IndexOp>(loc, 3);
+    const Value zeroIndex = createIndexConstant(b, loc, 0);
+    const Value oneIndex = createIndexConstant(b, loc, 1);
+    const Value gridX =
+        b.create<tensor::ExtractOp>(loc, params.grid,
+                                    ValueRange{n, outH, outW, zeroIndex});
+    const Value gridY =
+        b.create<tensor::ExtractOp>(loc, params.grid,
+                                    ValueRange{n, outH, outW, oneIndex});
+    const Value inputX =
+        gridCoordinateToInput(params, b, loc, gridX, 3, calcType);
+    const Value inputY =
+        gridCoordinateToInput(params, b, loc, gridY, 2, calcType);
+
+    const Value x0Float = b.create<math::FloorOp>(loc, inputX);
+    const Value y0Float = b.create<math::FloorOp>(loc, inputY);
+    const Value x0 = castFloatToIndex(b, loc, x0Float);
+    const Value y0 = castFloatToIndex(b, loc, y0Float);
+    const Value x1 = b.create<arith::AddIOp>(loc, x0, oneIndex);
+    const Value y1 = b.create<arith::AddIOp>(loc, y0, oneIndex);
+
+    const Value xLerp = b.create<arith::SubFOp>(loc, inputX, x0Float);
+    const Value yLerp = b.create<arith::SubFOp>(loc, inputY, y0Float);
+    const Value oneFloat = createFloatConstant(b, loc, calcType, 1.0);
+    const Value x0Weight = b.create<arith::SubFOp>(loc, oneFloat, xLerp);
+    const Value y0Weight = b.create<arith::SubFOp>(loc, oneFloat, yLerp);
+
+    auto weightedSample = [&](Value h, Value w, Value hWeight,
+                              Value wWeight) -> Value {
+      Value sample = sampleInput(params, b, loc, n, c, h, w, resultElementTy);
+      sample = convertValue(b, loc, sample, calcType);
+      const Value weight = b.create<arith::MulFOp>(loc, hWeight, wWeight);
+      return b.create<arith::MulFOp>(loc, sample, weight);
+    };
+
+    Value acc = weightedSample(y0, x0, y0Weight, x0Weight);
+    acc = b.create<arith::AddFOp>(
+        loc, acc, weightedSample(y0, x1, y0Weight, xLerp));
+    acc = b.create<arith::AddFOp>(
+        loc, acc, weightedSample(y1, x0, yLerp, x0Weight));
+    acc = b.create<arith::AddFOp>(
+        loc, acc, weightedSample(y1, x1, yLerp, xLerp));
+    return convertValue(b, loc, acc, resultElementTy);
+  }
+
+  LogicalResult
+  matchAndRewrite(GridSampleOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    const Location loc = op->getLoc();
+    const auto inputTy = cast<RankedTensorType>(adaptor.getX().getType());
+    const auto gridTy = cast<RankedTensorType>(adaptor.getGrid().getType());
+    const auto resultTy = cast<RankedTensorType>(op->getResult(0).getType());
+    const Type resultElementTy = resultTy.getElementType();
+
+    if (!inputTy.hasStaticShape() || !gridTy.hasStaticShape() ||
+        !resultTy.hasStaticShape())
+      return rewriter.notifyMatchFailure(
+          op, "grid_sample lowering requires static shapes");
+    if (inputTy.getRank() != 4 || gridTy.getRank() != 4 ||
+        resultTy.getRank() != 4)
+      return rewriter.notifyMatchFailure(
+          op, "grid_sample lowering supports rank-4 tensors");
+    if (!isa<FloatType>(inputTy.getElementType()) ||
+        !isa<FloatType>(gridTy.getElementType()) ||
+        !isa<FloatType>(resultElementTy))
+      return rewriter.notifyMatchFailure(
+          op, "grid_sample lowering only supports floating point tensors");
+    // align_corners encoding: 0=false, 1=true.
+    if (adaptor.getAlignCorners() > 1)
+      return rewriter.notifyMatchFailure(
+          op, "grid_sample align_corners must be 0 or 1");
+
+    // mode encoding: 0=bilinear, 1=nearest, 2=cubic.
+    if (adaptor.getMode() > 2)
+      return rewriter.notifyMatchFailure(op, "invalid grid_sample mode");
+    if (adaptor.getMode() == 2)
+      return rewriter.notifyMatchFailure(
+          op, "grid_sample cubic mode is not supported");
+
+    // padding_mode encoding: 0=zeros, 1=border, 2=reflection.
+    if (adaptor.getPaddingMode() > 2)
+      return rewriter.notifyMatchFailure(
+          op, "invalid grid_sample padding mode");
+    if (adaptor.getPaddingMode() == 2)
+      return rewriter.notifyMatchFailure(
+          op, "grid_sample reflection padding is not supported");
+
+    Type calcType = resultElementTy;
+    if (auto floatTy = dyn_cast<FloatType>(calcType)) {
+      if (floatTy.getWidth() < 32)
+        calcType = rewriter.getF32Type();
+    }
+
+    const GridSampleParams params{adaptor.getX(),
+                                  adaptor.getGrid(),
+                                  inputTy,
+                                  gridTy,
+                                  resultTy,
+                                  adaptor.getAlignCorners(),
+                                  adaptor.getMode(),
+                                  adaptor.getPaddingMode()};
+    const Value output = getEmptyTensor(rewriter, loc, resultTy, {});
+    const AffineMap outputMap =
+        rewriter.getMultiDimIdentityMap(resultTy.getRank());
+    auto generic = rewriter.create<linalg::GenericOp>(
+        loc, TypeRange{resultTy}, ValueRange{}, output,
+        SmallVector<AffineMap>{outputMap},
+        mlir::tosa::getNParallelLoopsAttrs(resultTy.getRank()),
+        [&](OpBuilder &nestedBuilder, Location nestedLoc, ValueRange) {
+          Value result = params.mode == 0
+                             ? buildBilinear(params, nestedBuilder, nestedLoc,
+                                             calcType, resultElementTy)
+                             : buildNearest(params, nestedBuilder, nestedLoc,
+                                            calcType, resultElementTy);
+          nestedBuilder.create<linalg::YieldOp>(nestedLoc, result);
+        });
+
+    rewriter.replaceOp(op, generic.getResults());
+    return success();
+  }
+};
+
 struct ConvertXtenNNtoLinalg
     : public xilinx::xten::impl::ConvertXTenNNToLinalgBase<
           ConvertXtenNNtoLinalg> {
@@ -582,14 +844,15 @@ struct ConvertXtenNNtoLinalg
     auto funcOp = getOperation();
 
     ConversionTarget target(*context);
-    target.addIllegalOp<EluOp, ReduceMeanOp, ResizeOp, SignOp>();
+    target.addIllegalOp<EluOp, GridSampleOp, ReduceMeanOp, ResizeOp, SignOp>();
     target.addLegalDialect<linalg::LinalgDialect, scf::SCFDialect,
                            complex::ComplexDialect, math::MathDialect,
                            shape::ShapeDialect, tensor::TensorDialect,
                            arith::ArithDialect>();
 
     RewritePatternSet patterns(context);
-    patterns.add<EluToLinalg, ReduceMeanToLinalg, ResizeToLinalg>(context);
+    patterns.add<EluToLinalg, GridSampleToLinalg, ReduceMeanToLinalg,
+                 ResizeToLinalg>(context);
 
     if (failed(applyPartialConversion(funcOp, target, std::move(patterns))))
       signalPassFailure();
