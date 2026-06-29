@@ -75,6 +75,15 @@ Value getZeroShift(PatternRewriter &rewriter, Location loc) {
       rewriter.create<tosa::ConstOp>(loc, shiftValueType, shiftValueAttr);
   return shiftValue;
 }
+
+Value createTosaI32Const(PatternRewriter &rewriter, Location loc,
+                         ArrayRef<int32_t> values) {
+  auto type = RankedTensorType::get({static_cast<int64_t>(values.size())},
+                                    rewriter.getI32Type());
+  return rewriter
+      .create<tosa::ConstOp>(loc, type, DenseIntElementsAttr::get(type, values))
+      .getResult();
+}
 } // namespace
 
 class QuantizeOp : public OpRewritePattern<amd::xten_nn::QuantizeOp> {
@@ -203,6 +212,74 @@ public:
   }
 };
 
+class DepthToSpaceOp : public OpRewritePattern<amd::xten_nn::DepthToSpaceOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(amd::xten_nn::DepthToSpaceOp op,
+                                PatternRewriter &rewriter) const override {
+    auto inputType = cast<RankedTensorType>(op.getX().getType());
+    auto resultType = cast<RankedTensorType>(op.getY().getType());
+    if (!inputType.hasStaticShape() || !resultType.hasStaticShape())
+      return rewriter.notifyMatchFailure(
+          op, "depth_to_space lowering requires static shapes");
+
+    const int64_t blockSize = op.getBlocksize();
+
+    ArrayRef<int64_t> inputShape = inputType.getShape();
+    const int64_t channels = inputShape[1];
+    const int64_t blockSizeSquared = blockSize * blockSize;
+    assert(blockSizeSquared > 0 && "blocksize must be positive");
+    assert(channels % blockSizeSquared == 0 &&
+           "input channel dimension must be divisible by blocksize squared");
+
+    const int64_t outputChannels = channels / blockSizeSquared;
+    SmallVector<int64_t> reshapeShape;
+    SmallVector<int64_t> transposedShape{inputShape[0], outputChannels,
+                                         inputShape[2], blockSize,
+                                         inputShape[3], blockSize};
+    SmallVector<int32_t> permutation;
+
+    switch (op.getMode()) {
+    case 1:
+      // DCR: [N, BS, BS, C', H, W] -> [N, C', H, BS, W, BS].
+      reshapeShape = {inputShape[0],  blockSize,     blockSize,
+                      outputChannels, inputShape[2], inputShape[3]};
+      permutation = {0, 3, 4, 1, 5, 2};
+      break;
+    case 2:
+      // CRD: [N, C', BS, BS, H, W] -> [N, C', H, BS, W, BS].
+      reshapeShape = {inputShape[0], outputChannels, blockSize,
+                      blockSize,     inputShape[2],  inputShape[3]};
+      permutation = {0, 1, 4, 2, 5, 3};
+      break;
+    default:
+      return rewriter.notifyMatchFailure(op, "unsupported depth_to_space mode");
+    }
+
+    auto reshapedType =
+        RankedTensorType::get(reshapeShape, inputType.getElementType());
+    Value reshaped = rewriter
+                         .create<tosa::ReshapeOp>(
+                             op.getLoc(), reshapedType, op.getX(),
+                             rewriter.getDenseI64ArrayAttr(reshapeShape))
+                         .getResult();
+
+    auto transposedType =
+        RankedTensorType::get(transposedShape, inputType.getElementType());
+    Value perm = createTosaI32Const(rewriter, op.getLoc(), permutation);
+    Value transposed = rewriter
+                           .create<tosa::TransposeOp>(
+                               op.getLoc(), transposedType, reshaped, perm)
+                           .getResult();
+
+    rewriter.replaceOpWithNewOp<tosa::ReshapeOp>(
+        op, resultType, transposed,
+        rewriter.getDenseI64ArrayAttr(resultType.getShape()));
+    return success();
+  }
+};
+
 class XTenNNToTosaPass
     : public xilinx::xten::XTenNNToTosaBase<XTenNNToTosaPass> {
 public:
@@ -211,7 +288,7 @@ public:
     MLIRContext *context = module.getContext();
     RewritePatternSet patterns(context);
 
-    patterns.insert<QuantizeOp, DequantizeOp>(context);
+    patterns.insert<QuantizeOp, DequantizeOp, DepthToSpaceOp>(context);
     // We insert a clamp to enforce non-standard TOSA dataypes. E.g. i6 signed
     // integer range described with an i8 value. However, in the case we use i8
     // and clamp to values of i8 (i.e. si8) then the clamp can be optimized away
