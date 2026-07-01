@@ -422,6 +422,10 @@ public:
 
   // Convert a real-valued source coordinate to the nearest sampled input index,
   // then clamp to the input extent to match ONNX edge-padding behavior.
+  // ONNX Resize nearest_mode is distinct from GridSample nearest: this op only
+  // encodes floor, round_prefer_ceil, and round_prefer_floor, so half-way cases
+  // are intentionally handled by the selected Resize nearest_mode rather than
+  // round-half-to-even.
   static Value getNearestIndex(const ResizeParams &params, OpBuilder &b,
                                Location loc, int64_t dim, Value coord,
                                Type calcType) {
@@ -464,17 +468,27 @@ public:
                            Type resultElementTy) {
     const int64_t rank = params.inputTy.getRank();
 
-    SmallVector<Value> lowIndices;
-    SmallVector<Value> highIndices;
-    SmallVector<Value> lowWeights;
-    SmallVector<Value> highWeights;
+    SmallVector<Value> baseIndices(rank);
+    SmallVector<Value> lowIndices(rank);
+    SmallVector<Value> highIndices(rank);
+    SmallVector<Value> lowWeights(rank);
+    SmallVector<Value> highWeights(rank);
+    SmallVector<int64_t> interpolationDims;
     const Value oneFloat = createFloatConstant(b, loc, calcType, 1.0);
     const Value oneIndex = createIndexConstant(b, loc, 1);
 
     // Precompute low/high source samples and interpolation weights for each
-    // output dimension, then combine all 2^rank corners below.
+    // output dimension that actually resizes. Axes with scale 1 and unchanged
+    // extent map output index i to input index i for all supported coordinate
+    // transformation modes, so they can use the index directly instead of
+    // doubling the number of sampled corners.
     for (int64_t dim = 0; dim < rank; ++dim) {
       const Value outIndex = b.create<linalg::IndexOp>(loc, dim);
+      baseIndices[dim] = outIndex;
+      if (params.scales[dim] == 1.0f &&
+          params.inputTy.getDimSize(dim) == params.resultTy.getDimSize(dim))
+        continue;
+
       const Value coord =
           getCoordinate(params, b, loc, dim, outIndex, calcType);
       const Value floorCoord = b.create<math::FloorOp>(loc, coord);
@@ -484,21 +498,24 @@ public:
           b.create<arith::SubFOp>(loc, coord, floorCoord);
       const Value lowWeight =
           b.create<arith::SubFOp>(loc, oneFloat, highWeight);
-      lowIndices.push_back(
-          clampIndex(b, loc, lowIndex, params.inputTy.getDimSize(dim) - 1));
-      highIndices.push_back(
-          clampIndex(b, loc, highIndex, params.inputTy.getDimSize(dim) - 1));
-      lowWeights.push_back(lowWeight);
-      highWeights.push_back(highWeight);
+      lowIndices[dim] =
+          clampIndex(b, loc, lowIndex, params.inputTy.getDimSize(dim) - 1);
+      highIndices[dim] =
+          clampIndex(b, loc, highIndex, params.inputTy.getDimSize(dim) - 1);
+      lowWeights[dim] = lowWeight;
+      highWeights[dim] = highWeight;
+      interpolationDims.push_back(dim);
     }
 
     Value acc = createFloatConstant(b, loc, calcType, 0.0);
-    for (int64_t mask = 0, e = 1LL << rank; mask < e; ++mask) {
-      SmallVector<Value> extractIndices;
+    for (int64_t mask = 0, e = 1LL << interpolationDims.size(); mask < e;
+         ++mask) {
+      SmallVector<Value> extractIndices(baseIndices);
       Value weight = createFloatConstant(b, loc, calcType, 1.0);
-      for (int64_t dim = 0; dim < rank; ++dim) {
-        const bool useHigh = mask & (1LL << dim);
-        extractIndices.push_back(useHigh ? highIndices[dim] : lowIndices[dim]);
+      for (int64_t i = 0, n = interpolationDims.size(); i < n; ++i) {
+        const int64_t dim = interpolationDims[i];
+        const bool useHigh = mask & (1LL << i);
+        extractIndices[dim] = useHigh ? highIndices[dim] : lowIndices[dim];
         weight = b.create<arith::MulFOp>(
             loc, weight, useHigh ? highWeights[dim] : lowWeights[dim]);
       }
@@ -649,6 +666,8 @@ public:
 
   static Value getNearestIndex(OpBuilder &b, Location loc, Value coord,
                                Type calcType) {
+    // ONNX GridSample nearest rounds half-way cases to the nearest even index,
+    // unlike ONNX Resize's configurable nearest_mode handling 
     const Value floorCoord = b.create<math::FloorOp>(loc, coord);
     const Value floorIndex = castFloatToIndex(b, loc, floorCoord);
     const Value one = createIndexConstant(b, loc, 1);
