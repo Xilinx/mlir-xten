@@ -1061,7 +1061,7 @@ LogicalResult ReduceMeanOp::inferReturnTypeComponents(
   SmallVector<int64_t, 4> outputShape;
   auto inputShape = inTy.getShape();
   for (auto [idx, dim] : llvm::enumerate(inputShape)) {
-    if (llvm::is_contained(axes, idx)) {
+    if (llvm::is_contained(newAxes, idx)) {
       if (keepDims) {
         outputShape.push_back(1);
       }
