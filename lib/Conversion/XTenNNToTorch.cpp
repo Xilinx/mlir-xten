@@ -66,10 +66,10 @@ Value toTorchTensorTypeCast(PatternRewriter &rewriter, Value input) {
 }
 
 Value toBuiltinTensorTypeCast(OpBuilder &builder, Value val, Type type) {
-  if (val.getType().isa<MemRefType>())
+  if (isa<MemRefType>(val.getType()))
     return val;
 
-  auto tensorTy = val.getType().dyn_cast<torch::Torch::BaseTensorType>();
+  auto tensorTy = dyn_cast<torch::Torch::BaseTensorType>(val.getType());
   if (!tensorTy)
     return val;
   return builder.create<torch::TorchConversion::ToBuiltinTensorOp>(val.getLoc(),
