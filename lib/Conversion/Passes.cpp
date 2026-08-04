@@ -13,11 +13,6 @@
 
 #include "xten/Conversion/Passes.h"
 
-
-void xilinx::xten::registerConversionPasses() { 
-    registerXTenConversionPasses();
-#ifdef MLIR_XTEN_ENABLE_TORCH
-#define GEN_PASS_REGISTRATION
-    xilinx::xten::torch::registerXTenConversionPasses();
-#endif
-     }
+void xilinx::xten::registerConversionPasses() {
+  registerXTenConversionPasses();
+}

@@ -23,9 +23,6 @@ from lit.llvm.subst import FindTool
 
 # Configuration file for the 'lit' test runner.
 
-if config.torch:
-    config.available_features.add("torch")
-
 # name: The name of this test suite.
 config.name = "ATEN"
 

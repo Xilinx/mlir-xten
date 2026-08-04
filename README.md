@@ -1,11 +1,11 @@
 <!--- (c) Copyright 2021 Xilinx, Inc. All Rights reserved.--->
 <!--- (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.--->
 
-# Extensions to Torch-MLIR
+# Extensions to MLIR
 
 ![](https://mlir.llvm.org//mlir-logo.png)
 
-This repository contains Xilinx extensions to the torch-mlir ATen dialect to enable expressing the input and output of partial results. Using these extensions, a prototype streaming dataflow exploration tool scans the design space for compute/memory/computation balanced partitioning of CNNs on the AIE array of Xilinx' Versal devices.
+This repository contains Xilinx extensions to the ONNX-MLIR and TOSA dialect to enable expressing the input and output of partial results. Using these extensions, a prototype streaming dataflow exploration tool scans the design space for compute/memory/computation balanced partitioning of CNNs on the AIE array of Xilinx' Versal devices.
 
 [Full Documentation](https://xilinx.github.io/mlir-xten/)
 

@@ -66,6 +66,5 @@ jobs:
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DLLVM_EXTERNAL_PROJECTS=mlir-xten \
-              -DMLIR_XTEN_ENABLE_TORCH=OFF \
               -DLLVM_EXTERNAL_MLIR_XTEN_SOURCE_DIR="$PWD"
         ninja -C build check-xten-all
