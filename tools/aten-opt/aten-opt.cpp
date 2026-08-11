@@ -17,7 +17,9 @@
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 
+#ifdef MLIR_XTEN_ENABLE_CONVERSION_PASSES
 #include "xten/Conversion/Passes.h"
+#endif
 #include "xten/Dialect/XTenNN/IR/XTenNNBase.h"
 #include "xten/Dialect/XTenNN/Transforms/Passes.h"
 
@@ -26,7 +28,9 @@ using namespace mlir;
 
 int main(int argc, char **argv) {
   registerAllPasses();
+#ifdef MLIR_XTEN_ENABLE_CONVERSION_PASSES
   xilinx::xten::registerConversionPasses();
+#endif
   amd::xten_nn::registerXTenNNPasses();
 
   DialectRegistry registry;

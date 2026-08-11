@@ -56,6 +56,9 @@ config.excludes = [
     "XTenToAffine",
 ]
 
+if not config.enable_xten_conversion_passes:
+    config.excludes.append("Conversion")
+
 # test_source_root: The root path where tests are located.
 config.test_source_root = os.path.dirname(__file__)
 

@@ -31,6 +31,9 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
+option(MLIR_XTEN_ENABLE_CONVERSION_PASSES
+       "Build XTen conversion passes and register them in aten-opt" OFF)
+
 function(detect_pybind11_install)
   if(pybind11_DIR)
     message(STATUS "Using explicit pybind11 cmake directory: ${pybind11_DIR} (-Dpybind11_DIR to change)")

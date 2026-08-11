@@ -17,11 +17,17 @@ get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
 get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 
 set(LIBS
-  XTenConversionPasses
   XTenNNDialect
   ${dialect_libs}
   ${conversion_libs}
   MLIROptLib
 )
+
+if(MLIR_XTEN_ENABLE_CONVERSION_PASSES)
+  target_compile_definitions(
+    aten-opt PRIVATE MLIR_XTEN_ENABLE_CONVERSION_PASSES=1
+  )
+  list(APPEND LIBS XTenConversionPasses)
+endif()
 
 target_link_libraries(aten-opt PRIVATE ${LIBS})
