@@ -16,34 +16,18 @@ llvm_update_compile_flags(aten-opt)
 get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
 get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 
-if(MLIR_XTEN_ENABLE_TORCH)
-  target_compile_definitions(aten-opt PRIVATE MLIR_XTEN_ENABLE_TORCH=1)
-  set(torch_libs 
-    TorchMLIRInitAll
-    TorchMLIRTMTensorPasses
-    TorchMLIRTMTensorDialect
-    TorchMLIRTorchDialect
-    TorchMLIRTorchConversionDialect
-    TorchMLIRTorchUtils
-    TorchMLIRTorchPasses
-    TorchMLIRTorchConversionPasses
-    TorchMLIRConversionUtils
-    TorchMLIRTorchToLinalg
-    TorchMLIRTorchToSCF
-    TorchMLIRTorchToArith
-    TorchMLIRTorchToTosa
-    TorchMLIRConversionPasses
-    TorchMLIRRefBackend
- )
-endif()
-
 set(LIBS
-  XTenConversionPasses
   XTenNNDialect
-  ${torch_libs}
   ${dialect_libs}
   ${conversion_libs}
   MLIROptLib
 )
+
+if(MLIR_XTEN_ENABLE_CONVERSION_PASSES)
+  target_compile_definitions(
+    aten-opt PRIVATE MLIR_XTEN_ENABLE_CONVERSION_PASSES=1
+  )
+  list(APPEND LIBS XTenConversionPasses)
+endif()
 
 target_link_libraries(aten-opt PRIVATE ${LIBS})

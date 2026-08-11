@@ -7,7 +7,7 @@
 # (c) Copyright 2021 Xilinx, Inc. All Rights reserved.
 # (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
-llvm_canonicalize_cmake_booleans(MLIR_XTEN_ENABLE_TORCH)
+llvm_canonicalize_cmake_booleans(MLIR_XTEN_ENABLE_CONVERSION_PASSES)
 
 configure_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in

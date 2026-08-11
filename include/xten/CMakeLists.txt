@@ -8,4 +8,6 @@
 # (c) Copyright 2022 - 2024 Advanced Micro Devices, Inc. All Rights reserved.
 
 add_subdirectory(Dialect)
-add_subdirectory(Conversion)
+if(MLIR_XTEN_ENABLE_CONVERSION_PASSES)
+  add_subdirectory(Conversion)
+endif()

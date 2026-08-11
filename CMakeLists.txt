@@ -31,7 +31,8 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-option(MLIR_XTEN_ENABLE_TORCH "Enable torch-mlir" ON)
+option(MLIR_XTEN_ENABLE_CONVERSION_PASSES
+       "Build XTen conversion passes and register them in aten-opt" OFF)
 
 function(detect_pybind11_install)
   if(pybind11_DIR)
@@ -78,7 +79,6 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   include(AddMLIR)
   include(HandleLLVMOptions)
 
-  link_directories(${TORCH_MLIR_LIB_DIR})
 else()
   message(STATUS "Building MLIR-XTEN in-tree")
   # Build via external projects mechanism
@@ -90,11 +90,6 @@ else()
   list(APPEND CMAKE_MODULE_PATH ${MLIR_MAIN_SRC_DIR}/cmake/modules)
   list(APPEND CMAKE_MODULE_PATH ${LLVM_MAIN_SRC_DIR}/cmake)
 
-  if (MLIR_XTEN_ENABLE_TORCH)
-    set(TORCH_MLIR_INCLUDE_DIRS
-      ${LLVM_EXTERNAL_TORCH_MLIR_SOURCE_DIR}/include
-      ${LLVM_BINARY_DIR}/tools/torch-mlir/include)
-  endif()
 endif()
 
 # Define the default arguments to use with 'lit', and an option for the user to
@@ -117,10 +112,6 @@ include_directories(${MLIR_INCLUDE_DIRS})
 
 include_directories(${XTEN_SOURCE_DIR}/include)
 include_directories(${XTEN_BINARY_DIR}/include)
-
-if(MLIR_XTEN_ENABLE_TORCH)
-  include_directories(${TORCH_MLIR_INCLUDE_DIRS})
-endif()
 
 add_definitions(${LLVM_DEFINITIONS})
 

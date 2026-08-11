@@ -23,9 +23,6 @@ from lit.llvm.subst import FindTool
 
 # Configuration file for the 'lit' test runner.
 
-if config.torch:
-    config.available_features.add("torch")
-
 # name: The name of this test suite.
 config.name = "ATEN"
 
@@ -58,6 +55,9 @@ config.excludes = [
     "LICENSE.txt",
     "XTenToAffine",
 ]
+
+if not config.enable_xten_conversion_passes:
+    config.excludes.append("Conversion")
 
 # test_source_root: The root path where tests are located.
 config.test_source_root = os.path.dirname(__file__)
