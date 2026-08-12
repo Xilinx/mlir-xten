@@ -131,7 +131,7 @@ Value mapEluOpToArithAndMathOps(EluOp op, ArrayRef<Type> /*resultTypes*/,
       b->create<arith::ConstantOp>(loc, b->getFloatAttr(elementType, 1));
   Value sub = b->create<::mlir::arith::SubFOp>(loc, exp, one);
   Value alphaAsValue = b->create<mlir::arith::ConstantFloatOp>(
-      loc, EluOpAdaptor(op).getAlpha(), cast<FloatType>(elementType));
+      loc, cast<FloatType>(elementType), EluOpAdaptor(op).getAlpha());
   Value mul = b->create<::mlir::arith::MulFOp>(loc, alphaAsValue, sub);
 
   // Build: x > 0 ? x : alpha * (exp(x) - 1)
