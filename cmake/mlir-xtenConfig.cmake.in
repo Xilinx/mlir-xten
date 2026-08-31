@@ -1,0 +1,34 @@
+#
+# This file is licensed under the Apache License v2.0 with LLVM Exceptions.
+# See https://llvm.org/LICENSE.txt for license information.
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+#
+
+# (c) Copyright 2026 Advanced Micro Devices, Inc. All Rights reserved.
+
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# The exported targets carry MLIR/LLVM targets in their INTERFACE_LINK_LIBRARIES.
+# Those are IMPORTED targets in a standalone mlir-xten build, so they are written
+# into mlir-xtenTargets.cmake by name only and must be re-created here before the
+# targets file is included.
+if(NOT TARGET MLIRIR)
+  find_dependency(MLIR)
+endif()
+
+set(MLIR_XTEN_ENABLE_CONVERSION_PASSES @MLIR_XTEN_ENABLE_CONVERSION_PASSES@)
+
+include("${CMAKE_CURRENT_LIST_DIR}/mlir-xtenTargets.cmake")
+
+set_and_check(MLIR_XTEN_INCLUDE_DIR "@PACKAGE_XTEN_INSTALL_INCLUDEDIR@")
+set(MLIR_XTEN_INCLUDE_DIRS "${MLIR_XTEN_INCLUDE_DIR}")
+
+set(MLIR_XTEN_LIBRARIES xten::XTenNNInterfaces xten::XTenNNDialect
+                        xten::XTenNNTransforms)
+if(MLIR_XTEN_ENABLE_CONVERSION_PASSES)
+  list(APPEND MLIR_XTEN_LIBRARIES xten::XTenConversionPasses)
+endif()
+
+check_required_components(mlir-xten)
