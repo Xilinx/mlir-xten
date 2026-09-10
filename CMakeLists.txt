@@ -34,6 +34,9 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 option(MLIR_XTEN_ENABLE_CONVERSION_PASSES
        "Build XTen conversion passes and register them in aten-opt" OFF)
 
+option(MLIR_XTEN_INSTALL_PACKAGE
+       "Install headers and a relocatable CMake config package for mlir-xten" OFF)
+
 function(detect_pybind11_install)
   if(pybind11_DIR)
     message(STATUS "Using explicit pybind11 cmake directory: ${pybind11_DIR} (-Dpybind11_DIR to change)")
@@ -132,3 +135,81 @@ add_subdirectory(python)
 add_subdirectory(test)
 
 umbrella_lit_testsuite_end(check-xten-all)
+
+# ##############################################################################
+# Installed CMake config package
+#
+# Downstream projects have had to reach into this project's build tree via
+# XTEN_DIR / MLIR_XTEN_BINARY_DIR and a hand-written Findmlir-xten.cmake.
+# Exporting a relocatable config package lets them use
+# find_package(mlir-xten CONFIG) instead.
+#
+# Only the namespaced xten:: targets are published.  Do not add a Find module
+# alongside this: a plain, non-namespaced target of the same name leaks into
+# INTERFACE_LINK_LIBRARIES and degrades to a bare -lXTenNNDialect link flag.
+#
+# XTenCAPI is deliberately not exported.  It is built with
+# add_mlir_public_c_api_library(... ENABLE_AGGREGATION), whose object/aggregate
+# machinery does not survive install(EXPORT), and no downstream consumer links
+# it -- it exists for the Python bindings, which are built in-tree.
+# ##############################################################################
+if(MLIR_XTEN_INSTALL_PACKAGE)
+  include(CMakePackageConfigHelpers)
+
+  set(XTEN_INSTALL_INCLUDEDIR include)
+  set(XTEN_INSTALL_PACKAGEDIR lib/cmake/mlir-xten)
+
+  set(XTEN_EXPORT_TARGETS XTenNNInterfaces XTenNNDialect XTenNNTransforms)
+  if(MLIR_XTEN_ENABLE_CONVERSION_PASSES)
+    list(APPEND XTEN_EXPORT_TARGETS XTenConversionPasses)
+  endif()
+
+  # These targets get their include paths from the directory-scoped
+  # include_directories() above, so they carry no INTERFACE_INCLUDE_DIRECTORIES
+  # of their own.  Add the install-tree one only -- adding a BUILD_INTERFACE
+  # entry is unnecessary in-tree and an absolute source path would make
+  # install(EXPORT) fail.
+  foreach(_xten_target IN LISTS XTEN_EXPORT_TARGETS)
+    target_include_directories(
+      ${_xten_target} INTERFACE
+      $<INSTALL_INTERFACE:${XTEN_INSTALL_INCLUDEDIR}>)
+  endforeach()
+
+  install(
+    TARGETS ${XTEN_EXPORT_TARGETS}
+    EXPORT mlir-xtenTargets
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+    INCLUDES DESTINATION ${XTEN_INSTALL_INCLUDEDIR})
+
+  # Checked-in headers.
+  install(
+    DIRECTORY ${XTEN_SOURCE_DIR}/include/xten ${XTEN_SOURCE_DIR}/include/xten-c
+    DESTINATION ${XTEN_INSTALL_INCLUDEDIR}
+    FILES_MATCHING
+    PATTERN "*.h"
+    PATTERN "*.td")
+
+  # TableGen'd headers, which mirror the source layout under the build tree.
+  install(
+    DIRECTORY ${XTEN_BINARY_DIR}/include/xten
+    DESTINATION ${XTEN_INSTALL_INCLUDEDIR}
+    FILES_MATCHING
+    PATTERN "*.h"
+    PATTERN "*.inc")
+
+  install(
+    EXPORT mlir-xtenTargets
+    NAMESPACE xten::
+    DESTINATION ${XTEN_INSTALL_PACKAGEDIR})
+
+  configure_package_config_file(
+    ${XTEN_SOURCE_DIR}/cmake/mlir-xtenConfig.cmake.in
+    ${XTEN_BINARY_DIR}/cmake/mlir-xtenConfig.cmake
+    INSTALL_DESTINATION ${XTEN_INSTALL_PACKAGEDIR}
+    PATH_VARS XTEN_INSTALL_INCLUDEDIR)
+
+  install(FILES ${XTEN_BINARY_DIR}/cmake/mlir-xtenConfig.cmake
+          DESTINATION ${XTEN_INSTALL_PACKAGEDIR})
+endif()
