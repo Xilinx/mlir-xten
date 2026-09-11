@@ -869,7 +869,7 @@ struct ConvertXtenNNtoLinalg
                            shape::ShapeDialect, tensor::TensorDialect,
                            arith::ArithDialect>();
 
-    // Cubic mode not supported yet.
+    // Conversion for Cubic mode not supported yet so mark it as legal.
     target.addDynamicallyLegalOp<ResizeOp>(
       [](ResizeOp op) { return op.getMode() == 2; });
 
