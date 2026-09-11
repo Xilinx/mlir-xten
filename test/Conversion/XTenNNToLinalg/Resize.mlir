@@ -675,3 +675,14 @@ func.func @resize_nearest_i8(%arg0: tensor<1x2x2x2xi8>) -> tensor<1x2x4x4xi8> {
 // CHECK:           } -> tensor<1x2x4x4xi8>
 // CHECK:           return [[VAR_v001_]] : tensor<1x2x4x4xi8>
 // CHECK:         }
+
+// -----
+
+// Cubic mode not supported yet.
+func.func @resize_cubic_half_pixel(%arg0: tensor<1x1x2x2xf32>) -> tensor<1x1x4x4xf32> {
+  %0 = xten_nn.resize %arg0 {coordinate_transformation_mode = 0 : i64, mode = 2 : i64, nearest_mode = 0 : i64, scales = array<f32: 1.0, 1.0, 2.0, 2.0>} : (tensor<1x1x2x2xf32>) -> tensor<1x1x4x4xf32>
+  return %0 : tensor<1x1x4x4xf32>
+}
+
+// CHECK-LABEL:  func.func @resize_cubic_half_pixel
+// CHECK:      xten_nn.resize

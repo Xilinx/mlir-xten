@@ -863,11 +863,15 @@ struct ConvertXtenNNtoLinalg
     auto funcOp = getOperation();
 
     ConversionTarget target(*context);
-    target.addIllegalOp<EluOp, GridSampleOp, ReduceMeanOp, ResizeOp, SignOp>();
+    target.addIllegalOp<EluOp, GridSampleOp, ReduceMeanOp, SignOp>();
     target.addLegalDialect<linalg::LinalgDialect, scf::SCFDialect,
                            complex::ComplexDialect, math::MathDialect,
                            shape::ShapeDialect, tensor::TensorDialect,
                            arith::ArithDialect>();
+
+    // Cubic mode not supported yet.
+    target.addDynamicallyLegalOp<ResizeOp>(
+      [](ResizeOp op) { return op.getMode() == 2; });
 
     RewritePatternSet patterns(context);
     patterns.add<EluToLinalg, GridSampleToLinalg, ReduceMeanToLinalg,
