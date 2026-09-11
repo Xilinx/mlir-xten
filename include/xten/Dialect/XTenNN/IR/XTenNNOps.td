@@ -525,6 +525,7 @@ def XtenNN_ResizeOp: XTenNN_Op<"resize", [Pure, TosaExtension]> {
       - Mode:
         - 0: Nearest
         - 1: Linear
+        - 2: Cubic
       - Nearest mode:
         - 0: floor
         - 1: round_prefer_ceil
