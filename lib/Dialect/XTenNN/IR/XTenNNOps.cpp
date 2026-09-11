@@ -950,7 +950,7 @@ LogicalResult amd::xten_nn::ResizeOp::verify() {
     return emitOpError(getOpInvalidModeOption(
         coordinateTransformMode, getCoordinateTransformationModeAttrName()));
   }
-  constexpr std::array mode{"Nearest", "Linear"};
+  constexpr std::array mode{"Nearest", "Linear", "Cubic"};
   if (getMode() > mode.size() - 1) {
     return emitOpError(getOpInvalidModeOption(mode, getModeAttrName()));
   }
