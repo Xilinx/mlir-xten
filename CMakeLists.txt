@@ -147,11 +147,6 @@ umbrella_lit_testsuite_end(check-xten-all)
 # Only the namespaced xten:: targets are published.  Do not add a Find module
 # alongside this: a plain, non-namespaced target of the same name leaks into
 # INTERFACE_LINK_LIBRARIES and degrades to a bare -lXTenNNDialect link flag.
-#
-# XTenCAPI is deliberately not exported.  It is built with
-# add_mlir_public_c_api_library(... ENABLE_AGGREGATION), whose object/aggregate
-# machinery does not survive install(EXPORT), and no downstream consumer links
-# it -- it exists for the Python bindings, which are built in-tree.
 # ##############################################################################
 if(MLIR_XTEN_INSTALL_PACKAGE)
   include(CMakePackageConfigHelpers)
@@ -159,7 +154,8 @@ if(MLIR_XTEN_INSTALL_PACKAGE)
   set(XTEN_INSTALL_INCLUDEDIR include)
   set(XTEN_INSTALL_PACKAGEDIR lib/cmake/mlir-xten)
 
-  set(XTEN_EXPORT_TARGETS XTenNNInterfaces XTenNNDialect XTenNNTransforms)
+  set(XTEN_EXPORT_TARGETS XTenNNInterfaces XTenNNDialect XTenNNTransforms
+                          XTenCAPI)
   if(MLIR_XTEN_ENABLE_CONVERSION_PASSES)
     list(APPEND XTEN_EXPORT_TARGETS XTenConversionPasses)
   endif()
@@ -175,12 +171,16 @@ if(MLIR_XTEN_INSTALL_PACKAGE)
       $<INSTALL_INTERFACE:${XTEN_INSTALL_INCLUDEDIR}>)
   endforeach()
 
+  set_target_properties(XTenCAPI PROPERTIES MLIR_AGGREGATE_OBJECT_LIB_IMPORTED
+                                            xten::obj.XTenCAPI)
+
   install(
-    TARGETS ${XTEN_EXPORT_TARGETS}
+    TARGETS ${XTEN_EXPORT_TARGETS} obj.XTenCAPI
     EXPORT mlir-xtenTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
+    OBJECTS DESTINATION lib
     INCLUDES DESTINATION ${XTEN_INSTALL_INCLUDEDIR})
 
   # Checked-in headers.
