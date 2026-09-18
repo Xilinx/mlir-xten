@@ -27,10 +27,15 @@ set(MLIR_XTEN_INCLUDE_DIRS "${MLIR_XTEN_INCLUDE_DIR}")
 
 set(MLIR_XTEN_CAPI_LIBRARY xten::XTenCAPI)
 
-set(MLIR_XTEN_LIBRARIES xten::XTenNNInterfaces xten::XTenNNDialect
-                        xten::XTenNNTransforms)
+set(MLIR_XTEN_DIALECT_TARGETS xten::XTenNNInterfaces xten::XTenNNDialect
+                              xten::XTenNNTransforms)
+
+set(MLIR_XTEN_LIBRARIES ${MLIR_XTEN_DIALECT_TARGETS})
 if(MLIR_XTEN_ENABLE_CONVERSION_PASSES)
   list(APPEND MLIR_XTEN_LIBRARIES xten::XTenConversionPasses)
 endif()
+
+set(MLIR_XTEN_EXPORTED_TARGETS ${MLIR_XTEN_LIBRARIES}
+                               ${MLIR_XTEN_CAPI_LIBRARY})
 
 check_required_components(mlir-xten)
