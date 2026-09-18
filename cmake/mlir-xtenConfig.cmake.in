@@ -14,7 +14,7 @@ include(CMakeFindDependencyMacro)
 # Those are IMPORTED targets in a standalone mlir-xten build, so they are written
 # into mlir-xtenTargets.cmake by name only and must be re-created here before the
 # targets file is included.
-if(NOT TARGET MLIRIR)
+if(NOT TARGET MLIRIR AND NOT MLIR_XTEN_SKIP_MLIR_DEPENDENCY)
   find_dependency(MLIR)
 endif()
 
@@ -24,6 +24,8 @@ include("${CMAKE_CURRENT_LIST_DIR}/mlir-xtenTargets.cmake")
 
 set_and_check(MLIR_XTEN_INCLUDE_DIR "@PACKAGE_XTEN_INSTALL_INCLUDEDIR@")
 set(MLIR_XTEN_INCLUDE_DIRS "${MLIR_XTEN_INCLUDE_DIR}")
+
+set(MLIR_XTEN_CAPI_LIBRARY xten::XTenCAPI)
 
 set(MLIR_XTEN_LIBRARIES xten::XTenNNInterfaces xten::XTenNNDialect
                         xten::XTenNNTransforms)
