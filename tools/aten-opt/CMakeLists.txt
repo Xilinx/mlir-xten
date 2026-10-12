@@ -20,6 +20,8 @@ set(LIBS
   XTenNNDialect
   ${dialect_libs}
   ${conversion_libs}
+  MLIRRegisterAllDialects
+  MLIRRegisterAllPasses
   MLIROptLib
 )
 
