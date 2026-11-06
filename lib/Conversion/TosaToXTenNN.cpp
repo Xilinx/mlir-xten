@@ -19,6 +19,12 @@
 
 #include "llvm/ADT/APFloat.h"
 
+namespace xilinx::xten {
+#define GEN_PASS_DECL_TOSATOXTENNN
+#define GEN_PASS_DEF_TOSATOXTENNN
+#include "xten/Conversion/Passes.h.inc"
+} // namespace xilinx::xten
+
 using namespace mlir;
 
 namespace {
@@ -298,7 +304,7 @@ public:
 };
 
 class TosaToXTenNNPass
-    : public xilinx::xten::TOSAToXTenNNBase<TosaToXTenNNPass> {
+    : public xilinx::xten::impl::TOSAToXTenNNBase<TosaToXTenNNPass> {
 public:
   void runOnOperation() override {
     ModuleOp module = getOperation();

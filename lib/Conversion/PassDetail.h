@@ -28,9 +28,6 @@ namespace xten {
 
 using namespace mlir;
 
-#define GEN_PASS_CLASSES
-#include "xten/Conversion/Passes.h.inc"
-
 } // namespace xten
 } // namespace xilinx
 
