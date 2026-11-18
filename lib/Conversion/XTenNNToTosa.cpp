@@ -17,6 +17,12 @@
 #include "mlir/Dialect/Tosa/IR/TosaOps.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
+namespace xilinx::xten {
+#define GEN_PASS_DECL_XTENNNTOTOSA
+#define GEN_PASS_DEF_XTENNNTOTOSA
+#include "xten/Conversion/Passes.h.inc"
+} // namespace xilinx::xten
+
 using namespace mlir;
 
 namespace {
@@ -281,9 +287,11 @@ public:
 };
 
 class XTenNNToTosaPass
-    : public xilinx::xten::XTenNNToTosaBase<XTenNNToTosaPass> {
+    : public xilinx::xten::impl::XTenNNToTosaBase<XTenNNToTosaPass> {
 public:
   using XTenNNToTosaBase::XTenNNToTosaBase;
+
+  XTenNNToTosaPass() = default;
 
   XTenNNToTosaPass(bool enableDepthToSpaceDecomposition) {
     this->enableDepthToSpaceDecomposition = enableDepthToSpaceDecomposition;
