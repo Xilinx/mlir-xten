@@ -22,7 +22,8 @@ module attributes{} {
 // CHECK-DAG:         [[VAR_4_:%.+]] = "tosa.const"() <{value = dense<0> : tensor<1xi8>}> : () -> tensor<1xi8>
 // CHECK:             [[VAR_5_:%.+]] = tosa.mul [[PARAM_0_]], [[VAR_3_]], [[VAR_4_]] : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>, tensor<1xi8>) -> tensor<1x3x4x4xf32>
 // CHECK:             [[VAR_6_:%.+]] = tosa.cast [[VAR_5_]] : (tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xi32>
-// CHECK:             [[VAR_7_:%.+]] = tosa.add [[VAR_6_]], [[VAR_2_]] : (tensor<1x3x4x4xi32>, tensor<1x3x4x4xi32>) -> tensor<1x3x4x4xi32>
+// CHECK:             [[CLAMP:%.+]] = tosa.clamp [[VAR_6_]] {{.*}}max_int = 126 : i64{{.*}}min_int = -129 : i64{{.*}}
+// CHECK:             [[VAR_7_:%.+]] = tosa.add [[CLAMP]], [[VAR_2_]] : (tensor<1x3x4x4xi32>, tensor<1x3x4x4xi32>) -> tensor<1x3x4x4xi32>
 // CHECK:             [[VAR_8_:%.+]] = tosa.cast [[VAR_7_]] : (tensor<1x3x4x4xi32>) -> tensor<1x3x4x4xi8>
 // CHECK:             [[VAR_9_:%.+]] = tosa.cast [[VAR_8_]] : (tensor<1x3x4x4xi8>) -> tensor<1x3x4x4xf32>
 // CHECK:             [[VAR_10_:%.+]] = tosa.sub [[VAR_9_]], [[VAR_1_]] : (tensor<1x3x4x4xf32>, tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32>
@@ -48,7 +49,8 @@ module attributes{} {
 // CHECK-DAG:         [[VAR_4_:%.+]] = "tosa.const"() <{value = dense<0> : tensor<1xi8>}> : () -> tensor<1xi8>
 // CHECK:             [[VAR_5_:%.+]] = tosa.mul [[PARAM_0_]], [[VAR_3_]], [[VAR_4_]] : (tensor<1x3x4x4xbf16>, tensor<1x1x1x1xbf16>, tensor<1xi8>) -> tensor<1x3x4x4xbf16>
 // CHECK:             [[VAR_6_:%.+]] = tosa.cast [[VAR_5_]] : (tensor<1x3x4x4xbf16>) -> tensor<1x3x4x4xi32>
-// CHECK:             [[VAR_7_:%.+]] = tosa.add [[VAR_6_]], [[VAR_2_]] : (tensor<1x3x4x4xi32>, tensor<1x3x4x4xi32>) -> tensor<1x3x4x4xi32>
+// CHECK:             [[CLAMP:%.+]] = tosa.clamp [[VAR_6_]] {{.*}}max_int = 126 : i64{{.*}}min_int = -129 : i64{{.*}}
+// CHECK:             [[VAR_7_:%.+]] = tosa.add [[CLAMP]], [[VAR_2_]] : (tensor<1x3x4x4xi32>, tensor<1x3x4x4xi32>) -> tensor<1x3x4x4xi32>
 // CHECK:             [[VAR_8_:%.+]] = tosa.cast [[VAR_7_]] : (tensor<1x3x4x4xi32>) -> tensor<1x3x4x4xi8>
 // CHECK:             [[VAR_9_:%.+]] = tosa.cast [[VAR_8_]] : (tensor<1x3x4x4xi8>) -> tensor<1x3x4x4xbf16>
 // CHECK:             [[VAR_10_:%.+]] = tosa.sub [[VAR_9_]], [[VAR_1_]] : (tensor<1x3x4x4xbf16>, tensor<1x3x4x4xbf16>) -> tensor<1x3x4x4xbf16>
@@ -75,7 +77,8 @@ module attributes{} {
 // CHECK-DAG:         [[VAR_4_:%.+]] = "tosa.const"() <{value = dense<0> : tensor<1xi8>}> : () -> tensor<1xi8>
 // CHECK:             [[VAR_5_:%.+]] = tosa.mul [[PARAM_0_]], [[VAR_3_]], [[VAR_4_]] : (tensor<1x3x4x4xbf16>, tensor<1x1x1x1xbf16>, tensor<1xi8>) -> tensor<1x3x4x4xbf16>
 // CHECK:             [[VAR_6_:%.+]] = tosa.cast [[VAR_5_]] : (tensor<1x3x4x4xbf16>) -> tensor<1x3x4x4xi32>
-// CHECK:             [[VAR_7_:%.+]] = tosa.add [[VAR_6_]], [[VAR_2_]] : (tensor<1x3x4x4xi32>, tensor<1x3x4x4xi32>) -> tensor<1x3x4x4xi32>
+// CHECK:             [[CLAMP:%.+]] = tosa.clamp [[VAR_6_]] {{.*}}max_int = 65534 : i64{{.*}}min_int = -1 : i64{{.*}}
+// CHECK:             [[VAR_7_:%.+]] = tosa.add [[CLAMP]], [[VAR_2_]] : (tensor<1x3x4x4xi32>, tensor<1x3x4x4xi32>) -> tensor<1x3x4x4xi32>
 // CHECK:             [[VAR_8_:%.+]] = tosa.cast [[VAR_7_]] : (tensor<1x3x4x4xi32>) -> tensor<1x3x4x4xui16>
 // CHECK:             [[VAR_9_:%.+]] = tosa.cast [[VAR_8_]] : (tensor<1x3x4x4xui16>) -> tensor<1x3x4x4xbf16>
 // CHECK:             [[VAR_10_:%.+]] = tosa.sub [[VAR_9_]], [[VAR_1_]] : (tensor<1x3x4x4xbf16>, tensor<1x3x4x4xbf16>) -> tensor<1x3x4x4xbf16>
@@ -177,7 +180,8 @@ module attributes{} {
 // CHECK-DAG:         [[VAR_4_:%.+]] = "tosa.const"() <{value = dense<0> : tensor<1xi8>}> : () -> tensor<1xi8>
 // CHECK:             [[VAR_5_:%.+]] = tosa.mul [[PARAM_0_]], [[VAR_3_]], [[VAR_4_]] : (tensor<1x3x4x4xf32>, tensor<1x1x1x1xf32>, tensor<1xi8>) -> tensor<1x3x4x4xf32>
 // CHECK:             [[VAR_6_:%.+]] = tosa.cast [[VAR_5_]] : (tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xi32>
-// CHECK:             [[VAR_7_:%.+]] = tosa.add [[VAR_6_]], [[VAR_2_]] : (tensor<1x3x4x4xi32>, tensor<1x3x4x4xi32>) -> tensor<1x3x4x4xi32>
+// CHECK:             [[CLAMP:%.+]] = tosa.clamp [[VAR_6_]] {{.*}}max_int = 32766 : i64{{.*}}min_int = -32769 : i64{{.*}}
+// CHECK:             [[VAR_7_:%.+]] = tosa.add [[CLAMP]], [[VAR_2_]] : (tensor<1x3x4x4xi32>, tensor<1x3x4x4xi32>) -> tensor<1x3x4x4xi32>
 // CHECK:             [[VAR_8_:%.+]] = tosa.cast [[VAR_7_]] : (tensor<1x3x4x4xi32>) -> tensor<1x3x4x4xi16>
 // CHECK:             [[VAR_9_:%.+]] = tosa.cast [[VAR_8_]] : (tensor<1x3x4x4xi16>) -> tensor<1x3x4x4xf32>
 // CHECK:             [[VAR_10_:%.+]] = tosa.sub [[VAR_9_]], [[VAR_1_]] : (tensor<1x3x4x4xf32>, tensor<1x3x4x4xf32>) -> tensor<1x3x4x4xf32>
