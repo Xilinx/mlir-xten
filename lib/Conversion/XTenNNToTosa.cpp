@@ -139,9 +139,30 @@ public:
           DenseIntElementsAttr::get(constAddType, {quantizeOp.getZeroPoint()}));
       auto zeroPointCastOp = rewriter.create<tosa::CastOp>(
           quantizeOp.getLoc(), int32InputType, zeroPointConstOp.getResult());
-      auto zeroPointAddOp = rewriter.create<tosa::AddOp>(
-          quantizeOp.getLoc(), int32InputType, castToint32Op.getResult(),
-          zeroPointCastOp.getResult());
+      Value rounded = castToint32Op.getResult();
+      const auto integerType = cast<IntegerType>(outputType.getElementType());
+      if (integerType.getWidth() < 32) {
+        // Integer narrowing truncates in TOSA. Clamp before adding the zero
+        // point so both the addition and the final narrowing are in range.
+        // These bounds fit i32 for every output narrower than i32.
+        const unsigned width = integerType.getWidth();
+        const int64_t zeroPoint =
+            integerType.isUnsigned() ? quantizeOp.getZeroPoint().getZExtValue()
+                                     : quantizeOp.getZeroPoint().getSExtValue();
+        const int64_t minimum =
+            integerType.isUnsigned() ? 0 : -(int64_t{1} << (width - 1));
+        const int64_t maximum = integerType.isUnsigned()
+                                    ? (int64_t{1} << width) - 1
+                                    : (int64_t{1} << (width - 1)) - 1;
+        rounded = rewriter.create<tosa::ClampOp>(
+            quantizeOp.getLoc(), int32InputType, rounded,
+            rewriter.getI64IntegerAttr(minimum - zeroPoint),
+            rewriter.getI64IntegerAttr(maximum - zeroPoint),
+            rewriter.getF32FloatAttr(0), rewriter.getF32FloatAttr(0));
+      }
+      auto zeroPointAddOp =
+          rewriter.create<tosa::AddOp>(quantizeOp.getLoc(), int32InputType,
+                                       rounded, zeroPointCastOp.getResult());
       castFrom = zeroPointAddOp->getResult(0);
     }
     const TensorType newIntegerStorageType = getNewStorageType(outputType);
